@@ -52,6 +52,7 @@
   <div class="max-w-md w-full space-y-8">
     <!-- Logo e Título -->
     <div class="text-center">
+      <img src="/logo.png" alt="Marketplace GDG" class="h-16 w-auto mx-auto mb-4" />
       <h1 class="text-4xl font-bold text-[var(--cyan500)] mb-2">Marketplace GDG</h1>
       <h2 class="text-2xl font-semibold text-[var(--text-color)]">Entre em sua conta</h2>
       <p class="mt-2 text-[var(--gray300)]">

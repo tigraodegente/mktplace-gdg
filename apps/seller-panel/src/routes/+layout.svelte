@@ -28,7 +28,10 @@
 	<!-- Sidebar -->
 	<div class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 transform {sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out">
 		<div class="flex items-center justify-between h-16 px-4 bg-gray-800">
-			<h2 class="text-xl font-semibold text-white">Painel do Vendedor</h2>
+			<div class="flex items-center">
+				<img src="/logo.png" alt="Marketplace GDG" class="h-8 w-auto mr-3" />
+				<h2 class="text-xl font-semibold text-white">Painel do Vendedor</h2>
+			</div>
 			<button 
 				class="lg:hidden text-gray-400 hover:text-white"
 				onclick={() => sidebarOpen = false}

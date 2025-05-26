@@ -12,7 +12,8 @@
 		<div class="flex justify-between h-16">
 			<!-- Logo e Menu -->
 			<div class="flex">
-				<a href="/" class="flex items-center">
+				<a href="/" class="flex items-center gap-3">
+					<img src="/logo.png" alt="Marketplace GDG" class="h-10 w-auto" />
 					<span class="text-2xl font-bold text-[var(--cyan500)]">Marketplace GDG</span>
 				</a>
 				
