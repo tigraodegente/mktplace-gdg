@@ -56,4 +56,7 @@ export interface ApiResponse<T> {
     total?: number;
     limit?: number;
   };
-} 
+}
+
+// Exportar tipos de autenticação
+export * from './auth'; 
