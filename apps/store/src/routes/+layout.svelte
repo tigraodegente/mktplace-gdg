@@ -77,7 +77,7 @@
 
 <!-- Conteúdo Principal -->
 <main class="min-h-screen">
-	<slot />
+	{@render children()}
 </main>
 
 <!-- Footer -->
@@ -142,5 +142,3 @@
 		</div>
 	</div>
 </footer>
-
-{@render children()}
