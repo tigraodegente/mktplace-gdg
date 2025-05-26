@@ -16,6 +16,12 @@
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test"
 	},
+	"dependencies": {
+		"@mktplace/shared-types": "workspace:*",
+		"@mktplace/ui": "workspace:*",
+		"@mktplace/utils": "workspace:*",
+		"@mktplace/xata-client": "workspace:*"
+	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.18.0",
