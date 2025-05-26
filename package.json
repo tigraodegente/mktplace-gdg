@@ -1,0 +1,38 @@
+{
+  "name": "mktplace-gdg",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marketplace completo com SvelteKit, Cloudflare e Xata.io",
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "dev:store": "pnpm --filter ./apps/store dev",
+    "dev:admin": "pnpm --filter ./apps/admin-panel dev",
+    "dev:seller": "pnpm --filter ./apps/seller-panel dev",
+    "build": "pnpm run -r build",
+    "test": "pnpm run -r test",
+    "lint": "pnpm run -r lint",
+    "format": "pnpm run -r format",
+    "typecheck": "pnpm run -r typecheck"
+  },
+  "keywords": [
+    "marketplace",
+    "sveltekit",
+    "cloudflare",
+    "xata"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

@@ -1,0 +1,193 @@
+# Regras do Cursor para o Marketplace GDG
+
+## Contexto do Projeto
+Este é um marketplace completo desenvolvido como monorepo usando:
+- **Frontend**: SvelteKit + TypeScript + Tailwind CSS
+- **Backend**: Cloudflare Workers/Pages + Xata.io
+- **Arquitetura**: Monorepo com apps separadas (store, admin-panel, seller-panel)
+
+## Estrutura do Projeto
+```
+/mktplace-gdg/
+├── apps/
+│   ├── store/          # Loja para clientes
+│   ├── admin-panel/    # Painel administrativo
+│   └── seller-panel/   # Painel do vendedor
+├── packages/
+│   ├── ui/            # Componentes compartilhados
+│   ├── shared-types/  # TypeScript types
+│   ├── utils/         # Funções utilitárias
+│   └── xata-client/   # Cliente Xata.io
+└── docs/              # Documentação
+```
+
+## Padrões de Código
+
+### TypeScript
+- Use tipos explícitos sempre que possível
+- Evite `any`, prefira `unknown` quando necessário
+- Use interfaces para objetos, types para unions/intersections
+- Exporte tipos/interfaces que serão reutilizados
+
+### Componentes Svelte
+- Use `<script lang="ts">` para TypeScript
+- Props devem ser tipadas com `export let prop: Type`
+- Use stores para estado compartilhado
+- Prefira composição sobre herança
+
+### Estilização
+- Use Tailwind CSS para estilos
+- Evite CSS customizado, exceto quando necessário
+- Use classes utilitárias de forma consistente
+- Siga o design system documentado
+
+### Nomenclatura
+- Componentes: PascalCase (ex: `ProductCard.svelte`)
+- Arquivos TypeScript: camelCase (ex: `authService.ts`)
+- Rotas: kebab-case (ex: `/admin-panel/produtos`)
+- Variáveis/funções: camelCase
+- Constantes: UPPER_SNAKE_CASE
+- Tipos/Interfaces: PascalCase com prefixo quando apropriado
+
+### Estrutura de Arquivos
+```
+src/
+├── routes/          # Páginas e rotas
+├── lib/
+│   ├── components/  # Componentes reutilizáveis
+│   ├── stores/      # Svelte stores
+│   ├── services/    # Lógica de negócio
+│   ├── utils/       # Funções auxiliares
+│   └── types/       # TypeScript types locais
+```
+
+## Convenções de Desenvolvimento
+
+### Git Commits
+- Use conventional commits: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
+- Mensagens em português
+- Seja descritivo mas conciso
+
+### Imports
+- Use aliases do TypeScript (`$lib/`, `$app/`)
+- Agrupe imports: externos, internos, tipos
+- Ordene alfabeticamente dentro dos grupos
+
+### Tratamento de Erros
+- Use try/catch para operações assíncronas
+- Retorne erros apropriados nas APIs
+- Log erros no servidor, mostre mensagens amigáveis no cliente
+- Use o sistema de notificações para feedback ao usuário
+
+### Performance
+- Use lazy loading para componentes pesados
+- Implemente paginação para listas grandes
+- Otimize imagens (WebP, lazy loading)
+- Use cache apropriadamente
+
+### Segurança
+- Valide todos os inputs no servidor
+- Use CSRF protection
+- Sanitize dados antes de renderizar
+- Implemente rate limiting
+- Siga princípio do menor privilégio
+
+## APIs e Endpoints
+
+### Padrão REST
+- GET: buscar dados
+- POST: criar recursos
+- PUT/PATCH: atualizar recursos
+- DELETE: remover recursos
+
+### Respostas
+```typescript
+// Sucesso
+{
+  success: true,
+  data: T,
+  meta?: {
+    page: number,
+    total: number
+  }
+}
+
+// Erro
+{
+  success: false,
+  error: {
+    code: string,
+    message: string,
+    details?: any
+  }
+}
+```
+
+## Banco de Dados (Xata.io)
+
+### Queries
+- Use o cliente Xata tipado
+- Implemente paginação server-side
+- Use transações quando necessário
+- Otimize queries com índices apropriados
+
+### Migrations
+- Documente todas as mudanças de schema
+- Teste migrations em ambiente de desenvolvimento
+- Mantenha scripts de rollback
+
+## Testes
+
+### Unitários
+- Teste lógica de negócio isoladamente
+- Mock dependências externas
+- Aim for 80%+ coverage em services
+
+### E2E
+- Teste fluxos críticos do usuário
+- Use Playwright para testes cross-browser
+- Mantenha testes rápidos e confiáveis
+
+## Deploy e CI/CD
+
+### Branches
+- `main`: produção
+- `develop`: desenvolvimento
+- `feature/*`: novas funcionalidades
+- `fix/*`: correções
+
+### Deploy
+- Apps são deployadas independentemente
+- Use preview deployments para PRs
+- Rode testes antes de merge
+- Mantenha secrets seguros
+
+## Documentação
+
+### Código
+- Documente funções complexas com JSDoc
+- Use comentários para explicar o "porquê", não o "quê"
+- Mantenha README atualizado em cada app/package
+
+### APIs
+- Documente todos os endpoints
+- Inclua exemplos de request/response
+- Liste possíveis erros
+
+## Recursos e Referências
+
+- [Documentação SvelteKit](https://kit.svelte.dev/docs)
+- [Documentação Xata.io](https://xata.io/docs)
+- [Documentação Cloudflare](https://developers.cloudflare.com/)
+- [Tailwind CSS](https://tailwindcss.com/docs)
+- Documentação interna: `/docs/`
+
+## Checklist para PRs
+
+- [ ] Código segue os padrões estabelecidos
+- [ ] Testes foram adicionados/atualizados
+- [ ] Documentação foi atualizada se necessário
+- [ ] Sem console.logs ou código comentado
+- [ ] Performance foi considerada
+- [ ] Segurança foi validada
+- [ ] Acessibilidade foi testada 
