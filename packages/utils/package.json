@@ -1,19 +1,31 @@
 {
   "name": "@mktplace/utils",
-  "version": "1.0.0",
-  "description": "Funções utilitárias compartilhadas do Marketplace GDG",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": ["typescript", "utils", "marketplace"],
   "author": "Gustavo",
   "license": "ISC",
   "packageManager": "pnpm@10.11.0",
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
   }
 }

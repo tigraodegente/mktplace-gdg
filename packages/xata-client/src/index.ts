@@ -1,12 +1,10 @@
-export * from './xata';
+// Este arquivo será gerado automaticamente pelo Xata CLI
+// Por enquanto, exportamos um placeholder
 
-// Re-export types for convenience
-export type {
-  CategoriesRecord,
-  OrderItemsRecord,
-  OrdersRecord,
-  ProductsRecord,
-  SellersRecord,
-  UsersRecord,
-  DatabaseSchema
-} from './xata'; 
+export const xataClient = {
+  // Placeholder - será substituído pelo código gerado
+  db: {} as any
+};
+
+// Exportar tipos e funções auxiliares
+export * from './helpers'; 

@@ -58,5 +58,11 @@ export interface ApiResponse<T> {
   };
 }
 
-// Exportar tipos de autenticação
-export * from './auth'; 
+// Exportar todos os tipos
+// export * from './models/user';
+// export * from './models/product';
+// export * from './models/order';
+// export * from './models/category';
+// export * from './models/seller';
+// export * from './api/responses';
+// export * from './api/requests'; 

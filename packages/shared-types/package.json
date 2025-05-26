@@ -1,19 +1,29 @@
 {
   "name": "@mktplace/shared-types",
-  "version": "1.0.0",
-  "description": "Tipos TypeScript compartilhados do Marketplace GDG",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": ["typescript", "types", "marketplace"],
   "author": "Gustavo",
   "license": "ISC",
   "packageManager": "pnpm@10.11.0",
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.0.0"
   }
 }
