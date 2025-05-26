@@ -3,9 +3,9 @@
 /* Variáveis de Cores - Design System Completo */
 :root {
   /* Cores Principais */
-  --primary-color: #00BFB3;  /* Cyan500 - Cor principal */
+  --primary-color: #4ABAA5;  /* Verde Grão de Gente - Cor principal */
   --text-color: #312627;     /* Black800 - Texto principal */
-  --background-color: #f0f0f0; /* Gray50 - Fundo */
+  --background-color: #f9f9f9; /* Gray50 - Fundo */
   
   /* Preto e Branco */
   --black: #000000;

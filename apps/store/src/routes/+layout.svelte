@@ -4,79 +4,182 @@
 	let { children } = $props();
 
 	let mobileMenuOpen = $state(false);
+	let searchQuery = $state('');
 </script>
 
-<!-- Header -->
-<header class="bg-white shadow-sm sticky top-0 z-50 border-b border-[var(--gray100)]">
-	<nav class="container">
-		<div class="flex justify-between h-16">
-			<!-- Logo e Menu -->
-			<div class="flex">
-				<a href="/" class="flex items-center gap-3">
-					<img src="/logo.png" alt="Marketplace GDG" class="h-10 w-auto" />
-					<span class="text-2xl font-bold text-[var(--cyan500)]">Marketplace GDG</span>
-				</a>
-				
-				<!-- Menu Desktop -->
-				<div class="hidden md:ml-10 md:flex md:space-x-8">
-					<a href="/produtos" class="inline-flex items-center px-1 pt-1 text-[var(--gray600)] hover:text-[var(--cyan500)] transition">
-						Produtos
-					</a>
-					<a href="/categorias" class="inline-flex items-center px-1 pt-1 text-[var(--gray600)] hover:text-[var(--cyan500)] transition">
-						Categorias
-					</a>
-					<a href="/ofertas" class="inline-flex items-center px-1 pt-1 text-[var(--gray600)] hover:text-[var(--cyan500)] transition">
-						Ofertas
-					</a>
-				</div>
+<!-- Banner Promocional -->
+<div class="bg-[#4ABAA5] text-white text-center py-2 text-sm font-medium">
+	<a href="/promocoes" class="flex items-center justify-center gap-2">
+		<span>Tudo em até 12X</span>
+		<span class="underline">COMPRAR</span>
+	</a>
+</div>
+
+<!-- Header Desktop -->
+<header class="hidden lg:block bg-white sticky top-0 z-50 shadow-sm">
+	<!-- Top Header -->
+	<div class="container mx-auto px-4">
+		<div class="flex items-center justify-between py-4">
+			<!-- Logo -->
+			<a href="/" class="flex items-center">
+				<img src="/logo.png" alt="Grão de Gente" class="h-12 w-auto" />
+			</a>
+			
+			<!-- Search Bar -->
+			<div class="flex-1 max-w-xl mx-8">
+				<form class="relative">
+					<input
+						type="search"
+						placeholder="O que você está procurando?"
+						bind:value={searchQuery}
+						class="w-full px-4 py-3 pr-12 border border-gray-200 rounded-full text-gray-700 placeholder-gray-400 focus:outline-none focus:border-[#4ABAA5]"
+					/>
+					<button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-[#4ABAA5]">
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+						</svg>
+					</button>
+				</form>
 			</div>
 			
-			<!-- Ações do usuário -->
-			<div class="flex items-center space-x-4">
-				<button class="p-2 text-[var(--gray600)] hover:text-[var(--cyan500)] transition" aria-label="Buscar">
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+			<!-- User Actions -->
+			<div class="flex items-center gap-6">
+				<a href="/login" class="flex flex-col items-center text-gray-600 hover:text-[#4ABAA5] transition">
+					<svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 					</svg>
-				</button>
+					<span class="text-xs">Olá, faça</span>
+					<span class="text-xs font-medium">login</span>
+				</a>
 				
-				<a href="/carrinho" class="p-2 text-[var(--gray600)] hover:text-[var(--cyan500)] relative transition">
+				<a href="/favoritos" class="relative text-gray-600 hover:text-[#4ABAA5] transition">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+					</svg>
+				</a>
+				
+				<a href="/carrinho" class="relative text-gray-600 hover:text-[#4ABAA5] transition">
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
 					</svg>
-					<span class="absolute -top-1 -right-1 bg-[var(--pink500)] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+					<span class="absolute -top-2 -right-2 bg-[#4ABAA5] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
 						0
 					</span>
-					<span class="sr-only">Carrinho</span>
 				</a>
-				
-				<a href="/login" class="hidden md:block btn btn-primary">
-					Entrar
-				</a>
-				
-				<!-- Menu Mobile -->
-				<button
-					class="md:hidden p-2 text-[var(--gray600)]"
-					onclick={() => mobileMenuOpen = !mobileMenuOpen}
-					aria-label="Menu"
-				>
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-					</svg>
-				</button>
 			</div>
 		</div>
 		
-		<!-- Menu Mobile Expandido -->
-		{#if mobileMenuOpen}
-			<div class="md:hidden border-t border-[var(--gray100)] pt-2 pb-3 space-y-1">
-				<a href="/produtos" class="block px-3 py-2 text-[var(--gray600)] hover:bg-[var(--gray50)]">Produtos</a>
-				<a href="/categorias" class="block px-3 py-2 text-[var(--gray600)] hover:bg-[var(--gray50)]">Categorias</a>
-				<a href="/ofertas" class="block px-3 py-2 text-[var(--gray600)] hover:bg-[var(--gray50)]">Ofertas</a>
-				<a href="/login" class="block px-3 py-2 btn btn-primary text-center mx-3">Entrar</a>
-			</div>
-		{/if}
-	</nav>
+		<!-- Navigation Menu -->
+		<nav class="border-t border-gray-100">
+			<ul class="flex items-center gap-6 py-3 text-sm">
+				<li><a href="/categorias" class="text-gray-700 hover:text-[#4ABAA5] transition">Todas as categorias</a></li>
+				<li><a href="/minhas" class="text-gray-700 hover:text-[#4ABAA5] transition">Minhas</a></li>
+				<li><a href="/marcas" class="text-gray-700 hover:text-[#4ABAA5] transition">Marcas</a></li>
+				<li><a href="/kit-ritual" class="text-gray-700 hover:text-[#4ABAA5] transition">Kit Ritual</a></li>
+				<li><a href="/quem-somos" class="text-gray-700 hover:text-[#4ABAA5] transition">Quem Somos</a></li>
+				<li><a href="/receitas" class="text-gray-700 hover:text-[#4ABAA5] transition">Receitas</a></li>
+				<li><a href="/sobre-maternidade" class="text-gray-700 hover:text-[#4ABAA5] transition">Sobre Maternidade</a></li>
+				<li><a href="/midia" class="text-gray-700 hover:text-[#4ABAA5] transition">Mídia</a></li>
+				<li><a href="/mindfulness" class="text-gray-700 hover:text-[#4ABAA5] transition">Mindfulness</a></li>
+				<li><a href="/brinfa" class="text-gray-700 hover:text-[#4ABAA5] transition">Brinfa</a></li>
+				<li><a href="/parceria" class="text-gray-700 hover:text-[#4ABAA5] transition">Parceria</a></li>
+				<li><a href="/escola" class="text-gray-700 hover:text-[#4ABAA5] transition">Escola</a></li>
+				<li><a href="/lancamentos" class="text-gray-700 hover:text-[#4ABAA5] transition">Lançamentos</a></li>
+				<li><a href="/quero-ser-parceiro" class="text-gray-700 hover:text-[#4ABAA5] transition">Quero Ser Parceiro</a></li>
+			</ul>
+		</nav>
+	</div>
 </header>
+
+<!-- Header Mobile -->
+<header class="lg:hidden bg-[#4ABAA5] sticky top-0 z-50">
+	<div class="flex items-center justify-between p-4">
+		<!-- Menu Button -->
+		<button
+			onclick={() => mobileMenuOpen = !mobileMenuOpen}
+			class="text-white"
+			aria-label="Menu"
+		>
+			<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+			</svg>
+		</button>
+		
+		<!-- Logo -->
+		<a href="/" class="flex-1 flex justify-center">
+			<img src="/logo.png" alt="Grão de Gente" class="h-8 w-auto filter brightness-0 invert" />
+		</a>
+		
+		<!-- Actions -->
+		<div class="flex items-center gap-4">
+			<a href="/favoritos" class="text-white">
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+				</svg>
+			</a>
+			
+			<a href="/carrinho" class="relative text-white">
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+				</svg>
+				<span class="absolute -top-2 -right-2 bg-white text-[#4ABAA5] text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+					3
+				</span>
+			</a>
+		</div>
+	</div>
+	
+	<!-- Search Bar Mobile -->
+	<div class="px-4 pb-4">
+		<form class="relative">
+			<input
+				type="search"
+				placeholder="O que você está procurando?"
+				bind:value={searchQuery}
+				class="w-full px-4 py-3 pr-12 rounded-full text-gray-700 placeholder-gray-400 focus:outline-none"
+			/>
+			<button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+				</svg>
+			</button>
+		</form>
+	</div>
+</header>
+
+<!-- Mobile Menu Overlay -->
+{#if mobileMenuOpen}
+	<div class="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onclick={() => mobileMenuOpen = false}>
+		<div class="bg-white w-80 h-full overflow-y-auto" onclick={(e) => e.stopPropagation()}>
+			<div class="p-4 border-b">
+				<button onclick={() => mobileMenuOpen = false} class="text-gray-600">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+			
+			<nav class="p-4">
+				<ul class="space-y-4">
+					<li><a href="/categorias" class="block text-gray-700 hover:text-[#4ABAA5]">Todas as categorias</a></li>
+					<li><a href="/minhas" class="block text-gray-700 hover:text-[#4ABAA5]">Minhas</a></li>
+					<li><a href="/marcas" class="block text-gray-700 hover:text-[#4ABAA5]">Marcas</a></li>
+					<li><a href="/kit-ritual" class="block text-gray-700 hover:text-[#4ABAA5]">Kit Ritual</a></li>
+					<li><a href="/quem-somos" class="block text-gray-700 hover:text-[#4ABAA5]">Quem Somos</a></li>
+					<li><a href="/receitas" class="block text-gray-700 hover:text-[#4ABAA5]">Receitas</a></li>
+					<li><a href="/sobre-maternidade" class="block text-gray-700 hover:text-[#4ABAA5]">Sobre Maternidade</a></li>
+					<li><a href="/midia" class="block text-gray-700 hover:text-[#4ABAA5]">Mídia</a></li>
+					<li><a href="/mindfulness" class="block text-gray-700 hover:text-[#4ABAA5]">Mindfulness</a></li>
+					<li><a href="/brinfa" class="block text-gray-700 hover:text-[#4ABAA5]">Brinfa</a></li>
+					<li><a href="/parceria" class="block text-gray-700 hover:text-[#4ABAA5]">Parceria</a></li>
+					<li><a href="/escola" class="block text-gray-700 hover:text-[#4ABAA5]">Escola</a></li>
+					<li><a href="/lancamentos" class="block text-gray-700 hover:text-[#4ABAA5]">Lançamentos</a></li>
+					<li><a href="/quero-ser-parceiro" class="block text-gray-700 hover:text-[#4ABAA5]">Quero Ser Parceiro</a></li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+{/if}
 
 <!-- Conteúdo Principal -->
 <main class="min-h-screen bg-[var(--background-color)]">
@@ -89,7 +192,7 @@
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
 			<!-- Sobre -->
 			<div>
-				<h3 class="text-lg font-semibold mb-4 text-[var(--cyan200)]">Marketplace GDG</h3>
+				<h3 class="text-lg font-semibold mb-4 text-[var(--cyan200)]">Grão de Gente</h3>
 				<p class="text-[var(--gray100)] text-sm">
 					Sua plataforma de compras online com os melhores produtos e preços.
 				</p>
@@ -141,7 +244,7 @@
 		</div>
 		
 		<div class="mt-8 pt-8 border-t border-[var(--gray500)] text-center text-sm text-[var(--gray100)]">
-			<p>&copy; 2024 Marketplace GDG. Todos os direitos reservados.</p>
+			<p>&copy; 2024 Grão de Gente. Todos os direitos reservados.</p>
 		</div>
 	</div>
 </footer>
