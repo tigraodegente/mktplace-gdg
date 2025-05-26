@@ -1,0 +1,105 @@
+{
+  "tables": [
+    {
+      "name": "users",
+      "columns": [
+        { "name": "email", "type": "email", "unique": true, "notNull": true },
+        { "name": "name", "type": "string", "notNull": true },
+        { "name": "password_hash", "type": "string", "notNull": true },
+        { "name": "role", "type": "string", "notNull": true },
+        { "name": "is_active", "type": "bool", "notNull": true, "defaultValue": true },
+        { "name": "phone", "type": "string" },
+        { "name": "cpf_cnpj", "type": "string", "unique": true },
+        { "name": "avatar_url", "type": "string" },
+        { "name": "created_at", "type": "datetime", "notNull": true, "defaultValue": "now" },
+        { "name": "updated_at", "type": "datetime", "notNull": true, "defaultValue": "now" }
+      ]
+    },
+    {
+      "name": "categories",
+      "columns": [
+        { "name": "name", "type": "string", "notNull": true },
+        { "name": "slug", "type": "string", "unique": true, "notNull": true },
+        { "name": "description", "type": "text" },
+        { "name": "image_url", "type": "string" },
+        { "name": "parent_id", "type": "link", "link": { "table": "categories" } },
+        { "name": "is_active", "type": "bool", "notNull": true, "defaultValue": true },
+        { "name": "display_order", "type": "int", "notNull": true, "defaultValue": 0 }
+      ]
+    },
+    {
+      "name": "sellers",
+      "columns": [
+        { "name": "user_id", "type": "link", "link": { "table": "users" }, "unique": true, "notNull": true },
+        { "name": "company_name", "type": "string", "notNull": true },
+        { "name": "company_document", "type": "string", "unique": true, "notNull": true },
+        { "name": "description", "type": "text" },
+        { "name": "logo_url", "type": "string" },
+        { "name": "banner_url", "type": "string" },
+        { "name": "is_verified", "type": "bool", "notNull": true, "defaultValue": false },
+        { "name": "is_active", "type": "bool", "notNull": true, "defaultValue": true },
+        { "name": "rating", "type": "float", "notNull": true, "defaultValue": 0 },
+        { "name": "total_sales", "type": "int", "notNull": true, "defaultValue": 0 },
+        { "name": "created_at", "type": "datetime", "notNull": true, "defaultValue": "now" }
+      ]
+    },
+    {
+      "name": "products",
+      "columns": [
+        { "name": "seller_id", "type": "link", "link": { "table": "sellers" }, "notNull": true },
+        { "name": "category_id", "type": "link", "link": { "table": "categories" }, "notNull": true },
+        { "name": "name", "type": "string", "notNull": true },
+        { "name": "slug", "type": "string", "unique": true, "notNull": true },
+        { "name": "description", "type": "text", "notNull": true },
+        { "name": "price", "type": "float", "notNull": true },
+        { "name": "compare_at_price", "type": "float" },
+        { "name": "cost", "type": "float" },
+        { "name": "sku", "type": "string", "unique": true },
+        { "name": "barcode", "type": "string" },
+        { "name": "stock_quantity", "type": "int", "notNull": true, "defaultValue": 0 },
+        { "name": "stock_location", "type": "string" },
+        { "name": "weight", "type": "float" },
+        { "name": "dimensions", "type": "json" },
+        { "name": "images", "type": "json", "notNull": true, "defaultValue": "[]" },
+        { "name": "is_active", "type": "bool", "notNull": true, "defaultValue": true },
+        { "name": "is_featured", "type": "bool", "notNull": true, "defaultValue": false },
+        { "name": "tags", "type": "json", "defaultValue": "[]" },
+        { "name": "metadata", "type": "json" },
+        { "name": "created_at", "type": "datetime", "notNull": true, "defaultValue": "now" },
+        { "name": "updated_at", "type": "datetime", "notNull": true, "defaultValue": "now" }
+      ]
+    },
+    {
+      "name": "orders",
+      "columns": [
+        { "name": "user_id", "type": "link", "link": { "table": "users" }, "notNull": true },
+        { "name": "order_number", "type": "string", "unique": true, "notNull": true },
+        { "name": "status", "type": "string", "notNull": true },
+        { "name": "subtotal", "type": "float", "notNull": true },
+        { "name": "shipping_cost", "type": "float", "notNull": true, "defaultValue": 0 },
+        { "name": "discount", "type": "float", "notNull": true, "defaultValue": 0 },
+        { "name": "total", "type": "float", "notNull": true },
+        { "name": "payment_method", "type": "string" },
+        { "name": "payment_status", "type": "string", "notNull": true },
+        { "name": "shipping_address", "type": "json", "notNull": true },
+        { "name": "billing_address", "type": "json" },
+        { "name": "notes", "type": "text" },
+        { "name": "metadata", "type": "json" },
+        { "name": "created_at", "type": "datetime", "notNull": true, "defaultValue": "now" },
+        { "name": "updated_at", "type": "datetime", "notNull": true, "defaultValue": "now" }
+      ]
+    },
+    {
+      "name": "order_items",
+      "columns": [
+        { "name": "order_id", "type": "link", "link": { "table": "orders" }, "notNull": true },
+        { "name": "product_id", "type": "link", "link": { "table": "products" }, "notNull": true },
+        { "name": "seller_id", "type": "link", "link": { "table": "sellers" }, "notNull": true },
+        { "name": "quantity", "type": "int", "notNull": true },
+        { "name": "price", "type": "float", "notNull": true },
+        { "name": "total", "type": "float", "notNull": true },
+        { "name": "status", "type": "string", "notNull": true }
+      ]
+    }
+  ]
+} 

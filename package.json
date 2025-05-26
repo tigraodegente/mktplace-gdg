@@ -29,6 +29,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@xata.io/cli": "^0.16.12",
+    "node-fetch": "^2.7.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3"
   },

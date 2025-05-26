@@ -10,15 +10,20 @@
     "clean": "rm -rf dist",
     "xata:codegen": "xata codegen --output ./src/xata.ts"
   },
-  "keywords": ["xata", "database", "client", "marketplace"],
+  "keywords": [
+    "xata",
+    "database",
+    "client",
+    "marketplace"
+  ],
   "author": "Gustavo",
   "license": "ISC",
   "packageManager": "pnpm@10.11.0",
   "dependencies": {
-    "@xata.io/client": "^0.29.0"
+    "@xata.io/client": "^0.29.5"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
-    "@xata.io/cli": "^0.16.0"
+    "@xata.io/cli": "^0.16.0",
+    "typescript": "^5.8.3"
   }
 }
