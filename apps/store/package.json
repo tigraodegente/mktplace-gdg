@@ -46,6 +46,7 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
-		"@mktplace/xata-client": "workspace:*"
+		"@mktplace/xata-client": "workspace:*",
+		"@mktplace/utils": "workspace:*"
 	}
 }

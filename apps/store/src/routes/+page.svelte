@@ -1,134 +1,191 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import { formatCurrency } from '@mktplace/utils';
   
-  export let data: PageData;
-  
-  function formatPrice(price: number) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(price);
-  }
+  // Dados mockados por enquanto
+  const featuredProducts = [
+    {
+      id: '1',
+      name: 'Notebook Gamer Pro',
+      price: 4999.99,
+      image: 'https://via.placeholder.com/300x300/4F46E5/ffffff?text=Notebook',
+      discount: 10
+    },
+    {
+      id: '2',
+      name: 'Smartphone Ultra',
+      price: 2499.99,
+      image: 'https://via.placeholder.com/300x300/7C3AED/ffffff?text=Smartphone',
+      discount: 15
+    },
+    {
+      id: '3',
+      name: 'Fone Bluetooth Premium',
+      price: 299.99,
+      image: 'https://via.placeholder.com/300x300/EC4899/ffffff?text=Fone',
+      discount: 0
+    },
+    {
+      id: '4',
+      name: 'Smartwatch Fitness',
+      price: 899.99,
+      image: 'https://via.placeholder.com/300x300/F59E0B/ffffff?text=Smartwatch',
+      discount: 20
+    }
+  ];
+
+  const categories = [
+    { name: 'Eletrônicos', icon: '📱', count: 1234 },
+    { name: 'Moda', icon: '👕', count: 5678 },
+    { name: 'Casa', icon: '🏠', count: 910 },
+    { name: 'Esportes', icon: '⚽', count: 432 },
+    { name: 'Livros', icon: '📚', count: 789 },
+    { name: 'Beleza', icon: '💄', count: 567 }
+  ];
 </script>
 
 <svelte:head>
   <title>Marketplace GDG - Sua loja online completa</title>
+  <meta name="description" content="Encontre os melhores produtos com os melhores preços no Marketplace GDG" />
 </svelte:head>
 
 <!-- Hero Section -->
-<section class="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-    <div class="text-center">
-      <h1 class="text-4xl md:text-6xl font-bold mb-6">
+<section class="relative bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+  <div class="container mx-auto px-4 py-24">
+    <div class="max-w-3xl">
+      <h1 class="text-5xl font-bold mb-6">
         Bem-vindo ao Marketplace GDG
       </h1>
-      <p class="text-xl md:text-2xl mb-8 opacity-90">
-        Encontre os melhores produtos com os melhores preços
+      <p class="text-xl mb-8 opacity-90">
+        Descubra produtos incríveis de vendedores confiáveis. 
+        Qualidade garantida e entrega rápida para todo o Brasil.
       </p>
-      <a href="/produtos" class="bg-white text-blue-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition">
-        Explorar Produtos
+      <div class="flex gap-4">
+        <button class="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+          Explorar Produtos
+        </button>
+        <button class="border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-purple-600 transition">
+          Seja um Vendedor
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-gray-50 to-transparent"></div>
+</section>
+
+<!-- Categorias -->
+<section class="py-16 bg-gray-50">
+  <div class="container mx-auto px-4">
+    <h2 class="text-3xl font-bold text-center mb-12">Explore por Categoria</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+      {#each categories as category}
+        <button class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center group">
+          <div class="text-4xl mb-3 group-hover:scale-110 transition">{category.icon}</div>
+          <h3 class="font-semibold text-gray-800">{category.name}</h3>
+          <p class="text-sm text-gray-500 mt-1">{category.count} produtos</p>
+        </button>
+      {/each}
+    </div>
+  </div>
+</section>
+
+<!-- Produtos em Destaque -->
+<section class="py-16">
+  <div class="container mx-auto px-4">
+    <div class="flex justify-between items-center mb-12">
+      <h2 class="text-3xl font-bold">Produtos em Destaque</h2>
+      <a href="/produtos" class="text-purple-600 hover:text-purple-700 font-semibold">
+        Ver todos →
       </a>
     </div>
-  </div>
-</section>
-
-<!-- Categories Section -->
-<section class="py-16 bg-gray-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-gray-900 mb-8">Categorias Populares</h2>
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-      {#each data.categories as category}
-        <a href="/categoria/{category.slug}" class="group">
-          <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-6 text-center">
-            <div class="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center group-hover:bg-blue-200 transition">
-              <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-gray-900">{category.name}</h3>
-            {#if category.description}
-              <p class="text-sm text-gray-600 mt-1">{category.description}</p>
-            {/if}
-          </div>
-        </a>
-      {/each}
-    </div>
-  </div>
-</section>
-
-<!-- Featured Products Section -->
-<section class="py-16">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-gray-900 mb-8">Produtos em Destaque</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {#each data.featuredProducts as product}
-        <a href="/produto/{product.slug}" class="group">
-          <div class="bg-white rounded-lg shadow-sm hover:shadow-lg transition">
-            {#if product.images && product.images.length > 0}
-              <img 
-                src={product.images[0]} 
-                alt={product.name}
-                class="w-full h-48 object-cover rounded-t-lg"
-              />
-            {:else}
-              <div class="w-full h-48 bg-gray-200 rounded-t-lg flex items-center justify-center">
-                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            {/if}
-            <div class="p-4">
-              {#if product.category}
-                <p class="text-sm text-gray-500 mb-1">{product.category.name}</p>
-              {/if}
-              <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition">
-                {product.name}
-              </h3>
-              {#if product.seller}
-                <p class="text-sm text-gray-600 mt-1">
-                  Por {product.seller.name}
-                  {#if product.seller.rating > 0}
-                    <span class="text-yellow-500">★ {product.seller.rating}</span>
-                  {/if}
-                </p>
-              {/if}
-              <div class="mt-3">
-                {#if product.compareAtPrice && product.compareAtPrice > product.price}
-                  <span class="text-sm text-gray-500 line-through">
-                    {formatPrice(product.compareAtPrice)}
-                  </span>
-                {/if}
-                <p class="text-xl font-bold text-gray-900">
-                  {formatPrice(product.price)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </a>
-      {/each}
-    </div>
     
-    {#if data.featuredProducts.length === 0}
-      <div class="text-center py-12">
-        <p class="text-gray-500">Nenhum produto em destaque no momento.</p>
-      </div>
-    {/if}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {#each featuredProducts as product}
+        <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition group">
+          <div class="relative overflow-hidden rounded-t-xl">
+            <img 
+              src={product.image} 
+              alt={product.name}
+              class="w-full h-64 object-cover group-hover:scale-105 transition duration-300"
+            />
+            {#if product.discount > 0}
+              <span class="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                -{product.discount}%
+              </span>
+            {/if}
+          </div>
+          <div class="p-6">
+            <h3 class="font-semibold text-lg mb-2 text-gray-800">{product.name}</h3>
+            <div class="flex items-center gap-2">
+              {#if product.discount > 0}
+                <span class="text-2xl font-bold text-purple-600">
+                  {formatCurrency(product.price * (1 - product.discount / 100))}
+                </span>
+                <span class="text-sm text-gray-400 line-through">
+                  {formatCurrency(product.price)}
+                </span>
+              {:else}
+                <span class="text-2xl font-bold text-purple-600">
+                  {formatCurrency(product.price)}
+                </span>
+              {/if}
+            </div>
+            <button class="w-full mt-4 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition font-semibold">
+              Adicionar ao Carrinho
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
   </div>
 </section>
 
-<!-- Newsletter Section -->
-<section class="bg-gray-900 text-white py-16">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+<!-- Benefícios -->
+<section class="py-16 bg-gray-50">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold mb-2">Compra Segura</h3>
+        <p class="text-gray-600">Proteção total em todas as suas compras com garantia de reembolso</p>
+      </div>
+      <div class="text-center">
+        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold mb-2">Entrega Rápida</h3>
+        <p class="text-gray-600">Receba seus produtos em tempo recorde com rastreamento em tempo real</p>
+      </div>
+      <div class="text-center">
+        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold mb-2">Melhores Preços</h3>
+        <p class="text-gray-600">Compare preços e encontre as melhores ofertas do mercado</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Newsletter -->
+<section class="py-16 bg-purple-600 text-white">
+  <div class="container mx-auto px-4 text-center">
     <h2 class="text-3xl font-bold mb-4">Fique por dentro das novidades</h2>
     <p class="text-xl mb-8 opacity-90">Receba ofertas exclusivas e lançamentos em primeira mão</p>
     <form class="max-w-md mx-auto flex gap-4">
       <input 
         type="email" 
         placeholder="Seu melhor e-mail"
-        class="flex-1 px-4 py-3 rounded-lg text-gray-900"
-        required
+        class="flex-1 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
       />
-      <button type="submit" class="bg-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+      <button type="submit" class="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
         Inscrever
       </button>
     </form>
