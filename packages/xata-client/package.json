@@ -1,0 +1,24 @@
+{
+  "name": "@mktplace/xata-client",
+  "version": "1.0.0",
+  "description": "Cliente Xata.io para o Marketplace GDG",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "xata:codegen": "xata codegen --output ./src/xata.ts"
+  },
+  "keywords": ["xata", "database", "client", "marketplace"],
+  "author": "Gustavo",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.0",
+  "dependencies": {
+    "@xata.io/client": "^0.29.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@xata.io/cli": "^0.16.0"
+  }
+}

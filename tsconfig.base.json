@@ -2,26 +2,23 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
+    "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "allowJs": true,
     "checkJs": true,
+    "verbatimModuleSyntax": true,
     "noEmit": true,
-    "isolatedModules": true,
-    "preserveValueImports": true,
-    "importsNotUsedAsValues": "error",
-    "baseUrl": ".",
+    "allowImportingTsExtensions": true,
     "paths": {
-      "@mktplace/ui": ["packages/ui/src/index.ts"],
-      "@mktplace/shared-types": ["packages/shared-types/src/index.ts"],
-      "@mktplace/utils": ["packages/utils/src/index.ts"],
-      "@mktplace/xata-client": ["packages/xata-client/src/index.ts"]
+      "@mktplace/shared-types": ["./packages/shared-types/src/index.ts"],
+      "@mktplace/ui": ["./packages/ui/src/index.ts"],
+      "@mktplace/utils": ["./packages/utils/src/index.ts"],
+      "@mktplace/xata-client": ["./packages/xata-client/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "build", ".svelte-kit"]

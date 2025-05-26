@@ -1,0 +1,19 @@
+{
+  "name": "@mktplace/utils",
+  "version": "1.0.0",
+  "description": "Funções utilitárias compartilhadas do Marketplace GDG",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["typescript", "utils", "marketplace"],
+  "author": "Gustavo",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.0",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

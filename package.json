@@ -1,18 +1,23 @@
 {
   "name": "mktplace-gdg",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Marketplace completo com SvelteKit, Cloudflare e Xata.io",
+  "type": "module",
   "scripts": {
     "dev": "pnpm run --parallel dev",
     "dev:store": "pnpm --filter ./apps/store dev",
     "dev:admin": "pnpm --filter ./apps/admin-panel dev",
     "dev:seller": "pnpm --filter ./apps/seller-panel dev",
     "build": "pnpm run -r build",
-    "test": "pnpm run -r test",
+    "build:store": "pnpm --filter ./apps/store build",
+    "build:admin": "pnpm --filter ./apps/admin-panel build",
+    "build:seller": "pnpm --filter ./apps/seller-panel build",
+    "build:packages": "pnpm --filter './packages/*' build",
+    "check": "pnpm run -r check",
+    "format": "prettier --write .",
     "lint": "pnpm run -r lint",
-    "format": "pnpm run -r format",
-    "typecheck": "pnpm run -r typecheck"
+    "test": "pnpm run -r test",
+    "clean": "pnpm run -r clean && rm -rf node_modules"
   },
   "keywords": [
     "marketplace",
@@ -24,8 +29,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
   },
+  "packageManager": "pnpm@10.11.0",
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
