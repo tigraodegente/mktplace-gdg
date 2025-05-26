@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "verbatimModuleSyntax": false,
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "node"
+  }
+} 
