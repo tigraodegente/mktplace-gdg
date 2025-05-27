@@ -1,4 +1,4 @@
-<!-- Teste de deploy seletivo - apenas a store deve fazer build -->
+<!-- Deploy seletivo configurado e funcionando! -->
 <script lang="ts">
   import { formatCurrency } from '@mktplace/utils';
   import type { PageData } from './$types';
