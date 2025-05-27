@@ -10,10 +10,43 @@
 	let mobileMenuOpen = $state(false);
 	let searchQuery = $state('');
 	let userMenuOpen = $state(false);
+	
+	// Carrossel do banner
+	let currentSlide = $state(0);
+	let isPaused = $state(false);
+	let touchStartX = 0;
+	let touchEndX = 0;
+	
+	const bannerMessages = [
+		{
+			icon: 'payment',
+			text: 'Tudo em até 12X',
+			link: '/promocoes',
+			linkText: 'COMPRAR'
+		},
+		{
+			icon: 'shipping',
+			text: 'Frete Grátis acima de R$ 199',
+			link: '/frete-gratis',
+			linkText: 'APROVEITAR'
+		},
+		{
+			icon: 'discount',
+			text: '10% OFF na primeira compra',
+			link: '/primeira-compra',
+			linkText: 'USAR CUPOM'
+		}
+	];
+	
+	// Auto-rotate carousel
+	let carouselInterval: ReturnType<typeof setInterval>;
 
 	// Verificar autenticação ao carregar
 	onMount(() => {
 		auth.checkAuth();
+		
+		// Iniciar rotação do carrossel
+		startCarousel();
 		
 		// Fechar menu ao clicar fora
 		const handleClickOutside = (event: MouseEvent) => {
@@ -27,6 +60,7 @@
 		
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
+			clearInterval(carouselInterval);
 		};
 	});
 
@@ -34,6 +68,12 @@
 		if (event.key === 'Escape') {
 			if (mobileMenuOpen) mobileMenuOpen = false;
 			if (userMenuOpen) userMenuOpen = false;
+		}
+		// Navegação por teclado no carrossel
+		if (event.key === 'ArrowLeft') {
+			goToSlide((currentSlide - 1 + bannerMessages.length) % bannerMessages.length);
+		} else if (event.key === 'ArrowRight') {
+			goToSlide((currentSlide + 1) % bannerMessages.length);
 		}
 	}
 
@@ -44,18 +84,145 @@
 	async function handleLogout() {
 		await auth.logout();
 	}
+	
+	function startCarousel() {
+		if (!isPaused) {
+			carouselInterval = setInterval(() => {
+				currentSlide = (currentSlide + 1) % bannerMessages.length;
+			}, 4000);
+		}
+	}
+	
+	function pauseCarousel() {
+		isPaused = true;
+		clearInterval(carouselInterval);
+	}
+	
+	function resumeCarousel() {
+		isPaused = false;
+		clearInterval(carouselInterval);
+		startCarousel();
+	}
+	
+	function goToSlide(index: number) {
+		currentSlide = index;
+		// Resetar o intervalo quando o usuário interagir
+		clearInterval(carouselInterval);
+		startCarousel();
+	}
+	
+	// Touch handlers para swipe no mobile
+	function handleTouchStart(e: TouchEvent) {
+		touchStartX = e.touches[0].clientX;
+	}
+	
+	function handleTouchMove(e: TouchEvent) {
+		touchEndX = e.touches[0].clientX;
+	}
+	
+	function handleTouchEnd() {
+		if (!touchStartX || !touchEndX) return;
+		
+		const swipeDistance = touchStartX - touchEndX;
+		const minSwipeDistance = 50;
+		
+		if (Math.abs(swipeDistance) > minSwipeDistance) {
+			if (swipeDistance > 0) {
+				// Swipe left - próximo slide
+				goToSlide((currentSlide + 1) % bannerMessages.length);
+			} else {
+				// Swipe right - slide anterior
+				goToSlide((currentSlide - 1 + bannerMessages.length) % bannerMessages.length);
+			}
+		}
+		
+		// Reset valores
+		touchStartX = 0;
+		touchEndX = 0;
+	}
 </script>
 
 <svelte:window on:keydown={handleKeyDown} />
 
-<!-- Banner Promocional Desktop -->
-<div class="hidden lg:block bg-[#F4F4F4] h-[40px]">
-			<div class="w-full max-w-[1440px] mx-auto h-full flex items-center justify-center">
-		<a href="/promocoes" class="flex items-center gap-2">
-			<img src="/icons/payment-icon.svg" alt="Pagamento" class="w-[23px] h-[25px]" />
-			<span class="text-black font-medium text-sm" style="font-family: 'Lato', sans-serif; font-weight: 500;">Tudo em até 12X</span>
-			<span class="text-[#00BFB3] font-black text-xs uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">COMPRAR</span>
-		</a>
+<!-- Banner Promocional Desktop com Carrossel -->
+<div 
+	class="hidden lg:block bg-[#F4F4F4] h-[40px] relative overflow-hidden"
+	role="region"
+	aria-label="Promoções"
+	aria-live="polite"
+	onmouseenter={pauseCarousel}
+	onmouseleave={resumeCarousel}
+>
+	<div class="w-full max-w-[1440px] mx-auto h-full relative">
+		<!-- Slides Container -->
+		<div class="relative h-full">
+			{#each bannerMessages as message, index}
+				<div 
+					class="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out"
+					style="transform: translateX({(index - currentSlide) * 100}%); opacity: {index === currentSlide ? 1 : 0}"
+					aria-hidden={index !== currentSlide}
+				>
+					<a href={message.link} class="flex items-center gap-2 hover:opacity-90 transition-opacity">
+						{#if message.icon === 'payment'}
+							<svg class="w-[23px] h-[25px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+								<rect x="2" y="5" width="20" height="14" rx="2" stroke="#333" stroke-width="2"/>
+								<path d="M2 9H22" stroke="#333" stroke-width="2"/>
+								<path d="M6 13H10" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+							</svg>
+						{:else if message.icon === 'shipping'}
+							<svg class="w-[23px] h-[25px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+								<path d="M1 12H16V18.5C16 19.3284 15.3284 20 14.5 20H12.5" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+								<path d="M16 12H20.5C21.3284 12 22 12.6716 22 13.5V17.5C22 18.3284 21.3284 19 20.5 19H19" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+								<circle cx="8" cy="20" r="2" stroke="#333" stroke-width="2"/>
+								<circle cx="18" cy="20" r="2" stroke="#333" stroke-width="2"/>
+								<path d="M16 12V6C16 5.17157 15.3284 4.5 14.5 4.5H1" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+							</svg>
+						{:else}
+							<svg class="w-[23px] h-[25px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+								<circle cx="12" cy="12" r="10" stroke="#333" stroke-width="2"/>
+								<path d="M8 12L11 15L16 10" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+								<path d="M12 6V8" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+								<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+							</svg>
+						{/if}
+						<span class="text-black font-medium text-sm" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
+						<span class="text-[#00BFB3] font-black text-xs uppercase underline hover:no-underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
+					</a>
+				</div>
+			{/each}
+		</div>
+		
+		<!-- Navigation Arrows -->
+		<button 
+			onclick={() => goToSlide((currentSlide - 1 + bannerMessages.length) % bannerMessages.length)}
+			class="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
+			aria-label="Slide anterior"
+		>
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+			</svg>
+		</button>
+		
+		<button 
+			onclick={() => goToSlide((currentSlide + 1) % bannerMessages.length)}
+			class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
+			aria-label="Próximo slide"
+		>
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+			</svg>
+		</button>
+		
+		<!-- Dots Indicator -->
+		<div class="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-1.5">
+			{#each bannerMessages as _, index}
+				<button
+					onclick={() => goToSlide(index)}
+					class="w-1 h-1 rounded-full transition-all duration-300 hover:bg-gray-600 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
+					aria-label="Ir para slide {index + 1}"
+				/>
+			{/each}
+		</div>
 	</div>
 </div>
 
@@ -183,14 +350,65 @@
 	</div>
 </header>
 
-<!-- Banner Promocional Mobile -->
-<div class="lg:hidden bg-[#F4F4F4] h-[40px]">
-	<div class="w-full h-full flex items-center justify-center">
-		<a href="/promocoes" class="flex items-center gap-2">
-			<img src="/icons/payment-icon.svg" alt="Pagamento" class="w-[23px] h-[25px]" />
-			<span class="text-black font-medium text-sm" style="font-family: 'Lato', sans-serif; font-weight: 500;">Tudo em até 12X</span>
-			<span class="text-[#00BFB3] font-black text-xs uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">COMPRAR</span>
-		</a>
+<!-- Banner Promocional Mobile com Carrossel -->
+<div 
+	class="lg:hidden bg-[#F4F4F4] h-[40px] relative overflow-hidden"
+	role="region"
+	aria-label="Promoções"
+	aria-live="polite"
+	ontouchstart={handleTouchStart}
+	ontouchmove={handleTouchMove}
+	ontouchend={handleTouchEnd}
+>
+	<div class="w-full h-full relative">
+		<!-- Slides Container -->
+		<div class="relative h-full">
+			{#each bannerMessages as message, index}
+				<div 
+					class="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out px-4"
+					style="transform: translateX({(index - currentSlide) * 100}%); opacity: {index === currentSlide ? 1 : 0}"
+					aria-hidden={index !== currentSlide}
+				>
+					<a href={message.link} class="flex items-center gap-2">
+						{#if message.icon === 'payment'}
+							<svg class="w-[20px] h-[22px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<rect x="2" y="5" width="20" height="14" rx="2" stroke="#333" stroke-width="2"/>
+								<path d="M2 9H22" stroke="#333" stroke-width="2"/>
+								<path d="M6 13H10" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+							</svg>
+						{:else if message.icon === 'shipping'}
+							<svg class="w-[20px] h-[22px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path d="M1 12H16V18.5C16 19.3284 15.3284 20 14.5 20H12.5" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+								<path d="M16 12H20.5C21.3284 12 22 12.6716 22 13.5V17.5C22 18.3284 21.3284 19 20.5 19H19" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+								<circle cx="8" cy="20" r="2" stroke="#333" stroke-width="2"/>
+								<circle cx="18" cy="20" r="2" stroke="#333" stroke-width="2"/>
+								<path d="M16 12V6C16 5.17157 15.3284 4.5 14.5 4.5H1" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+							</svg>
+						{:else}
+							<svg class="w-[20px] h-[22px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<circle cx="12" cy="12" r="10" stroke="#333" stroke-width="2"/>
+								<path d="M8 12L11 15L16 10" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+								<path d="M12 6V8" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+								<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+							</svg>
+						{/if}
+						<span class="text-black font-medium text-xs" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
+						<span class="text-[#00BFB3] font-black text-xs uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
+					</a>
+				</div>
+			{/each}
+		</div>
+		
+		<!-- Dots Indicator Mobile -->
+		<div class="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-1">
+			{#each bannerMessages as _, index}
+				<button
+					onclick={() => goToSlide(index)}
+					class="w-1 h-1 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-800 w-3' : 'bg-gray-400'}"
+					aria-label="Ir para slide {index + 1}"
+				/>
+			{/each}
+		</div>
 	</div>
 </div>
 
