@@ -9,8 +9,8 @@
 </script>
 
 <svelte:head>
-  <title>Marketplace GDG - Sua loja online completa</title>
-  <meta name="description" content="Encontre os melhores produtos com os melhores preços no Marketplace GDG" />
+  <title>Grão de Gente - Marketplace | Sua loja online completa</title>
+  <meta name="description" content="Encontre os melhores produtos com os melhores preços no Marketplace Grão de Gente" />
 </svelte:head>
 
 <!-- Hero Section -->
