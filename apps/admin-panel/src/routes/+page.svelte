@@ -1,3 +1,4 @@
+<!-- Deploy seletivo do admin funcionando! -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	
