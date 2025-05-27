@@ -1,4 +1,5 @@
 import type { Product } from '@mktplace/shared-types';
+import { browser } from '$app/environment';
 
 export interface SearchSuggestion {
   type: 'product' | 'category' | 'brand' | 'query';
@@ -41,7 +42,9 @@ class SearchService {
   private searchCache = new Map<string, SearchResult>();
 
   constructor() {
-    this.loadSearchHistory();
+    if (browser) {
+      this.loadSearchHistory();
+    }
   }
 
   // Busca principal com cache e otimizações
@@ -150,6 +153,8 @@ class SearchService {
   }
 
   private loadSearchHistory() {
+    if (!browser) return;
+    
     try {
       const saved = localStorage.getItem('searchHistory');
       if (saved) {
@@ -161,6 +166,8 @@ class SearchService {
   }
 
   private saveSearchHistory() {
+    if (!browser) return;
+    
     try {
       localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
     } catch (error) {
