@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getXataClient } from '$lib/xata';
+import bcrypt from 'bcryptjs';
 
 const xata = getXataClient();
 
@@ -28,9 +29,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }, { status: 401 });
     }
     
-    // Por enquanto, comparação simples de senha
-    // Em produção, usar bcrypt para comparar hash
-    if (user.password_hash !== password) {
+    // Comparar senha com hash usando bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValidPassword) {
       return json({
         success: false,
         error: { message: 'Email ou senha inválidos' }
