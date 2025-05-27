@@ -165,9 +165,12 @@ class SearchService {
 
   private loadSearchHistory() {
     try {
-      const saved = localStorage.getItem('searchHistory');
-      if (saved) {
-        this.searchHistory = JSON.parse(saved);
+      // Verificar se está no browser
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem('searchHistory');
+        if (saved) {
+          this.searchHistory = JSON.parse(saved);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar histórico:', error);
@@ -176,7 +179,10 @@ class SearchService {
 
   private saveSearchHistory() {
     try {
-      localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
+      // Verificar se está no browser
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
+      }
     } catch (error) {
       console.error('Erro ao salvar histórico:', error);
     }
