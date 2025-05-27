@@ -2,6 +2,14 @@
 
 Um marketplace completo desenvolvido com tecnologias modernas.
 
+## 🎯 Status do Projeto
+
+- ✅ Sistema de autenticação completo
+- ✅ Integração com banco de dados Xata
+- ✅ Deploy automatizado no Cloudflare Pages
+- 🚧 Listagem de produtos (em desenvolvimento)
+- 🚧 Carrinho de compras (próximo)
+
 ## 🚀 Stack Tecnológica
 
 - **Frontend**: SvelteKit + TypeScript + Tailwind CSS
