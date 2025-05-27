@@ -258,68 +258,6 @@
 					</div>
 				{/if}
 				
-
-				<!-- Categorias -->
-				<div class="p-4 border-b border-gray-100">
-					<h3 class="text-sm font-semibold text-gray-700 mb-3">Buscar por categoria</h3>
-					<div class="grid grid-cols-2 gap-2">
-						<a 
-							href="/categoria/berco"
-							class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-						>
-							<div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-lg">
-								🛏️
-							</div>
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-800">Berço</p>
-								<p class="text-xs text-gray-500">156 produtos</p>
-							</div>
-						</a>
-						<a 
-							href="/categoria/banho"
-							class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-						>
-							<div class="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center text-lg">
-								🛁
-							</div>
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-800">Banho</p>
-								<p class="text-xs text-gray-500">89 produtos</p>
-							</div>
-						</a>
-						<a 
-							href="/categoria/decoracao"
-							class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-						>
-							<div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center text-lg">
-								🎨
-							</div>
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-800">Decoração</p>
-								<p class="text-xs text-gray-500">234 produtos</p>
-							</div>
-						</a>
-						<a 
-							href="/categoria/organizacao"
-							class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-						>
-							<div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-lg">
-								📦
-							</div>
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-800">Organização</p>
-								<p class="text-xs text-gray-500">67 produtos</p>
-							</div>
-						</a>
-					</div>
-					<a 
-						href="/categorias"
-						class="block mt-3 text-center text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium"
-					>
-						Ver todas as categorias →
-					</a>
-				</div>
-				
 				<!-- Populares -->
 				<div class="p-4">
 					<h3 class="text-sm font-semibold text-gray-700 mb-3">Buscas populares</h3>

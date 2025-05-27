@@ -144,37 +144,12 @@ class SearchService {
     ];
   }
 
-  // Obter trending searches
-  getTrendingSearches(): string[] {
-    return [
-      'Black Friday bebê',
-      'Kit maternidade',
-      'Enxoval completo',
-      'Quarto montessoriano',
-      'Berço americano'
-    ];
-  }
-
-  // Obter categorias principais
-  getMainCategories(): Array<{ id: string; name: string; count: number; icon: string; color: string }> {
-    return [
-      { id: 'berco', name: 'Berço', count: 156, icon: '🛏️', color: 'blue' },
-      { id: 'banho', name: 'Banho', count: 89, icon: '🛁', color: 'cyan' },
-      { id: 'decoracao', name: 'Decoração', count: 234, icon: '🎨', color: 'pink' },
-      { id: 'organizacao', name: 'Organização', count: 67, icon: '📦', color: 'purple' },
-      { id: 'passeio', name: 'Passeio', count: 45, icon: '🚼', color: 'green' },
-      { id: 'alimentacao', name: 'Alimentação', count: 78, icon: '🍼', color: 'orange' }
-    ];
-  }
-
   // Helpers privados
   private getCacheKey(query: string, filters?: SearchFilters, page?: number, limit?: number): string {
     return JSON.stringify({ query, filters, page, limit });
   }
 
   private loadSearchHistory() {
-    if (typeof window === 'undefined') return;
-    
     try {
       const saved = localStorage.getItem('searchHistory');
       if (saved) {
@@ -186,8 +161,6 @@ class SearchService {
   }
 
   private saveSearchHistory() {
-    if (typeof window === 'undefined') return;
-    
     try {
       localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
     } catch (error) {
@@ -258,12 +231,11 @@ class SearchService {
 
   private mockSearchCategories(query: string): SearchSuggestion[] {
     const categories = [
-      { id: 'berco', name: 'Berço', count: 156, icon: '🛏️', color: 'blue' },
-      { id: 'banho', name: 'Banho', count: 89, icon: '🛁', color: 'cyan' },
-      { id: 'decoracao', name: 'Decoração', count: 234, icon: '🎨', color: 'pink' },
-      { id: 'organizacao', name: 'Organização', count: 67, icon: '📦', color: 'purple' },
-      { id: 'passeio', name: 'Passeio', count: 45, icon: '🚼', color: 'green' },
-      { id: 'alimentacao', name: 'Alimentação', count: 78, icon: '🍼', color: 'orange' }
+      { id: 'berco', name: 'Berço', count: 156 },
+      { id: 'banho', name: 'Banho', count: 89 },
+      { id: 'decoracao', name: 'Decoração', count: 234 },
+      { id: 'organizacao', name: 'Organização', count: 67 },
+      { id: 'passeio', name: 'Passeio', count: 45 }
     ];
 
     return categories
@@ -272,8 +244,7 @@ class SearchService {
         type: 'category' as const,
         id: c.id,
         text: c.name,
-        count: c.count,
-        highlight: this.highlightMatch(c.name, query)
+        count: c.count
       }));
   }
 
