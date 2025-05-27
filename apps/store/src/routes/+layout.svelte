@@ -4,11 +4,12 @@
 	import { onMount } from 'svelte';
 	import { auth, user, isAuthenticated } from '$lib/stores/auth';
 	import Footer from '$lib/components/Footer.svelte';
+	import SearchBox from '$lib/components/SearchBox.svelte';
+	import type { Product } from '@mktplace/shared-types';
 
 	let { children } = $props();
 
 	let mobileMenuOpen = $state(false);
-	let searchQuery = $state('');
 	let userMenuOpen = $state(false);
 	
 	// Carrossel do banner
@@ -239,21 +240,7 @@
 				</a>
 				
 				<!-- Search Bar -->
-				<div class="flex-1 max-w-[745px]">
-					<form class="relative">
-						<input
-							type="search"
-							placeholder="O que você está procurando?"
-							bind:value={searchQuery}
-							class="w-full h-[42px] pl-6 pr-12 bg-white border border-gray-300 rounded-[8.42px] text-gray-600 placeholder-gray-400 text-base focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white transition-all"
-						/>
-						<button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[#00BFB3] hover:text-[#00A89D] transition-colors" aria-label="Buscar">
-							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-							</svg>
-						</button>
-					</form>
-				</div>
+				<SearchBox class="flex-1 max-w-[745px]" />
 				
 				<!-- User Actions -->
 				<div class="flex items-center gap-6 flex-shrink-0">
@@ -452,19 +439,7 @@
 	
 	<!-- Search Bar Mobile -->
 	<div class="px-4 pb-4">
-		<form class="relative">
-			<input
-				type="search"
-				placeholder="O que você está procurando?"
-				bind:value={searchQuery}
-				class="w-full h-[42px] px-5 pr-12 bg-white border border-gray-300 rounded-[8.42px] text-gray-600 placeholder-gray-400 text-base focus:outline-none focus:ring-2 focus:ring-[#00BBB4]/30 focus:border-[#00BBB4] transition-all"
-			/>
-			<button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[#00BBB4] hover:text-[#00A89D] transition-colors" aria-label="Buscar">
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-				</svg>
-			</button>
-		</form>
+		<SearchBox />
 	</div>
 </header>
 

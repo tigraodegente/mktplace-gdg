@@ -8,7 +8,9 @@ export interface Product {
   images: string[];
   image?: string;
   category_id: string;
+  category_name?: string;
   seller_id: string;
+  seller_name?: string;
   is_active: boolean;
   stock: number;
   sku?: string;
@@ -19,6 +21,25 @@ export interface Product {
   is_featured?: boolean;
   is_black_friday?: boolean;
   has_fast_delivery?: boolean;
+  rating?: number;
+  reviews_count?: number;
+  sold_count?: number;
+  brand?: string;
+  material?: string;
+  dimensions?: {
+    width?: number;
+    height?: number;
+    depth?: number;
+    weight?: number;
+  };
+  colors?: string[];
+  sizes?: string[];
+  warranty?: string;
+  shipping_info?: {
+    free_shipping?: boolean;
+    estimated_days?: number;
+    shipping_cost?: number;
+  };
   created_at: Date;
   updated_at: Date;
 }

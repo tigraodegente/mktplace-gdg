@@ -130,6 +130,31 @@
 			<p class="product-card__sku">Ref: {product.sku}</p>
 		{/if}
 		
+		<!-- Rating and Sales -->
+		{#if product.rating || product.sold_count}
+			<div class="product-card__stats">
+				{#if product.rating}
+					<div class="product-card__rating">
+						<div class="stars">
+							{#each Array(5) as _, i}
+								<svg class="star {i < Math.floor(product.rating) ? 'star--filled' : ''}" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+									<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+								</svg>
+							{/each}
+						</div>
+						<span class="rating-value">{product.rating}</span>
+						{#if product.reviews_count}
+							<span class="reviews-count">({product.reviews_count})</span>
+						{/if}
+					</div>
+				{/if}
+				
+				{#if product.sold_count && product.sold_count > 50}
+					<span class="sold-count">{product.sold_count}+ vendidos</span>
+				{/if}
+			</div>
+		{/if}
+		
 		<!-- Pricing Section -->
 		<div class="product-card__pricing">
 			{#if product.original_price && product.original_price > product.price}
@@ -486,6 +511,58 @@
 	.badge--delivery {
 		background: #FBE7D1;
 		color: #E07709;
+	}
+	
+	/* ===== Stats Section ===== */
+	.product-card__stats {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 4px 0;
+		flex-wrap: wrap;
+	}
+	
+	.product-card__rating {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+	
+	.stars {
+		display: flex;
+		gap: 1px;
+	}
+	
+	.star {
+		color: #E0E0E0;
+		transition: color 0.2s ease;
+	}
+	
+	.star--filled {
+		color: #FFC107;
+	}
+	
+	.rating-value {
+		font-family: 'Lato', sans-serif;
+		font-size: 13px;
+		font-weight: 600;
+		color: #333;
+		margin-left: 2px;
+	}
+	
+	.reviews-count {
+		font-family: 'Lato', sans-serif;
+		font-size: 12px;
+		color: #666;
+	}
+	
+	.sold-count {
+		font-family: 'Lato', sans-serif;
+		font-size: 12px;
+		color: #666;
+		background: #F5F5F5;
+		padding: 2px 8px;
+		border-radius: 12px;
 	}
 	
 	/* ===== Responsive Design ===== */
