@@ -2,6 +2,7 @@
 	"name": "store",
 	"private": true,
 	"version": "0.0.1",
+	"description": "Store do marketplace - testando deploy seletivo",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
