@@ -8,6 +8,13 @@ export interface SearchSuggestion {
   count?: number;
   image?: string;
   price?: number;
+  originalPrice?: number;
+  discount?: number;
+  pieces?: number;
+  rating?: number;
+  soldCount?: number;
+  hasFastDelivery?: boolean;
+  installments?: number;
 }
 
 export interface SearchFilters {
@@ -85,6 +92,13 @@ class SearchService {
       text: p.name,
       image: p.images?.[0],
       price: p.price,
+      originalPrice: p.original_price,
+      discount: p.discount,
+      pieces: p.pieces,
+      rating: p.rating,
+      soldCount: p.sold_count,
+      hasFastDelivery: p.has_fast_delivery,
+      installments: 12, // Padrão de 12x
       highlight: this.highlightMatch(p.name, query)
     })));
 
