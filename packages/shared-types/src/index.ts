@@ -8,21 +8,6 @@ export interface User {
   updated_at: Date;
 }
 
-// Tipos de produto
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  images: string[];
-  category_id: string;
-  seller_id: string;
-  is_active: boolean;
-  stock: number;
-  created_at: Date;
-  updated_at: Date;
-}
-
 // Tipos de pedido
 export interface Order {
   id: string;
@@ -59,8 +44,8 @@ export interface ApiResponse<T> {
 }
 
 // Exportar todos os tipos
+export * from './models/product';
 // export * from './models/user';
-// export * from './models/product';
 // export * from './models/order';
 // export * from './models/category';
 // export * from './models/seller';

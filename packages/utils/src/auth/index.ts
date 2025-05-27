@@ -1,9 +1,10 @@
 // Sistema de autenticação para o marketplace
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { UserRole } from '@mktplace-gdg/xata-client';
 
 // Tipos para autenticação
+export type UserRole = 'customer' | 'seller' | 'admin';
+
 export interface JWTPayload {
   userId: string;
   email: string;
@@ -43,12 +44,12 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 export function generateTokens(payload: JWTPayload): AuthTokens {
   const accessToken = jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
-  });
+  } as jwt.SignOptions);
 
   const refreshToken = jwt.sign(
     { ...payload, type: 'refresh' },
     JWT_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRES_IN }
+    { expiresIn: REFRESH_TOKEN_EXPIRES_IN } as jwt.SignOptions
   );
 
   // Calcula tempo de expiração em segundos

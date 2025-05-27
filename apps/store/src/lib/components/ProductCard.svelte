@@ -1,23 +1,6 @@
 <script lang="ts">
 	import { formatCurrency } from '@mktplace/utils';
-	
-	// Types
-	interface Product {
-		id: string;
-		name: string;
-		slug: string;
-		price: number;
-		originalPrice?: number;
-		discount?: number;
-		image: string;
-		images?: string[];
-		sku?: string;
-		tags?: string[];
-		pieces?: number;
-		isNew?: boolean;
-		isFeatured?: boolean;
-		isBlackFriday?: boolean;
-	}
+	import type { Product } from '@mktplace/shared-types';
 	
 	// Props
 	let { product }: { product: Product } = $props();
@@ -37,8 +20,8 @@
 	// Computed values
 	const discount = $derived(() => {
 		if (product.discount) return product.discount;
-		if (product.originalPrice && product.originalPrice > product.price) {
-			return Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
+		if (product.original_price && product.original_price > product.price) {
+			return Math.round(((product.original_price - product.price) / product.original_price) * 100);
 		}
 		return 0;
 	});
@@ -60,6 +43,11 @@
 			}
 		}
 		return null;
+	});
+	
+	// Get main image
+	const mainImage = $derived(() => {
+		return product.image || (product.images && product.images[0]) || '/placeholder.jpg';
 	});
 	
 	// Handlers
@@ -116,7 +104,7 @@
 		<!-- Product Image -->
 		<a href="/produto/{product.slug}" class="product-card__image-link">
 			<img 
-				src={product.image} 
+				src={mainImage()} 
 				alt={product.name}
 				loading="lazy"
 				class="product-card__image"
@@ -145,9 +133,9 @@
 		
 		<!-- Pricing Section -->
 		<div class="product-card__pricing">
-			{#if product.originalPrice && product.originalPrice > product.price}
+			{#if product.original_price && product.original_price > product.price}
 				<p class="product-card__price-original">
-					de {formatCurrency(product.originalPrice)}
+					de {formatCurrency(product.original_price)}
 				</p>
 			{/if}
 			
@@ -165,7 +153,7 @@
 		
 		<!-- Bottom Badges -->
 		<div class="product-card__badges">
-			{#if product.isBlackFriday}
+			{#if product.is_black_friday}
 				<div class="badge badge--black-friday">
 					<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 						<circle cx="8" cy="8" r="8" fill="#5A5A5A"/>
@@ -176,12 +164,14 @@
 				</div>
 			{/if}
 			
+			{#if product.has_fast_delivery !== false}
 			<div class="badge badge--delivery">
 				<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M8.50446 6.40097C8.44526 6.29319 8.33418 6.2249 8.21202 6.22119L5.23016 6.13067L6.57478 2.43905C6.61296 2.33376 6.5986 2.21623 6.53629 2.12333C6.47399 2.03031 6.37116 1.97315 6.25989 1.96965L2.79821 1.86457C2.64532 1.86005 2.50773 1.95706 2.45939 2.10333L0.173823 9.0212L0.173819 9.02132C0.139141 9.1259 0.155541 9.24103 0.218155 9.33159C0.280886 9.42204 0.382373 9.47741 0.491797 9.48062L3.60749 9.57519L3.472 14.1127C3.46712 14.2723 3.57018 14.4149 3.72235 14.4589C3.87453 14.503 4.03693 14.4373 4.11681 14.2995L8.50035 6.74639C8.56246 6.64019 8.56407 6.50864 8.50452 6.40085L8.50446 6.40097Z" fill="#FF8403"/>
 				</svg>
 				<span>Chega rapidinho</span>
 			</div>
+			{/if}
 		</div>
 	</div>
 </article>
