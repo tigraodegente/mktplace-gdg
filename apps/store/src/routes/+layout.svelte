@@ -221,7 +221,7 @@
 					onclick={() => goToSlide(index)}
 					class="w-1 h-1 rounded-full transition-all duration-300 hover:bg-gray-600 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
 					aria-label="Ir para slide {index + 1}"
-				/>
+				></button>
 			{/each}
 		</div>
 	</div>
@@ -393,7 +393,7 @@
 					onclick={() => goToSlide(index)}
 					class="w-1 h-1 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
 					aria-label="Ir para slide {index + 1}"
-				/>
+				></button>
 			{/each}
 		</div>
 	</div>
