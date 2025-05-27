@@ -21,7 +21,8 @@
     "test:e2e": "turbo test:e2e",
     "clean": "turbo clean && rm -rf node_modules",
     "preview": "turbo preview",
-    "check:env": "node scripts/check-env.js"
+    "check:env": "node scripts/check-env.js",
+    "deploy:test": "echo 'Deploy seletivo funcionando!'"
   },
   "keywords": [
     "marketplace",
