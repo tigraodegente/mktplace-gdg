@@ -1,7 +1,0 @@
-name = "mktplace-store"
-compatibility_date = "2024-01-01"
-pages_build_output_dir = "apps/store/.svelte-kit/cloudflare"
-
-# Environment variables
-[vars]
-# As variáveis serão configuradas no dashboard do Cloudflare 
