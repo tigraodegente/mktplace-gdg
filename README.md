@@ -8,6 +8,7 @@ Um marketplace completo desenvolvido com tecnologias modernas.
 - ✅ Integração com banco de dados Xata
 - ✅ Deploy automatizado no Cloudflare Pages
 - ✅ Deploy seletivo configurado
+- ✅ Integração GitHub reconectada (27/01/2025)
 - 🚧 Listagem de produtos (em desenvolvimento)
 - 🚧 Carrinho de compras (próximo)
 
