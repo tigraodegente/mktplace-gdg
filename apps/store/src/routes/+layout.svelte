@@ -146,7 +146,7 @@
 
 <!-- Banner Promocional Desktop com Carrossel -->
 <div 
-	class="hidden lg:block bg-[#F4F4F4] h-[40px] relative overflow-hidden"
+	class="hidden lg:block bg-[#F4F4F4] h-[48px] relative overflow-hidden"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -164,13 +164,13 @@
 				>
 					<a href={message.link} class="flex items-center gap-2 hover:opacity-90 transition-opacity">
 						{#if message.icon === 'payment'}
-							<svg class="w-[23px] h-[25px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+							<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 								<rect x="2" y="5" width="20" height="14" rx="2" stroke="#333" stroke-width="2"/>
 								<path d="M2 9H22" stroke="#333" stroke-width="2"/>
 								<path d="M6 13H10" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 							</svg>
 						{:else if message.icon === 'shipping'}
-							<svg class="w-[23px] h-[25px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+							<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 								<path d="M1 12H16V18.5C16 19.3284 15.3284 20 14.5 20H12.5" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 								<path d="M16 12H20.5C21.3284 12 22 12.6716 22 13.5V17.5C22 18.3284 21.3284 19 20.5 19H19" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 								<circle cx="8" cy="20" r="2" stroke="#333" stroke-width="2"/>
@@ -178,15 +178,15 @@
 								<path d="M16 12V6C16 5.17157 15.3284 4.5 14.5 4.5H1" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 							</svg>
 						{:else}
-							<svg class="w-[23px] h-[25px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+							<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 								<circle cx="12" cy="12" r="10" stroke="#333" stroke-width="2"/>
 								<path d="M8 12L11 15L16 10" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 								<path d="M12 6V8" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 								<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 							</svg>
 						{/if}
-						<span class="text-black font-medium text-sm" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
-						<span class="text-[#00BFB3] font-black text-xs uppercase underline hover:no-underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
+						<span class="text-black font-medium text-xs" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
+						<span class="text-[#00BFB3] font-black text-[11px] uppercase underline hover:no-underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
 					</a>
 				</div>
 			{/each}
@@ -214,7 +214,7 @@
 		</button>
 		
 		<!-- Dots Indicator -->
-		<div class="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-1.5">
+		<div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
 			{#each bannerMessages as _, index}
 				<button
 					onclick={() => goToSlide(index)}
@@ -352,7 +352,7 @@
 
 <!-- Banner Promocional Mobile com Carrossel -->
 <div 
-	class="lg:hidden bg-[#F4F4F4] h-[40px] relative overflow-hidden"
+	class="lg:hidden bg-[#F4F4F4] h-[44px] relative overflow-hidden"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -392,19 +392,19 @@
 								<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
 							</svg>
 						{/if}
-						<span class="text-black font-medium text-xs" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
-						<span class="text-[#00BFB3] font-black text-xs uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
+						<span class="text-black font-medium text-[11px]" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
+						<span class="text-[#00BFB3] font-black text-[10px] uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
 					</a>
 				</div>
 			{/each}
 		</div>
 		
 		<!-- Dots Indicator Mobile -->
-		<div class="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-1">
+		<div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5">
 			{#each bannerMessages as _, index}
 				<button
 					onclick={() => goToSlide(index)}
-					class="w-1 h-1 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-800 w-3' : 'bg-gray-400'}"
+					class="w-1 h-1 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
 					aria-label="Ir para slide {index + 1}"
 				/>
 			{/each}
