@@ -1,2 +1,2 @@
 name = "mktplace-seller"
-pages_build_output_dir = "apps/seller-panel/.svelte-kit/cloudflare" 
+pages_build_output_dir = ".svelte-kit/cloudflare" 
