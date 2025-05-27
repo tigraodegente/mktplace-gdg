@@ -3,8 +3,6 @@ import type { RequestHandler } from './$types';
 import { getXataClient } from '$lib/xata';
 import bcrypt from 'bcryptjs';
 
-const xata = getXataClient();
-
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
     const { email, password } = await request.json();
@@ -18,6 +16,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }
     
     // Buscar usuário no Xata
+    const xata = getXataClient();
     const user = await xata.db.users
       .filter({ email })
       .getFirst();

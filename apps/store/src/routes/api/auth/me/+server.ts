@@ -2,8 +2,6 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getXataClient } from '$lib/xata';
 
-const xata = getXataClient();
-
 export const GET: RequestHandler = async ({ cookies }) => {
   try {
     const sessionCookie = cookies.get('session');
@@ -18,6 +16,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
     const session = JSON.parse(sessionCookie);
     
     // Buscar usuário atualizado do Xata
+    const xata = getXataClient();
     const user = await xata.db.users
       .filter({ id: session.userId })
       .getFirst();

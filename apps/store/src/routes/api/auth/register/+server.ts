@@ -3,8 +3,6 @@ import type { RequestHandler } from './$types';
 import { getXataClient } from '$lib/xata';
 import bcrypt from 'bcryptjs';
 
-const xata = getXataClient();
-
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
     const { email, password, name, role = 'customer' } = await request.json();
@@ -35,6 +33,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }
     
     // Verificar se email já existe no Xata
+    const xata = getXataClient();
     const existingUser = await xata.db.users
       .filter({ email })
       .getFirst();
