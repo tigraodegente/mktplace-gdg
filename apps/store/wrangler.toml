@@ -1,0 +1,2 @@
+name = "mktplace-store"
+pages_build_output_dir = "apps/store/.svelte-kit/cloudflare" 

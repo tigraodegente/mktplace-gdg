@@ -1,0 +1,2 @@
+name = "mktplace-admin"
+pages_build_output_dir = "apps/admin-panel/.svelte-kit/cloudflare" 
