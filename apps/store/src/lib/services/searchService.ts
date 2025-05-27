@@ -1,5 +1,4 @@
 import type { Product } from '@mktplace/shared-types';
-import { browser } from '$app/environment';
 
 export interface SearchSuggestion {
   type: 'product' | 'category' | 'brand' | 'query';
@@ -42,9 +41,7 @@ class SearchService {
   private searchCache = new Map<string, SearchResult>();
 
   constructor() {
-    if (browser) {
-      this.loadSearchHistory();
-    }
+    this.loadSearchHistory();
   }
 
   // Busca principal com cache e otimizações
@@ -153,12 +150,13 @@ class SearchService {
   }
 
   private loadSearchHistory() {
-    if (!browser) return;
-    
     try {
-      const saved = localStorage.getItem('searchHistory');
-      if (saved) {
-        this.searchHistory = JSON.parse(saved);
+      // Verificar se está no browser
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem('searchHistory');
+        if (saved) {
+          this.searchHistory = JSON.parse(saved);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar histórico:', error);
@@ -166,10 +164,11 @@ class SearchService {
   }
 
   private saveSearchHistory() {
-    if (!browser) return;
-    
     try {
-      localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
+      // Verificar se está no browser
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
+      }
     } catch (error) {
       console.error('Erro ao salvar histórico:', error);
     }

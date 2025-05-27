@@ -48,8 +48,6 @@
 	},
 	"dependencies": {
 		"@mktplace/xata-client": "workspace:*",
-		"@mktplace/utils": "workspace:*",
-		"@mktplace/ui": "workspace:*",
-		"@mktplace/shared-types": "workspace:*"
+		"@mktplace/utils": "workspace:*"
 	}
 }

@@ -41,6 +41,12 @@ mktplace-gdg/
 - **Admin Panel**: https://mktplace-admin.pages.dev
 - **Seller Panel**: https://mktplace-seller.pages.dev
 
+## 📚 Documentação Importante
+
+- **[Memória do Projeto](./MEMORIA_PROJETO.md)** - Histórico de decisões e contexto
+- **[Arquitetura de Componentes](./docs/arquitetura/componentes.md)** - Estratégia de componentes
+- **[Regras do Cursor](./.cursorrules)** - Padrões e convenções do projeto
+
 ## 🛠️ Desenvolvimento
 
 ### Pré-requisitos
@@ -97,7 +103,9 @@ Este projeto está sob a licença MIT.
 
 ---
 
-Desenvolvido com ❤️ por Gustavo # Deploy automático configurado - Tue May 27 15:20:58 -03 2025
+Desenvolvido com ❤️ por Gustavo
+
+# Deploy automático configurado - Tue May 27 15:20:58 -03 2025
 // Deploy automático funcionando! - Tue May 27 15:28:45 -03 2025
 # Deploy fix
 # Teste de deploy - Store funcionando! 🚀
