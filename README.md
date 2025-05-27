@@ -7,6 +7,7 @@ Um marketplace completo desenvolvido com tecnologias modernas.
 - ✅ Sistema de autenticação completo
 - ✅ Integração com banco de dados Xata
 - ✅ Deploy automatizado no Cloudflare Pages
+- ✅ Deploy seletivo configurado
 - 🚧 Listagem de produtos (em desenvolvimento)
 - 🚧 Carrinho de compras (próximo)
 
