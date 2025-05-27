@@ -5,16 +5,19 @@ import bcrypt from 'bcryptjs';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
+    console.log('Login attempt started');
     const { email, password } = await request.json();
     
     // Validar dados
     if (!email || !password) {
+      console.log('Missing email or password');
       return json({
         success: false,
         error: { message: 'Email e senha são obrigatórios' }
       }, { status: 400 });
     }
     
+    console.log('Attempting to connect to Xata for user:', email);
     // Buscar usuário no Xata
     const xata = getXataClient();
     const user = await xata.db.users
@@ -22,12 +25,14 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       .getFirst();
     
     if (!user) {
+      console.log('User not found:', email);
       return json({
         success: false,
         error: { message: 'Email ou senha inválidos' }
       }, { status: 401 });
     }
     
+    console.log('User found, comparing passwords');
     // Comparar senha com hash usando bcrypt
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     
@@ -55,7 +60,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }), {
       path: '/',
       httpOnly: true,
-      secure: false, // mudar para true em produção
+      secure: process.env.NODE_ENV === 'production', // true em produção
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7 // 7 dias
     });

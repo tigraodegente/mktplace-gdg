@@ -82,7 +82,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }), {
       path: '/',
       httpOnly: true,
-      secure: false, // mudar para true em produção
+      secure: process.env.NODE_ENV === 'production', // true em produção
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7 // 7 dias
     });
