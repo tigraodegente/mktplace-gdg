@@ -1,8 +1,8 @@
 {
-	"name": "store",
+	"name": "@mktplace-gdg/store",
 	"private": true,
 	"version": "0.0.1",
-	"description": "Store do marketplace - testando deploy seletivo",
+	"description": "Store do marketplace - testando deploy seletivo - fix auth",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
