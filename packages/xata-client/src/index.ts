@@ -1,10 +1,29 @@
-// Este arquivo será gerado automaticamente pelo Xata CLI
-// Por enquanto, exportamos um placeholder
+// Cliente Xata gerado automaticamente
+import { XataClient } from './xata';
 
-export const xataClient = {
-  // Placeholder - será substituído pelo código gerado
-  db: {} as any
+// Criar instância do cliente
+export const getXataClient = () => {
+  if (!process.env.XATA_API_KEY) {
+    throw new Error('XATA_API_KEY não está definida');
+  }
+  
+  return new XataClient({
+    apiKey: process.env.XATA_API_KEY,
+    branch: process.env.XATA_BRANCH || 'main',
+  });
 };
 
-// Exportar tipos e funções auxiliares
-export * from './helpers'; 
+// Exportar tipos
+export * from './xata';
+export * from './types';
+export * from './helpers';
+
+// Cliente singleton para uso direto
+let xataClientInstance: XataClient | null = null;
+
+export const xata = () => {
+  if (!xataClientInstance) {
+    xataClientInstance = getXataClient();
+  }
+  return xataClientInstance;
+};

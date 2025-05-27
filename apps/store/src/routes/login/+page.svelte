@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import type { LoginRequest } from '@mktplace/shared-types';
+  import { auth } from '$lib/stores/auth';
   
   let email = $state('');
   let password = $state('');
@@ -13,7 +13,7 @@
     isLoading = true;
     error = '';
     
-    const loginData: LoginRequest = {
+    const loginData = {
       email,
       password
     };
@@ -32,6 +32,9 @@
       if (!response.ok) {
         throw new Error(data.error?.message || 'Erro ao fazer login');
       }
+      
+      // Salvar usuário no store
+      auth.setUser(data.data.user);
       
       // Redirecionar após login bem-sucedido
       goto('/');
