@@ -84,18 +84,17 @@
 			aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
 			type="button"
 		>
-			<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26" fill="none">
+			<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
 				<circle 
-					cx="12.6337" 
-					cy="12.6337" 
-					r="12.1337" 
-					transform="matrix(-1 0 0 1 25.4556 0.351807)" 
+					cx="16" 
+					cy="16" 
+					r="15" 
 					fill={isFavorite ? '#F17179' : 'white'} 
 					stroke={isFavorite ? '#F17179' : '#E0E0E0'} 
 					stroke-width="1"
 				/>
 				<path 
-					d="M10.9746 9.09961C11.5927 9.09961 12.2477 9.38842 12.93 9.95641C14.2945 8.92632 16.1176 8.95383 17.227 10.0733C17.846 10.7003 18.1934 11.5488 18.1934 12.4333C18.1934 13.3178 17.846 14.1663 17.227 14.7933L17.2161 14.8043L14.053 17.8052C13.7492 18.0938 13.3475 18.2545 12.93 18.2545C12.5125 18.2545 12.1108 18.0938 11.8069 17.8052L8.64387 14.8043L8.63296 14.7933C8.17061 14.3265 7.8559 13.7321 7.72858 13.0852C7.60125 12.4383 7.66704 11.7678 7.91761 11.1585C8.16818 10.5492 8.59231 10.0285 9.1364 9.66202C9.68049 9.29556 10.3201 9.09985 10.9746 9.09961Z" 
+					d="M13.5 11C14.2 11 14.95 11.35 15.75 12C17.35 10.75 19.5 10.8 20.8 12.1C21.5 12.8 21.9 13.75 21.9 14.75C21.9 15.75 21.5 16.7 20.8 17.4L20.8 17.4L17 21C16.65 21.3 16.2 21.5 15.75 21.5C15.3 21.5 14.85 21.3 14.5 21L10.7 17.4L10.7 17.4C10.15 16.85 9.8 16.15 9.65 15.35C9.5 14.55 9.6 13.7 9.9 13C10.2 12.3 10.7 11.7 11.35 11.3C12 10.9 12.75 10.7 13.5 11Z" 
 					fill={isFavorite ? 'white' : '#E0E0E0'}
 				/>
 			</svg>
@@ -189,21 +188,21 @@
 	/* ===== Discount Badge ===== */
 	.discount-badge {
 		font-family: 'Lato', sans-serif;
-		font-size: 13.531px;
-		font-weight: 600;
+		font-size: 15px;
+		font-weight: 700;
 		color: #2C1D1D;
-		margin-bottom: 4px;
+		margin-bottom: 8px;
 		text-align: left;
 		line-height: 100%;
 		font-feature-settings: 'swsh' on;
-		width: 60.889px;
-		height: 13.531px;
+		width: auto;
+		height: auto;
 		flex-shrink: 0;
 	}
 	
 	.discount-badge__off {
 		color: #00BFB3;
-		font-weight: 600;
+		font-weight: 700;
 		font-feature-settings: 'swsh' on;
 	}
 	
@@ -215,6 +214,7 @@
 		overflow: hidden;
 		border-radius: 12px;
 		background: #F5F5F5;
+		margin-bottom: 12px;
 	}
 	
 	.product-card__image-link {
@@ -239,24 +239,26 @@
 		position: absolute;
 		top: 12px;
 		left: 12px;
-		width: 84.737px;
-		height: 23.438px;
+		width: auto;
+		min-width: 84.737px;
+		height: 26px;
+		padding: 0 12px;
 		flex-shrink: 0;
 		background: #00BFB3;
-		border-radius: 12.273px;
+		border-radius: 13px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: 2;
-		padding: 0;
 		color: #FFF;
 		font-family: 'Lato', sans-serif;
-		font-size: 10.738px;
+		font-size: 11px;
 		font-style: normal;
-		font-weight: 500;
+		font-weight: 600;
 		line-height: 100%;
 		font-feature-settings: 'swsh' on;
 		text-transform: uppercase;
+		letter-spacing: 0.5px;
 	}
 	
 	/* ===== Favorite Button ===== */
@@ -264,8 +266,8 @@
 		position: absolute;
 		top: 12px;
 		right: 12px;
-		width: 25.267px;
-		height: 25.267px;
+		width: 32px;
+		height: 32px;
 		flex-shrink: 0;
 		background: transparent;
 		border: none;
@@ -283,8 +285,8 @@
 	}
 	
 	.favorite-button svg {
-		width: 26px;
-		height: 26px;
+		width: 32px;
+		height: 32px;
 	}
 	
 	.favorite-button--active {
@@ -299,38 +301,38 @@
 	
 	/* ===== Product Information ===== */
 	.product-card__info {
-		padding: 12px 0;
+		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 4px;
 		background: transparent;
 	}
 	
 	.product-card__pieces {
-		width: 187.178px;
-		height: 20.296px;
-		flex-shrink: 0;
-		color: #000;
-		font-family: 'Lato', sans-serif;
-		font-size: 14px;
-		font-style: normal;
-		font-weight: 500;
-		line-height: normal;
-		margin: 0 0 2px 0;
-	}
-	
-	.product-card__title {
-		width: 217.623px;
-		min-height: 20.296px;
+		width: auto;
 		height: auto;
 		flex-shrink: 0;
 		color: #000;
 		font-family: 'Lato', sans-serif;
-		font-size: 14px;
+		font-size: 15px;
+		font-style: normal;
+		font-weight: 600;
+		line-height: 1.4;
+		margin: 0 0 4px 0;
+	}
+	
+	.product-card__title {
+		width: 100%;
+		min-height: 40px;
+		height: auto;
+		flex-shrink: 0;
+		color: #000;
+		font-family: 'Lato', sans-serif;
+		font-size: 15px;
 		font-style: normal;
 		font-weight: 400;
-		line-height: normal;
-		margin: 0 0 2px 0;
+		line-height: 1.4;
+		margin: 0 0 6px 0;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
@@ -349,95 +351,99 @@
 	}
 	
 	.product-card__sku {
-		width: 84.737px;
-		height: 19.832px;
+		width: auto;
+		height: auto;
 		flex-shrink: 0;
 		color: #818181;
 		font-family: 'Lato', sans-serif;
-		font-size: 12px;
+		font-size: 13px;
 		font-style: normal;
 		font-weight: 500;
-		line-height: normal;
+		line-height: 1.4;
 		letter-spacing: 0.24px;
-		margin: 0 0 6px 0;
+		margin: 0 0 8px 0;
 	}
 	
 	/* ===== Pricing Section ===== */
 	.product-card__pricing {
-		margin: 6px 0;
+		margin: 8px 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
 	}
 	
 	.product-card__price-original {
-		width: 107.274px;
-		height: 22.537px;
+		width: auto;
+		height: auto;
 		flex-shrink: 0;
 		color: #818181;
 		font-family: 'Lato', sans-serif;
-		font-size: 11px;
+		font-size: 13px;
 		font-style: normal;
 		font-weight: 700;
-		line-height: 21.635px;
+		line-height: 1.4;
 		letter-spacing: 0.22px;
 		text-decoration-line: line-through;
-		margin: 0 0 2px 0;
+		margin: 0;
 	}
 	
 	.product-card__price-installment {
-		width: 168.009px;
-		height: 22.552px;
+		width: auto;
+		height: auto;
 		flex-shrink: 0;
 		display: flex;
 		align-items: baseline;
-		gap: 4px;
-		margin-bottom: 2px;
+		gap: 5px;
+		margin: 0;
 	}
 	
 	.product-card__price-label {
 		color: #000;
 		font-family: 'Lato', sans-serif;
-		font-size: 14px;
+		font-size: 16px;
 		font-style: normal;
 		font-weight: 400;
-		line-height: 21.635px;
+		line-height: 1.4;
 		letter-spacing: 0.28px;
 	}
 	
 	.product-card__price-count {
 		color: #000;
 		font-family: 'Lato', sans-serif;
-		font-size: 14px;
+		font-size: 16px;
 		font-style: normal;
 		font-weight: 900;
-		line-height: 21.635px;
+		line-height: 1.4;
 		letter-spacing: 0.28px;
 	}
 	
 	.product-card__price-value {
 		color: #000;
 		font-family: 'Lato', sans-serif;
-		font-size: 14px;
+		font-size: 16px;
 		font-style: normal;
 		font-weight: 900;
-		line-height: 21.635px;
+		line-height: 1.4;
 		letter-spacing: 0.28px;
 	}
 	
 	.product-card__price-pix {
-		width: 200.709px;
-		height: 22.552px;
+		width: auto;
+		height: auto;
 		flex-shrink: 0;
 		color: #000;
 		font-family: 'Lato', sans-serif;
-		font-size: 14px;
+		font-size: 16px;
 		font-style: normal;
 		font-weight: 400;
-		line-height: 21.635px;
+		line-height: 1.4;
 		letter-spacing: 0.28px;
 		margin: 0;
 	}
 	
 	.product-card__price-pix strong {
 		font-weight: 900;
+		color: #00BFB3;
 	}
 	
 	/* ===== Bottom Badges ===== */
@@ -451,23 +457,29 @@
 	.badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		padding: 4px 8px;
-		border-radius: 4px;
+		gap: 6px;
+		padding: 5px 10px;
+		border-radius: 5px;
 		font-family: 'Lato', sans-serif;
-		font-size: 11px;
+		font-size: 12px;
 		font-weight: 600;
-		height: 20px;
+		height: 24px;
+		transition: all 0.2s ease;
+	}
+	
+	.badge:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 	}
 	
 	.badge svg {
-		width: 12px;
-		height: 12px;
+		width: 14px;
+		height: 14px;
 		flex-shrink: 0;
 	}
 	
 	.badge--black-friday {
-		background: #5A5A5A;
+		background: #2C1D1D;
 		color: white;
 	}
 	
@@ -487,6 +499,17 @@
 			width: 100%;
 			height: auto;
 			aspect-ratio: 262.65 / 350.2;
+		}
+		
+		.product-card__title {
+			font-size: 14px;
+		}
+		
+		.product-card__price-label,
+		.product-card__price-count,
+		.product-card__price-value,
+		.product-card__price-pix {
+			font-size: 15px;
 		}
 	}
 </style> 
