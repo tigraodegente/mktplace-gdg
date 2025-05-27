@@ -1,6 +1,7 @@
 <!-- Deploy seletivo configurado e funcionando! -->
 <script lang="ts">
   import { formatCurrency } from '@mktplace/utils';
+  import ProductCard from '$lib/components/ProductCard.svelte';
   import type { PageData } from './$types';
   
   let { data }: { data: PageData } = $props();
@@ -65,42 +66,9 @@
       </a>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="products-grid">
       {#each featuredProducts as product}
-        <div class="card hover:shadow-lg transition group">
-          <div class="relative overflow-hidden">
-            <img 
-              src={product.image} 
-              alt={product.name}
-              class="w-full h-64 object-cover group-hover:scale-105 transition duration-300"
-            />
-            {#if product.discount > 0}
-              <span class="absolute top-4 left-4 badge badge-danger">
-                -{product.discount}%
-              </span>
-            {/if}
-          </div>
-          <div class="card-body">
-            <h3 class="font-semibold text-lg mb-2 text-[var(--text-color)]">{product.name}</h3>
-            <div class="flex items-center gap-2">
-              {#if product.discount > 0}
-                <span class="text-2xl font-bold text-[var(--cyan500)]">
-                  {formatCurrency(product.price)}
-                </span>
-                <span class="text-sm text-[var(--gray300)] line-through">
-                  {formatCurrency(product.originalPrice)}
-                </span>
-              {:else}
-                <span class="text-2xl font-bold text-[var(--cyan500)]">
-                  {formatCurrency(product.price)}
-                </span>
-              {/if}
-            </div>
-            <button class="btn btn-primary w-full mt-4">
-              Adicionar ao Carrinho
-            </button>
-          </div>
-        </div>
+        <ProductCard {product} />
       {/each}
     </div>
   </div>
@@ -158,3 +126,19 @@
     </form>
   </div>
 </section>
+
+<style>
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
+    gap: 24px;
+    justify-items: center;
+  }
+  
+  @media (max-width: 768px) {
+    .products-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+</style>
