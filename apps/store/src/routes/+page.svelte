@@ -1,10 +1,16 @@
 <!-- Deploy seletivo configurado e funcionando! -->
 <script lang="ts">
-  import { formatCurrency } from '@mktplace/utils';
   import ProductCard from '$lib/components/ProductCard.svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
-  import type { Product } from '@mktplace/shared-types';
+  
+  interface Product {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    [key: string]: any;
+  }
   
   let { data }: { data: PageData } = $props();
   
@@ -40,7 +46,7 @@
 
 <!-- Hero Section -->
 <section class="relative bg-gradient-to-r from-[var(--cyan500)] to-[var(--cyan600)] text-white">
-  <div class="container-full px-8 py-24">
+  <div class="w-full max-w-[1440px] mx-auto px-8 py-24">
     <div class="max-w-3xl">
       <h1 class="text-5xl font-bold mb-6">
         Bem-vindo ao Marketplace GDG
@@ -64,7 +70,7 @@
 
 <!-- Categorias -->
 <section class="py-16 bg-[var(--gray50)]">
-  <div class="container-full px-8">
+  <div class="w-full max-w-[1440px] mx-auto px-8">
     <h2 class="text-3xl font-bold text-center mb-12 text-[var(--text-color)]">Explore por Categoria</h2>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
       {#each categories as category}
@@ -82,7 +88,7 @@
 
 <!-- Produtos em Destaque -->
 <section class="py-16 bg-white">
-  <div class="container-full px-8">
+  <div class="w-full max-w-[1440px] mx-auto px-8">
     <div class="flex justify-between items-center mb-12">
       <h2 class="text-3xl font-bold text-[var(--text-color)]">Produtos em Destaque</h2>
       <a href="/produtos" class="text-[var(--cyan500)] hover:text-[var(--cyan600)] font-semibold transition">
@@ -132,7 +138,7 @@
 
 <!-- Benefícios -->
 <section class="py-16 bg-[var(--gray50)]">
-  <div class="container-full px-8">
+  <div class="w-full max-w-[1440px] mx-auto px-8">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
       <div class="text-center">
         <div class="w-16 h-16 bg-[var(--cyan100)] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -167,7 +173,7 @@
 
 <!-- Newsletter -->
 <section class="py-16 bg-[var(--cyan500)] text-white">
-  <div class="container-full px-8 text-center">
+  <div class="w-full max-w-[1440px] mx-auto px-8 text-center">
     <h2 class="text-3xl font-bold mb-4">Fique por dentro das novidades</h2>
     <p class="text-xl mb-8 opacity-90">Receba ofertas exclusivas e lançamentos em primeira mão</p>
     <form class="max-w-md mx-auto flex gap-4">

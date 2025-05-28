@@ -144,7 +144,7 @@
 				alt={categoryInfo.name}
 				class="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
 			/>
-			<div class="relative container mx-auto px-4 h-full flex items-center">
+			<div class="relative w-full max-w-[1440px] mx-auto px-8 h-full flex items-center">
 				<div class="text-white max-w-2xl">
 					<nav class="text-sm mb-4 flex items-center gap-2">
 						<a href="/" class="hover:text-white/80">Início</a>
@@ -162,7 +162,7 @@
 		</div>
 	{/if}
 	
-	<div class="container mx-auto px-4 py-8">
+	<div class="w-full max-w-[1440px] mx-auto px-8 py-8">
 		<!-- Subcategorias -->
 		{#if categoryInfo.subcategories.length > 0}
 			<div class="mb-8">

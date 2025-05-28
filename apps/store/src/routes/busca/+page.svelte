@@ -4,7 +4,20 @@
 	import { onMount } from 'svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import { searchService, type SearchFilters, type SearchResult } from '$lib/services/searchService';
-	import type { Product } from '@mktplace/shared-types';
+	
+	// Tipo Product
+	interface Product {
+		id: string;
+		name: string;
+		slug: string;
+		price: number;
+		original_price?: number;
+		discount?: number;
+		rating?: number;
+		sold_count?: number;
+		created_at: string | Date;
+		[key: string]: any;
+	}
 	
 	// Reactive URL params
 	let searchParams = $derived($page.url.searchParams);
@@ -301,7 +314,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
-	<div class="container mx-auto px-4 py-6">
+	<div class="w-full max-w-[1440px] mx-auto px-8 py-6">
 		<!-- Breadcrumb -->
 		<nav class="text-sm mb-6" aria-label="Breadcrumb">
 			<ol class="flex items-center space-x-2">
