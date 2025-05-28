@@ -28,7 +28,7 @@ export interface OrderItem {
 }
 
 // Tipos de resposta da API
-export interface ApiResponse<T> {
+export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: {
@@ -43,8 +43,23 @@ export interface ApiResponse<T> {
   };
 }
 
+// Tipos de paginação
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: 'asc' | 'desc';
+}
+
+// Tipos de filtros genéricos
+export interface FilterParams {
+  search?: string;
+  [key: string]: any;
+}
+
 // Exportar todos os tipos
-export * from './models/product';
+export * from './user';
+export * from './product';
 // export * from './models/user';
 // export * from './models/order';
 // export * from './models/category';
