@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/config/xata';
+import { withDatabase } from '$lib/db';
 
 // Esta rota sempre retorna 200, evitando o erro 401 no console
-export const GET: RequestHandler = async ({ cookies }) => {
+export const GET: RequestHandler = async ({ cookies, platform }) => {
   try {
     // Verificar token da sessão
     const sessionToken = cookies.get('session_token');
@@ -14,19 +14,31 @@ export const GET: RequestHandler = async ({ cookies }) => {
       if (oldSession) {
         try {
           const sessionData = JSON.parse(oldSession);
-          const xata = getXataClient();
-          const user = await xata.db.users.read(sessionData.userId);
           
-          if (user && user.is_active) {
-            return json({
-              authenticated: true,
-              user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                role: user.role
-              }
-            });
+          const result = await withDatabase(platform, async (db) => {
+            const user = await db.queryOne`
+              SELECT id, email, name, role, is_active
+              FROM users
+              WHERE id = ${sessionData.userId}
+            `;
+            
+            if (user && user.is_active) {
+              return {
+                authenticated: true,
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  role: user.role
+                }
+              };
+            }
+            
+            return null;
+          });
+          
+          if (result) {
+            return json(result);
           }
         } catch (e) {
           // Sessão antiga inválida
@@ -41,53 +53,66 @@ export const GET: RequestHandler = async ({ cookies }) => {
     }
     
     // Buscar sessão no banco
-    const xata = getXataClient();
-    const session = await xata.db.sessions
-      .filter({ token: sessionToken })
-      .getFirst();
-    
-    if (!session) {
-      return json({
-        authenticated: false,
-        user: null
-      });
-    }
-    
-    // Verificar se a sessão expirou
-    if (new Date(session.expires_at) < new Date()) {
-      // Deletar sessão expirada
-      await xata.db.sessions.delete(session.id);
+    const result = await withDatabase(platform, async (db) => {
+      const session = await db.queryOne`
+        SELECT id, user_id, expires_at
+        FROM sessions
+        WHERE token = ${sessionToken}
+      `;
       
-      return json({
-        authenticated: false,
-        user: null
-      });
-    }
-    
-    // Buscar dados do usuário
-    const user = await xata.db.users.read(session.user_id);
-    
-    if (!user || !user.is_active) {
-      return json({
-        authenticated: false,
-        user: null
-      });
-    }
-    
-    // Atualizar última atividade da sessão
-    await xata.db.sessions.update(session.id, {
-      updated_at: new Date()
-    });
-    
-    return json({
-      authenticated: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
+      if (!session) {
+        return {
+          authenticated: false,
+          user: null
+        };
       }
+      
+      // Verificar se a sessão expirou
+      if (new Date(session.expires_at) < new Date()) {
+        // Deletar sessão expirada
+        await db.execute`
+          DELETE FROM sessions WHERE id = ${session.id}
+        `;
+        
+        return {
+          authenticated: false,
+          user: null
+        };
+      }
+      
+      // Buscar dados do usuário
+      const user = await db.queryOne`
+        SELECT id, email, name, role, is_active
+        FROM users
+        WHERE id = ${session.user_id}
+      `;
+      
+      if (!user || !user.is_active) {
+        return {
+          authenticated: false,
+          user: null
+        };
+      }
+      
+      // Atualizar última atividade da sessão
+      await db.execute`
+        UPDATE sessions 
+        SET updated_at = NOW()
+        WHERE id = ${session.id}
+      `;
+      
+      return {
+        authenticated: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        }
+      };
     });
+    
+    return json(result);
     
   } catch (error) {
     console.error('Erro ao verificar sessão:', error);

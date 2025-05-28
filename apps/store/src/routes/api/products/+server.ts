@@ -1,299 +1,220 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/config/xata';
-import { 
-  normalizeSearchText, 
-  extractSearchWords, 
-  generateWordVariations,
-  calculateRelevanceScore 
-} from '$lib/utils/search';
+import { withDatabase } from '$lib/db';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, platform }) => {
   try {
-    const xata = getXataClient();
-    
-    // Parâmetros de busca com validação
+    // Parâmetros de busca
     const searchQuery = url.searchParams.get('q')?.trim() || '';
     const categories = url.searchParams.get('categoria')?.split(',').filter(Boolean) || [];
     const brands = url.searchParams.get('marca')?.split(',').filter(Boolean) || [];
-    const tags = url.searchParams.get('tag')?.split(',').filter(Boolean) || [];
     const priceMin = url.searchParams.get('preco_min') ? Number(url.searchParams.get('preco_min')) : undefined;
     const priceMax = url.searchParams.get('preco_max') ? Number(url.searchParams.get('preco_max')) : undefined;
     const hasDiscount = url.searchParams.get('promocao') === 'true';
-    const hasFreeShipping = url.searchParams.get('frete_gratis') === 'true';
     const inStock = url.searchParams.get('disponivel') !== 'false';
-    const minRating = url.searchParams.get('avaliacao') ? Number(url.searchParams.get('avaliacao')) : undefined;
-    const deliveryTime = url.searchParams.get('entrega') || '';
     const sortBy = url.searchParams.get('ordenar') || 'relevancia';
     const page = Math.max(1, Number(url.searchParams.get('pagina')) || 1);
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('itens')) || 20));
     
-    // Validar parâmetros
-    if (priceMin !== undefined && priceMax !== undefined && priceMin > priceMax) {
-      return json({
-        success: false,
-        error: { message: 'Preço mínimo não pode ser maior que o máximo' }
-      }, { status: 400 });
-    }
-    
-    // Construir filtros base
-    const filters: any = {
-      is_active: true
-    };
-    
-    if (inStock) {
-      filters.quantity = { $gt: 0 };
-    }
-    
-    if (categories.length > 0) {
-      filters.category_id = { $any: categories };
-    }
-    
-    if (brands.length > 0) {
-      filters.brand_id = { $any: brands };
-    }
-    
-    if (priceMin !== undefined || priceMax !== undefined) {
-      filters.price = {};
-      if (priceMin !== undefined) filters.price.$gte = priceMin;
-      if (priceMax !== undefined) filters.price.$lte = priceMax;
-    }
-    
-    if (minRating) {
-      filters.rating_average = { $gte: minRating };
-    }
-    
-    if (hasDiscount) {
-      // Usar comparação simples ao invés de $ref que pode não ser suportado
-      // Verificar se tem original_price maior que zero e maior que price
-      filters.original_price = { $gt: 0 };
-      // Adicionar verificação manual depois da query
-    }
-    
-    // Adicionar filtro de frete grátis
-    if (hasFreeShipping) {
-      // Usar o campo attributes.free_shipping
-      filters['attributes.free_shipping'] = true;
-    }
-    
-    // Adicionar filtro de tempo de entrega
-    if (deliveryTime) {
-      // Por enquanto, vamos usar tags ou atributos para filtrar
-      // Idealmente teríamos um campo específico para isso
-      switch (deliveryTime) {
-        case 'hoje':
-        case '24h':
-          // Produtos com entrega rápida geralmente têm tags específicas
-          if (!filters.$all) filters.$all = [];
-          filters.$all.push({
-            $any: [
-              { tags: { $includes: 'entrega-rapida' } },
-              { tags: { $includes: 'entrega-24h' } },
-              { tags: { $includes: 'pronta-entrega' } }
-            ]
-          });
-          break;
-        case '48h':
-          if (!filters.$all) filters.$all = [];
-          filters.$all.push({
-            $any: [
-              { tags: { $includes: 'entrega-48h' } },
-              { tags: { $includes: 'entrega-rapida' } }
-            ]
-          });
-          break;
-        // Para outros casos, não aplicar filtro específico por enquanto
-      }
-    }
-    
-    // Processar busca por texto
-    let searchWords: string[] = [];
-    if (searchQuery) {
-      // Extrair palavras relevantes (remove stop words)
-      searchWords = extractSearchWords(searchQuery);
+    const result = await withDatabase(platform, async (db) => {
+      // Construir condições WHERE
+      const conditions: string[] = ['p.is_active = true'];
+      const params: any[] = [];
+      let paramIndex = 1;
       
-      if (searchWords.length > 0) {
-        // Para cada palavra, criar condições com variações
-        const wordConditions = searchWords.map(word => {
-          const variations = generateWordVariations(word);
-          
-          // Criar condições OR para cada variação
-          return {
-            $any: variations.flatMap(variation => [
-              { name: { $icontains: variation } },
-              { description: { $icontains: variation } },
-              { tags: { $includes: variation } }
-            ])
-          };
-        });
-        
-        // Se múltiplas palavras, todas devem estar presentes
-        if (wordConditions.length > 1) {
-          // Combinar com filtros existentes se houver
-          if (filters.$all) {
-            filters.$all = [...filters.$all, ...wordConditions];
-          } else {
-            filters.$all = wordConditions;
-          }
-        } else {
-          // Uma única palavra
-          filters.$any = wordConditions[0].$any;
-        }
+      if (inStock) {
+        conditions.push('p.quantity > 0');
       }
-    }
-    
-    // Construir query
-    let query = xata.db.products
-      .filter(filters)
-      .select(['*']);
-    
-    // Ordenação
-    if (sortBy === 'relevancia' && searchWords.length > 0) {
-      // Para relevância com busca, vamos buscar todos e ordenar depois
-      // (limitado a 1000 produtos para performance)
-      const allResults = await query.getMany({ pagination: { size: 1000 } });
       
-      // Filtrar produtos com desconto se necessário (pós-processamento)
-      let filteredResults = allResults;
+      if (categories.length > 0) {
+        conditions.push(`p.category_id = ANY($${paramIndex})`);
+        params.push(categories);
+        paramIndex++;
+      }
+      
+      if (brands.length > 0) {
+        conditions.push(`p.brand_id = ANY($${paramIndex})`);
+        params.push(brands);
+        paramIndex++;
+      }
+      
+      if (priceMin !== undefined) {
+        conditions.push(`p.price >= $${paramIndex}`);
+        params.push(priceMin);
+        paramIndex++;
+      }
+      
+      if (priceMax !== undefined) {
+        conditions.push(`p.price <= $${paramIndex}`);
+        params.push(priceMax);
+        paramIndex++;
+      }
+      
       if (hasDiscount) {
-        filteredResults = allResults.filter(product => 
-          product.original_price && 
-          product.original_price > 0 && 
-          product.price < product.original_price
-        );
+        conditions.push('p.original_price > 0 AND p.price < p.original_price');
       }
       
-      // Calcular scores e ordenar
-      const scoredProducts = filteredResults.map(product => ({
-        ...product,
-        relevanceScore: calculateRelevanceScore(product, searchWords)
-      }));
-      
-      scoredProducts.sort((a, b) => b.relevanceScore - a.relevanceScore);
-      
-      // Paginar manualmente
-      const start = (page - 1) * limit;
-      const paginatedProducts = scoredProducts.slice(start, start + limit);
-      
-      // Buscar imagens
-      const productIds = paginatedProducts.map(p => p.id);
-      const images = await fetchProductImages(xata, productIds);
-      
-      // Buscar facetas em paralelo
-      const [facets, totalCount] = await Promise.all([
-        fetchFacets(xata, filters),
-        xata.db.products.filter(filters).summarize({
-          summaries: { count: { count: '*' } }
-        }).then(async r => {
-          // Se tem filtro de desconto, precisamos contar manualmente
-          if (hasDiscount) {
-            const allForCount = await xata.db.products.filter(filters).getMany({ pagination: { size: 5000 } });
-            return allForCount.filter(p => 
-              p.original_price && 
-              p.original_price > 0 && 
-              p.price < p.original_price
-            ).length;
-          }
-          return r.summaries[0]?.count || 0;
-        })
-      ]);
-      
-      // Filtrar produtos com desconto se necessário (pós-processamento)
-      let finalResults = paginatedProducts;
-      if (hasDiscount) {
-        finalResults = paginatedProducts.filter(product => 
-          product.original_price && 
-          product.original_price > 0 && 
-          product.price < product.original_price
-        );
+      if (searchQuery) {
+        conditions.push(`(
+          p.name ILIKE $${paramIndex} OR 
+          p.description ILIKE $${paramIndex} OR
+          p.search_text @@ plainto_tsquery('portuguese', $${paramIndex + 1})
+        )`);
+        params.push(`%${searchQuery}%`);
+        params.push(searchQuery);
+        paramIndex += 2;
       }
       
-      // Formatar produtos
-      const products = formatProducts(finalResults, images);
+      const whereClause = conditions.join(' AND ');
       
-      return json({
-        success: true,
-        data: {
-          products,
-          totalCount,
-          page,
-          limit,
-          facets
-        }
-      });
-      
-    } else {
-      // Ordenação padrão
+      // Ordenação
+      let orderBy = '';
       switch (sortBy) {
         case 'menor-preco':
-          query = query.sort('price', 'asc');
+          orderBy = 'p.price ASC';
           break;
         case 'maior-preco':
-          query = query.sort('price', 'desc');
+          orderBy = 'p.price DESC';
           break;
         case 'mais-vendidos':
-          query = query.sort('sales_count', 'desc');
+          orderBy = 'p.sales_count DESC';
           break;
         case 'melhor-avaliados':
-          query = query.sort('rating_average', 'desc').sort('rating_count', 'desc');
+          orderBy = 'p.rating_average DESC NULLS LAST, p.rating_count DESC';
           break;
         case 'lancamentos':
-          query = query.sort('created_at', 'desc');
+          orderBy = 'p.created_at DESC';
           break;
         default:
-          query = query.sort('featured', 'desc').sort('sales_count', 'desc');
+          orderBy = 'p.featured DESC, p.sales_count DESC';
       }
       
-      // Paginação
+      // Calcular offset
       const offset = (page - 1) * limit;
-      const results = await query.getPaginated({
-        pagination: { size: limit, offset }
-      });
       
-      // Buscar dados complementares em paralelo
-      const [images, facets, totalCount] = await Promise.all([
-        fetchProductImages(xata, results.records.map(p => p.id)),
-        fetchFacets(xata, filters),
-        xata.db.products.filter(filters).summarize({
-          summaries: { count: { count: '*' } }
-        }).then(async r => {
-          // Se tem filtro de desconto, precisamos contar manualmente
-          if (hasDiscount) {
-            const allForCount = await xata.db.products.filter(filters).getMany({ pagination: { size: 5000 } });
-            return allForCount.filter(p => 
-              p.original_price && 
-              p.original_price > 0 && 
-              p.price < p.original_price
-            ).length;
-          }
-          return r.summaries[0]?.count || 0;
-        })
+      // Query principal com imagens
+      const productsQuery = `
+        WITH product_images AS (
+          SELECT 
+            pi.product_id,
+            array_agg(pi.url ORDER BY pi.position) as images
+          FROM product_images pi
+          GROUP BY pi.product_id
+        )
+        SELECT 
+          p.*,
+          COALESCE(pi.images, ARRAY[]::text[]) as images,
+          c.name as category_name,
+          b.name as brand_name,
+          s.company_name as seller_name
+        FROM products p
+        LEFT JOIN product_images pi ON pi.product_id = p.id
+        LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN brands b ON b.id = p.brand_id
+        LEFT JOIN sellers s ON s.id = p.seller_id
+        WHERE ${whereClause}
+        ORDER BY ${orderBy}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+      
+      params.push(limit, offset);
+      
+      // Query para contar total
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM products p
+        WHERE ${whereClause}
+      `;
+      
+      // Executar queries em paralelo
+      const [products, countResult] = await Promise.all([
+        db.query(productsQuery, ...params),
+        db.query(countQuery, ...params.slice(0, -2)) // Remove limit e offset
       ]);
       
-      // Filtrar produtos com desconto se necessário (pós-processamento)
-      let finalResults = results.records;
-      if (hasDiscount) {
-        finalResults = results.records.filter(product => 
-          product.original_price && 
-          product.original_price > 0 && 
-          product.price < product.original_price
-        );
-      }
+      const totalCount = parseInt(countResult[0].total);
       
       // Formatar produtos
-      const products = formatProducts(finalResults, images);
+      const formattedProducts = products.map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        description: product.description,
+        price: Number(product.price),
+        original_price: product.original_price ? Number(product.original_price) : undefined,
+        discount: product.original_price && product.price < product.original_price
+          ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+          : undefined,
+        images: product.images || [],
+        image: product.images?.[0] || '',
+        category_id: product.category_id,
+        category_name: product.category_name,
+        brand_id: product.brand_id,
+        brand_name: product.brand_name,
+        seller_id: product.seller_id,
+        seller_name: product.seller_name,
+        is_active: product.is_active,
+        stock: product.quantity,
+        rating: product.rating_average ? Number(product.rating_average) : undefined,
+        reviews_count: product.rating_count,
+        sold_count: product.sales_count,
+        tags: product.tags || [],
+        created_at: product.created_at,
+        updated_at: product.updated_at,
+        is_featured: product.featured || false
+      }));
       
-      return json({
-        success: true,
-        data: {
-          products,
-          totalCount,
-          page,
-          limit,
-          facets
-        }
-      });
-    }
+      // Buscar facetas (categorias e marcas disponíveis)
+      const facetsQuery = `
+        WITH category_counts AS (
+          SELECT c.id, c.name, COUNT(p.id) as count
+          FROM categories c
+          INNER JOIN products p ON p.category_id = c.id
+          WHERE p.is_active = true AND c.is_active = true
+          GROUP BY c.id, c.name
+          HAVING COUNT(p.id) > 0
+          ORDER BY count DESC
+          LIMIT 20
+        ),
+        brand_counts AS (
+          SELECT b.id, b.name, COUNT(p.id) as count
+          FROM brands b
+          INNER JOIN products p ON p.brand_id = b.id
+          WHERE p.is_active = true AND b.is_active = true
+          GROUP BY b.id, b.name
+          HAVING COUNT(p.id) > 0
+          ORDER BY count DESC
+          LIMIT 20
+        )
+        SELECT 
+          json_build_object(
+            'categories', COALESCE(
+              (SELECT json_agg(row_to_json(cc)) FROM category_counts cc),
+              '[]'::json
+            ),
+            'brands', COALESCE(
+              (SELECT json_agg(row_to_json(bc)) FROM brand_counts bc),
+              '[]'::json
+            )
+          ) as facets
+      `;
+      
+      const facetsResult = await db.query(facetsQuery);
+      const facets = facetsResult[0].facets;
+      
+      return {
+        products: formattedProducts,
+        totalCount,
+        page,
+        limit,
+        facets
+      };
+    });
+    
+    return json({
+      success: true,
+      data: result
+    });
     
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
@@ -305,124 +226,4 @@ export const GET: RequestHandler = async ({ url }) => {
       }
     }, { status: 500 });
   }
-};
-
-// Funções auxiliares
-async function fetchProductImages(xata: any, productIds: string[]) {
-  if (productIds.length === 0) return {};
-  
-  const images = await xata.db.product_images
-    .filter({ product_id: { $any: productIds } })
-    .sort('display_order', 'asc')
-    .getAll();
-  
-  // Agrupar por produto
-  return images.reduce((acc: any, img: any) => {
-    const productId = typeof img.product_id === 'string' ? img.product_id : img.product_id?.id || '';
-    if (!acc[productId]) acc[productId] = [];
-    acc[productId].push(img.image_url);
-    return acc;
-  }, {});
-}
-
-function formatProducts(products: any[], imagesByProduct: any) {
-  return products.map(product => ({
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    description: product.description,
-    price: Number(product.price),
-    original_price: product.original_price ? Number(product.original_price) : undefined,
-    discount: product.original_price && product.price < product.original_price
-      ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
-      : undefined,
-    images: imagesByProduct[product.id] || [],
-    image: imagesByProduct[product.id]?.[0] || '',
-    category_id: product.category_id,
-    brand_id: product.brand_id,
-    seller_id: product.seller_id,
-    is_active: product.is_active,
-    stock: product.quantity,
-    rating: product.rating_average ? Number(product.rating_average) : undefined,
-    reviews_count: product.rating_count,
-    sold_count: product.sales_count,
-    tags: product.tags || [],
-    created_at: product.created_at,
-    updated_at: product.updated_at,
-    has_free_shipping: product.attributes?.free_shipping || false,
-    is_featured: product.featured || false
-  }));
-}
-
-async function fetchFacets(xata: any, baseFilters: any) {
-  // Buscar categorias e marcas com contagem otimizada
-  const [categoriesData, brandsData] = await Promise.all([
-    xata.db.categories
-      .filter({ is_active: true })
-      .select(['id', 'name'])
-      .getMany({ pagination: { size: 50 } }),
-    xata.db.brands
-      .filter({ is_active: true })
-      .select(['id', 'name'])
-      .getMany({ pagination: { size: 20 } })
-  ]);
-  
-  // Contar produtos apenas para categorias/marcas retornadas
-  const [categoryCountsMap, brandCountsMap] = await Promise.all([
-    countProductsByField(xata, 'category_id', categoriesData.map((c: any) => c.id)),
-    countProductsByField(xata, 'brand_id', brandsData.map((b: any) => b.id))
-  ]);
-  
-  // Montar facetas com contagem
-  const categories = categoriesData
-    .map((cat: any) => ({
-      id: cat.id,
-      name: cat.name,
-      count: categoryCountsMap[cat.id] || 0
-    }))
-    .filter((c: any) => c.count > 0)
-    .sort((a: any, b: any) => b.count - a.count);
-  
-  const brands = brandsData
-    .map((brand: any) => ({
-      id: brand.id,
-      name: brand.name,
-      count: brandCountsMap[brand.id] || 0
-    }))
-    .filter((b: any) => b.count > 0)
-    .sort((a: any, b: any) => b.count - a.count);
-  
-  return {
-    categories,
-    brands,
-    priceRanges: [],
-    tags: []
-  };
-}
-
-async function countProductsByField(xata: any, field: string, values: string[]) {
-  if (values.length === 0) return {};
-  
-  // Fazer contagens em paralelo
-  const counts = await Promise.all(
-    values.map(async value => {
-      const count = await xata.db.products
-        .filter({
-          is_active: true,
-          [field]: value
-        })
-        .summarize({
-          summaries: { count: { count: '*' } }
-        })
-        .then((r: any) => r.summaries[0]?.count || 0);
-      
-      return { value, count };
-    })
-  );
-  
-  // Converter para mapa
-  return counts.reduce((acc, { value, count }) => {
-    acc[value] = count;
-    return acc;
-  }, {} as Record<string, number>);
-} 
+}; 
