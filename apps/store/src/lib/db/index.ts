@@ -1,9 +1,9 @@
 import { Database } from '@mktplace/db-hyperdrive'
-import { building } from '$app/environment'
+import { dev } from '$app/environment'
 
 export function getDatabase(platform?: App.Platform) {
-  // Em desenvolvimento ou build, usa PostgreSQL local
-  if (!platform?.env?.HYPERDRIVE_DB) {
+  // Em desenvolvimento, sempre usa PostgreSQL local
+  if (dev || !platform?.env?.HYPERDRIVE_DB) {
     const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
     return new Database({
       provider: 'postgres',
