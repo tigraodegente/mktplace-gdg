@@ -100,7 +100,7 @@
 				<div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
 			</div>
 		{:else}
-			<ul class="flex items-center gap-6 h-full">
+			<ul class="flex items-center gap-8 h-full">
 				{#each categories as category}
 					<li
 						class="relative h-full flex items-center"
@@ -109,13 +109,11 @@
 					>
 						<a
 							href="/categoria/{category.slug}"
-							class="flex items-center gap-2 text-white hover:text-white/90 transition-colors px-3 py-2 rounded-lg hover:bg-white/10"
+							class="text-white hover:text-white/80 transition-colors text-sm font-medium"
 						>
-							<span class="font-medium">
-								{category.name}
-							</span>
+							{category.name}
 							{#if category.children && category.children.length > 0}
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-3 h-3 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 								</svg>
 							{/if}
@@ -124,7 +122,7 @@
 						<!-- Submenu -->
 						{#if category.children && category.children.length > 0 && hoveredCategory === category.id}
 							<div 
-								class="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl min-w-[280px] z-50"
+								class="absolute top-full left-0 mt-0 bg-white rounded-b-lg shadow-xl min-w-[280px] z-50"
 								transition:fly={{ y: -10, duration: 200 }}
 								onmouseenter={() => handleMouseEnter(category.id)}
 								onmouseleave={handleMouseLeave}
@@ -160,16 +158,21 @@
 					</li>
 				{/each}
 				
+				<!-- Separador -->
+				<li class="h-full flex items-center">
+					<div class="w-px h-5 bg-white/20"></div>
+				</li>
+				
 				<!-- Link para ver todas -->
 				<li class="h-full flex items-center">
 					<a
 						href="/categorias"
-						class="flex items-center gap-2 text-white hover:text-white/90 transition-colors px-3 py-2 rounded-lg hover:bg-white/10"
+						class="flex items-center gap-2 text-white hover:text-white/80 transition-colors text-sm font-medium"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
 						</svg>
-						<span class="font-medium">Todas as categorias</span>
+						<span>Todas as categorias</span>
 					</a>
 				</li>
 			</ul>
@@ -210,7 +213,7 @@
 				</h2>
 				<button
 					onclick={toggleMobileMenu}
-					class="p-2"
+					class="p-1 -mr-1"
 					aria-label="Fechar menu"
 				>
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,11 +230,11 @@
 					</div>
 				{:else if activeMobileCategory}
 					<!-- Subcategorias -->
-					<div class="py-2">
+					<div>
 						<!-- Botão voltar -->
 						<button
 							onclick={goBackMobile}
-							class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 transition-colors"
+							class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 transition-colors border-b"
 						>
 							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -242,12 +245,10 @@
 						<!-- Link para categoria pai -->
 						<a
 							href="/categoria/{activeMobileCategory.slug}"
-							class="block px-4 py-3 bg-gray-50 border-y"
+							class="block px-4 py-3 bg-gray-50 font-medium text-[#00BFB3]"
 							onclick={toggleMobileMenu}
 						>
-							<div class="font-medium text-[#00BFB3]">
-								Ver todos em {activeMobileCategory.name}
-							</div>
+							Ver todos em {activeMobileCategory.name}
 						</a>
 						
 						<!-- Subcategorias -->
@@ -255,7 +256,7 @@
 							{#each activeMobileCategory.children as subCategory}
 								<a
 									href="/categoria/{subCategory.slug}"
-									class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+									class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
 									onclick={toggleMobileMenu}
 								>
 									<span class="text-gray-700">{subCategory.name}</span>
@@ -268,11 +269,11 @@
 					</div>
 				{:else}
 					<!-- Categorias principais -->
-					<div class="py-2">
+					<div>
 						{#each categories as category}
 							<button
 								onclick={() => selectMobileCategory(category)}
-								class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+								class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
 							>
 								<div class="flex items-center gap-3">
 									<span class="text-gray-700">{category.name}</span>
@@ -289,10 +290,10 @@
 						{/each}
 						
 						<!-- Link para ver todas -->
-						<div class="border-t mt-2">
+						<div class="border-t border-gray-200 bg-gray-50">
 							<a
 								href="/categorias"
-								class="flex items-center justify-center px-4 py-3 text-[#00BFB3] font-medium"
+								class="flex items-center justify-center px-4 py-4 text-[#00BFB3] font-medium"
 								onclick={toggleMobileMenu}
 							>
 								Ver todas as categorias
