@@ -2,6 +2,8 @@
 	import { formatCurrency } from '@mktplace/utils';
 	import type { Product } from '@mktplace/shared-types';
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { wishlistStore } from '$lib/stores/wishlistStore';
+	import { toastStore } from '$lib/stores/toastStore';
 	
 	// Props
 	let { product }: { product: Product } = $props();
@@ -22,7 +24,7 @@
 	};
 	
 	// State
-	let isFavorite = $state(false);
+	let isFavorite = $state(wishlistStore.hasItem(product.id));
 	let isAddingToCart = $state(false);
 	
 	// Computed values
@@ -69,8 +71,17 @@
 	function handleToggleFavorite(e: Event) {
 		e.preventDefault();
 		e.stopPropagation();
+		
+		const wasInWishlist = isFavorite;
+		wishlistStore.toggleItem(product);
 		isFavorite = !isFavorite;
-		// TODO: Implementar lógica de favoritos com store/API
+		
+		// Mostrar notificação
+		if (wasInWishlist) {
+			toastStore.info('Produto removido dos favoritos');
+		} else {
+			toastStore.success('Produto adicionado aos favoritos!');
+		}
 	}
 	
 	async function handleAddToCart(e: Event) {
@@ -86,6 +97,9 @@
 			product.seller_name || 'Loja Exemplo',
 			1
 		);
+		
+		// Mostrar notificação
+		toastStore.success('Produto adicionado ao carrinho!');
 		
 		// Feedback visual
 		setTimeout(() => {

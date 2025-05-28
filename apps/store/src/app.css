@@ -2,6 +2,17 @@
 
 /* Estilos compartilhados do Marketplace GDG */
 
+/* Reset e Base */
+body {
+  font-family: 'Lato', sans-serif;
+  font-weight: 400;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font-feature-settings: 'liga' off, 'clig' off;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Variáveis de Cores */
 :root {
   /* Cores Principais */

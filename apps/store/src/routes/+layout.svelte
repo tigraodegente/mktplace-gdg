@@ -7,7 +7,10 @@
 	import SearchBox from '$lib/components/search/SearchBox.svelte';
 	import CategoryMenu from '$lib/components/CategoryMenu.svelte';
 	import CartPreview from '$lib/components/cart/CartPreview.svelte';
+	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
+	import MobileMenu from '$lib/components/layout/MobileMenu.svelte';
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { wishlistCount } from '$lib/stores/wishlistStore';
 
 	// Tipo local para Product
 	interface Product {
@@ -22,6 +25,7 @@
 
 	let userMenuOpen = $state(false);
 	let cartPreviewOpen = $state(false);
+	let mobileMenuOpen = $state(false);
 	
 	// Stores
 	const { sellerGroups } = advancedCartStore;
@@ -322,6 +326,11 @@
 							<svg xmlns="http://www.w3.org/2000/svg" width="28" height="26" viewBox="0 0 28 26" fill="none">
 								<path d="M9.6417 2C11.0691 2 12.5816 2.69442 14.1572 4.0601C17.3082 1.58335 21.518 1.64949 24.0799 4.34117C25.5092 5.84876 26.3115 7.8889 26.3115 10.0155C26.3115 12.1422 25.5092 14.1823 24.0799 15.6899L24.0547 15.7164L16.7505 22.9317C16.0489 23.6255 15.1212 24.012 14.1572 24.012C13.1931 24.012 12.2655 23.6255 11.5638 22.9317L4.25969 15.7164L4.23448 15.6899C3.16683 14.5676 2.4401 13.1385 2.14609 11.583C1.85208 10.0275 2.00398 8.4154 2.5826 6.95044C3.16123 5.48549 4.14061 4.23337 5.39704 3.35225C6.65346 2.47114 8.13055 2.00058 9.6417 2Z" fill="#F17179" stroke="white" stroke-width="2.24368"/>
 							</svg>
+							{#if $wishlistCount > 0}
+								<span class="absolute -top-2 -right-2 bg-white text-[#00BFB3] text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+									{$wishlistCount}
+								</span>
+							{/if}
 						</a>
 						
 						<button 
@@ -415,8 +424,16 @@
 <!-- Header Mobile -->
 <header class="lg:hidden bg-[#00BBB4] sticky top-0 z-20">
 	<div class="flex items-center justify-between p-4">
-		<!-- Category Menu -->
-		<CategoryMenu />
+		<!-- Menu Button -->
+		<button 
+			onclick={() => mobileMenuOpen = true}
+			class="text-white p-1"
+			aria-label="Abrir menu"
+		>
+			<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+				<path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+			</svg>
+		</button>
 		
 		<!-- Logo -->
 		<a href="/" class="flex-1 flex justify-center">
@@ -425,10 +442,15 @@
 		
 		<!-- Actions -->
 		<div class="flex items-center gap-4">
-			<a href="/favoritos" class="text-white" aria-label="Favoritos">
+			<a href="/favoritos" class="relative text-white" aria-label="Favoritos">
 				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
 				</svg>
+				{#if $wishlistCount > 0}
+					<span class="absolute -top-2 -right-2 bg-white text-[#00BBB4] text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+						{$wishlistCount}
+					</span>
+				{/if}
 			</a>
 			
 			<button 
@@ -461,5 +483,11 @@
 
 <Footer />
 
+<!-- Mobile Menu -->
+<MobileMenu bind:isOpen={mobileMenuOpen} />
+
 <!-- Cart Preview -->
 <CartPreview bind:isOpen={cartPreviewOpen} />
+
+<!-- Toast Container -->
+<ToastContainer />

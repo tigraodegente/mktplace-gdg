@@ -40,39 +40,39 @@
     pointer-events: none;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 12px;
   }
   
   .toast-group--top-right {
-    top: 1rem;
-    right: 1rem;
+    top: 16px;
+    right: 16px;
   }
   
   .toast-group--top-left {
-    top: 1rem;
-    left: 1rem;
+    top: 16px;
+    left: 16px;
   }
   
   .toast-group--bottom-right {
-    bottom: 1rem;
-    right: 1rem;
+    bottom: 16px;
+    right: 16px;
     flex-direction: column-reverse;
   }
   
   .toast-group--bottom-left {
-    bottom: 1rem;
-    left: 1rem;
+    bottom: 16px;
+    left: 16px;
     flex-direction: column-reverse;
   }
   
   .toast-group--top-center {
-    top: 1rem;
+    top: 16px;
     left: 50%;
     transform: translateX(-50%);
   }
   
   .toast-group--bottom-center {
-    bottom: 1rem;
+    bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
     flex-direction: column-reverse;
@@ -84,15 +84,15 @@
     .toast-group--top-left,
     .toast-group--bottom-right,
     .toast-group--bottom-left {
-      left: 1rem;
-      right: 1rem;
+      left: 16px;
+      right: 16px;
       transform: none;
     }
     
     .toast-group--top-center,
     .toast-group--bottom-center {
-      left: 1rem;
-      right: 1rem;
+      left: 16px;
+      right: 16px;
       transform: none;
     }
   }

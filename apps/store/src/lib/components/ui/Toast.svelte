@@ -28,44 +28,43 @@
   let progress = $state(100);
   let progressInterval: ReturnType<typeof setInterval>;
   
-  const typeStyles = {
+  const typeConfig = {
     success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      icon: 'text-green-500',
-      title: 'text-green-800',
-      message: 'text-green-700'
+      bg: '#E8F8F7',
+      border: '#00BFB3',
+      icon: '#00BFB3',
+      iconBg: '#00BFB3',
+      title: '#00A89D',
+      message: '#2C1D1D',
+      progressBar: '#00BFB3'
     },
     error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      icon: 'text-red-500',
-      title: 'text-red-800',
-      message: 'text-red-700'
+      bg: '#FEE8EA',
+      border: '#F17179',
+      icon: '#F17179',
+      iconBg: '#F17179',
+      title: '#E85D65',
+      message: '#2C1D1D',
+      progressBar: '#F17179'
     },
     warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      icon: 'text-yellow-500',
-      title: 'text-yellow-800',
-      message: 'text-yellow-700'
+      bg: '#FFF4E5',
+      border: '#FF8403',
+      icon: '#FF8403',
+      iconBg: '#FF8403',
+      title: '#E07709',
+      message: '#2C1D1D',
+      progressBar: '#FF8403'
     },
     info: {
-      bg: 'bg-cyan-50',
-      border: 'border-cyan-200',
-      icon: 'text-[#00BFB3]',
-      title: 'text-cyan-800',
-      message: 'text-cyan-700'
+      bg: '#F0F9FF',
+      border: '#0EA5E9',
+      icon: '#0EA5E9',
+      iconBg: '#0EA5E9',
+      title: '#0284C7',
+      message: '#2C1D1D',
+      progressBar: '#0EA5E9'
     }
-  };
-  
-  const positionClasses = {
-    'top-right': 'top-4 right-4',
-    'top-left': 'top-4 left-4',
-    'bottom-right': 'bottom-4 right-4',
-    'bottom-left': 'bottom-4 left-4',
-    'top-center': 'top-4 left-1/2 -translate-x-1/2',
-    'bottom-center': 'bottom-4 left-1/2 -translate-x-1/2'
   };
   
   const flyDirection = {
@@ -101,78 +100,255 @@
     };
   });
   
-  const styles = typeStyles[type];
+  const config = typeConfig[type];
 </script>
 
 {#if visible}
   <div
-    class="fixed {positionClasses[position]} z-50 pointer-events-none"
+    class="toast-wrapper"
     transition:fly={{ ...flyDirection[position], duration: 300 }}
   >
     <div
-      class="pointer-events-auto max-w-sm w-full {styles.bg} {styles.border} border rounded-lg shadow-lg overflow-hidden"
+      class="toast"
+      style="background-color: {config.bg}; border-color: {config.border};"
       role="alert"
       aria-live="polite"
     >
-      <div class="p-4">
-        <div class="flex items-start">
-          <!-- Icon -->
-          <div class="flex-shrink-0">
-            {#if type === 'success'}
-              <svg class="w-5 h-5 {styles.icon}" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-              </svg>
-            {:else if type === 'error'}
-              <svg class="w-5 h-5 {styles.icon}" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-              </svg>
-            {:else if type === 'warning'}
-              <svg class="w-5 h-5 {styles.icon}" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-              </svg>
-            {:else}
-              <svg class="w-5 h-5 {styles.icon}" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-              </svg>
-            {/if}
-          </div>
-          
-          <!-- Content -->
-          <div class="ml-3 flex-1">
-            {#if title}
-              <h3 class="text-sm font-medium {styles.title}">
-                {title}
-              </h3>
-            {/if}
-            <p class="text-sm {styles.message} {title ? 'mt-1' : ''}">
-              {message}
-            </p>
-          </div>
-          
-          <!-- Close button -->
-          {#if dismissible}
-            <button
-              onclick={dismiss}
-              class="ml-4 flex-shrink-0 inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00BFB3]"
-              aria-label="Fechar notificação"
-            >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-              </svg>
-            </button>
+      <div class="toast-content">
+        <!-- Icon -->
+        <div class="toast-icon" style="background-color: {config.iconBg};">
+          {#if type === 'success'}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 10L9 12L13 8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          {:else if type === 'error'}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M12 8L8 12M8 8L12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          {:else if type === 'warning'}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 6V10M10 14H10.01" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          {:else}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 14V10M10 6H10.01" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           {/if}
         </div>
+        
+        <!-- Text Content -->
+        <div class="toast-text">
+          {#if title}
+            <h3 class="toast-title" style="color: {config.title};">
+              {title}
+            </h3>
+          {/if}
+          <p class="toast-message" style="color: {config.message};">
+            {message}
+          </p>
+        </div>
+        
+        <!-- Close button -->
+        {#if dismissible}
+          <button
+            onclick={dismiss}
+            class="toast-close"
+            aria-label="Fechar notificação"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M12 4L4 12M4 4L12 12" stroke="#818181" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        {/if}
       </div>
       
       <!-- Progress bar -->
       {#if duration > 0}
-        <div class="h-1 bg-gray-200 relative overflow-hidden">
+        <div class="toast-progress">
           <div
-            class="absolute top-0 left-0 h-full bg-current transition-all duration-100 ease-linear {styles.icon}"
-            style="width: {progress}%"
+            class="toast-progress-bar"
+            style="width: {progress}%; background-color: {config.progressBar};"
           ></div>
         </div>
       {/if}
     </div>
   </div>
-{/if} 
+{/if}
+
+<style>
+  .toast-wrapper {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    max-width: 400px;
+    width: calc(100vw - 32px);
+  }
+  
+  /* Position classes */
+  :global(.toast-group--top-right) .toast-wrapper {
+    top: 16px;
+    right: 16px;
+  }
+  
+  :global(.toast-group--top-left) .toast-wrapper {
+    top: 16px;
+    left: 16px;
+  }
+  
+  :global(.toast-group--bottom-right) .toast-wrapper {
+    bottom: 16px;
+    right: 16px;
+  }
+  
+  :global(.toast-group--bottom-left) .toast-wrapper {
+    bottom: 16px;
+    left: 16px;
+  }
+  
+  :global(.toast-group--top-center) .toast-wrapper {
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  :global(.toast-group--bottom-center) .toast-wrapper {
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .toast {
+    pointer-events: auto;
+    width: 100%;
+    border: 2px solid;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+    font-family: 'Lato', sans-serif;
+  }
+  
+  .toast-content {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .toast-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .toast-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  .toast-title {
+    font-size: 15px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 1.4;
+    margin: 0 0 2px 0;
+    letter-spacing: 0.01em;
+    font-feature-settings: 'liga' off, 'clig' off;
+  }
+  
+  .toast-message {
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.4;
+    margin: 0;
+    letter-spacing: 0.01em;
+    font-feature-settings: 'liga' off, 'clig' off;
+  }
+  
+  .toast-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    padding: 0;
+    align-self: center;
+  }
+  
+  .toast-close:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .toast-close:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #00BFB3;
+  }
+  
+  .toast-progress {
+    height: 3px;
+    background-color: rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .toast-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transition: width 100ms linear;
+  }
+  
+  /* Animação de entrada */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .toast {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  /* Responsivo */
+  @media (max-width: 640px) {
+    .toast-wrapper {
+      max-width: calc(100vw - 32px);
+    }
+    
+    .toast-content {
+      padding: 12px;
+    }
+    
+    .toast-icon {
+      width: 28px;
+      height: 28px;
+    }
+    
+    .toast-title {
+      font-size: 14px;
+    }
+    
+    .toast-message {
+      font-size: 13px;
+    }
+  }
+</style> 

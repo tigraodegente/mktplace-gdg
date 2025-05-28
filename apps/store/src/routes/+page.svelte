@@ -10,6 +10,8 @@
     name: string;
     slug: string;
     price: number;
+    category_id: string;
+    seller_id: string;
     [key: string]: any;
   }
   
