@@ -23,6 +23,7 @@ export const GET: RequestHandler = async ({ url }) => {
     const hasFreeShipping = url.searchParams.get('frete_gratis') === 'true';
     const inStock = url.searchParams.get('disponivel') !== 'false';
     const minRating = url.searchParams.get('avaliacao') ? Number(url.searchParams.get('avaliacao')) : undefined;
+    const deliveryTime = url.searchParams.get('entrega') || '';
     const sortBy = url.searchParams.get('ordenar') || 'relevancia';
     const page = Math.max(1, Number(url.searchParams.get('pagina')) || 1);
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('itens')) || 20));
@@ -63,11 +64,46 @@ export const GET: RequestHandler = async ({ url }) => {
     }
     
     if (hasDiscount) {
-      filters.$all = [
-        { original_price: { $exists: true } },
-        { original_price: { $gt: 0 } },
-        { price: { $lt: { $ref: 'original_price' } } }
-      ];
+      // Usar comparação simples ao invés de $ref que pode não ser suportado
+      // Verificar se tem original_price maior que zero e maior que price
+      filters.original_price = { $gt: 0 };
+      // Adicionar verificação manual depois da query
+    }
+    
+    // Adicionar filtro de frete grátis
+    if (hasFreeShipping) {
+      // Usar o campo attributes.free_shipping
+      filters['attributes.free_shipping'] = true;
+    }
+    
+    // Adicionar filtro de tempo de entrega
+    if (deliveryTime) {
+      // Por enquanto, vamos usar tags ou atributos para filtrar
+      // Idealmente teríamos um campo específico para isso
+      switch (deliveryTime) {
+        case 'hoje':
+        case '24h':
+          // Produtos com entrega rápida geralmente têm tags específicas
+          if (!filters.$all) filters.$all = [];
+          filters.$all.push({
+            $any: [
+              { tags: { $includes: 'entrega-rapida' } },
+              { tags: { $includes: 'entrega-24h' } },
+              { tags: { $includes: 'pronta-entrega' } }
+            ]
+          });
+          break;
+        case '48h':
+          if (!filters.$all) filters.$all = [];
+          filters.$all.push({
+            $any: [
+              { tags: { $includes: 'entrega-48h' } },
+              { tags: { $includes: 'entrega-rapida' } }
+            ]
+          });
+          break;
+        // Para outros casos, não aplicar filtro específico por enquanto
+      }
     }
     
     // Processar busca por texto
@@ -117,8 +153,18 @@ export const GET: RequestHandler = async ({ url }) => {
       // (limitado a 1000 produtos para performance)
       const allResults = await query.getMany({ pagination: { size: 1000 } });
       
+      // Filtrar produtos com desconto se necessário (pós-processamento)
+      let filteredResults = allResults;
+      if (hasDiscount) {
+        filteredResults = allResults.filter(product => 
+          product.original_price && 
+          product.original_price > 0 && 
+          product.price < product.original_price
+        );
+      }
+      
       // Calcular scores e ordenar
-      const scoredProducts = allResults.map(product => ({
+      const scoredProducts = filteredResults.map(product => ({
         ...product,
         relevanceScore: calculateRelevanceScore(product, searchWords)
       }));
@@ -133,16 +179,37 @@ export const GET: RequestHandler = async ({ url }) => {
       const productIds = paginatedProducts.map(p => p.id);
       const images = await fetchProductImages(xata, productIds);
       
-      // Formatar produtos
-      const products = formatProducts(paginatedProducts, images);
-      
       // Buscar facetas em paralelo
       const [facets, totalCount] = await Promise.all([
         fetchFacets(xata, filters),
         xata.db.products.filter(filters).summarize({
           summaries: { count: { count: '*' } }
-        }).then(r => r.summaries[0]?.count || 0)
+        }).then(async r => {
+          // Se tem filtro de desconto, precisamos contar manualmente
+          if (hasDiscount) {
+            const allForCount = await xata.db.products.filter(filters).getMany({ pagination: { size: 5000 } });
+            return allForCount.filter(p => 
+              p.original_price && 
+              p.original_price > 0 && 
+              p.price < p.original_price
+            ).length;
+          }
+          return r.summaries[0]?.count || 0;
+        })
       ]);
+      
+      // Filtrar produtos com desconto se necessário (pós-processamento)
+      let finalResults = paginatedProducts;
+      if (hasDiscount) {
+        finalResults = paginatedProducts.filter(product => 
+          product.original_price && 
+          product.original_price > 0 && 
+          product.price < product.original_price
+        );
+      }
+      
+      // Formatar produtos
+      const products = formatProducts(finalResults, images);
       
       return json({
         success: true,
@@ -189,11 +256,32 @@ export const GET: RequestHandler = async ({ url }) => {
         fetchFacets(xata, filters),
         xata.db.products.filter(filters).summarize({
           summaries: { count: { count: '*' } }
-        }).then(r => r.summaries[0]?.count || 0)
+        }).then(async r => {
+          // Se tem filtro de desconto, precisamos contar manualmente
+          if (hasDiscount) {
+            const allForCount = await xata.db.products.filter(filters).getMany({ pagination: { size: 5000 } });
+            return allForCount.filter(p => 
+              p.original_price && 
+              p.original_price > 0 && 
+              p.price < p.original_price
+            ).length;
+          }
+          return r.summaries[0]?.count || 0;
+        })
       ]);
       
+      // Filtrar produtos com desconto se necessário (pós-processamento)
+      let finalResults = results.records;
+      if (hasDiscount) {
+        finalResults = results.records.filter(product => 
+          product.original_price && 
+          product.original_price > 0 && 
+          product.price < product.original_price
+        );
+      }
+      
       // Formatar produtos
-      const products = formatProducts(results.records, images);
+      const products = formatProducts(finalResults, images);
       
       return json({
         success: true,
@@ -281,28 +369,28 @@ async function fetchFacets(xata: any, baseFilters: any) {
   
   // Contar produtos apenas para categorias/marcas retornadas
   const [categoryCountsMap, brandCountsMap] = await Promise.all([
-    countProductsByField(xata, 'category_id', categoriesData.map(c => c.id)),
-    countProductsByField(xata, 'brand_id', brandsData.map(b => b.id))
+    countProductsByField(xata, 'category_id', categoriesData.map((c: any) => c.id)),
+    countProductsByField(xata, 'brand_id', brandsData.map((b: any) => b.id))
   ]);
   
   // Montar facetas com contagem
   const categories = categoriesData
-    .map(cat => ({
+    .map((cat: any) => ({
       id: cat.id,
       name: cat.name,
       count: categoryCountsMap[cat.id] || 0
     }))
-    .filter(c => c.count > 0)
-    .sort((a, b) => b.count - a.count);
+    .filter((c: any) => c.count > 0)
+    .sort((a: any, b: any) => b.count - a.count);
   
   const brands = brandsData
-    .map(brand => ({
+    .map((brand: any) => ({
       id: brand.id,
       name: brand.name,
       count: brandCountsMap[brand.id] || 0
     }))
-    .filter(b => b.count > 0)
-    .sort((a, b) => b.count - a.count);
+    .filter((b: any) => b.count > 0)
+    .sort((a: any, b: any) => b.count - a.count);
   
   return {
     categories,
