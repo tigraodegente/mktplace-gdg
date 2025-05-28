@@ -49,29 +49,6 @@
 			
 			if (data.success) {
 				categories = data.data;
-				
-				// TEMPORÁRIO: Adicionar subcategorias de teste
-				categories = categories.map(cat => {
-					if (cat.slug === 'brinquedos') {
-						return {
-							...cat,
-							children: [
-								{ id: 'sub1', name: 'Brinquedos Educativos', slug: 'brinquedos-educativos', productCount: 15 },
-								{ id: 'sub2', name: 'Brinquedos de Madeira', slug: 'brinquedos-madeira', productCount: 8 },
-								{ id: 'sub3', name: 'Brinquedos Musicais', slug: 'brinquedos-musicais', productCount: 12 }
-							]
-						};
-					} else if (cat.slug === 'cestos-organizadores') {
-						return {
-							...cat,
-							children: [
-								{ id: 'sub4', name: 'Cestos de Tecido', slug: 'cestos-tecido', productCount: 20 },
-								{ id: 'sub5', name: 'Cestos de Vime', slug: 'cestos-vime', productCount: 10 }
-							]
-						};
-					}
-					return cat;
-				});
 			}
 		} catch (error) {
 			console.error('Erro ao carregar categorias:', error);
@@ -115,92 +92,47 @@
 	}
 </script>
 
-<!-- Desktop Menu - Sempre aberto na horizontal -->
-<div class="hidden lg:block category-menu-container w-full {className}">
-	<nav class="relative h-full">
-		{#if isLoading}
-			<div class="flex items-center h-full">
-				<div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-			</div>
-		{:else}
-			<ul class="flex items-center justify-between h-full w-full">
-				{#each categories as category}
-					<li
-						class="relative h-full flex items-center"
+<!-- Desktop Menu -->
+<div class="hidden lg:block w-full h-full {className}">
+	<div class="w-full max-w-[1440px] mx-auto px-8 h-full">
+		<ul class="flex items-center justify-between w-full h-full">
+			{#each categories as category}
+				<li class="relative group h-full flex items-center">
+					<a
+						href="/categoria/{category.slug}"
+						class="flex items-center gap-1 px-3 py-2 text-white hover:text-white/90 transition-colors text-sm"
 						onmouseenter={() => handleMouseEnter(category.id)}
 						onmouseleave={handleMouseLeave}
 					>
-						<a
-							href="/categoria/{category.slug}"
-							class="text-white hover:text-white/80 transition-colors text-sm font-medium px-4"
-						>
-							{category.name}
-							{#if category.children && category.children.length > 0}
-								<svg class="w-3 h-3 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-								</svg>
-							{/if}
-						</a>
-						
-						<!-- Submenu -->
-						{#if category.children && category.children.length > 0 && hoveredCategory === category.id}
-							<div 
-								class="absolute top-full left-0 mt-0 bg-white rounded-b-lg shadow-lg min-w-[220px] z-50"
-								transition:fly={{ y: -10, duration: 200 }}
-								onmouseenter={() => handleMouseEnter(category.id)}
-								onmouseleave={handleMouseLeave}
-							>
-								<div class="py-1">
-									<!-- Link para categoria pai -->
-									<a
-										href="/categoria/{category.slug}"
-										class="flex items-center px-3 py-2 hover:bg-gray-50 transition-colors border-b text-sm"
-									>
-										<span class="font-medium text-gray-700 hover:text-[#00BFB3]">
-											Ver todos em {category.name}
-										</span>
-									</a>
-									
-									<!-- Subcategorias -->
-									{#each category.children as subCategory}
-										<a
-											href="/categoria/{subCategory.slug}"
-											class="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors group text-sm"
-										>
-											<span class="text-gray-700 group-hover:text-[#00BFB3] transition-colors">
-												{subCategory.name}
-											</span>
-											{#if subCategory.productCount}
-												<span class="text-xs text-gray-400">({subCategory.productCount})</span>
-											{/if}
-										</a>
-									{/each}
-								</div>
-							</div>
+						{category.name}
+						{#if category.children && category.children.length > 0}
+							<span class="text-xs">▼</span>
 						{/if}
-					</li>
-				{/each}
-				
-				<!-- Separador -->
-				<li class="h-full flex items-center">
-					<div class="w-px h-5 bg-white/20 mx-4"></div>
-				</li>
-				
-				<!-- Link para ver todas -->
-				<li class="h-full flex items-center">
-					<a
-						href="/categorias"
-						class="flex items-center gap-2 text-white hover:text-white/80 transition-colors text-sm font-medium px-4"
-					>
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-						</svg>
-						<span>Todas as categorias</span>
 					</a>
+					
+					{#if hoveredCategory === category.id && category.children && category.children.length > 0}
+						<div 
+							class="absolute top-full left-0 bg-white rounded-lg shadow-lg min-w-[220px] py-2 z-50"
+							onmouseenter={() => handleMouseEnter(category.id)}
+							onmouseleave={handleMouseLeave}
+						>
+							{#each category.children as subcategory}
+								<a 
+									href="/categoria/{subcategory.slug || subcategory.id}"
+									class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#00BFB3] transition-colors"
+								>
+									{subcategory.name}
+									{#if subcategory.productCount}
+										<span class="text-xs text-gray-500 ml-1">({subcategory.productCount})</span>
+									{/if}
+								</a>
+							{/each}
+						</div>
+					{/if}
 				</li>
-			</ul>
-		{/if}
-	</nav>
+			{/each}
+		</ul>
+	</div>
 </div>
 
 <!-- Mobile Menu Button -->
