@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getXataClient } from '$lib/xata';
 import bcrypt from 'bcryptjs';
+import { nanoid } from 'nanoid';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
@@ -49,31 +50,55 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     
-    // Criar novo usuário no Xata
+    // Criar novo usuário no Xata (sem ID - será gerado automaticamente)
     const newUser = await xata.db.users.create({
       email,
       password_hash: passwordHash,
       name,
       role,
       is_active: true,
-      email_verified: false,
-      created_at: new Date().toISOString()
+      email_verified: false
     });
     
     // Se for vendedor, criar perfil de vendedor
     if (role === 'seller') {
+      const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
+      
       await xata.db.sellers.create({
         user_id: newUser.id,
-        name,
-        email,
-        slug: email.split('@')[0] + '-' + Date.now(),
+        company_name: name, // Usar o nome como nome da empresa inicialmente
+        slug,
+        description: `Loja de ${name}`,
         is_active: false, // Vendedor precisa ser aprovado
-        commission_rate: 10, // Taxa padrão de 10%
-        created_at: new Date().toISOString()
+        is_verified: false,
+        rating: 0,
+        total_sales: 0
       });
     }
     
-    // Criar sessão
+    // Criar sessão na tabela sessions
+    const sessionToken = nanoid(32);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
+    
+    await xata.db.sessions.create({
+      user_id: newUser.id,
+      token: sessionToken,
+      ip_address: request.headers.get('x-forwarded-for') || 'unknown',
+      user_agent: request.headers.get('user-agent') || 'unknown',
+      expires_at: expiresAt
+    });
+    
+    // Criar sessão no cookie
+    cookies.set('session_token', sessionToken, {
+      path: '/',
+      httpOnly: true,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
+    });
+    
+    // Também manter o cookie antigo para compatibilidade
     cookies.set('session', JSON.stringify({
       userId: newUser.id,
       email: newUser.email,
@@ -82,9 +107,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }), {
       path: '/',
       httpOnly: true,
-      secure: import.meta.env.PROD, // true em produção (Cloudflare)
+      secure: import.meta.env.PROD,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 dias
+      maxAge: 60 * 60 * 24 * 7
     });
     
     return json({

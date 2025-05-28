@@ -5,27 +5,58 @@ import { getXataClient } from '$lib/xata';
 // Esta rota sempre retorna 200, evitando o erro 401 no console
 export const GET: RequestHandler = async ({ cookies }) => {
   try {
-    const sessionCookie = cookies.get('session');
+    // Verificar token da sessão
+    const sessionToken = cookies.get('session_token');
     
-    if (!sessionCookie) {
-      // Retorna 200 mas com authenticated: false
+    if (!sessionToken) {
+      // Tentar compatibilidade com sessão antiga
+      const oldSession = cookies.get('session');
+      if (oldSession) {
+        try {
+          const sessionData = JSON.parse(oldSession);
+          const xata = getXataClient();
+          const user = await xata.db.users.read(sessionData.userId);
+          
+          if (user && user.is_active) {
+            return json({
+              authenticated: true,
+              user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+              }
+            });
+          }
+        } catch (e) {
+          // Sessão antiga inválida
+        }
+      }
+      
+      // Não autenticado, mas retorna 200
       return json({
         authenticated: false,
         user: null
       });
     }
     
-    const session = JSON.parse(sessionCookie);
-    
-    // Buscar usuário atualizado do Xata
+    // Buscar sessão no banco
     const xata = getXataClient();
-    const user = await xata.db.users
-      .filter({ id: session.userId })
+    const session = await xata.db.sessions
+      .filter({ token: sessionToken })
       .getFirst();
     
-    if (!user || !user.is_active) {
-      // Limpar cookie se usuário não existe ou está inativo
-      cookies.delete('session', { path: '/' });
+    if (!session) {
+      return json({
+        authenticated: false,
+        user: null
+      });
+    }
+    
+    // Verificar se a sessão expirou
+    if (new Date(session.expires_at) < new Date()) {
+      // Deletar sessão expirada
+      await xata.db.sessions.delete(session.id);
       
       return json({
         authenticated: false,
@@ -33,19 +64,34 @@ export const GET: RequestHandler = async ({ cookies }) => {
       });
     }
     
+    // Buscar dados do usuário
+    const user = await xata.db.users.read(session.user_id);
+    
+    if (!user || !user.is_active) {
+      return json({
+        authenticated: false,
+        user: null
+      });
+    }
+    
+    // Atualizar última atividade da sessão
+    await xata.db.sessions.update(session.id, {
+      updated_at: new Date()
+    });
+    
     return json({
       authenticated: true,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
-        email_verified: user.email_verified
+        role: user.role
       }
     });
     
   } catch (error) {
-    // Mesmo em caso de erro, retorna 200
+    console.error('Erro ao verificar sessão:', error);
+    // Mesmo com erro, retorna 200 com authenticated: false
     return json({
       authenticated: false,
       user: null

@@ -203,7 +203,8 @@
 <style>
 	/* ===== Base Card Styles ===== */
 	.product-card {
-		width: 262.65px;
+		width: 100%;
+		max-width: 262.65px;
 		display: flex;
 		flex-direction: column;
 		background: transparent;
@@ -234,8 +235,8 @@
 	/* ===== Image Container ===== */
 	.product-card__image-container {
 		position: relative;
-		width: 262.65px;
-		height: 350.2px;
+		width: 100%;
+		aspect-ratio: 262.65 / 350.2;
 		overflow: hidden;
 		border-radius: 12px;
 		background: #F5F5F5;
@@ -568,14 +569,7 @@
 	/* ===== Responsive Design ===== */
 	@media (max-width: 768px) {
 		.product-card {
-			width: 100%;
-			max-width: 262.65px;
-		}
-		
-		.product-card__image-container {
-			width: 100%;
-			height: auto;
-			aspect-ratio: 262.65 / 350.2;
+			max-width: none;
 		}
 		
 		.product-card__title {
@@ -588,5 +582,10 @@
 		.product-card__price-pix {
 			font-size: 15px;
 		}
+	}
+	
+	/* Remove grid-specific styles */
+	:global(.grid) .product-card {
+		max-width: none;
 	}
 </style> 

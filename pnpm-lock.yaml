@@ -214,18 +214,15 @@ importers:
 
   apps/store:
     dependencies:
-      '@mktplace/shared-types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
-      '@mktplace/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@mktplace/utils':
         specifier: workspace:*
         version: link:../../packages/utils
       '@mktplace/xata-client':
         specifier: workspace:*
         version: link:../../packages/xata-client
+      nanoid:
+        specifier: ^5.1.5
+        version: 5.1.5
     devDependencies:
       '@eslint/compat':
         specifier: ^1.2.5
@@ -316,13 +313,6 @@ importers:
         version: 5.8.3
 
   packages/ui:
-    dependencies:
-      '@mktplace/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
-      '@mktplace/utils':
-        specifier: workspace:*
-        version: link:../utils
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^3.0.0
@@ -389,8 +379,8 @@ importers:
   packages/xata-client:
     dependencies:
       '@xata.io/client':
-        specifier: ^0.29.0
-        version: 0.29.5(typescript@5.8.3)
+        specifier: ^0.30.1
+        version: 0.30.1(typescript@5.8.3)
     devDependencies:
       '@mktplace/shared-types':
         specifier: workspace:*
@@ -1650,11 +1640,6 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@xata.io/client@0.29.5':
-    resolution: {integrity: sha512-b55dmPVNVFOE5nj2F2G6t9l/d5yYBhIu5X5w3rznhhsriGHkrzn93tqJexIZPS77E7f/yDXcFz06KbvR3bHK5w==}
-    peerDependencies:
-      typescript: '>=4.5'
-
   '@xata.io/client@0.30.1':
     resolution: {integrity: sha512-dAzDPHmIfenVIpF39m1elmW5ngjWu2mO8ZqJBN7dmYdXr98uhPANfLdVZnc3mUNG+NH37LqY1dSO862hIo2oRw==}
     peerDependencies:
@@ -2905,6 +2890,11 @@ packages:
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
+  nanoid@5.1.5:
+    resolution: {integrity: sha512-Ir/+ZpE9fDsNH0hQ3C68uyThDXzYcim2EqcZ8zn8Chtt1iylPT9xXJB0kPCnqzgcEGikO9RxSrh63MsmVCU7Fw==}
+    engines: {node: ^18 || >=20}
     hasBin: true
 
   natural-compare@1.4.0:
@@ -5232,10 +5222,6 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@xata.io/client@0.29.5(typescript@5.8.3)':
-    dependencies:
-      typescript: 5.8.3
-
   '@xata.io/client@0.30.1(typescript@5.8.3)':
     dependencies:
       typescript: 5.8.3
@@ -6446,6 +6432,8 @@ snapshots:
   mute-stream@2.0.0: {}
 
   nanoid@3.3.11: {}
+
+  nanoid@5.1.5: {}
 
   natural-compare@1.4.0: {}
 

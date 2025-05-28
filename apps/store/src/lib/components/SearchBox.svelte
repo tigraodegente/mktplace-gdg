@@ -47,6 +47,15 @@
 			}
 		}, 300);
 	}
+	
+	// Limpar sugestões quando focar no campo com texto
+	function handleFocus() {
+		searchFocused = true;
+		// Se tem texto no campo mas não está buscando, limpar sugestões para mostrar histórico
+		if (searchQuery.length > 0 && !isSearching) {
+			suggestions = [];
+		}
+	}
 
 	function handleSearchSubmit(e: Event) {
 		e.preventDefault();
@@ -56,16 +65,22 @@
 	}
 
 	function performSearch(query: string) {
+		searchQuery = query; // Preencher o campo com o termo buscado
 		searchService.addToHistory(query);
 		searchFocused = false;
 		goto(`/busca?q=${encodeURIComponent(query)}`);
 	}
 
 	function selectSuggestion(suggestion: SearchSuggestion) {
-		if (suggestion.type === 'product') {
-			goto(`/produto/${suggestion.id}`);
-		} else if (suggestion.type === 'category') {
-			goto(`/categoria/${suggestion.id}`);
+		// Fechar o dropdown imediatamente
+		searchFocused = false;
+		
+		if (suggestion.type === 'product' && suggestion.slug) {
+			goto(`/produto/${suggestion.slug}`);
+		} else if (suggestion.type === 'category' && suggestion.slug) {
+			goto(`/categoria/${suggestion.slug}`);
+		} else if (suggestion.type === 'brand' && suggestion.slug) {
+			goto(`/busca?marca=${suggestion.id}`);
 		} else {
 			performSearch(suggestion.text);
 		}
@@ -78,7 +93,7 @@
 
 	function handleKeyDown(e: KeyboardEvent) {
 		const totalItems = suggestions.length || 
-			(searchQuery.length < 2 ? searchHistory.length + popularSearches.length : 0);
+			(searchQuery.length === 0 ? searchHistory.length : 0);
 
 		switch (e.key) {
 			case 'ArrowDown':
@@ -94,12 +109,9 @@
 				if (selectedIndex >= 0) {
 					if (suggestions.length > 0) {
 						selectSuggestion(suggestions[selectedIndex]);
-					} else if (searchQuery.length < 2) {
-						// Selecionar do histórico ou populares
-						const allItems = [...searchHistory, ...popularSearches];
-						if (selectedIndex < allItems.length) {
-							performSearch(allItems[selectedIndex]);
-						}
+					} else if (searchQuery.length === 0 && selectedIndex < searchHistory.length) {
+						// Selecionar do histórico
+						performSearch(searchHistory[selectedIndex]);
 					}
 				} else {
 					handleSearchSubmit(e);
@@ -136,12 +148,11 @@
 			{placeholder}
 			bind:value={searchQuery}
 			oninput={handleSearchInput}
-			onfocus={() => searchFocused = true}
+			onfocus={handleFocus}
 			onkeydown={handleKeyDown}
 			class="w-full h-[42px] pl-6 pr-12 bg-white border border-gray-300 rounded-[8.42px] text-gray-600 placeholder-gray-400 text-base focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all"
 			autocomplete="off"
 			aria-label="Buscar produtos"
-			aria-expanded={searchFocused}
 			aria-controls="search-dropdown"
 		/>
 		
@@ -161,7 +172,7 @@
 	</form>
 	
 	<!-- Search Dropdown -->
-	{#if searchFocused}
+	{#if searchFocused && (searchQuery.length >= 2 || searchQuery.length === 0)}
 		<div 
 			id="search-dropdown"
 			class="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[600px] overflow-y-auto z-50"
@@ -268,49 +279,52 @@
 						Ver todos os resultados para "{searchQuery}" →
 					</button>
 				</div>
-			{:else if searchQuery.length < 2}
-				<!-- Histórico e sugestões -->
-				{#if searchHistory.length > 0}
-					<div class="p-4 border-b border-gray-100">
-						<div class="flex items-center justify-between mb-3">
-							<h3 class="text-sm font-semibold text-gray-700">Buscas recentes</h3>
-							<button 
-								onclick={clearSearchHistory}
-								class="text-xs text-gray-500 hover:text-gray-700"
-							>
-								Limpar
-							</button>
-						</div>
-						<div class="space-y-1">
-							{#each searchHistory as historyItem, index}
-								{@const isSelected = index === selectedIndex}
+			{:else if searchQuery.length === 0 || (searchQuery.length > 0 && suggestions.length === 0 && !isSearching)}
+				<!-- Histórico e sugestões quando campo vazio ou quando tem texto mas sem resultados ativos -->
+				<div>
+					{#if searchHistory.length > 0}
+						<div class="p-4 border-b border-gray-100">
+							<div class="flex items-center justify-between mb-3">
+								<h3 class="text-sm font-semibold text-gray-700">Buscas recentes</h3>
 								<button 
-									onclick={() => performSearch(historyItem)}
-									class="flex items-center gap-2 w-full p-2 rounded-lg transition-colors text-left {isSelected ? 'bg-gray-100' : 'hover:bg-gray-50'}"
+									onclick={clearSearchHistory}
+									class="text-xs text-gray-500 hover:text-gray-700"
 								>
-									<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-									</svg>
-									<span class="text-sm text-gray-700">{historyItem}</span>
+									Limpar
+								</button>
+							</div>
+							<div class="space-y-1">
+								{#each searchHistory as historyItem, index}
+									{@const isSelected = index === selectedIndex}
+									<button 
+										onclick={() => performSearch(historyItem)}
+										class="flex items-center gap-2 w-full p-2 rounded-lg transition-colors text-left {isSelected ? 'bg-gray-100' : 'hover:bg-gray-50'}"
+									>
+										<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										<span class="text-sm text-gray-700">{historyItem}</span>
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+					
+					<!-- Sugestões populares -->
+					<div class="p-4">
+						<h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+							<span class="text-base">🔥</span> Mais procurados
+						</h3>
+						<div class="flex flex-wrap gap-2">
+							{#each popularSearches.slice(0, 8) as popular}
+								<button
+									onclick={() => performSearch(popular)}
+									class="px-3 py-1.5 bg-gray-100 hover:bg-[#00BFB3] hover:text-white rounded-full text-sm transition-colors"
+								>
+									{popular}
 								</button>
 							{/each}
 						</div>
-					</div>
-				{/if}
-				
-				<!-- Populares -->
-				<div class="p-4">
-					<h3 class="text-sm font-semibold text-gray-700 mb-3">Buscas populares</h3>
-					<div class="flex flex-wrap gap-2">
-						{#each popularSearches.slice(0, 8) as popular, index}
-							{@const isSelected = searchHistory.length + index === selectedIndex}
-							<button 
-								onclick={() => performSearch(popular)}
-								class="px-3 py-1.5 rounded-full text-sm transition-colors {isSelected ? 'bg-[#00BFB3] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-							>
-								{popular}
-							</button>
-						{/each}
 					</div>
 				</div>
 			{:else}

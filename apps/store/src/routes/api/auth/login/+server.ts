@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getXataClient } from '$lib/xata';
 import bcrypt from 'bcryptjs';
+import { nanoid } from 'nanoid';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
@@ -46,7 +47,34 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }, { status: 403 });
     }
     
-    // Criar sessão
+    // Atualizar last_login_at
+    await xata.db.users.update(user.id, {
+      last_login_at: new Date()
+    });
+    
+    // Criar sessão na tabela sessions
+    const sessionToken = nanoid(32);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
+    
+    await xata.db.sessions.create({
+      user_id: user.id,
+      token: sessionToken,
+      ip_address: request.headers.get('x-forwarded-for') || 'unknown',
+      user_agent: request.headers.get('user-agent') || 'unknown',
+      expires_at: expiresAt
+    });
+    
+    // Criar sessão no cookie
+    cookies.set('session_token', sessionToken, {
+      path: '/',
+      httpOnly: true,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
+    });
+    
+    // Também manter o cookie antigo para compatibilidade
     cookies.set('session', JSON.stringify({
       userId: user.id,
       email: user.email,
@@ -55,9 +83,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }), {
       path: '/',
       httpOnly: true,
-      secure: import.meta.env.PROD, // true em produção (Cloudflare)
+      secure: import.meta.env.PROD,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 dias
+      maxAge: 60 * 60 * 24 * 7
     });
     
     return json({

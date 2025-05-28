@@ -6,7 +6,7 @@
   let password = $state('');
   let rememberMe = $state(false);
   let isLoading = $state(false);
-  let error = '';
+  let error = $state('');
   
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -66,6 +66,13 @@
     <!-- Formulário -->
     <form class="card mt-8" onsubmit={handleSubmit}>
       <div class="card-body space-y-6">
+        <!-- Mensagem de erro -->
+        {#if error}
+          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <p class="text-sm">{error}</p>
+          </div>
+        {/if}
+
         <!-- Email -->
         <div>
           <label for="email" class="label">E-mail</label>
