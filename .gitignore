@@ -47,4 +47,8 @@ test-results/
 .turbo/
 
 # Xata
+.xatarc
+.xata
+
+# Xata
 .xata/ 

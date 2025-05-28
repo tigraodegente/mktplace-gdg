@@ -3,34 +3,11 @@
   import { formatCurrency } from '@mktplace/utils';
   import ProductCard from '$lib/components/ProductCard.svelte';
   import type { PageData } from './$types';
-  import { onMount } from 'svelte';
   import type { Product } from '@mktplace/shared-types';
   
   let { data }: { data: PageData } = $props();
   
   const { featuredProducts, categories } = data;
-  
-  let featuredProductsState = $state<Product[]>([]);
-  let isLoading = $state(true);
-  let error = $state<string | null>(null);
-  
-  onMount(async () => {
-    try {
-      const response = await fetch('/api/products/featured');
-      const result = await response.json();
-      
-      if (result.success) {
-        featuredProductsState = result.data.products;
-      } else {
-        error = result.error?.message || 'Erro ao carregar produtos';
-      }
-    } catch (err) {
-      console.error('Erro ao buscar produtos:', err);
-      error = 'Erro ao conectar com o servidor';
-    } finally {
-      isLoading = false;
-    }
-  });
 </script>
 
 <svelte:head>
@@ -39,24 +16,25 @@
 </svelte:head>
 
 <!-- Hero Section -->
-<section class="relative bg-gradient-to-r from-[var(--cyan500)] to-[var(--cyan600)] text-white">
-  <div class="container-full px-8 py-24">
+<section class="relative bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white">
+  <div class="container mx-auto px-4 py-16">
     <div class="max-w-3xl">
-      <h1 class="text-5xl font-bold mb-6">
-        Bem-vindo ao Marketplace GDG
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">
+        Encontre os melhores produtos com os melhores preços
       </h1>
       <p class="text-xl mb-8 opacity-90">
-        Descubra produtos incríveis de vendedores confiáveis. 
-        Qualidade garantida e entrega rápida para todo o Brasil.
+        Milhares de produtos de vendedores confiáveis, com entrega rápida e segura.
       </p>
       <div class="flex gap-4">
-        <button class="btn btn-lg bg-white text-[var(--cyan600)] hover:bg-[var(--gray50)] font-semibold">
-          Explorar Produtos
-        </button>
-        <button class="btn btn-lg btn-outline border-white text-white hover:bg-white hover:text-[var(--cyan600)]">
-          Seja um Vendedor
-        </button>
+        <a href="/categorias" class="bg-white text-[#00BFB3] px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+          Explorar Categorias
+        </a>
+        <a href="/ofertas" class="bg-transparent border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-[#00BFB3] transition-colors">
+          Ver Ofertas
+        </a>
       </div>
+      
+
     </div>
   </div>
   <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[var(--gray50)] to-transparent"></div>
@@ -90,43 +68,11 @@
       </a>
     </div>
     
-    {#if isLoading}
-      <div class="flex items-center justify-center h-64">
-        <div class="text-center">
-          <div class="w-12 h-12 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p class="text-gray-600">Carregando produtos...</p>
-        </div>
-      </div>
-    {:else if error}
-      <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <p class="text-red-600">{error}</p>
-        <button 
-          onclick={() => location.reload()} 
-          class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          Tentar Novamente
-        </button>
-      </div>
-    {:else if featuredProductsState.length === 0}
-      <div class="bg-gray-100 rounded-lg p-12 text-center">
-        <p class="text-gray-600">Nenhum produto em destaque no momento</p>
-      </div>
-    {:else}
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {#each featuredProductsState as product}
-          <ProductCard {product} />
-        {/each}
-      </div>
-      
-      <div class="text-center mt-8">
-        <a 
-          href="/busca" 
-          class="inline-block px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
-        >
-          Ver Todos os Produtos
-        </a>
-      </div>
-    {/if}
+    <div class="products-grid">
+      {#each featuredProducts as product}
+        <ProductCard {product} />
+      {/each}
+    </div>
   </div>
 </section>
 
@@ -184,5 +130,17 @@
 </section>
 
 <style>
-  /* Removido o products-grid customizado pois agora usamos Tailwind grid */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
+    gap: 24px;
+    justify-items: center;
+  }
+  
+  @media (max-width: 768px) {
+    .products-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatCurrency } from '@mktplace/utils';
 	import type { Product } from '@mktplace/shared-types';
+	import { advancedCartStore } from '$lib/stores/advancedCartStore';
 	
 	// Props
 	let { product }: { product: Product } = $props();
@@ -14,8 +15,15 @@
 		MDF: 'MDF'
 	} as const;
 	
+	// Mock seller info (em produção viria do produto)
+	const SELLER_INFO = {
+		id: product.seller_id || 'seller-1',
+		name: product.seller_name || 'Loja Principal'
+	};
+	
 	// State
 	let isFavorite = $state(false);
+	let isAddingToCart = $state(false);
 	
 	// Computed values
 	const discount = $derived(() => {
@@ -26,8 +34,15 @@
 		return 0;
 	});
 	
+	const discountedPrice = $derived(() => {
+		if (product.discount) {
+			return product.price * (1 - product.discount / 100);
+		}
+		return product.price;
+	});
+	
 	const installmentPrice = $derived(() => {
-		return formatCurrency(product.price / INSTALLMENTS);
+		return discountedPrice() / INSTALLMENTS;
 	});
 	
 	const pixPrice = $derived(() => {
@@ -56,6 +71,26 @@
 		e.stopPropagation();
 		isFavorite = !isFavorite;
 		// TODO: Implementar lógica de favoritos com store/API
+	}
+	
+	async function handleAddToCart(e: Event) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		isAddingToCart = true;
+		
+		// Adicionar ao carrinho
+		advancedCartStore.addItem(
+			product,
+			product.seller_id || 'seller-1',
+			product.seller_name || 'Loja Exemplo',
+			1
+		);
+		
+		// Feedback visual
+		setTimeout(() => {
+			isAddingToCart = false;
+		}, 1000);
 	}
 </script>
 
@@ -197,14 +232,35 @@
 			</div>
 			{/if}
 		</div>
+		
+		<!-- Add to Cart Button -->
+		<button 
+			class="add-to-cart-button {isAddingToCart ? 'add-to-cart-button--loading' : ''}"
+			onclick={handleAddToCart}
+			disabled={isAddingToCart}
+			type="button"
+			aria-label="Adicionar ao carrinho"
+		>
+			{#if isAddingToCart}
+				<svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.25"/>
+					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+				</svg>
+				<span>Adicionando...</span>
+			{:else}
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+				</svg>
+				<span>Adicionar ao Carrinho</span>
+			{/if}
+		</button>
 	</div>
 </article>
 
 <style>
 	/* ===== Base Card Styles ===== */
 	.product-card {
-		width: 100%;
-		max-width: 262.65px;
+		width: 262.65px;
 		display: flex;
 		flex-direction: column;
 		background: transparent;
@@ -235,8 +291,8 @@
 	/* ===== Image Container ===== */
 	.product-card__image-container {
 		position: relative;
-		width: 100%;
-		aspect-ratio: 262.65 / 350.2;
+		width: 262.65px;
+		height: 350.2px;
 		overflow: hidden;
 		border-radius: 12px;
 		background: #F5F5F5;
@@ -360,6 +416,7 @@
 		line-height: 1.4;
 		margin: 0 0 6px 0;
 		display: -webkit-box;
+		line-clamp: 2;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
@@ -514,6 +571,10 @@
 		color: #E07709;
 	}
 	
+	.badge--delivery span {
+		color: #E07709;
+	}
+	
 	/* ===== Stats Section ===== */
 	.product-card__stats {
 		display: flex;
@@ -569,7 +630,14 @@
 	/* ===== Responsive Design ===== */
 	@media (max-width: 768px) {
 		.product-card {
-			max-width: none;
+			width: 100%;
+			max-width: 262.65px;
+		}
+		
+		.product-card__image-container {
+			width: 100%;
+			height: auto;
+			aspect-ratio: 262.65 / 350.2;
 		}
 		
 		.product-card__title {
@@ -584,8 +652,54 @@
 		}
 	}
 	
-	/* Remove grid-specific styles */
-	:global(.grid) .product-card {
-		max-width: none;
+	/* ===== Add to Cart Button ===== */
+	.add-to-cart-button {
+		width: 100%;
+		margin-top: 12px;
+		padding: 12px 16px;
+		background: #00BFB3;
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-family: 'Lato', sans-serif;
+		font-size: 14px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+	}
+	
+	.add-to-cart-button:hover:not(:disabled) {
+		background: #00A89D;
+		transform: translateY(-1px);
+		box-shadow: 0 4px 8px rgba(0, 191, 179, 0.3);
+	}
+	
+	.add-to-cart-button:active:not(:disabled) {
+		transform: translateY(0);
+		box-shadow: 0 2px 4px rgba(0, 191, 179, 0.3);
+	}
+	
+	.add-to-cart-button:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+	}
+	
+	.add-to-cart-button svg {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+	}
+	
+	.add-to-cart-button--loading .spinner {
+		animation: spin 1s linear infinite;
+	}
+	
+	@keyframes spin {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
 	}
 </style> 

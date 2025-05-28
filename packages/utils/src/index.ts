@@ -11,4 +11,11 @@ export * from './validators';
 
 // Exportar helpers e constantes
 export * from './helpers';
-export * from './constants'; 
+export * from './constants';
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+} 
