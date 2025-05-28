@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import { searchService, type SearchFilters, type SearchResult } from '$lib/services/searchService';
-	import type { Product } from '@mktplace/shared-types';
 	
 	// Get category from URL
 	let categorySlug = $derived($page.params.slug);
@@ -38,61 +37,7 @@
 		inStock: true
 	});
 	
-	// Mapa de categorias
-	const categoryMap: Record<string, typeof categoryInfo> = {
-		'berco': {
-			id: 'berco',
-			name: 'Berço',
-			description: 'Tudo para o berço do seu bebê: kits completos, lençóis, protetores e muito mais.',
-			image: '/api/placeholder/1200/300',
-			productCount: 156,
-			subcategories: [
-				{ id: 'kit-berco', name: 'Kit Berço', count: 45, image: '/api/placeholder/200/200' },
-				{ id: 'lencol', name: 'Lençóis', count: 32, image: '/api/placeholder/200/200' },
-				{ id: 'protetor', name: 'Protetores', count: 28, image: '/api/placeholder/200/200' },
-				{ id: 'mosquiteiro', name: 'Mosquiteiros', count: 15, image: '/api/placeholder/200/200' }
-			]
-		},
-		'banho': {
-			id: 'banho',
-			name: 'Banho',
-			description: 'Produtos para o banho do bebê: toalhas, roupões, banheiras e acessórios.',
-			image: '/api/placeholder/1200/300',
-			productCount: 89,
-			subcategories: [
-				{ id: 'toalha', name: 'Toalhas', count: 34, image: '/api/placeholder/200/200' },
-				{ id: 'roupao', name: 'Roupões', count: 22, image: '/api/placeholder/200/200' },
-				{ id: 'banheira', name: 'Banheiras', count: 18, image: '/api/placeholder/200/200' },
-				{ id: 'acessorios-banho', name: 'Acessórios', count: 15, image: '/api/placeholder/200/200' }
-			]
-		},
-		'decoracao': {
-			id: 'decoracao',
-			name: 'Decoração',
-			description: 'Decore o quarto do bebê com estilo: tapetes, quadros, luminárias e mais.',
-			image: '/api/placeholder/1200/300',
-			productCount: 234,
-			subcategories: [
-				{ id: 'tapete', name: 'Tapetes', count: 67, image: '/api/placeholder/200/200' },
-				{ id: 'quadro', name: 'Quadros', count: 45, image: '/api/placeholder/200/200' },
-				{ id: 'luminaria', name: 'Luminárias', count: 38, image: '/api/placeholder/200/200' },
-				{ id: 'cortina', name: 'Cortinas', count: 29, image: '/api/placeholder/200/200' }
-			]
-		},
-		'organizacao': {
-			id: 'organizacao',
-			name: 'Organização',
-			description: 'Mantenha tudo organizado: cestos, organizadores, prateleiras e soluções práticas.',
-			image: '/api/placeholder/1200/300',
-			productCount: 67,
-			subcategories: [
-				{ id: 'organizador-berco', name: 'Organizador Berço', count: 23, image: '/api/placeholder/200/200' },
-				{ id: 'cesto', name: 'Cestos', count: 19, image: '/api/placeholder/200/200' },
-				{ id: 'prateleira', name: 'Prateleiras', count: 15, image: '/api/placeholder/200/200' },
-				{ id: 'caixa', name: 'Caixas', count: 10, image: '/api/placeholder/200/200' }
-			]
-		}
-	};
+
 	
 	// Carregar categoria e produtos
 	$effect(() => {
@@ -104,21 +49,33 @@
 	async function loadCategory() {
 		isLoading = true;
 		
-		// Carregar informações da categoria
-		categoryInfo = categoryMap[categorySlug] || {
-			id: categorySlug,
-			name: categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1),
-			description: '',
-			image: '/api/placeholder/1200/300',
-			productCount: 0,
-			subcategories: []
-		};
-		
-		// Definir filtro de categoria
-		filters.categories = [categoryInfo.id];
-		
-		// Buscar produtos
-		await performSearch();
+		try {
+			// Carregar informações da categoria da API
+			const response = await fetch(`/api/categories/${categorySlug}`);
+			const data = await response.json();
+			
+			if (data.success) {
+				categoryInfo = data.data;
+				// Definir filtro de categoria
+				filters.categories = [categoryInfo.id];
+			} else {
+				// Fallback para categoria genérica
+				categoryInfo = {
+					id: categorySlug,
+					name: categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1).replace(/-/g, ' '),
+					description: '',
+					image: '',
+					productCount: 0,
+					subcategories: []
+				};
+			}
+			
+			// Buscar produtos
+			await performSearch();
+		} catch (error) {
+			console.error('Erro ao carregar categoria:', error);
+			isLoading = false;
+		}
 	}
 	
 	async function performSearch() {
@@ -136,7 +93,7 @@
 	// Aplicar ordenação localmente
 	let sortedProducts = $derived(searchResult?.products ? sortProducts(searchResult.products) : []);
 	
-	function sortProducts(products: Product[]): Product[] {
+	function sortProducts(products: any[]): any[] {
 		const sorted = [...products];
 		
 		switch (sortBy) {

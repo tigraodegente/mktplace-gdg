@@ -5,11 +5,10 @@
 	import { auth, user, isAuthenticated } from '$lib/stores/auth';
 	import Footer from '$lib/components/Footer.svelte';
 	import SearchBox from '$lib/components/SearchBox.svelte';
-	import type { Product } from '@mktplace/shared-types';
+	import CategoryMenu from '$lib/components/CategoryMenu.svelte';
 
 	let { children } = $props();
 
-	let mobileMenuOpen = $state(false);
 	let userMenuOpen = $state(false);
 	
 	// Carrossel do banner
@@ -67,7 +66,6 @@
 
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {
-			if (mobileMenuOpen) mobileMenuOpen = false;
 			if (userMenuOpen) userMenuOpen = false;
 		}
 		// Navegação por teclado no carrossel
@@ -316,22 +314,7 @@
 		<!-- Navigation Menu -->
 		<nav class="h-[48px] px-8">
 			<div class="w-full h-full">
-				<ul class="flex items-center gap-6 h-full text-sm font-medium">
-					<li><a href="/categorias" class="text-white hover:text-white/80 transition">Todas as categorias</a></li>
-					<li><a href="/minhas" class="text-white hover:text-white/80 transition">Minhas</a></li>
-					<li><a href="/marcas" class="text-white hover:text-white/80 transition">Marcas</a></li>
-					<li><a href="/kit-ritual" class="text-white hover:text-white/80 transition">Kit Ritual</a></li>
-					<li><a href="/quem-somos" class="text-white hover:text-white/80 transition">Quem Somos</a></li>
-					<li><a href="/receitas" class="text-white hover:text-white/80 transition">Receitas</a></li>
-					<li><a href="/sobre-maternidade" class="text-white hover:text-white/80 transition">Sobre Maternidade</a></li>
-					<li><a href="/midia" class="text-white hover:text-white/80 transition">Mídia</a></li>
-					<li><a href="/mindfulness" class="text-white hover:text-white/80 transition">Mindfulness</a></li>
-					<li><a href="/brinfa" class="text-white hover:text-white/80 transition">Brinfa</a></li>
-					<li><a href="/parceria" class="text-white hover:text-white/80 transition">Parceria</a></li>
-					<li><a href="/escola" class="text-white hover:text-white/80 transition">Escola</a></li>
-					<li><a href="/lancamentos" class="text-white hover:text-white/80 transition">Lançamentos</a></li>
-					<li><a href="/quero-ser-parceiro" class="text-white hover:text-white/80 transition">Quero Ser Parceiro</a></li>
-				</ul>
+				<CategoryMenu />
 			</div>
 		</nav>
 	</div>
@@ -402,16 +385,8 @@
 <!-- Header Mobile -->
 <header class="lg:hidden bg-[#00BBB4] sticky top-0 z-50">
 	<div class="flex items-center justify-between p-4">
-		<!-- Menu Button -->
-		<button
-			onclick={() => mobileMenuOpen = !mobileMenuOpen}
-			class="text-white"
-			aria-label="Menu"
-		>
-			<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-			</svg>
-		</button>
+		<!-- Category Menu -->
+		<CategoryMenu />
 		
 		<!-- Logo -->
 		<a href="/" class="flex-1 flex justify-center">
@@ -442,54 +417,6 @@
 		<SearchBox />
 	</div>
 </header>
-
-<!-- Mobile Menu Overlay -->
-{#if mobileMenuOpen}
-	<!-- Backdrop -->
-	<div class="lg:hidden fixed inset-0 z-50">
-		<!-- Backdrop button -->
-		<button 
-			class="absolute inset-0 bg-black bg-opacity-50 w-full h-full cursor-default" 
-			onclick={() => mobileMenuOpen = false}
-			aria-label="Fechar menu"
-			type="button"
-		></button>
-		
-		<!-- Menu Panel -->
-		<div 
-			class="relative bg-white w-80 h-full overflow-y-auto" 
-			role="navigation"
-			aria-label="Menu principal"
-		>
-			<div class="p-4 border-b">
-				<button onclick={() => mobileMenuOpen = false} class="text-gray-600" aria-label="Fechar menu" type="button">
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
-			</div>
-			
-			<nav class="p-4">
-				<ul class="space-y-4">
-					<li><a href="/categorias" class="block text-gray-700 hover:text-[#00BFB3]">Todas as categorias</a></li>
-					<li><a href="/minhas" class="block text-gray-700 hover:text-[#00BFB3]">Minhas</a></li>
-					<li><a href="/marcas" class="block text-gray-700 hover:text-[#00BFB3]">Marcas</a></li>
-					<li><a href="/kit-ritual" class="block text-gray-700 hover:text-[#00BFB3]">Kit Ritual</a></li>
-					<li><a href="/quem-somos" class="block text-gray-700 hover:text-[#00BFB3]">Quem Somos</a></li>
-					<li><a href="/receitas" class="block text-gray-700 hover:text-[#00BFB3]">Receitas</a></li>
-					<li><a href="/sobre-maternidade" class="block text-gray-700 hover:text-[#00BFB3]">Sobre Maternidade</a></li>
-					<li><a href="/midia" class="block text-gray-700 hover:text-[#00BFB3]">Mídia</a></li>
-					<li><a href="/mindfulness" class="block text-gray-700 hover:text-[#00BFB3]">Mindfulness</a></li>
-					<li><a href="/brinfa" class="block text-gray-700 hover:text-[#00BFB3]">Brinfa</a></li>
-					<li><a href="/parceria" class="block text-gray-700 hover:text-[#00BFB3]">Parceria</a></li>
-					<li><a href="/escola" class="block text-gray-700 hover:text-[#00BFB3]">Escola</a></li>
-					<li><a href="/lancamentos" class="block text-gray-700 hover:text-[#00BFB3]">Lançamentos</a></li>
-					<li><a href="/quero-ser-parceiro" class="block text-gray-700 hover:text-[#00BFB3]">Quero Ser Parceiro</a></li>
-				</ul>
-			</nav>
-		</div>
-	</div>
-{/if}
 
 <!-- Conteúdo Principal -->
 <main class="min-h-screen bg-[var(--background-color)]">
