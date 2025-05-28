@@ -49,6 +49,29 @@
 			
 			if (data.success) {
 				categories = data.data;
+				
+				// TEMPORÁRIO: Adicionar subcategorias de teste
+				categories = categories.map(cat => {
+					if (cat.slug === 'brinquedos') {
+						return {
+							...cat,
+							children: [
+								{ id: 'sub1', name: 'Brinquedos Educativos', slug: 'brinquedos-educativos', productCount: 15 },
+								{ id: 'sub2', name: 'Brinquedos de Madeira', slug: 'brinquedos-madeira', productCount: 8 },
+								{ id: 'sub3', name: 'Brinquedos Musicais', slug: 'brinquedos-musicais', productCount: 12 }
+							]
+						};
+					} else if (cat.slug === 'cestos-organizadores') {
+						return {
+							...cat,
+							children: [
+								{ id: 'sub4', name: 'Cestos de Tecido', slug: 'cestos-tecido', productCount: 20 },
+								{ id: 'sub5', name: 'Cestos de Vime', slug: 'cestos-vime', productCount: 10 }
+							]
+						};
+					}
+					return cat;
+				});
 			}
 		} catch (error) {
 			console.error('Erro ao carregar categorias:', error);
