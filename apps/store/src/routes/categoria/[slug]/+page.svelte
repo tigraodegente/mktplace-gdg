@@ -373,10 +373,16 @@
 									>
 										Ver detalhes
 									</a>
-									<button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+									<button 
+										class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+										aria-label="Adicionar {product.name} ao carrinho"
+									>
 										Adicionar ao carrinho
 									</button>
-									<button class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+									<button 
+										class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+										aria-label="Adicionar {product.name} aos favoritos"
+									>
 										<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
 										</svg>
@@ -396,6 +402,7 @@
 							onclick={() => goToPage(currentPage - 1)}
 							disabled={currentPage === 1}
 							class="px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+							aria-label="Página anterior"
 						>
 							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -412,6 +419,7 @@
 											? 'bg-[#00BFB3] text-white'
 											: 'text-gray-700 hover:bg-gray-100'
 									}"
+									aria-label="Ir para página {pageNum}"
 								>
 									{pageNum}
 								</button>
@@ -422,6 +430,7 @@
 							onclick={() => goToPage(currentPage + 1)}
 							disabled={currentPage === totalPages}
 							class="px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+							aria-label="Próxima página"
 						>
 							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

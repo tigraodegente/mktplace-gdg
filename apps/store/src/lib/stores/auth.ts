@@ -1,6 +1,8 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
+import { goto } from '$app/navigation';
 import type { User } from '@mktplace/shared-types';
+import { clearNotificationsOnLogout } from './notificationStore';
 
 interface AuthState {
   user: User | null;
@@ -118,9 +120,18 @@ function createAuthStore() {
     },
     
     async logout() {
-      update(state => ({ ...state, isLoading: true }));
-      
       try {
+        // Limpar token
+        if (browser) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+          // Limpar notificações ao fazer logout
+          clearNotificationsOnLogout();
+        }
+        
+        // Resetar stores
+        update(state => ({ ...state, isLoading: true }));
+        
         const response = await fetch('/api/auth/logout', { 
           method: 'POST',
           credentials: 'include'
@@ -137,8 +148,8 @@ function createAuthStore() {
           error: null
         }));
         
-        // Redireciona para home
-        window.location.href = '/';
+        // Redirecionar para home
+        await goto('/');
       } catch (error) {
         console.error('Erro ao fazer logout:', error);
         update(state => ({ 

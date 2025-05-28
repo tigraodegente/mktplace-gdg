@@ -107,8 +107,9 @@
 	<!-- Inputs de texto -->
 	<div class="flex items-center gap-2 mb-4">
 		<div class="flex-1">
-			<label class="text-xs text-gray-600 block mb-1">Mín</label>
+			<label for="price-min" class="text-xs text-gray-600 block mb-1">Mín</label>
 			<input
+				id="price-min"
 				type="number"
 				value={minValue}
 				min={min}
@@ -122,8 +123,9 @@
 		<span class="text-gray-400 mt-6">-</span>
 		
 		<div class="flex-1">
-			<label class="text-xs text-gray-600 block mb-1">Máx</label>
+			<label for="price-max" class="text-xs text-gray-600 block mb-1">Máx</label>
 			<input
+				id="price-max"
 				type="number"
 				value={maxValue}
 				min={minValue + step}
@@ -155,6 +157,7 @@
 			value={minValue}
 			onchange={handleMinChange}
 			onmousedown={handleMouseDown}
+			aria-label="Preço mínimo"
 			class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00BFB3] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#00BFB3] [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:transition-transform [&::-moz-range-thumb]:hover:scale-110"
 			style="z-index: {minValue > max - 100 ? 5 : 3}"
 		/>
@@ -168,6 +171,7 @@
 			value={maxValue}
 			onchange={handleMaxChange}
 			onmousedown={handleMouseDown}
+			aria-label="Preço máximo"
 			class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00BFB3] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#00BFB3] [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:transition-transform [&::-moz-range-thumb]:hover:scale-110"
 			style="z-index: 4"
 		/>

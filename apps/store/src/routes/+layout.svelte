@@ -5,43 +5,22 @@
 	import { auth, user, isAuthenticated } from '$lib/stores/auth';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import SearchBox from '$lib/components/search/SearchBox.svelte';
-	import CategoryMenu from '$lib/components/CategoryMenu.svelte';
 	import CartPreview from '$lib/components/cart/CartPreview.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
-	import MobileMenu from '$lib/components/layout/MobileMenu.svelte';
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
 	import { wishlistCount } from '$lib/stores/wishlistStore';
+	import { unreadCount } from '$lib/stores/notificationStore';
+	import Header from '$lib/components/layout/Header.svelte';
+	import MobileHeader from '$lib/components/layout/MobileHeader.svelte';
+	import DesktopCategoryMenu from '$lib/components/navigation/DesktopCategoryMenu.svelte';
+	import MobileCategoryMenu from '$lib/components/navigation/MobileCategoryMenu.svelte';
+	import BannerCarousel from '$lib/components/layout/BannerCarousel.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
 
-	// Tipo local para Product
-	interface Product {
-		id: string;
-		name: string;
-		slug: string;
-		price: number;
-		[key: string]: any;
-	}
-
-	let { children } = $props();
-
-	let userMenuOpen = $state(false);
-	let cartPreviewOpen = $state(false);
-	let mobileMenuOpen = $state(false);
-	
-	// Stores
-	const { sellerGroups } = advancedCartStore;
-	
-	// Computed total items
-	const totalItems = $derived(() => {
-		return $sellerGroups.reduce((sum, group) => sum + group.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
-	});
-	
-	// Carrossel do banner
-	let currentSlide = $state(0);
-	let isPaused = $state(false);
-	let touchStartX = 0;
-	let touchEndX = 0;
-	
-	const bannerMessages = [
+	// Constants
+	const CAROUSEL_INTERVAL_MS = 4000;
+	const MIN_SWIPE_DISTANCE = 50;
+	const BANNER_MESSAGES = [
 		{
 			icon: 'payment',
 			text: 'Tudo em até 12X',
@@ -60,19 +39,53 @@
 			link: '/primeira-compra',
 			linkText: 'USAR CUPOM'
 		}
-	];
-	
-	// Auto-rotate carousel
-	let carouselInterval: ReturnType<typeof setInterval>;
+	] as const;
 
-	// Verificar autenticação ao carregar
+	// Types
+	interface Product {
+		readonly id: string;
+		readonly name: string;
+		readonly slug: string;
+		readonly price: number;
+		[key: string]: any;
+	}
+
+	// Props
+	let { children } = $props();
+
+	// State
+	let userMenuOpen = $state(false);
+	let cartPreviewOpen = $state(false);
+	let mobileMenuOpen = $state(false);
+	let currentSlide = $state(0);
+	let isPaused = $state(false);
+	
+	// Touch state
+	let touchStartX = 0;
+	let touchEndX = 0;
+	
+	// Refs
+	let carouselInterval: ReturnType<typeof setInterval> | null = null;
+	
+	// Stores
+	const { sellerGroups } = advancedCartStore;
+	
+	// Computed
+	const totalItems = $derived(() => {
+		return $sellerGroups.reduce((sum, group) => 
+			sum + group.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+		);
+	});
+
+	// Lifecycle
 	onMount(() => {
+		// Check auth
 		auth.checkAuth();
 		
-		// Iniciar rotação do carrossel
+		// Start carousel
 		startCarousel();
 		
-		// Fechar menu ao clicar fora
+		// Event listeners
 		const handleClickOutside = (event: MouseEvent) => {
 			const target = event.target as HTMLElement;
 			if (userMenuOpen && !target.closest('.user-menu-container')) {
@@ -82,90 +95,126 @@
 		
 		document.addEventListener('click', handleClickOutside);
 		
+		// Cleanup
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
-			clearInterval(carouselInterval);
+			stopCarousel();
 		};
 	});
 
-	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
-			if (userMenuOpen) userMenuOpen = false;
-		}
-		// Navegação por teclado no carrossel
-		if (event.key === 'ArrowLeft') {
-			goToSlide((currentSlide - 1 + bannerMessages.length) % bannerMessages.length);
-		} else if (event.key === 'ArrowRight') {
-			goToSlide((currentSlide + 1) % bannerMessages.length);
-		}
-	}
-
-	function toggleUserMenu() {
-		userMenuOpen = !userMenuOpen;
-	}
-
-	async function handleLogout() {
-		await auth.logout();
-	}
-	
-	function openCart() {
-		cartPreviewOpen = true;
-	}
-	
-	function startCarousel() {
-		if (!isPaused) {
+	// Carousel functions
+	function startCarousel(): void {
+		if (!isPaused && !carouselInterval) {
 			carouselInterval = setInterval(() => {
-				currentSlide = (currentSlide + 1) % bannerMessages.length;
-			}, 4000);
+				currentSlide = (currentSlide + 1) % BANNER_MESSAGES.length;
+			}, CAROUSEL_INTERVAL_MS);
 		}
 	}
 	
-	function pauseCarousel() {
+	function stopCarousel(): void {
+		if (carouselInterval) {
+			clearInterval(carouselInterval);
+			carouselInterval = null;
+		}
+	}
+	
+	function pauseCarousel(): void {
 		isPaused = true;
-		clearInterval(carouselInterval);
+		stopCarousel();
 	}
 	
-	function resumeCarousel() {
+	function resumeCarousel(): void {
 		isPaused = false;
-		clearInterval(carouselInterval);
 		startCarousel();
 	}
 	
-	function goToSlide(index: number) {
+	function goToSlide(index: number): void {
 		currentSlide = index;
-		// Resetar o intervalo quando o usuário interagir
-		clearInterval(carouselInterval);
+		// Reset interval when user interacts
+		stopCarousel();
 		startCarousel();
 	}
 	
-	// Touch handlers para swipe no mobile
-	function handleTouchStart(e: TouchEvent) {
+	// Touch handlers
+	function handleTouchStart(e: TouchEvent): void {
 		touchStartX = e.touches[0].clientX;
 	}
 	
-	function handleTouchMove(e: TouchEvent) {
+	function handleTouchMove(e: TouchEvent): void {
 		touchEndX = e.touches[0].clientX;
 	}
 	
-	function handleTouchEnd() {
+	function handleTouchEnd(): void {
 		if (!touchStartX || !touchEndX) return;
 		
 		const swipeDistance = touchStartX - touchEndX;
-		const minSwipeDistance = 50;
 		
-		if (Math.abs(swipeDistance) > minSwipeDistance) {
+		if (Math.abs(swipeDistance) > MIN_SWIPE_DISTANCE) {
 			if (swipeDistance > 0) {
-				// Swipe left - próximo slide
-				goToSlide((currentSlide + 1) % bannerMessages.length);
+				// Swipe left - next slide
+				goToSlide((currentSlide + 1) % BANNER_MESSAGES.length);
 			} else {
-				// Swipe right - slide anterior
-				goToSlide((currentSlide - 1 + bannerMessages.length) % bannerMessages.length);
+				// Swipe right - previous slide
+				goToSlide((currentSlide - 1 + BANNER_MESSAGES.length) % BANNER_MESSAGES.length);
 			}
 		}
 		
-		// Reset valores
+		// Reset values
 		touchStartX = 0;
 		touchEndX = 0;
+	}
+
+	// Keyboard navigation
+	function handleKeyDown(event: KeyboardEvent): void {
+		switch (event.key) {
+			case 'Escape':
+				if (userMenuOpen) userMenuOpen = false;
+				break;
+			case 'ArrowLeft':
+				goToSlide((currentSlide - 1 + BANNER_MESSAGES.length) % BANNER_MESSAGES.length);
+				break;
+			case 'ArrowRight':
+				goToSlide((currentSlide + 1) % BANNER_MESSAGES.length);
+				break;
+		}
+	}
+
+	// UI actions
+	function toggleUserMenu(): void {
+		userMenuOpen = !userMenuOpen;
+	}
+
+	async function handleLogout(): Promise<void> {
+		await auth.logout();
+	}
+	
+	function openCart(): void {
+		cartPreviewOpen = true;
+	}
+
+	// Helper function for banner icons
+	function getBannerIcon(type: string): string {
+		const icons: Record<string, string> = {
+			payment: `<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+				<rect x="2" y="5" width="20" height="14" rx="2" stroke="#333" stroke-width="2"/>
+				<path d="M2 9H22" stroke="#333" stroke-width="2"/>
+				<path d="M6 13H10" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+			</svg>`,
+			shipping: `<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+				<path d="M1 12H16V18.5C16 19.3284 15.3284 20 14.5 20H12.5" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+				<path d="M16 12H20.5C21.3284 12 22 12.6716 22 13.5V17.5C22 18.3284 21.3284 19 20.5 19H19" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+				<circle cx="8" cy="20" r="2" stroke="#333" stroke-width="2"/>
+				<circle cx="18" cy="20" r="2" stroke="#333" stroke-width="2"/>
+				<path d="M16 12V6C16 5.17157 15.3284 4.5 14.5 4.5H1" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+			</svg>`,
+			discount: `<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+				<circle cx="12" cy="12" r="10" stroke="#333" stroke-width="2"/>
+				<path d="M8 12L11 15L16 10" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				<path d="M12 6V8" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+				<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+			</svg>`
+		};
+		return icons[type] || icons.discount;
 	}
 </script>
 
@@ -183,35 +232,14 @@
 	<div class="w-full max-w-[1440px] mx-auto h-full relative">
 		<!-- Slides Container -->
 		<div class="relative h-full">
-			{#each bannerMessages as message, index}
+			{#each BANNER_MESSAGES as message, index}
 				<div 
 					class="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out"
 					style="transform: translateX({(index - currentSlide) * 100}%); opacity: {index === currentSlide ? 1 : 0}"
 					aria-hidden={index !== currentSlide}
 				>
 					<a href={message.link} class="flex items-center gap-2 hover:opacity-90 transition-opacity">
-						{#if message.icon === 'payment'}
-							<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-								<rect x="2" y="5" width="20" height="14" rx="2" stroke="#333" stroke-width="2"/>
-								<path d="M2 9H22" stroke="#333" stroke-width="2"/>
-								<path d="M6 13H10" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-							</svg>
-						{:else if message.icon === 'shipping'}
-							<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-								<path d="M1 12H16V18.5C16 19.3284 15.3284 20 14.5 20H12.5" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-								<path d="M16 12H20.5C21.3284 12 22 12.6716 22 13.5V17.5C22 18.3284 21.3284 19 20.5 19H19" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-								<circle cx="8" cy="20" r="2" stroke="#333" stroke-width="2"/>
-								<circle cx="18" cy="20" r="2" stroke="#333" stroke-width="2"/>
-								<path d="M16 12V6C16 5.17157 15.3284 4.5 14.5 4.5H1" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-							</svg>
-						{:else}
-							<svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-								<circle cx="12" cy="12" r="10" stroke="#333" stroke-width="2"/>
-								<path d="M8 12L11 15L16 10" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-								<path d="M12 6V8" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-								<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-							</svg>
-						{/if}
+						{@html getBannerIcon(message.icon)}
 						<span class="text-black font-medium text-xs" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
 						<span class="text-[#00BFB3] font-black text-[11px] uppercase underline hover:no-underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
 					</a>
@@ -221,7 +249,7 @@
 		
 		<!-- Navigation Arrows -->
 		<button 
-			onclick={() => goToSlide((currentSlide - 1 + bannerMessages.length) % bannerMessages.length)}
+			onclick={() => goToSlide((currentSlide - 1 + BANNER_MESSAGES.length) % BANNER_MESSAGES.length)}
 			class="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
 			aria-label="Slide anterior"
 		>
@@ -231,7 +259,7 @@
 		</button>
 		
 		<button 
-			onclick={() => goToSlide((currentSlide + 1) % bannerMessages.length)}
+			onclick={() => goToSlide((currentSlide + 1) % BANNER_MESSAGES.length)}
 			class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
 			aria-label="Próximo slide"
 		>
@@ -242,7 +270,7 @@
 		
 		<!-- Dots Indicator -->
 		<div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-			{#each bannerMessages as _, index}
+			{#each BANNER_MESSAGES as _, index}
 				<button
 					onclick={() => goToSlide(index)}
 					class="w-1 h-1 rounded-full transition-all duration-300 hover:bg-gray-600 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
@@ -283,7 +311,7 @@
 									</svg>
 									<div class="flex flex-col items-start">
 										<span class="text-white" style="font-family: 'Lato', sans-serif; font-size: 14px; font-weight: 400; line-height: normal; font-feature-settings: 'liga' off, 'clig' off;">
-											Olá, {#if $user && $user.name}{$user.name.split(' ')[0]}{:else}faça login{/if}
+											Olá, {#if $user?.name}{$user.name.split(' ')[0]}{:else}faça login{/if}
 										</span>
 									</div>
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="9" viewBox="0 0 16 9" fill="none" class="transition-transform" class:rotate-180={userMenuOpen}>
@@ -322,6 +350,19 @@
 							</a>
 						{/if}
 						
+						{#if $isAuthenticated}
+							<a href="/notificacoes" class="relative text-white hover:text-white/80 transition" aria-label="Notificações">
+								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+									<path d="M12 2C10.9 2 10 2.9 10 4C10 4.1 10.01 4.19 10.02 4.29C7.71 5.13 6 7.39 6 10V16L4 18V19H20V18L18 16V10C18 7.39 16.29 5.13 13.98 4.29C13.99 4.19 14 4.1 14 4C14 2.9 13.1 2 12 2ZM12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22Z" fill="white"/>
+								</svg>
+								{#if $unreadCount > 0}
+									<span class="absolute -top-2 -right-2 bg-white text-[#00BFB3] text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+										{$unreadCount}
+									</span>
+								{/if}
+							</a>
+						{/if}
+						
 						<a href="/favoritos" class="relative text-white hover:text-white/80 transition" aria-label="Favoritos">
 							<svg xmlns="http://www.w3.org/2000/svg" width="28" height="26" viewBox="0 0 28 26" fill="none">
 								<path d="M9.6417 2C11.0691 2 12.5816 2.69442 14.1572 4.0601C17.3082 1.58335 21.518 1.64949 24.0799 4.34117C25.5092 5.84876 26.3115 7.8889 26.3115 10.0155C26.3115 12.1422 25.5092 14.1823 24.0799 15.6899L24.0547 15.7164L16.7505 22.9317C16.0489 23.6255 15.1212 24.012 14.1572 24.012C13.1931 24.012 12.2655 23.6255 11.5638 22.9317L4.25969 15.7164L4.23448 15.6899C3.16683 14.5676 2.4401 13.1385 2.14609 11.583C1.85208 10.0275 2.00398 8.4154 2.5826 6.95044C3.16123 5.48549 4.14061 4.23337 5.39704 3.35225C6.65346 2.47114 8.13055 2.00058 9.6417 2Z" fill="#F17179" stroke="white" stroke-width="2.24368"/>
@@ -334,7 +375,7 @@
 						</a>
 						
 						<button 
-							onclick={() => openCart()}
+							onclick={openCart}
 							class="relative text-white hover:text-white/80 transition" 
 							aria-label="Carrinho de compras"
 						>
@@ -354,7 +395,7 @@
 		
 		<!-- Navigation Menu -->
 		<nav class="h-[48px] w-full bg-[#00BFB3]">
-			<CategoryMenu class="w-full h-full" />
+			<DesktopCategoryMenu />
 		</nav>
 	</div>
 </header>
@@ -372,35 +413,14 @@
 	<div class="w-full h-full relative">
 		<!-- Slides Container -->
 		<div class="relative h-full">
-			{#each bannerMessages as message, index}
+			{#each BANNER_MESSAGES as message, index}
 				<div 
 					class="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out px-4"
 					style="transform: translateX({(index - currentSlide) * 100}%); opacity: {index === currentSlide ? 1 : 0}"
 					aria-hidden={index !== currentSlide}
 				>
 					<a href={message.link} class="flex items-center gap-2">
-						{#if message.icon === 'payment'}
-							<svg class="w-[20px] h-[22px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-								<rect x="2" y="5" width="20" height="14" rx="2" stroke="#333" stroke-width="2"/>
-								<path d="M2 9H22" stroke="#333" stroke-width="2"/>
-								<path d="M6 13H10" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-							</svg>
-						{:else if message.icon === 'shipping'}
-							<svg class="w-[20px] h-[22px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-								<path d="M1 12H16V18.5C16 19.3284 15.3284 20 14.5 20H12.5" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-								<path d="M16 12H20.5C21.3284 12 22 12.6716 22 13.5V17.5C22 18.3284 21.3284 19 20.5 19H19" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-								<circle cx="8" cy="20" r="2" stroke="#333" stroke-width="2"/>
-								<circle cx="18" cy="20" r="2" stroke="#333" stroke-width="2"/>
-								<path d="M16 12V6C16 5.17157 15.3284 4.5 14.5 4.5H1" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-							</svg>
-						{:else}
-							<svg class="w-[20px] h-[22px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-								<circle cx="12" cy="12" r="10" stroke="#333" stroke-width="2"/>
-								<path d="M8 12L11 15L16 10" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-								<path d="M12 6V8" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-								<path d="M12 16V18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-							</svg>
-						{/if}
+						{@html getBannerIcon(message.icon)}
 						<span class="text-black font-medium text-[11px]" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
 						<span class="text-[#00BFB3] font-black text-[10px] uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
 					</a>
@@ -410,7 +430,7 @@
 		
 		<!-- Dots Indicator Mobile -->
 		<div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5">
-			{#each bannerMessages as _, index}
+			{#each BANNER_MESSAGES as _, index}
 				<button
 					onclick={() => goToSlide(index)}
 					class="w-1 h-1 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
@@ -427,7 +447,7 @@
 		<!-- Menu Button -->
 		<button 
 			onclick={() => mobileMenuOpen = true}
-			class="text-white p-1"
+			class="text-white p-1 w-10 flex items-center justify-start"
 			aria-label="Abrir menu"
 		>
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -436,15 +456,28 @@
 		</button>
 		
 		<!-- Logo -->
-		<a href="/" class="flex-1 flex justify-center">
+		<a href="/" class="absolute left-1/2 -translate-x-1/2">
 			<img src="/logo.png" alt="Grão de Gente" class="h-8 w-auto filter brightness-0 invert" />
 		</a>
 		
 		<!-- Actions -->
-		<div class="flex items-center gap-4">
-			<a href="/favoritos" class="relative text-white" aria-label="Favoritos">
+		<div class="flex items-center gap-2 justify-end">
+			{#if $isAuthenticated}
+				<a href="/notificacoes" class="relative text-white p-1" aria-label="Notificações">
+					<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M12 2C10.9 2 10 2.9 10 4C10 4.1 10.01 4.19 10.02 4.29C7.71 5.13 6 7.39 6 10V16L4 18V19H20V18L18 16V10C18 7.39 16.29 5.13 13.98 4.29C13.99 4.19 14 4.1 14 4C14 2.9 13.1 2 12 2ZM12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22Z"/>
+					</svg>
+					{#if $unreadCount > 0}
+						<span class="absolute -top-2 -right-2 bg-white text-[#00BBB4] text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+							{$unreadCount}
+						</span>
+					{/if}
+				</a>
+			{/if}
+			
+			<a href="/favoritos" class="relative text-white p-1" aria-label="Favoritos">
 				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
 				</svg>
 				{#if $wishlistCount > 0}
 					<span class="absolute -top-2 -right-2 bg-white text-[#00BBB4] text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
@@ -454,12 +487,12 @@
 			</a>
 			
 			<button 
-				onclick={() => openCart()}
-				class="relative text-white hover:text-white/80 transition" 
+				onclick={openCart}
+				class="relative text-white p-1" 
 				aria-label="Carrinho de compras"
 			>
 				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
 				</svg>
 				{#if totalItems() > 0}
 					<span class="absolute -top-2 -right-2 bg-white text-[#00BBB4] text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
@@ -472,22 +505,25 @@
 	
 	<!-- Search Bar Mobile -->
 	<div class="px-4 pb-4">
-		<SearchBox />
+		<SearchBox class="w-full" />
 	</div>
 </header>
 
-<!-- Conteúdo Principal -->
-<main class="min-h-screen bg-[var(--background-color)]">
+<!-- Mobile Menu -->
+<MobileCategoryMenu bind:isOpen={mobileMenuOpen} onClose={() => mobileMenuOpen = false} />
+
+<!-- Cart Preview -->
+{#if cartPreviewOpen}
+	<CartPreview bind:isOpen={cartPreviewOpen} />
+{/if}
+
+<!-- Main Content -->
+<main class="min-h-screen bg-gray-50">
 	{@render children()}
 </main>
 
+<!-- Footer -->
 <Footer />
-
-<!-- Mobile Menu -->
-<MobileMenu bind:isOpen={mobileMenuOpen} />
-
-<!-- Cart Preview -->
-<CartPreview bind:isOpen={cartPreviewOpen} />
 
 <!-- Toast Container -->
 <ToastContainer />
