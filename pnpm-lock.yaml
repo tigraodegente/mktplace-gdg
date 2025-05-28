@@ -214,6 +214,9 @@ importers:
 
   apps/store:
     dependencies:
+      '@mktplace/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@mktplace/utils':
         specifier: workspace:*
         version: link:../../packages/utils

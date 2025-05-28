@@ -545,6 +545,13 @@ function createAdvancedCartStore() {
     shippingCache.set({});
   }
   
+  // Função para calcular total de items
+  function totalItems() {
+    return get(sellerGroups).reduce((sum, group) => 
+      sum + group.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+    );
+  }
+  
   // ===== Public API =====
   return {
     // States
@@ -564,7 +571,8 @@ function createAdvancedCartStore() {
     calculateAllShipping,
     setShippingMode,
     applyCoupon,
-    removeCoupon
+    removeCoupon,
+    totalItems
   };
 }
 

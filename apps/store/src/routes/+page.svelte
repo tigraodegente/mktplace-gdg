@@ -1,6 +1,7 @@
 <!-- Deploy seletivo configurado e funcionando! -->
 <script lang="ts">
-  import ProductCard from '$lib/components/ProductCard.svelte';
+  import { formatCurrency } from '@mktplace/utils';
+  import ProductCard from '$lib/components/product/ProductCard.svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
   

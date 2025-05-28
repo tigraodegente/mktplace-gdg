@@ -47,6 +47,7 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
+		"@mktplace/shared-types": "workspace:*",
 		"@mktplace/utils": "workspace:*",
 		"@mktplace/xata-client": "workspace:*",
 		"nanoid": "^5.1.5"

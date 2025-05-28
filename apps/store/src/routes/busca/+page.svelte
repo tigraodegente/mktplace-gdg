@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import ProductCard from '$lib/components/ProductCard.svelte';
+	import ProductCard from '$lib/components/product/ProductCard.svelte';
 	import { searchService, type SearchFilters, type SearchResult } from '$lib/services/searchService';
 	
 	// Tipo Product

@@ -1,12 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
+import type { User } from '@mktplace/shared-types';
 
 interface AuthState {
   user: User | null;
@@ -80,6 +74,45 @@ function createAuthStore() {
       }
     },
     
+    async login(email: string, password: string) {
+      update(state => ({ ...state, isLoading: true, error: null }));
+      
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || 'Erro ao fazer login');
+        }
+        
+        const data = await response.json();
+        
+        update(state => ({ 
+          ...state, 
+          user: data.user, 
+          isLoading: false,
+          error: null
+        }));
+        
+        return data.user;
+      } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        update(state => ({ 
+          ...state, 
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Erro ao fazer login'
+        }));
+        throw error;
+      }
+    },
+    
     setUser(user: User | null) {
       update(state => ({ ...state, user, error: null }));
     },
@@ -122,8 +155,15 @@ function createAuthStore() {
   };
 }
 
+// Store principal
 export const auth = createAuthStore();
+
+// Derived stores para facilitar o acesso
 export const user = derived(auth, $auth => $auth.user);
 export const isAuthenticated = derived(auth, $auth => !!$auth.user);
 export const isLoading = derived(auth, $auth => $auth.isLoading);
-export const authError = derived(auth, $auth => $auth.error); 
+export const authError = derived(auth, $auth => $auth.error);
+
+// Alias para compatibilidade com código existente
+export const authStore = auth;
+export const currentUser = user; 

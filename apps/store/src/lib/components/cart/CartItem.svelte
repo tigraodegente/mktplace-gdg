@@ -209,39 +209,35 @@
 		{/if}
 		
 		<div class="flex items-center justify-between mt-auto">
-			<!-- Quantity Controls com animações -->
-			<div class="flex items-center gap-1 sm:gap-1.5 bg-gray-100 rounded-lg p-0.5 sm:p-1">
-				<button 
-					onclick={(e) => {
-						e.stopPropagation();
-						handleQuantityChange(currentQuantity - 1);
-					}}
-					disabled={!canDecreaseQuantity}
-					class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-					aria-label="Diminuir quantidade"
-				>
-					<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-					</svg>
-				</button>
-				<span class="w-6 sm:w-8 text-center text-xs sm:text-sm font-semibold text-gray-900">
-					{currentQuantity}
-				</span>
-				<button 
-					onclick={(e) => {
-						e.stopPropagation();
-						handleQuantityChange(currentQuantity + 1);
-					}}
-					disabled={!canIncreaseQuantity}
-					class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-					aria-label="Aumentar quantidade"
-					title={!canIncreaseQuantity ? 'Estoque insuficiente' : ''}
-				>
-					<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-					</svg>
-				</button>
-			</div>
+			<!-- Quantity Controls -->
+			<button
+				class="quantity-control quantity-control--decrease"
+				onclick={() => handleQuantityChange(Math.max(1, currentQuantity - 1))}
+				aria-label="Diminuir quantidade"
+				disabled={!canDecreaseQuantity}
+				type="button"
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+				</svg>
+			</button>
+			<span class="w-6 sm:w-8 text-center text-xs sm:text-sm font-semibold text-gray-900">
+				{currentQuantity}
+			</span>
+			<button 
+				onclick={(e) => {
+					e.stopPropagation();
+					handleQuantityChange(currentQuantity + 1);
+				}}
+				disabled={!canIncreaseQuantity}
+				class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+				aria-label="Aumentar quantidade"
+				title={!canIncreaseQuantity ? 'Estoque insuficiente' : ''}
+			>
+				<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+			</button>
 			
 			<!-- Price com animação -->
 			<div class="text-right">
@@ -289,7 +285,6 @@
 			class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-4 sm:p-6 mx-4"
 			transition:scale={{ duration: 300, easing: cubicOut }}
 			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
 			role="document"
 		>
 			<!-- Ícone -->

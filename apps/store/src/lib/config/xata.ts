@@ -1,5 +1,5 @@
 // Importar e configurar o cliente Xata
-import { XataClient } from '../../../../packages/xata-client/src/xata';
+import { XataClient } from '@mktplace/xata-client';
 import { building } from '$app/environment';
 
 let instance: XataClient | undefined = undefined;

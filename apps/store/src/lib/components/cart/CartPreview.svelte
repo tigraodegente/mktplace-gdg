@@ -3,23 +3,27 @@
 	import { goto } from '$app/navigation';
 	import { fade, slide, scale, fly } from 'svelte/transition';
 	import { cubicOut, elasticOut } from 'svelte/easing';
+	import { formatCurrency } from '@mktplace/utils';
+	import { get } from 'svelte/store';
 	
 	// Imports internos - stores
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
-	import { authStore, isAuthenticated } from '$lib/stores/authStore';
+	import { authStore, isAuthenticated } from '$lib/stores/auth';
+	import { toastStore } from '$lib/stores/toastStore';
+	import type { Product } from '@mktplace/shared-types';
 	
 	// Imports internos - utils
 	import { staggerDelay, springConfig, smoothSpring } from '$lib/utils/animations';
 	
 	// Imports internos - componentes
-	import CartHeader from './cart/CartHeader.svelte';
-	import EmptyCart from './cart/EmptyCart.svelte';
-	import ShippingCalculator from './cart/ShippingCalculator.svelte';
-	import ShippingModeSelector from './cart/ShippingModeSelector.svelte';
-	import SellerGroup from './cart/SellerGroup.svelte';
-	import CouponSection from './cart/CouponSection.svelte';
-	import CartFooter from './cart/CartFooter.svelte';
-	import ShareCart from './cart/ShareCart.svelte';
+	import CartHeader from './CartHeader.svelte';
+	import EmptyCart from './EmptyCart.svelte';
+	import ShippingCalculator from './ShippingCalculator.svelte';
+	import ShippingModeSelector from './ShippingModeSelector.svelte';
+	import SellerGroup from './SellerGroup.svelte';
+	import CouponSection from './CouponSection.svelte';
+	import CartFooter from './CartFooter.svelte';
+	import ShareCart from './ShareCart.svelte';
 	
 	// Types
 	interface CartPreviewProps {
@@ -339,6 +343,31 @@
 		
 		return `Carrinho com ${itemText} de ${sellerText}`;
 	}
+	
+	function removeItem(productId: string) {
+		const items = get(advancedCartStore.items);
+		const item = items.find(i => i.product.id === productId);
+		const sellerId = item?.sellerId || '';
+		
+		advancedCartStore.removeItem(productId, sellerId);
+		
+		// Notificação de sucesso
+		if (item) {
+			toastStore.success(`${item.product.name} removido do carrinho`);
+		}
+	}
+	
+	function updateQuantity(productId: string, quantity: number) {
+		if (quantity <= 0) {
+			removeItem(productId);
+		} else {
+			const items = get(advancedCartStore.items);
+			const item = items.find(i => i.product.id === productId);
+			const sellerId = item?.sellerId || '';
+			
+			advancedCartStore.updateQuantity(productId, sellerId, quantity);
+		}
+	}
 </script>
 
 <!-- Overlay com blur -->
@@ -459,17 +488,10 @@
 								<SellerGroup 
 									{group}
 									onUpdateQuantity={(productId, quantity) => {
-										advancedCartStore.updateQuantity(
-											productId,
-											group.sellerId,
-											quantity
-										);
+										updateQuantity(productId, quantity);
 									}}
 									onRemoveItem={(productId) => {
-										advancedCartStore.removeItem(
-											productId,
-											group.sellerId
-										);
+										removeItem(productId);
 									}}
 									onSelectShipping={(sellerId, optionId) => {
 										// TODO: Implementar seleção de frete

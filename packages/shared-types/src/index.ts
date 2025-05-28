@@ -60,6 +60,8 @@ export interface FilterParams {
 // Exportar todos os tipos
 export * from './user';
 export * from './product';
+export * from './cart';
+export * from './address';
 // export * from './models/user';
 // export * from './models/order';
 // export * from './models/category';

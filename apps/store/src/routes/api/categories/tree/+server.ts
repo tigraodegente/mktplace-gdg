@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/xata';
+import { getXataClient } from '$lib/config/xata';
 
 interface CategoryNode {
 	id: string;

@@ -3,10 +3,10 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { auth, user, isAuthenticated } from '$lib/stores/auth';
-	import Footer from '$lib/components/Footer.svelte';
-	import SearchBox from '$lib/components/SearchBox.svelte';
+	import Footer from '$lib/components/layout/Footer.svelte';
+	import SearchBox from '$lib/components/search/SearchBox.svelte';
 	import CategoryMenu from '$lib/components/CategoryMenu.svelte';
-	import CartPreview from '$lib/components/CartPreview.svelte';
+	import CartPreview from '$lib/components/cart/CartPreview.svelte';
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
 
 	// Tipo local para Product

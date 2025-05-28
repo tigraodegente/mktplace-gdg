@@ -260,19 +260,17 @@
 	<div 
 		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
 		transition:fade={{ duration: 200 }}
-		onclick={() => showRemoveModal = false}
-		onkeydown={(e) => e.key === 'Escape' && (showRemoveModal = false)}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="remove-address-modal-title"
 		tabindex="-1"
 	>
 		<div 
-			class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-4 sm:p-6 mx-4"
+			class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 mx-4"
 			transition:scale={{ duration: 300, easing: cubicOut }}
 			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-			role="document"
+			onkeydown={(e) => e.key === 'Escape' && (showRemoveModal = false)}
+			role="presentation"
 		>
 			<!-- Ícone -->
 			<div class="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">

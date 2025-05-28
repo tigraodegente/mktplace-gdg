@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/xata';
+import { getXataClient } from '$lib/config/xata';
 
 // Esta rota sempre retorna 200, evitando o erro 401 no console
 export const GET: RequestHandler = async ({ cookies }) => {

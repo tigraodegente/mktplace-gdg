@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import ProductCard from '$lib/components/ProductCard.svelte';
+	import type { PageData } from './$types';
+	import ProductCard from '$lib/components/product/ProductCard.svelte';
 	import { searchService, type SearchFilters, type SearchResult } from '$lib/services/searchService';
+	import type { Product } from '@mktplace/shared-types';
+	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
+	import SortDropdown from '$lib/components/filters/SortDropdown.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
 	
 	// Get category from URL
 	let categorySlug = $derived($page.params.slug);
