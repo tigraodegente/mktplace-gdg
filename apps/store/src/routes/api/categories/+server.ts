@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/config/xata';
-import type { Category, Subcategory } from '$lib/services/categoryService';
+import { withDatabase } from '$lib/db';
 
 // Types
 interface CategoryData {
@@ -15,20 +14,12 @@ interface CategoryData {
   product_count: number;
 }
 
-interface CategoryCount {
-  categoryId: string;
-  count: number;
-}
-
 // Constants
-const MAX_CATEGORIES = 100;
 const CACHE_MAX_AGE = 300; // 5 minutes
 const STALE_WHILE_REVALIDATE = 60; // 1 minute
 
-export const GET: RequestHandler = async ({ url, setHeaders }) => {
+export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
   try {
-    const xata = getXataClient();
-    
     // Parse query parameters
     const includeCount = url.searchParams.get('includeCount') === 'true';
     const parentOnly = url.searchParams.get('parentOnly') === 'true';
@@ -39,35 +30,47 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
       'Vary': 'Accept-Encoding'
     });
     
-    // Fetch all active categories with optimized query
-    const categories = await xata.db.categories
-      .filter({ is_active: true })
-      .select(['id', 'name', 'slug', 'parent_id', 'description', 'position'])
-      .sort('position', 'asc')
-      .getMany({ pagination: { size: MAX_CATEGORIES } });
-    
-    // Build category hierarchy
-    const { categoryMap, rootCategories } = buildCategoryHierarchy(categories);
-    
-    // Add product counts if requested
-    if (includeCount) {
-      await addProductCounts(xata, categoryMap);
-    }
-    
-    // Sort subcategories by position
-    sortSubcategories(rootCategories);
-    
-    // Prepare final result
-    const result = parentOnly 
-      ? rootCategories.map(({ subcategories, ...cat }) => cat)
-      : rootCategories;
+    const result = await withDatabase(platform, async (db) => {
+      // Fetch all active categories
+      const categories = await db.query<{
+        id: string;
+        name: string;
+        slug: string;
+        parent_id: string | null;
+        description: string | null;
+        position: number | null;
+      }>`
+        SELECT id, name, slug, parent_id, description, position
+        FROM categories
+        WHERE is_active = true
+        ORDER BY position ASC, name ASC
+      `;
+      
+      // Build category hierarchy
+      const { categoryMap, rootCategories } = buildCategoryHierarchy(categories);
+      
+      // Add product counts if requested
+      if (includeCount) {
+        await addProductCounts(db, categoryMap);
+      }
+      
+      // Sort subcategories by position
+      sortSubcategories(rootCategories);
+      
+      // Prepare final result
+      const finalResult = parentOnly 
+        ? rootCategories.map(({ subcategories, ...cat }) => cat)
+        : rootCategories;
+      
+      return {
+        categories: finalResult,
+        total: rootCategories.length
+      };
+    });
     
     return json({
       success: true,
-      data: {
-        categories: result,
-        total: rootCategories.length
-      }
+      data: result
     });
     
   } catch (error) {
@@ -137,37 +140,31 @@ function buildCategoryHierarchy(categories: any[]): {
  * Add product counts to categories
  */
 async function addProductCounts(
-  xata: ReturnType<typeof getXataClient>,
+  db: any,
   categoryMap: Map<string, CategoryData>
 ): Promise<void> {
   const categoryIds = Array.from(categoryMap.keys());
   
-  // Batch count products - more efficient than individual queries
-  const countPromises = categoryIds.map(async (catId): Promise<CategoryCount> => {
-    const result = await xata.db.products
-      .filter({
-        is_active: true,
-        category_id: catId,
-        quantity: { $gt: 0 }
-      })
-      .summarize({
-        summaries: { count: { count: '*' } }
-      });
-    
-    return {
-      categoryId: catId,
-      count: result.summaries[0]?.count || 0
-    };
-  });
+  if (categoryIds.length === 0) return;
   
-  // Execute all counts in parallel
-  const counts = await Promise.all(countPromises);
+  // Get product counts for all categories in one query
+  const counts = await db.query(`
+    SELECT 
+      category_id,
+      COUNT(*)::text as count
+    FROM products
+    WHERE 
+      is_active = true 
+      AND quantity > 0
+      AND category_id = ANY($1)
+    GROUP BY category_id
+  `, categoryIds);
   
   // Apply counts to categories
-  for (const { categoryId, count } of counts) {
-    const category = categoryMap.get(categoryId);
+  for (const { category_id, count } of counts) {
+    const category = categoryMap.get(category_id);
     if (category) {
-      category.product_count = count;
+      category.product_count = parseInt(count);
     }
   }
   

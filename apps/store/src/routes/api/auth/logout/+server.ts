@@ -1,21 +1,19 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/config/xata';
+import { withDatabase } from '$lib/db';
 
-export const POST: RequestHandler = async ({ cookies }) => {
+export const POST: RequestHandler = async ({ cookies, platform }) => {
   try {
     // Tentar remover sessão do banco
     const sessionToken = cookies.get('session_token');
     
     if (sessionToken) {
-      const xata = getXataClient();
-      const session = await xata.db.sessions
-        .filter({ token: sessionToken })
-        .getFirst();
-      
-      if (session) {
-        await xata.db.sessions.delete(session.id);
-      }
+      await withDatabase(platform, async (db) => {
+        await db.execute`
+          DELETE FROM sessions 
+          WHERE token = ${sessionToken}
+        `;
+      });
     }
     
     // Limpar cookies

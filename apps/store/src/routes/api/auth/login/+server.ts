@@ -1,10 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getXataClient } from '$lib/config/xata';
-import bcrypt from 'bcryptjs';
+import { withDatabase } from '$lib/db';
+import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+// Helper para verificar senha com PBKDF2
+function verifyPassword(password: string, storedHash: string): boolean {
+  const [salt, hash] = storedHash.split(':');
+  const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return hash === verifyHash;
+}
+
+export const POST: RequestHandler = async ({ request, cookies, platform }) => {
   try {
     const { email, password } = await request.json();
     
@@ -16,57 +23,87 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }, { status: 400 });
     }
     
-    // Buscar usuário no Xata
-    const xata = getXataClient();
-    const user = await xata.db.users
-      .filter({ email })
-      .getFirst();
-    
-    if (!user) {
-      return json({
-        success: false,
-        error: { message: 'Email ou senha inválidos' }
-      }, { status: 401 });
-    }
-    
-    // Comparar senha com hash usando bcrypt
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    
-    if (!isValidPassword) {
-      return json({
-        success: false,
-        error: { message: 'Email ou senha inválidos' }
-      }, { status: 401 });
-    }
-    
-    // Verificar se usuário está ativo
-    if (!user.is_active) {
-      return json({
-        success: false,
-        error: { message: 'Usuário inativo' }
-      }, { status: 403 });
-    }
-    
-    // Atualizar last_login_at
-    await xata.db.users.update(user.id, {
-      last_login_at: new Date()
+    const result = await withDatabase(platform, async (db) => {
+      // Buscar usuário
+      const user = await db.queryOne`
+        SELECT id, email, name, role, password_hash, is_active
+        FROM users
+        WHERE email = ${email}
+      `;
+      
+      if (!user) {
+        return {
+          success: false,
+          error: { message: 'Email ou senha inválidos' },
+          status: 401
+        };
+      }
+      
+      // Comparar senha usando PBKDF2
+      const isValidPassword = verifyPassword(password, user.password_hash);
+      
+      if (!isValidPassword) {
+        return {
+          success: false,
+          error: { message: 'Email ou senha inválidos' },
+          status: 401
+        };
+      }
+      
+      // Verificar se usuário está ativo
+      if (!user.is_active) {
+        return {
+          success: false,
+          error: { message: 'Usuário inativo' },
+          status: 403
+        };
+      }
+      
+      // Atualizar last_login_at
+      await db.execute`
+        UPDATE users 
+        SET last_login_at = NOW()
+        WHERE id = ${user.id}
+      `;
+      
+      // Criar sessão na tabela sessions
+      const sessionToken = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
+      
+      await db.execute`
+        INSERT INTO sessions (user_id, token, ip_address, user_agent, expires_at)
+        VALUES (
+          ${user.id},
+          ${sessionToken},
+          ${request.headers.get('x-forwarded-for') || 'unknown'},
+          ${request.headers.get('user-agent') || 'unknown'},
+          ${expiresAt}
+        )
+      `;
+      
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        },
+        sessionToken
+      };
     });
     
-    // Criar sessão na tabela sessions
-    const sessionToken = nanoid(32);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
-    
-    await xata.db.sessions.create({
-      user_id: user.id,
-      token: sessionToken,
-      ip_address: request.headers.get('x-forwarded-for') || 'unknown',
-      user_agent: request.headers.get('user-agent') || 'unknown',
-      expires_at: expiresAt
-    });
+    // Se houve erro, retornar com o status apropriado
+    if (!result.success) {
+      return json({
+        success: false,
+        error: result.error
+      }, { status: result.status || 500 });
+    }
     
     // Criar sessão no cookie
-    cookies.set('session_token', sessionToken, {
+    cookies.set('session_token', result.sessionToken!, {
       path: '/',
       httpOnly: true,
       secure: import.meta.env.PROD,
@@ -76,10 +113,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     
     // Também manter o cookie antigo para compatibilidade
     cookies.set('session', JSON.stringify({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      userId: result.user!.id,
+      email: result.user!.email,
+      name: result.user!.name,
+      role: result.user!.role
     }), {
       path: '/',
       httpOnly: true,
@@ -91,12 +128,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     return json({
       success: true,
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role
-        }
+        user: result.user!
       }
     });
     

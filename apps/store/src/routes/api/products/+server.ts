@@ -58,7 +58,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         conditions.push(`(
           p.name ILIKE $${paramIndex} OR 
           p.description ILIKE $${paramIndex} OR
-          p.search_text @@ plainto_tsquery('portuguese', $${paramIndex + 1})
+          to_tsvector('portuguese', p.name || ' ' || COALESCE(p.description, '')) @@ plainto_tsquery('portuguese', $${paramIndex + 1})
         )`);
         params.push(`%${searchQuery}%`);
         params.push(searchQuery);
