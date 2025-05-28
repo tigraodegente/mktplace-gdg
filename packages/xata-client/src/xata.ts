@@ -18,13 +18,6 @@ const tables = [
         referencedColumns: ["id"],
         onDelete: "NO ACTION",
       },
-      abandoned_carts_user_id_fkey: {
-        name: "abandoned_carts_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
     },
     primaryKey: ["xata_id"],
     uniqueConstraints: {
@@ -117,8 +110,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: false,
         unique: false,
         defaultValue: null,
@@ -169,15 +161,7 @@ const tables = [
   {
     name: "addresses",
     checkConstraints: {},
-    foreignKeys: {
-      addresses_user_id_fkey: {
-        name: "addresses_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-    },
+    foreignKeys: {},
     primaryKey: ["xata_id"],
     uniqueConstraints: {
       addresses_id_key: { name: "addresses_id_key", columns: ["id"] },
@@ -289,8 +273,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: true,
         unique: false,
         defaultValue: null,
@@ -736,15 +719,7 @@ const tables = [
   {
     name: "carts",
     checkConstraints: {},
-    foreignKeys: {
-      carts_user_id_fkey: {
-        name: "carts_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-    },
+    foreignKeys: {},
     primaryKey: ["xata_id"],
     uniqueConstraints: {
       carts_id_key: { name: "carts_id_key", columns: ["id"] },
@@ -800,8 +775,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: false,
         unique: false,
         defaultValue: null,
@@ -1007,13 +981,6 @@ const tables = [
         referencedColumns: ["id"],
         onDelete: "NO ACTION",
       },
-      coupon_usage_user_id_fkey: {
-        name: "coupon_usage_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
     },
     primaryKey: ["xata_id"],
     uniqueConstraints: {
@@ -1056,8 +1023,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: true,
         unique: false,
         defaultValue: null,
@@ -1383,17 +1349,42 @@ const tables = [
     ],
   },
   {
+    name: "migration_tracking",
+    checkConstraints: {},
+    foreignKeys: {},
+    primaryKey: ["id"],
+    uniqueConstraints: {},
+    columns: [
+      {
+        name: "created_at",
+        type: "timestamp without time zone",
+        notNull: false,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "type",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "notifications",
     checkConstraints: {},
-    foreignKeys: {
-      notifications_user_id_fkey: {
-        name: "notifications_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-    },
+    foreignKeys: {},
     primaryKey: ["xata_id"],
     uniqueConstraints: {
       notifications_id_key: { name: "notifications_id_key", columns: ["id"] },
@@ -1465,8 +1456,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: true,
         unique: false,
         defaultValue: null,
@@ -1529,13 +1519,6 @@ const tables = [
         name: "order_items_product_id_fkey",
         columns: ["product_id"],
         referencedTable: "products",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-      order_items_seller_id_fkey: {
-        name: "order_items_seller_id_fkey",
-        columns: ["seller_id"],
-        referencedTable: "sellers_old_backup",
         referencedColumns: ["id"],
         onDelete: "NO ACTION",
       },
@@ -1605,8 +1588,7 @@ const tables = [
       },
       {
         name: "seller_id",
-        type: "link",
-        link: { table: "sellers_old_backup" },
+        type: "text",
         notNull: false,
         unique: false,
         defaultValue: null,
@@ -1673,15 +1655,7 @@ const tables = [
   {
     name: "orders",
     checkConstraints: {},
-    foreignKeys: {
-      orders_user_id_fkey: {
-        name: "orders_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-    },
+    foreignKeys: {},
     primaryKey: ["xata_id"],
     uniqueConstraints: {
       orders_id_key: { name: "orders_id_key", columns: ["id"] },
@@ -1813,8 +1787,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: true,
         unique: false,
         defaultValue: null,
@@ -2965,13 +2938,6 @@ const tables = [
     name: "product_price_history",
     checkConstraints: {},
     foreignKeys: {
-      product_price_history_changed_by_fkey: {
-        name: "product_price_history_changed_by_fkey",
-        columns: ["changed_by"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
       product_price_history_product_id_fkey: {
         name: "product_price_history_product_id_fkey",
         columns: ["product_id"],
@@ -2997,8 +2963,7 @@ const tables = [
     columns: [
       {
         name: "changed_by",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: false,
         unique: false,
         defaultValue: null,
@@ -3296,9 +3261,9 @@ const tables = [
       products_seller_id_fkey1: {
         name: "products_seller_id_fkey1",
         columns: ["seller_id"],
-        referencedTable: "sellers_old_backup",
+        referencedTable: "sellers",
         referencedColumns: ["id"],
-        onDelete: "NO ACTION",
+        onDelete: "SET NULL",
       },
     },
     primaryKey: ["xata_id"],
@@ -3521,7 +3486,7 @@ const tables = [
       {
         name: "seller_id",
         type: "link",
-        link: { table: "sellers_old_backup" },
+        link: { table: "sellers" },
         notNull: false,
         unique: false,
         defaultValue: null,
@@ -3681,13 +3646,6 @@ const tables = [
         referencedColumns: ["id"],
         onDelete: "CASCADE",
       },
-      reviews_user_id_fkey: {
-        name: "reviews_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
     },
     primaryKey: ["xata_id"],
     uniqueConstraints: {
@@ -3778,8 +3736,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: true,
         unique: false,
         defaultValue: null,
@@ -3989,171 +3946,6 @@ const tables = [
     ],
   },
   {
-    name: "sellers_old_backup",
-    checkConstraints: {},
-    foreignKeys: {
-      sellers_user_id_fkey: {
-        name: "sellers_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-    },
-    primaryKey: ["xata_id"],
-    uniqueConstraints: {
-      sellers_id_key: { name: "sellers_id_key", columns: ["id"] },
-      sellers_slug_key: { name: "sellers_slug_key", columns: ["slug"] },
-    },
-    columns: [
-      {
-        name: "banner_url",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "company_name",
-        type: "text",
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "created_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "description",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "is_active",
-        type: "bool",
-        notNull: true,
-        unique: false,
-        defaultValue: "true",
-        comment: "",
-      },
-      {
-        name: "is_verified",
-        type: "bool",
-        notNull: false,
-        unique: false,
-        defaultValue: "false",
-        comment: "",
-      },
-      {
-        name: "logo_url",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "rating",
-        type: "float",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "slug",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "total_sales",
-        type: "int",
-        notNull: false,
-        unique: false,
-        defaultValue: "0",
-        comment: "",
-      },
-      {
-        name: "updated_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "xata",
-        type: "json",
-        notNull: false,
-        unique: false,
-        defaultValue: "'{\"version\": 0}'::jsonb",
-        comment: "",
-      },
-      {
-        name: "xata_createdat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "xata_updatedat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_version",
-        type: "int",
-        notNull: true,
-        unique: false,
-        defaultValue: "0",
-        comment: "",
-      },
-    ],
-  },
-  {
     name: "sessions",
     checkConstraints: {},
     foreignKeys: {},
@@ -4250,131 +4042,6 @@ const tables = [
         unique: true,
         defaultValue:
           "('rec_'::text || replace((gen_random_uuid())::text, '-'::text, ''::text))",
-        comment: "",
-      },
-      {
-        name: "xata_updatedat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_version",
-        type: "int",
-        notNull: true,
-        unique: false,
-        defaultValue: "0",
-        comment: "",
-      },
-    ],
-  },
-  {
-    name: "sessions_old_backup",
-    checkConstraints: {},
-    foreignKeys: {
-      sessions_user_id_fkey: {
-        name: "sessions_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
-    },
-    primaryKey: ["xata_id"],
-    uniqueConstraints: {
-      sessions_id_key: { name: "sessions_id_key", columns: ["id"] },
-      sessions_token_key: { name: "sessions_token_key", columns: ["token"] },
-    },
-    columns: [
-      {
-        name: "created_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "expires_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "ip_address",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "token",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "updated_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "user_agent",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "xata",
-        type: "json",
-        notNull: false,
-        unique: false,
-        defaultValue: "'{\"version\": 0}'::jsonb",
-        comment: "",
-      },
-      {
-        name: "xata_createdat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
         comment: "",
       },
       {
@@ -4933,154 +4600,6 @@ const tables = [
     ],
   },
   {
-    name: "users_old_backup",
-    checkConstraints: {},
-    foreignKeys: {},
-    primaryKey: ["xata_id"],
-    uniqueConstraints: {
-      users_email_key: { name: "users_email_key", columns: ["email"] },
-      users_id_key: { name: "users_id_key", columns: ["id"] },
-    },
-    columns: [
-      {
-        name: "avatar_url",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "created_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "email",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "email_verified",
-        type: "bool",
-        notNull: false,
-        unique: false,
-        defaultValue: "false",
-        comment: "",
-      },
-      {
-        name: "id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "is_active",
-        type: "bool",
-        notNull: true,
-        unique: false,
-        defaultValue: "true",
-        comment: "",
-      },
-      {
-        name: "last_login_at",
-        type: "datetime",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "name",
-        type: "text",
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "password_hash",
-        type: "text",
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "phone",
-        type: "text",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "role",
-        type: "text",
-        notNull: true,
-        unique: false,
-        defaultValue: "'customer'::text",
-        comment: "",
-      },
-      {
-        name: "updated_at",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata",
-        type: "json",
-        notNull: false,
-        unique: false,
-        defaultValue: "'{\"version\": 0}'::jsonb",
-        comment: "",
-      },
-      {
-        name: "xata_createdat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: null,
-        comment: "",
-      },
-      {
-        name: "xata_updatedat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_version",
-        type: "int",
-        notNull: true,
-        unique: false,
-        defaultValue: "0",
-        comment: "",
-      },
-    ],
-  },
-  {
     name: "variant_option_values",
     checkConstraints: {},
     foreignKeys: {
@@ -5198,13 +4717,6 @@ const tables = [
         referencedColumns: ["id"],
         onDelete: "NO ACTION",
       },
-      wishlists_user_id_fkey: {
-        name: "wishlists_user_id_fkey",
-        columns: ["user_id"],
-        referencedTable: "users_old_backup",
-        referencedColumns: ["id"],
-        onDelete: "NO ACTION",
-      },
     },
     primaryKey: ["xata_id"],
     uniqueConstraints: {
@@ -5242,8 +4754,7 @@ const tables = [
       },
       {
         name: "user_id",
-        type: "link",
-        link: { table: "users_old_backup" },
+        type: "text",
         notNull: true,
         unique: false,
         defaultValue: null,
@@ -5326,6 +4837,9 @@ export type CouponsRecord = Coupons & XataRecord;
 export type Faq = InferredTypes["faq"];
 export type FaqRecord = Faq & XataRecord;
 
+export type MigrationTracking = InferredTypes["migration_tracking"];
+export type MigrationTrackingRecord = MigrationTracking & XataRecord;
+
 export type Notifications = InferredTypes["notifications"];
 export type NotificationsRecord = Notifications & XataRecord;
 
@@ -5377,14 +4891,8 @@ export type ReviewsRecord = Reviews & XataRecord;
 export type Sellers = InferredTypes["sellers"];
 export type SellersRecord = Sellers & XataRecord;
 
-export type SellersOldBackup = InferredTypes["sellers_old_backup"];
-export type SellersOldBackupRecord = SellersOldBackup & XataRecord;
-
 export type Sessions = InferredTypes["sessions"];
 export type SessionsRecord = Sessions & XataRecord;
-
-export type SessionsOldBackup = InferredTypes["sessions_old_backup"];
-export type SessionsOldBackupRecord = SessionsOldBackup & XataRecord;
 
 export type ShippingMethods = InferredTypes["shipping_methods"];
 export type ShippingMethodsRecord = ShippingMethods & XataRecord;
@@ -5397,9 +4905,6 @@ export type SystemSettingsRecord = SystemSettings & XataRecord;
 
 export type Users = InferredTypes["users"];
 export type UsersRecord = Users & XataRecord;
-
-export type UsersOldBackup = InferredTypes["users_old_backup"];
-export type UsersOldBackupRecord = UsersOldBackup & XataRecord;
 
 export type VariantOptionValues = InferredTypes["variant_option_values"];
 export type VariantOptionValuesRecord = VariantOptionValues & XataRecord;
@@ -5418,6 +4923,7 @@ export type DatabaseSchema = {
   coupon_usage: CouponUsageRecord;
   coupons: CouponsRecord;
   faq: FaqRecord;
+  migration_tracking: MigrationTrackingRecord;
   notifications: NotificationsRecord;
   order_items: OrderItemsRecord;
   orders: OrdersRecord;
@@ -5435,14 +4941,11 @@ export type DatabaseSchema = {
   products: ProductsRecord;
   reviews: ReviewsRecord;
   sellers: SellersRecord;
-  sellers_old_backup: SellersOldBackupRecord;
   sessions: SessionsRecord;
-  sessions_old_backup: SessionsOldBackupRecord;
   shipping_methods: ShippingMethodsRecord;
   shipping_zones: ShippingZonesRecord;
   system_settings: SystemSettingsRecord;
   users: UsersRecord;
-  users_old_backup: UsersOldBackupRecord;
   variant_option_values: VariantOptionValuesRecord;
   wishlists: WishlistsRecord;
 };

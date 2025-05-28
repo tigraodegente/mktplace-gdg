@@ -140,7 +140,7 @@ export async function getActiveBrands() {
 export async function getFeaturedProducts(limit = 10) {
   const client = xata();
   return client.db.products
-    .filter({ is_featured: true, is_active: true })
+    .filter({ featured: true, is_active: true })
     // .sort('position')
     .getMany({ pagination: { size: limit } });
 }

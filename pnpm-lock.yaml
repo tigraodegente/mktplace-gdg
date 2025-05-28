@@ -17,6 +17,12 @@ importers:
       pg:
         specifier: ^8.16.0
         version: 8.16.0
+      postgres:
+        specifier: ^3.4.7
+        version: 3.4.7
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
     devDependencies:
       '@types/node':
         specifier: ^22.15.21
@@ -24,6 +30,9 @@ importers:
       '@xata.io/cli':
         specifier: ^0.16.12
         version: 0.16.12(@types/node@22.15.21)(typescript@5.8.3)
+      dotenv:
+        specifier: ^16.5.0
+        version: 16.5.0
       node-fetch:
         specifier: ^2.7.0
         version: 2.7.0
@@ -217,6 +226,9 @@ importers:
 
   apps/store:
     dependencies:
+      '@mktplace/db-hyperdrive':
+        specifier: workspace:*
+        version: link:../../packages/db-hyperdrive
       '@mktplace/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -311,6 +323,22 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.1.4(@edge-runtime/vm@4.0.4)(@types/node@22.15.21)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)
+
+  packages/db-hyperdrive:
+    dependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241127.0
+        version: 4.20250525.0
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.7
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.15.21
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
 
   packages/shared-types:
     devDependencies:
@@ -3269,6 +3297,10 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
+  postgres@3.4.7:
+    resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
+    engines: {node: '>=12'}
+
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
@@ -3794,6 +3826,10 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
+
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
 
   validate-npm-package-name@5.0.1:
     resolution: {integrity: sha512-OljLrQ9SQdOUqTaQxqL5dEfZWrXExyyWsozYlAWFawPVNuD83igl7uJD2RTkNMbniIYgt8l81eCJGIdQF7avLQ==}
@@ -6762,6 +6798,8 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
+  postgres@3.4.7: {}
+
   prelude-ls@1.2.1: {}
 
   prettier-plugin-svelte@3.4.0(prettier@3.5.3)(svelte@5.33.2):
@@ -7267,6 +7305,8 @@ snapshots:
       punycode: 2.3.1
 
   util-deprecate@1.0.2: {}
+
+  uuid@11.1.0: {}
 
   validate-npm-package-name@5.0.1: {}
 

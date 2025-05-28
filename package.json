@@ -35,6 +35,7 @@
   "devDependencies": {
     "@types/node": "^22.15.21",
     "@xata.io/cli": "^0.16.12",
+    "dotenv": "^16.5.0",
     "node-fetch": "^2.7.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3"
@@ -52,6 +53,8 @@
   "dependencies": {
     "@types/bcryptjs": "^3.0.0",
     "bcryptjs": "^3.0.2",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "postgres": "^3.4.7",
+    "uuid": "^11.1.0"
   }
 }

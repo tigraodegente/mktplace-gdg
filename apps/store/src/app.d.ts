@@ -1,12 +1,28 @@
-// See https://svelte.dev/docs/kit/types#app.d.ts
+// See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			user?: {
+				id: string
+				email: string
+				name: string
+				role: string
+			}
+		}
 		// interface PageData {}
-		// interface PageState {}
-		// interface Platform {}
+		interface Platform {
+			env?: {
+				HYPERDRIVE_DB?: {
+					connectionString: string
+				}
+			}
+			context?: {
+				waitUntil(promise: Promise<any>): void
+			}
+			caches?: CacheStorage & { default: Cache }
+		}
 	}
 }
 

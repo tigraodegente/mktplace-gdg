@@ -1,23 +1,6 @@
-XATA_API_KEY=xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1
-DATABASE_URL_POSTGRES=postgresql://787mk0:xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1@us-east-1.sql.xata.sh/mktplace-gdg:main?sslmode=require
-DATABASE_URL=https://GUSTAVO-FERRO-s-workspace-787mk0.us-east-1.xata.sh/db/mktplace-gdg:main
-XATA_BRANCH=main
-# Autenticação
-JWT_SECRET=6XrIxP1BvoeHxYHSTxyoU6zKzf622a9yq4cRm0u5vFI=
-JWT_EXPIRES_IN=7d
-REFRESH_TOKEN_EXPIRES_IN=30d
-
-# URLs das aplicações
-VITE_PUBLIC_STORE_URL=http://localhost:5173
-VITE_PUBLIC_ADMIN_URL=http://localhost:5174
-VITE_PUBLIC_SELLER_URL=http://localhost:5175
-VITE_PUBLIC_API_URL=http://localhost:5173/api
-
-# Ambiente
-NODE_ENV=development
-LOG_LEVEL=info
-
-# Segurança (opcional por enquanto)
-SESSION_SECRET=temporario_mudar_em_producao
-CSRF_SECRET=temporario_mudar_em_producao
-CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175
+{
+  "databaseURL": "https://GUSTAVO-FERRO-s-workspace-787mk0.us-east-1.xata.sh/db/mktplace-gdg-orm",
+  "codegen": {
+    "output": "packages/xata-client/src/xata.ts"
+  }
+}
