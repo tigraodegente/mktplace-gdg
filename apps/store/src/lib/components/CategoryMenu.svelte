@@ -116,14 +116,14 @@
 </script>
 
 <!-- Desktop Menu - Sempre aberto na horizontal -->
-<div class="hidden lg:block category-menu-container {className}">
+<div class="hidden lg:block category-menu-container w-full {className}">
 	<nav class="relative h-full">
 		{#if isLoading}
 			<div class="flex items-center h-full">
 				<div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
 			</div>
 		{:else}
-			<ul class="flex items-center gap-6 h-full">
+			<ul class="flex items-center justify-between h-full w-full">
 				{#each categories as category}
 					<li
 						class="relative h-full flex items-center"
@@ -132,7 +132,7 @@
 					>
 						<a
 							href="/categoria/{category.slug}"
-							class="text-white hover:text-white/80 transition-colors text-sm font-medium"
+							class="text-white hover:text-white/80 transition-colors text-sm font-medium px-4"
 						>
 							{category.name}
 							{#if category.children && category.children.length > 0}
@@ -183,14 +183,14 @@
 				
 				<!-- Separador -->
 				<li class="h-full flex items-center">
-					<div class="w-px h-5 bg-white/20"></div>
+					<div class="w-px h-5 bg-white/20 mx-4"></div>
 				</li>
 				
 				<!-- Link para ver todas -->
 				<li class="h-full flex items-center">
 					<a
 						href="/categorias"
-						class="flex items-center gap-2 text-white hover:text-white/80 transition-colors text-sm font-medium"
+						class="flex items-center gap-2 text-white hover:text-white/80 transition-colors text-sm font-medium px-4"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />

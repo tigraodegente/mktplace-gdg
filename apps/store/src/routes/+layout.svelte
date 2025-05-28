@@ -313,8 +313,8 @@
 		
 		<!-- Navigation Menu -->
 		<nav class="h-[48px] px-8">
-			<div class="w-full h-full">
-				<CategoryMenu />
+			<div class="w-full h-full flex items-center">
+				<CategoryMenu class="flex-1" />
 			</div>
 		</nav>
 	</div>
