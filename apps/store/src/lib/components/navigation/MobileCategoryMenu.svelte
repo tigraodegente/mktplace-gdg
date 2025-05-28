@@ -85,19 +85,22 @@
 		transition:fly={{ x: -320, duration: 300 }}
 	>
 		<!-- Header -->
-		<div class="bg-[#00BBB4] p-4 flex items-center justify-between">
-			<div class="flex-1 flex justify-center">
+		<div class="bg-[#00BBB4] p-4 grid grid-cols-3 items-center">
+			<div></div>
+			<div class="flex justify-center">
 				<img src="/logo.png" alt="Logo" class="h-8 filter brightness-0 invert" />
 			</div>
-			<button
-				onclick={onClose}
-				class="text-white p-2"
-				aria-label="Fechar menu"
-			>
-				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-				</svg>
-			</button>
+			<div class="flex justify-end">
+				<button
+					onclick={onClose}
+					class="text-white p-2"
+					aria-label="Fechar menu"
+				>
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
 		</div>
 		
 		<!-- Login/Cadastro ou Info do Usuário -->

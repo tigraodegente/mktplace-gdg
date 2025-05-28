@@ -443,22 +443,26 @@
 
 <!-- Header Mobile -->
 <header class="lg:hidden bg-[#00BBB4] sticky top-0 z-20">
-	<div class="flex items-center justify-between p-4">
+	<div class="grid grid-cols-3 items-center p-4">
 		<!-- Menu Button -->
-		<button 
-			onclick={() => mobileMenuOpen = true}
-			class="text-white p-1 w-10 flex items-center justify-start"
-			aria-label="Abrir menu"
-		>
-			<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-				<path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-			</svg>
-		</button>
+		<div class="flex justify-start">
+			<button 
+				onclick={() => mobileMenuOpen = true}
+				class="text-white p-1"
+				aria-label="Abrir menu"
+			>
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+					<path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</button>
+		</div>
 		
 		<!-- Logo -->
-		<a href="/" class="absolute left-1/2 -translate-x-1/2">
-			<img src="/logo.png" alt="Grão de Gente" class="h-8 w-auto filter brightness-0 invert" />
-		</a>
+		<div class="flex justify-center">
+			<a href="/" class="inline-block">
+				<img src="/logo.png" alt="Grão de Gente" class="h-8 w-auto filter brightness-0 invert" />
+			</a>
+		</div>
 		
 		<!-- Actions -->
 		<div class="flex items-center gap-2 justify-end">
