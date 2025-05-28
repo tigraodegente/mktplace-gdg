@@ -123,7 +123,7 @@
 				<div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
 			</div>
 		{:else}
-			<ul class="flex items-center gap-8 h-full">
+			<ul class="flex items-center gap-6 h-full">
 				{#each categories as category}
 					<li
 						class="relative h-full flex items-center"
@@ -145,16 +145,16 @@
 						<!-- Submenu -->
 						{#if category.children && category.children.length > 0 && hoveredCategory === category.id}
 							<div 
-								class="absolute top-full left-0 mt-0 bg-white rounded-b-lg shadow-xl min-w-[280px] z-50"
+								class="absolute top-full left-0 mt-0 bg-white rounded-b-lg shadow-lg min-w-[220px] z-50"
 								transition:fly={{ y: -10, duration: 200 }}
 								onmouseenter={() => handleMouseEnter(category.id)}
 								onmouseleave={handleMouseLeave}
 							>
-								<div class="py-2">
+								<div class="py-1">
 									<!-- Link para categoria pai -->
 									<a
 										href="/categoria/{category.slug}"
-										class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors border-b"
+										class="flex items-center px-3 py-2 hover:bg-gray-50 transition-colors border-b text-sm"
 									>
 										<span class="font-medium text-gray-700 hover:text-[#00BFB3]">
 											Ver todos em {category.name}
@@ -165,13 +165,13 @@
 									{#each category.children as subCategory}
 										<a
 											href="/categoria/{subCategory.slug}"
-											class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors group"
+											class="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors group text-sm"
 										>
 											<span class="text-gray-700 group-hover:text-[#00BFB3] transition-colors">
 												{subCategory.name}
 											</span>
 											{#if subCategory.productCount}
-												<span class="text-xs text-gray-500">({subCategory.productCount})</span>
+												<span class="text-xs text-gray-400">({subCategory.productCount})</span>
 											{/if}
 										</a>
 									{/each}
