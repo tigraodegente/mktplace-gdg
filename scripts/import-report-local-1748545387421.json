@@ -1,0 +1,38 @@
+{
+  "success": 5,
+  "errors": 0,
+  "skipped": 0,
+  "batches": 0,
+  "details": [
+    {
+      "name": "Cru e Laranja",
+      "sku": "GDG-5239-000",
+      "id": "475b7f4b-b2d1-4c1b-a61e-d7fe68f2e980",
+      "mongo_id": "65306f5524a6b1d4adce5239"
+    },
+    {
+      "name": "Menino Astronauta - 04",
+      "sku": "GDG-56c3-001",
+      "id": "85393d53-f943-4751-bd69-afd2970bd1a5",
+      "mongo_id": "65306f5b24a6b1d4adce56c3"
+    },
+    {
+      "name": "Berço + Kit Berço 9 Peças + Colchão e Protetor",
+      "sku": "GDG-57c2-002",
+      "id": "2ab66f8e-ebc0-4460-823d-23e48e56a749",
+      "mongo_id": "65306f5c24a6b1d4adce57c2"
+    },
+    {
+      "name": "Amiguinhas - Meia Manga - G",
+      "sku": "GDG-58d7-003",
+      "id": "314291d4-8411-4b1f-998b-a6b837eee984",
+      "mongo_id": "65306f5c24a6b1d4adce58d7"
+    },
+    {
+      "name": "Amiguinhos Infantil Verde",
+      "sku": "GDG-5bb2-004",
+      "id": "6867c938-922d-4cdc-940c-24fc0b73949b",
+      "mongo_id": "65306f5e24a6b1d4adce5bb2"
+    }
+  ]
+}

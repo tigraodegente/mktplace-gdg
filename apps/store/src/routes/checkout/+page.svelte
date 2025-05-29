@@ -1,48 +1,223 @@
 <script lang="ts">
   import { advancedCartStore } from '$lib/stores/advancedCartStore';
   import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { formatCurrency } from '@mktplace/utils';
   
-  const { sellerGroups, cartTotals, zipCode, clearCart } = advancedCartStore;
+  const { sellerGroups, cartTotals, clearCart } = advancedCartStore;
   
-  // Estados do formulário
-  let currentStep = $state<'address' | 'payment' | 'review'>('address');
+  // Estado
+  let currentStep: 'shipping' | 'payment' | 'review' = 'shipping';
   let isProcessing = $state(false);
-  
-  // Dados de endereço
   let addressData = $state({
-    fullName: '',
-    email: '',
-    phone: '',
-    cpf: '',
-    zipCode: $zipCode || '',
+    name: '',
     street: '',
     number: '',
     complement: '',
     neighborhood: '',
     city: '',
     state: '',
-    saveAddress: true
+    postal_code: ''
   });
-  
-  // Dados de pagamento
   let paymentData = $state({
-    method: 'credit_card' as 'credit_card' | 'pix' | 'boleto',
+    method: 'credit_card',
+    installments: 1,
     cardNumber: '',
     cardName: '',
     cardExpiry: '',
-    cardCvv: '',
-    installments: 1
+    cardCvv: ''
   });
   
-  // Validação se tem produtos no carrinho
-  onMount(() => {
-    if ($sellerGroups.length === 0) {
-      goto('/cart');
+  // Sistema de estoque
+  let stockReservationId = $state<string | null>(null);
+  let reservationExpiresAt = $state<Date | null>(null);
+  let stockValidationError = $state<string | null>(null);
+
+  // Função para gerar session ID único
+  function generateSessionId(): string {
+    return Date.now().toString() + Math.random().toString(36).substring(2);
+  }
+
+  // Reservar estoque ao entrar no checkout
+  onMount(async () => {
+    await reserveStock();
+  });
+
+  // Limpar reserva ao sair da página
+  onDestroy(async () => {
+    if (stockReservationId) {
+      await releaseReservation();
     }
   });
-  
+
+  async function reserveStock() {
+    try {
+      stockValidationError = null;
+      
+      // Preparar itens para reserva
+      const items = $sellerGroups.flatMap(group => 
+        group.items.map(item => ({
+          product_id: item.product.id,
+          quantity: item.quantity
+        }))
+      );
+
+      if (items.length === 0) {
+        goto('/cart');
+        return;
+      }
+
+      const sessionId = generateSessionId();
+      
+      const response = await fetch('/api/stock/reserve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          items,
+          session_id: sessionId,
+          expires_in_minutes: 15
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        stockReservationId = result.reservation_id;
+        reservationExpiresAt = new Date(result.expires_at);
+        console.log('✅ Estoque reservado:', stockReservationId);
+      } else {
+        stockValidationError = result.error?.message || 'Erro ao reservar estoque';
+        console.error('❌ Falha ao reservar estoque:', result.error);
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao reservar estoque:', error);
+      stockValidationError = 'Erro de conexão ao validar estoque';
+    }
+  }
+
+  async function releaseReservation() {
+    if (!stockReservationId) return;
+
+    try {
+      await fetch(`/api/stock/reserve?reservation_id=${stockReservationId}&session_id=${generateSessionId()}`, {
+        method: 'DELETE'
+      });
+      console.log('🔓 Reserva liberada');
+    } catch (error) {
+      console.error('❌ Erro ao liberar reserva:', error);
+    }
+  }
+
+  async function processOrder() {
+    isProcessing = true;
+    
+    try {
+      // Validar dados obrigatórios
+      if (!addressData.name || !addressData.street || !addressData.postal_code) {
+        alert('Por favor, preencha todos os campos obrigatórios do endereço');
+        return;
+      }
+
+      if (!stockReservationId) {
+        // Tentar reservar novamente se não houver reserva
+        await reserveStock();
+        if (!stockReservationId) {
+          alert('Erro ao validar estoque. Tente novamente.');
+          return;
+        }
+      }
+
+      // Preparar dados do pedido
+      const orderData = {
+        items: $sellerGroups.flatMap(group => 
+          group.items.map(item => ({
+            product_id: item.product.id,
+            quantity: item.quantity,
+            price: item.product.price,
+            seller_id: item.sellerId,
+            selectedColor: item.selectedColor,
+            selectedSize: item.selectedSize
+          }))
+        ),
+        shipping_address: addressData,
+        billing_address: addressData, // Por enquanto usar o mesmo endereço
+        payment_method: paymentData.method,
+        installments: paymentData.installments,
+        notes: '',
+        user_id: 'guest-user', // TODO: Implementar autenticação real
+      };
+
+      console.log('🚀 Criando pedido...', orderData);
+
+      // Criar pedido via API
+      const response = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ Pedido criado com sucesso:', result.order);
+        
+        // Confirmar reserva na API (marcar como usada)
+        if (stockReservationId) {
+          await confirmReservation();
+        }
+
+        // Limpar carrinho
+        clearCart();
+        
+        // Redirecionar para página de sucesso
+        goto(`/pedido/sucesso?orderId=${result.order.order_number}`);
+        
+      } else {
+        console.error('❌ Erro ao criar pedido:', result.error);
+        
+        if (result.error?.code === 'INSUFFICIENT_STOCK') {
+          stockValidationError = result.error.message;
+          alert(`Erro de estoque: ${result.error.message}`);
+          // Redirecionar para o carrinho para ajustar quantidades
+          goto('/cart');
+        } else {
+          alert(result.error?.message || 'Erro ao processar pedido. Tente novamente.');
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro no processamento:', error);
+      alert('Erro de conexão. Verifique sua internet e tente novamente.');
+    } finally {
+      isProcessing = false;
+    }
+  }
+
+  async function confirmReservation() {
+    if (!stockReservationId) return;
+
+    try {
+      // Atualizar status da reserva para 'confirmed'
+      await fetch('/api/stock/reserve', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reservation_id: stockReservationId,
+          status: 'confirmed'
+        })
+      });
+    } catch (error) {
+      console.error('❌ Erro ao confirmar reserva:', error);
+    }
+  }
+
   // Buscar endereço pelo CEP
   async function fetchAddress(cep: string) {
     const cleanCep = cep.replace(/\D/g, '');
@@ -99,72 +274,16 @@
   
   // Validação dos passos
   function validateAddress() {
-    return addressData.fullName && 
-           addressData.email && 
-           addressData.phone && 
-           addressData.cpf && 
-           addressData.zipCode && 
+    return addressData.name && 
            addressData.street && 
-           addressData.number && 
-           addressData.neighborhood && 
-           addressData.city && 
-           addressData.state;
+           addressData.postal_code;
   }
   
   function validatePayment() {
     if (paymentData.method === 'credit_card') {
-      return paymentData.cardNumber && 
-             paymentData.cardName && 
-             paymentData.cardExpiry && 
-             paymentData.cardCvv;
+      return true;
     }
     return true;
-  }
-  
-  // Processar pedido
-  async function processOrder() {
-    isProcessing = true;
-    
-    try {
-      // Simular processamento
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Criar pedido
-      const orderData = {
-        items: $sellerGroups.flatMap(group => 
-          group.items.map(item => ({
-            productId: item.product.id,
-            productName: item.product.name,
-            quantity: item.quantity,
-            price: item.product.price,
-            sellerId: item.sellerId,
-            sellerName: item.sellerName
-          }))
-        ),
-        address: addressData,
-        payment: {
-          method: paymentData.method,
-          installments: paymentData.installments
-        },
-        totals: $cartTotals,
-        createdAt: new Date().toISOString()
-      };
-      
-      // TODO: Enviar para API real
-      console.log('Pedido criado:', orderData);
-      
-      // Limpar carrinho
-      clearCart();
-      
-      // Redirecionar para página de sucesso
-      goto('/pedido/sucesso?orderId=123456');
-      
-    } catch (error) {
-      console.error('Erro ao processar pedido:', error);
-      alert('Erro ao processar pedido. Tente novamente.');
-    } finally {
-      isProcessing = false;
-    }
   }
   
   // Calcular parcelas disponíveis
@@ -205,10 +324,10 @@
         <div class="flex items-center">
           <div class="flex items-center">
             <div class="w-8 h-8 rounded-full flex items-center justify-center
-                        {currentStep === 'address' ? 'bg-[#00BFB3] text-white' : 'bg-gray-300 text-gray-600'}">
+                        {currentStep === 'shipping' ? 'bg-[#00BFB3] text-white' : 'bg-gray-300 text-gray-600'}">
               1
             </div>
-            <span class="ml-2 text-sm font-medium {currentStep === 'address' ? 'text-gray-900' : 'text-gray-500'}">
+            <span class="ml-2 text-sm font-medium {currentStep === 'shipping' ? 'text-gray-900' : 'text-gray-500'}">
               Endereço
             </span>
           </div>
@@ -216,7 +335,7 @@
           <div class="flex-1 mx-4">
             <div class="h-0.5 bg-gray-300">
               <div class="h-0.5 bg-[#00BFB3] transition-all duration-300"
-                   style="width: {currentStep === 'address' ? '0%' : currentStep === 'payment' ? '50%' : '100%'}">
+                   style="width: {currentStep === 'shipping' ? '0%' : currentStep === 'payment' ? '50%' : '100%'}">
               </div>
             </div>
           </div>
@@ -255,7 +374,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Formulário Principal -->
       <div class="lg:col-span-2">
-        {#if currentStep === 'address'}
+        {#if currentStep === 'shipping'}
           <!-- Formulário de Endereço -->
           <div class="bg-white rounded-lg shadow-sm p-6">
             <h2 class="text-xl font-semibold mb-6">Dados de Entrega</h2>
@@ -268,7 +387,7 @@
                   </label>
                   <input
                     type="text"
-                    bind:value={addressData.fullName}
+                    bind:value={addressData.name}
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
                     required
                   />
@@ -276,40 +395,14 @@
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    E-mail
-                  </label>
-                  <input
-                    type="email"
-                    bind:value={addressData.email}
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Telefone
-                  </label>
-                  <input
-                    type="tel"
-                    value={addressData.phone}
-                    oninput={(e) => addressData.phone = maskPhone(e.currentTarget.value)}
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
-                    placeholder="(00) 00000-0000"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    CPF
+                    CEP
                   </label>
                   <input
                     type="text"
-                    value={addressData.cpf}
-                    oninput={(e) => addressData.cpf = maskCPF(e.currentTarget.value)}
+                    bind:value={addressData.postal_code}
+                    onblur={() => fetchAddress(addressData.postal_code)}
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
-                    placeholder="000.000.000-00"
+                    placeholder="00000-000"
                     required
                   />
                 </div>
@@ -320,20 +413,6 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      CEP
-                    </label>
-                    <input
-                      type="text"
-                      bind:value={addressData.zipCode}
-                      onblur={() => fetchAddress(addressData.zipCode)}
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
-                      placeholder="00000-000"
-                      required
-                    />
-                  </div>
-                  
-                  <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       Rua
                     </label>
@@ -432,19 +511,6 @@
                       <option value="TO">TO</option>
                     </select>
                   </div>
-                </div>
-                
-                <div class="mt-4">
-                  <label class="flex items-center">
-                    <input
-                      type="checkbox"
-                      bind:checked={addressData.saveAddress}
-                      class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
-                    />
-                    <span class="ml-2 text-sm text-gray-700">
-                      Salvar endereço para próximas compras
-                    </span>
-                  </label>
                 </div>
               </div>
               
@@ -607,7 +673,7 @@
             <div class="flex justify-between pt-6">
               <button
                 type="button"
-                onclick={() => currentStep = 'address'}
+                onclick={() => currentStep = 'shipping'}
                 class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold
                        hover:bg-gray-50 transition-colors"
               >
@@ -635,7 +701,7 @@
             <div class="mb-6">
               <h3 class="font-medium text-gray-900 mb-3">Endereço de Entrega</h3>
               <div class="bg-gray-50 rounded-lg p-4">
-                <p class="font-medium">{addressData.fullName}</p>
+                <p class="font-medium">{addressData.name}</p>
                 <p class="text-sm text-gray-600 mt-1">
                   {addressData.street}, {addressData.number}
                   {addressData.complement ? `, ${addressData.complement}` : ''}
@@ -643,7 +709,7 @@
                 <p class="text-sm text-gray-600">
                   {addressData.neighborhood} - {addressData.city}/{addressData.state}
                 </p>
-                <p class="text-sm text-gray-600">CEP: {addressData.zipCode}</p>
+                <p class="text-sm text-gray-600">CEP: {addressData.postal_code}</p>
               </div>
             </div>
             

@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import pg from 'pg';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -9,63 +11,48 @@ const __dirname = dirname(__filename);
 // Carregar variáveis de ambiente
 dotenv.config({ path: join(__dirname, '..', '.env.local') });
 
-const { Client } = pg;
+const { Pool } = pg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 async function checkCategories() {
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL
-  });
-
   try {
-    await client.connect();
-    console.log('✅ Conectado ao banco de dados\n');
-
-    // Verificar produtos
-    const productsResult = await client.query('SELECT COUNT(*) FROM products WHERE is_active = true');
-    console.log(`📦 Produtos ativos: ${productsResult.rows[0].count}`);
-
-    // Verificar categorias
-    const categoriesResult = await client.query('SELECT COUNT(*) FROM categories WHERE is_active = true');
-    console.log(`📁 Categorias ativas: ${categoriesResult.rows[0].count}`);
-
-    // Verificar produtos com categorias
-    const productsWithCats = await client.query(`
-      SELECT COUNT(*) 
-      FROM products p 
-      JOIN categories c ON p.category_id = c.id 
-      WHERE p.is_active = true AND c.is_active = true
-    `);
-    console.log(`🔗 Produtos com categorias ativas: ${productsWithCats.rows[0].count}`);
-
-    // Listar algumas categorias
-    const sampleCategories = await client.query(`
-      SELECT c.id, c.name, c.slug, COUNT(p.id) as product_count
-      FROM categories c
-      LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
-      WHERE c.is_active = true
-      GROUP BY c.id, c.name, c.slug
-      ORDER BY product_count DESC
-      LIMIT 10
-    `);
+    console.log('📊 Verificando categorias no banco Develop:');
     
-    console.log('\n📊 Top 10 categorias por número de produtos:');
-    sampleCategories.rows.forEach(cat => {
-      console.log(`  - ${cat.name} (${cat.slug}): ${cat.product_count} produtos`);
+    const categories = await pool.query('SELECT id, name, slug, is_active FROM categories ORDER BY name');
+    console.log(`Total: ${categories.rows.length} categorias`);
+    
+    categories.rows.forEach((cat, i) => {
+      console.log(`${i+1}. ${cat.name} (slug: ${cat.slug}, ativo: ${cat.is_active})`);
     });
 
-    // Verificar se há produtos sem categoria
-    const productsWithoutCat = await client.query(`
-      SELECT COUNT(*) 
-      FROM products p 
-      WHERE p.is_active = true 
-      AND (p.category_id IS NULL OR p.category_id NOT IN (SELECT id FROM categories WHERE is_active = true))
+    console.log('\n📊 Verificando produtos e suas categorias:');
+    const products = await pool.query(`
+      SELECT p.name, c.name as category_name, p.is_active, p.quantity
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      ORDER BY p.name
     `);
-    console.log(`\n⚠️  Produtos sem categoria válida: ${productsWithoutCat.rows[0].count}`);
+    
+    products.rows.forEach((prod, i) => {
+      console.log(`${i+1}. ${prod.name} → ${prod.category_name || 'SEM CATEGORIA'} (ativo: ${prod.is_active}, estoque: ${prod.quantity})`);
+    });
+
+    console.log('\n📊 Verificando marcas:');
+    const brands = await pool.query('SELECT id, name, slug, is_active FROM brands ORDER BY name');
+    console.log(`Total: ${brands.rows.length} marcas`);
+    
+    brands.rows.forEach((brand, i) => {
+      console.log(`${i+1}. ${brand.name} (slug: ${brand.slug}, ativo: ${brand.is_active})`);
+    });
 
   } catch (error) {
-    console.error('❌ Erro:', error);
+    console.error('❌ Erro:', error.message);
   } finally {
-    await client.end();
+    await pool.end();
   }
 }
 

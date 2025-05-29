@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
+	import { ShippingCartService, type SellerShippingQuote } from '$lib/services/shippingCartService';
+	import type { CartItem } from '$lib/types/cart';
 	import { formatCurrency } from '@mktplace/utils';
 	import { fade, scale, slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -6,7 +9,8 @@
 	
 	interface ShippingCalculatorProps {
 		zipCode: string;
-		onCalculate: (zipCode: string) => void;
+		cartItems: CartItem[];
+		onCalculate: (zip: string, quotes: SellerShippingQuote[]) => void;
 		onAddressSelect?: (address: any) => void;
 		onRemoveAddress?: (id: string) => void;
 		savedAddresses?: Array<{
@@ -24,76 +28,123 @@
 	
 	let { 
 		zipCode = '', 
+		cartItems, 
 		onCalculate, 
 		onAddressSelect,
 		onRemoveAddress,
 		savedAddresses = []
 	}: ShippingCalculatorProps = $props();
 	
-	let localZipCode = $state(zipCode);
+	let localZipCode = $state(zipCode || '');
 	let calculating = $state(false);
+	let recentZipCodes = $state<string[]>([]);
+	let shippingQuotes = $state<SellerShippingQuote[]>([]);
+	let hasCalculated = $state(false);
 	let error = $state('');
 	let showSavedAddresses = $state(false);
 	let addressDetails = $state<any>(null);
 	let showRemoveModal = $state(false);
 	let addressToRemove = $state<string | null>(null);
 	
-	// Máscara de CEP
-	function formatZipCode(value: string) {
-		const numbers = value.replace(/\D/g, '');
-		if (numbers.length <= 5) {
-			return numbers;
+	// Carregar CEPs recentes do localStorage
+	function loadRecentZipCodes() {
+		if (typeof window !== 'undefined') {
+			const stored = localStorage.getItem('recentZipCodes');
+			if (stored) {
+				try {
+					recentZipCodes = JSON.parse(stored).slice(0, 3);
+				} catch (e) {
+					recentZipCodes = [];
+				}
+			}
 		}
-		return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`;
 	}
 	
-	function handleZipCodeInput(e: Event) {
-		const input = e.target as HTMLInputElement;
-		localZipCode = formatZipCode(input.value);
+	// Salvar CEP nos recentes
+	function saveRecentZipCode(zip: string) {
+		if (typeof window !== 'undefined') {
+			const filtered = recentZipCodes.filter(z => z !== zip);
+			const newRecents = [zip, ...filtered].slice(0, 3);
+			recentZipCodes = newRecents;
+			localStorage.setItem('recentZipCodes', JSON.stringify(newRecents));
+		}
 	}
 	
+	// Remover CEP dos recentes
+	function removeRecentZipCode(zip: string) {
+		recentZipCodes = recentZipCodes.filter(z => z !== zip);
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('recentZipCodes', JSON.stringify(recentZipCodes));
+		}
+	}
+	
+	// Executar cálculo de frete
 	async function handleCalculate() {
 		const cleanZip = localZipCode.replace(/\D/g, '');
 		
-		if (cleanZip.length !== 8) {
-			error = CART_CONSTANTS.MESSAGES.INVALID_ZIP;
+		if (!ShippingCartService.validatePostalCode(cleanZip)) {
 			return;
 		}
-		
-		error = '';
+
+		if (!cartItems || cartItems.length === 0) {
+			console.warn('Carrinho vazio - não é possível calcular frete');
+			return;
+		}
+
 		calculating = true;
-		addressDetails = null;
 		
 		try {
-			// Buscar endereço via ViaCEP
-			const response = await fetch(`https://viacep.com.br/ws/${cleanZip}/json/`);
-			const data = await response.json();
+			const quotes = await ShippingCartService.calculateShippingForCart(
+				cleanZip,
+				cartItems
+			);
 			
-			if (data.erro) {
-				error = CART_CONSTANTS.MESSAGES.ZIP_NOT_FOUND;
-				return;
-			}
+			shippingQuotes = quotes;
+			hasCalculated = true;
 			
-			addressDetails = {
-				street: data.logradouro,
-				neighborhood: data.bairro,
-				city: data.localidade,
-				state: data.uf
-			};
+			// Salvar CEP nos recentes
+			saveRecentZipCode(localZipCode);
 			
-			// Simular delay de cálculo
-			await new Promise(resolve => setTimeout(resolve, 800));
+			// Chamar callback do componente pai
+			onCalculate(cleanZip, quotes);
 			
-			onCalculate(cleanZip);
-		} catch (err) {
-			error = 'Erro ao buscar CEP';
+		} catch (error) {
+			console.error('Erro ao calcular frete:', error);
+			shippingQuotes = [];
+			hasCalculated = true;
 		} finally {
 			calculating = false;
 		}
 	}
 	
+	// Usar CEP recente
+	function useRecentZipCode(zip: string) {
+		localZipCode = zip;
+		handleCalculate();
+	}
+	
+	// Limpar resultados
+	function clearResults() {
+		shippingQuotes = [];
+		hasCalculated = false;
+	}
+	
+	// Formatar CEP durante a digitação
+	function formatZipInput(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const numbersOnly = target.value.replace(/\D/g, '');
+		if (numbersOnly.length <= 8) {
+			localZipCode = ShippingCartService.formatPostalCode(numbersOnly);
+		}
+	}
+	
+	// Inicializar
+	$effect(() => {
+		loadRecentZipCodes();
+	});
+	
 	function selectAddress(address: any) {
-		localZipCode = formatZipCode(address.zipCode);
+		localZipCode = ShippingCartService.formatPostalCode(address.zipCode);
 		addressDetails = {
 			street: address.street,
 			neighborhood: address.neighborhood,
@@ -104,7 +155,7 @@
 		if (onAddressSelect) {
 			onAddressSelect(address);
 		}
-		onCalculate(address.zipCode);
+		onCalculate(address.zipCode, []);
 	}
 	
 	function confirmRemoveAddress(id: string) {
@@ -162,7 +213,7 @@
 								{address.neighborhood} • {address.city}/{address.state}
 							</p>
 							<p class="text-[10px] sm:text-xs text-gray-500">
-								CEP: {formatZipCode(address.zipCode)}
+								CEP: {ShippingCartService.formatPostalCode(address.zipCode)}
 							</p>
 						</div>
 						<div 
@@ -192,65 +243,146 @@
 		</div>
 	{/if}
 	
+	<!-- CEPs Recentes -->
+	{#if recentZipCodes.length > 0 && !hasCalculated}
+		<div class="mb-4">
+			<h4 class="text-sm font-medium text-gray-700 mb-2">CEPs recentes:</h4>
+			<div class="flex flex-wrap gap-2">
+				{#each recentZipCodes as zip}
+					<div
+						onclick={() => useRecentZipCode(zip)}
+						class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 
+							   text-sm text-gray-700 rounded-lg transition-colors group cursor-pointer"
+					>
+						<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+								  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+								  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+						</svg>
+						{zip}
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								removeRecentZipCode(zip);
+							}}
+							class="opacity-0 group-hover:opacity-100 transition-opacity ml-1 
+								   hover:bg-red-100 rounded-full p-0.5"
+						>
+							<svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+									  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+							</svg>
+						</button>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+	
 	<!-- Campo de CEP -->
-	<form onsubmit={(e) => {
-		e.preventDefault();
-		handleCalculate();
-	}} class="flex gap-1.5 sm:gap-2">
+	<form 
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleCalculate();
+		}} 
+		class="flex gap-2 mb-4"
+	>
 		<div class="relative flex-1">
 			<input 
 				type="text"
 				placeholder="00000-000"
-				value={localZipCode}
-				oninput={handleZipCodeInput}
+				bind:value={localZipCode}
 				maxlength="9"
-				class="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent pl-7 sm:pl-8"
+				class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg 
+					   focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent 
+					   pl-10"
+				oninput={formatZipInput}
 			/>
-			<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-2 sm:left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+			<svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" 
+				 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+					  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+					  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
 			</svg>
 		</div>
+		
 		<button 
 			type="submit"
-			disabled={calculating || localZipCode.replace(/\D/g, '').length !== 8}
-			class="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#00BFB3] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
+			disabled={calculating || !ShippingCartService.validatePostalCode(localZipCode.replace(/\D/g, ''))}
+			class="px-4 py-2.5 bg-[#00BFB3] text-white text-sm font-medium rounded-lg 
+				   hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
+				   flex items-center gap-2 min-w-[100px] justify-center"
 		>
 			{#if calculating}
-				<div class="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+				<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+				Calculando...
+			{:else}
+				Calcular
 			{/if}
-			Calcular
 		</button>
 	</form>
 	
-	<!-- Link não sei meu CEP -->
-	<div class="mt-2 text-left">
+	<!-- Link "Não sei meu CEP" -->
+	<div class="mb-6">
 		<a 
 			href="https://buscacepinter.correios.com.br/app/endereco/index.php" 
-			target="_blank"
+			target="_blank" 
 			rel="noopener noreferrer"
-			class="text-xs text-[#00BFB3] hover:text-[#00A89D] hover:underline inline-flex items-center gap-1"
+			class="text-sm text-[#00BFB3] hover:text-[#00A89D] underline flex items-center gap-1"
 		>
-			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
 			Não sei meu CEP
+			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+					  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+			</svg>
 		</a>
 	</div>
 	
-	{#if error}
-		<p class="text-xs text-red-600 mt-2 flex items-center gap-1" transition:fade={{ duration: 200 }}>
-			<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
-			{error}
-		</p>
-	{/if}
-	
-	{#if addressDetails}
-		<div class="mt-1.5 sm:mt-2 p-1.5 sm:p-2 bg-white border border-gray-200 rounded text-[10px] sm:text-xs text-gray-600" transition:scale={{ duration: 200, easing: cubicOut }}>
-			<p class="font-medium text-gray-900 truncate">{addressDetails.street}</p>
-			<p class="truncate">{addressDetails.neighborhood} • {addressDetails.city}/{addressDetails.state}</p>
+	<!-- Status de cálculo -->
+	{#if hasCalculated && shippingQuotes.length > 0}
+		<div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2 text-green-800">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+					<span class="text-sm font-medium">Frete calculado com sucesso!</span>
+				</div>
+				<button
+					onclick={clearResults}
+					class="text-xs text-green-700 hover:text-green-800 underline flex items-center gap-1"
+				>
+					Calcular outro CEP
+					<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+					</svg>
+				</button>
+			</div>
+			<p class="text-xs text-green-700 mt-1">
+				Veja as opções de entrega abaixo e selecione a melhor para você.
+			</p>
+		</div>
+	{:else if hasCalculated}
+		<!-- Estado de erro -->
+		<div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+			<div class="flex items-center gap-2 text-red-800">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+						  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+				<span class="text-sm font-medium">Erro ao calcular frete</span>
+			</div>
+			<p class="text-xs text-red-700 mt-1">
+				Não foi possível calcular o frete para este CEP. Tente novamente ou verifique se o CEP está correto.
+			</p>
+			<button
+				onclick={clearResults}
+				class="mt-2 text-xs text-red-700 hover:text-red-800 underline"
+			>
+				Tentar novamente
+			</button>
 		</div>
 	{/if}
 </div>

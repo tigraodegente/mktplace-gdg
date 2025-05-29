@@ -2,70 +2,148 @@
   import { advancedCartStore } from '$lib/stores/advancedCartStore';
   import CartItem from '$lib/components/cart/CartItem.svelte';
   import SellerGroupSummary from '$lib/components/cart/SellerGroupSummary.svelte';
+  import SellerShippingOptions from '$lib/components/cart/SellerShippingOptions.svelte';
   import ShippingCalculator from '$lib/components/cart/ShippingCalculator.svelte';
-  import ShippingModeSelector from '$lib/components/cart/ShippingModeSelector.svelte';
   import CouponSection from '$lib/components/cart/CouponSection.svelte';
   import EmptyCart from '$lib/components/cart/EmptyCart.svelte';
   import BenefitBadge from '$lib/components/cart/BenefitBadge.svelte';
   import CartNotifications from '$lib/components/cart/CartNotifications.svelte';
+  import { ShippingCartService, type SellerShippingQuote } from '$lib/services/shippingCartService';
   import { goto } from '$app/navigation';
+  import { writable } from 'svelte/store';
   
   const { 
     sellerGroups, 
     cartTotals, 
-    zipCode, 
-    shippingMode,
     appliedCoupon,
     updateQuantity,
     removeItem,
-    calculateAllShipping,
-    setShippingMode,
     applyCoupon,
     removeCoupon,
     clearCart
   } = advancedCartStore;
   
+  // Estado local para CEP
+  const zipCode = writable<string>('');
+  
+  // Estado para o sistema real de frete
+  let realShippingQuotes = $state<SellerShippingQuote[]>([]);
+  let calculatingRealShipping = $state(false);
+  let realShippingError = $state('');
+  let selectedShippingOptions = $state<Record<string, string>>({});
+  
   // Verificar se tem frete grátis no carrinho todo
   const hasCartFreeShipping = $derived(
-    $cartTotals.totalShipping === 0 && $sellerGroups.length > 0 && $zipCode
+    realShippingQuotes.length > 0 && 
+    realShippingQuotes.every(quote => 
+      quote.shippingResult.success && 
+      quote.shippingResult.options.some(opt => opt.price === 0)
+    )
   );
+  
+  // Calcular totais reais baseados no sistema novo
+  const realCartTotals = $derived(() => {
+    const cartSubtotal = $cartTotals.cartSubtotal;
+    const totalDiscount = $cartTotals.totalDiscount;
+    
+    // Calcular frete total baseado nas opções selecionadas
+    const shippingCalculation = ShippingCartService.calculateCartShippingTotal(
+      realShippingQuotes,
+      selectedShippingOptions
+    );
+    
+    const totalShipping = shippingCalculation.totalShipping;
+    const cartTotal = cartSubtotal - totalDiscount + totalShipping;
+    
+    return {
+      cartSubtotal,
+      totalShipping,
+      totalDiscount,
+      cartTotal,
+      installmentValue: cartTotal / 12,
+      maxDeliveryDays: shippingCalculation.maxDeliveryDays,
+      hasExpressOptions: shippingCalculation.hasExpressOptions,
+      hasGroupedOptions: shippingCalculation.hasGroupedOptions
+    };
+  });
   
   // Calcular economia total
   const totalSavings = $derived(() => {
-    let savings = $cartTotals.totalDiscount;
+    let savings = realCartTotals().totalDiscount;
     if (hasCartFreeShipping) {
-      const estimatedShipping = $sellerGroups.reduce((sum, group) => {
-        return sum + (group.groupedShipping?.price || 0);
+      // Estimar economia do frete grátis
+      const estimatedShipping = realShippingQuotes.reduce((sum, quote) => {
+        if (!quote.shippingResult.success) return sum;
+        const cheapest = ShippingCartService.getCheapestOption(quote.shippingResult.options);
+        return sum + (cheapest?.price || 0);
       }, 0);
       savings += estimatedShipping;
     }
     return savings;
   });
   
-  // Prazo máximo de entrega
-  const maxDeliveryDays = $derived(() => {
-    const days = $sellerGroups
-      .map(group => {
-        if ($shippingMode === 'grouped') {
-          return group.groupedShipping?.estimatedDays || 0;
-        } else {
-          const maxInGroup = Math.max(
-            ...group.items.map(item => item.individualShipping?.estimatedDays || 0)
-          );
-          return maxInGroup;
-        }
-      })
-      .filter(d => d > 0);
+  // Função para calcular frete real
+  async function handleRealShippingCalculate(newZipCode: string, quotes: SellerShippingQuote[]) {
+    calculatingRealShipping = true;
+    realShippingError = '';
     
-    return days.length > 0 ? Math.max(...days) : undefined;
-  });
-  
-  async function handleZipCodeChange(newZipCode: string) {
-    if (newZipCode && newZipCode.length === 8) {
-      await calculateAllShipping(newZipCode);
+    try {
+      if (quotes.length > 0) {
+        // Usar as cotações já calculadas pelo ShippingCalculator
+        realShippingQuotes = quotes;
+        
+        // Auto-selecionar a opção mais barata para cada seller
+        const newSelectedOptions: Record<string, string> = {};
+        quotes.forEach(quote => {
+          if (quote.shippingResult.success && quote.shippingResult.options.length > 0) {
+            const cheapest = ShippingCartService.getCheapestOption(quote.shippingResult.options);
+            if (cheapest) {
+              newSelectedOptions[quote.sellerId] = cheapest.id;
+            }
+          }
+        });
+        selectedShippingOptions = newSelectedOptions;
+      } else {
+        // Calcular manualmente se não foram fornecidas
+        const cartItems = $sellerGroups.flatMap(group => group.items);
+        const calculatedQuotes = await ShippingCartService.calculateShippingForCart(
+          newZipCode,
+          cartItems
+        );
+        realShippingQuotes = calculatedQuotes;
+        
+        // Auto-selecionar opções mais baratas
+        const newSelectedOptions: Record<string, string> = {};
+        calculatedQuotes.forEach(quote => {
+          if (quote.shippingResult.success && quote.shippingResult.options.length > 0) {
+            const cheapest = ShippingCartService.getCheapestOption(quote.shippingResult.options);
+            if (cheapest) {
+              newSelectedOptions[quote.sellerId] = cheapest.id;
+            }
+          }
+        });
+        selectedShippingOptions = newSelectedOptions;
+      }
+      
+      // Atualizar store do CEP
+      zipCode.set(newZipCode);
+      
+    } catch (error) {
+      console.error('Erro ao calcular frete real:', error);
+      realShippingError = 'Erro ao calcular frete. Tente novamente.';
+    } finally {
+      calculatingRealShipping = false;
     }
   }
   
+  // Função para selecionar opção de frete
+  function selectShippingOption(sellerId: string, optionId: string) {
+    selectedShippingOptions = {
+      ...selectedShippingOptions,
+      [sellerId]: optionId
+    };
+  }
+
   async function handleApplyCoupon(code: string) {
     await applyCoupon(code);
   }
@@ -76,15 +154,36 @@
       alert('Por favor, informe seu CEP para continuar');
       return;
     }
+    
+    // Verificar se todas as opções de frete foram selecionadas
+    const missingShipping = realShippingQuotes.some(quote => 
+      quote.shippingResult.success && !selectedShippingOptions[quote.sellerId]
+    );
+    
+    if (missingShipping) {
+      alert('Por favor, selecione uma opção de frete para todos os vendedores');
+      return;
+    }
+    
     goto('/checkout');
   }
   
   function handleUpdateQuantity(productId: string, sellerId: string, quantity: number, options?: any) {
     updateQuantity(productId, sellerId, quantity, options);
+    
+    // Recalcular frete se já foi calculado
+    if ($zipCode && realShippingQuotes.length > 0) {
+      handleRealShippingCalculate($zipCode, []);
+    }
   }
   
   function handleRemoveItem(productId: string, sellerId: string, options?: any) {
     removeItem(productId, sellerId, options);
+    
+    // Recalcular frete se já foi calculado
+    if ($zipCode && realShippingQuotes.length > 0) {
+      handleRealShippingCalculate($zipCode, []);
+    }
   }
 </script>
 
@@ -143,7 +242,6 @@
           <CartNotifications 
             sellerGroups={$sellerGroups}
             zipCode={$zipCode}
-            shippingMode={$shippingMode}
           />
           
           <!-- Calculadora de Frete -->
@@ -151,21 +249,19 @@
             <h2 class="text-lg font-semibold mb-4">Calcular frete e prazo</h2>
             <ShippingCalculator
               zipCode={$zipCode}
-              onCalculate={handleZipCodeChange}
+              cartItems={$sellerGroups.flatMap(group => group.items)}
+              onCalculate={handleRealShippingCalculate}
             />
             
-            {#if $zipCode && $sellerGroups.some(g => g.shippingOptions.length > 0)}
-              <div class="mt-6 pt-6 border-t">
-                <ShippingModeSelector
-                  shippingMode={$shippingMode}
-                  onModeChange={setShippingMode}
-                  sellerGroups={$sellerGroups}
-                />
+            <!-- Mostrar erro se houver -->
+            {#if realShippingError}
+              <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p class="text-sm text-red-600">{realShippingError}</p>
               </div>
             {/if}
           </div>
           
-          <!-- Produtos por Vendedor -->
+          <!-- Produtos por Vendedor com Opções de Frete -->
           {#each $sellerGroups as group (group.sellerId)}
             <div class="bg-white rounded-lg shadow-sm p-6">
               <!-- Cabeçalho do Vendedor -->
@@ -183,10 +279,20 @@
                 {#each group.items as item (item.product.id + '-' + item.selectedColor + '-' + item.selectedSize)}
                   <CartItem
                     {item}
-                    estimatedDays={$shippingMode === 'grouped' 
-                      ? group.groupedShipping?.estimatedDays 
-                      : item.individualShipping?.estimatedDays}
-                    shippingMode={$shippingMode}
+                    selectedShippingOption={(() => {
+                      const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
+                      const selectedOptionId = selectedShippingOptions[group.sellerId];
+                      if (sellerQuote && selectedOptionId) {
+                        const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                        return option ? {
+                          name: option.name,
+                          price: option.price,
+                          delivery_days: option.delivery_days,
+                          modality_name: option.modality_name
+                        } : null;
+                      }
+                      return null;
+                    })()}
                     onUpdateQuantity={(qty) => handleUpdateQuantity(
                       item.product.id, 
                       item.sellerId, 
@@ -201,11 +307,49 @@
                   />
                 {/each}
               </div>
+
+              <!-- Opções de Frete do Vendedor -->
+              {#if realShippingQuotes.length > 0}
+                {@const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId)}
+                {#if sellerQuote}
+                  <SellerShippingOptions
+                    {sellerQuote}
+                    selectedOptionId={selectedShippingOptions[group.sellerId]}
+                    onSelectOption={(optionId) => selectShippingOption(group.sellerId, optionId)}
+                  />
+                {/if}
+              {/if}
               
               <!-- Resumo do Seller -->
               <SellerGroupSummary 
                 {group} 
-                shippingMode={$shippingMode}
+                selectedShippingPrice={(() => {
+                  const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
+                  const selectedOptionId = selectedShippingOptions[group.sellerId];
+                  if (sellerQuote && selectedOptionId) {
+                    const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                    return option?.price || 0;
+                  }
+                  return 0;
+                })()}
+                selectedShippingName={(() => {
+                  const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
+                  const selectedOptionId = selectedShippingOptions[group.sellerId];
+                  if (sellerQuote && selectedOptionId) {
+                    const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                    return option?.name;
+                  }
+                  return undefined;
+                })()}
+                selectedShippingDays={(() => {
+                  const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
+                  const selectedOptionId = selectedShippingOptions[group.sellerId];
+                  if (sellerQuote && selectedOptionId) {
+                    const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                    return option?.delivery_days;
+                  }
+                  return undefined;
+                })()}
               />
             </div>
           {/each}
@@ -252,42 +396,42 @@
               <!-- Subtotal -->
               <div class="flex justify-between">
                 <span class="text-gray-600">Subtotal dos produtos</span>
-                <span class="font-medium">R$ {$cartTotals.cartSubtotal.toFixed(2)}</span>
+                <span class="font-medium">R$ {realCartTotals().cartSubtotal.toFixed(2)}</span>
               </div>
               
               <!-- Frete -->
-              {#if $zipCode && $sellerGroups.length > 0}
+              {#if $zipCode && realShippingQuotes.length > 0}
                 <div class="flex justify-between">
-                  <span class="text-gray-600">
-                    Frete total
-                    <span class="text-xs text-[#00A89D]">
-                      ({$shippingMode === 'express' ? 'Expressa' : 'Agrupada'})
-                    </span>
-                  </span>
+                  <span class="text-gray-600">Frete total</span>
                   <span class="font-medium {hasCartFreeShipping ? 'text-[#00BFB3]' : ''}">
-                    {hasCartFreeShipping ? 'Grátis' : `R$ ${$cartTotals.totalShipping.toFixed(2)}`}
+                    {realCartTotals().totalShipping === 0 ? 'Grátis' : `R$ ${realCartTotals().totalShipping.toFixed(2)}`}
                   </span>
+                </div>
+              {:else if $zipCode && calculatingRealShipping}
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Frete total</span>
+                  <span class="font-medium text-gray-400">Calculando...</span>
                 </div>
               {/if}
               
               <!-- Descontos -->
-              {#if $cartTotals.totalDiscount > 0}
+              {#if realCartTotals().totalDiscount > 0}
                 <div class="flex justify-between text-[#00BFB3]">
                   <span>Descontos totais</span>
-                  <span>-R$ {$cartTotals.totalDiscount.toFixed(2)}</span>
+                  <span>-R$ {realCartTotals().totalDiscount.toFixed(2)}</span>
                 </div>
               {/if}
               
               <!-- Prazo máximo -->
-              {#if $zipCode && maxDeliveryDays()}
+              {#if $zipCode && realCartTotals().maxDeliveryDays > 0}
                 <div class="flex justify-between text-xs text-gray-500">
                   <span class="flex items-center gap-1">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v12a2 2 0 002 2z" />
                     </svg>
                     Prazo máximo
                   </span>
-                  <span>{maxDeliveryDays()} dias úteis</span>
+                  <span>{realCartTotals().maxDeliveryDays} dias úteis</span>
                 </div>
               {/if}
               
@@ -295,10 +439,10 @@
               <div class="pt-3 border-t">
                 <div class="flex justify-between text-lg font-semibold">
                   <span>Total geral</span>
-                  <span class="text-[#00BFB3]">R$ {$cartTotals.cartTotal.toFixed(2)}</span>
+                  <span class="text-[#00BFB3]">R$ {realCartTotals().cartTotal.toFixed(2)}</span>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
-                  ou até 12x de R$ {$cartTotals.installmentValue.toFixed(2)}
+                  ou até 12x de R$ {realCartTotals().installmentValue.toFixed(2)}
                 </p>
                 
                 <!-- Economia Total -->

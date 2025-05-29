@@ -30,14 +30,11 @@
 	}
 	
 	onMount(() => {
-		// Pequeno delay para evitar requisições simultâneas durante a hidratação
-		const timer = setTimeout(() => {
-			loadCategories();
-		}, 100);
+		// Carregar categorias imediatamente
+		loadCategories();
 		
-		// Cleanup
+		// Cleanup dos timeouts
 		return () => {
-			clearTimeout(timer);
 			if (hoverTimeout) clearTimeout(hoverTimeout);
 		};
 	});

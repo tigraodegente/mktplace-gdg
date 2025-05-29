@@ -4,7 +4,7 @@ import { getDatabase } from '$lib/db'
 
 interface PopularTerm {
   term: string
-  search_count: number
+  count: number
 }
 
 interface ProductTerm {
@@ -15,25 +15,22 @@ export const GET: RequestHandler = async ({ platform }) => {
   const db = getDatabase(platform)
   
   try {
-    // Buscar os 10 termos mais populares dos últimos 30 dias
+    // Buscar os 10 termos mais populares
     const popularTerms = await db.query<PopularTerm>`
-      SELECT term, search_count
+      SELECT term, search_count as count
       FROM popular_searches
-      WHERE period_end >= CURRENT_DATE - INTERVAL '30 days'
+      WHERE search_count > 0
       ORDER BY search_count DESC
       LIMIT 10
     `
     
-    // Se não houver termos suficientes, buscar dos produtos mais vendidos
+    // Se não houver termos suficientes, buscar dos produtos mais populares
     if (popularTerms.length < 5) {
       const productTerms = await db.query<ProductTerm>`
         SELECT DISTINCT LOWER(p.name) as term
         FROM products p
-        INNER JOIN order_items oi ON oi.product_id = p.id
-        INNER JOIN orders o ON o.id = oi.order_id
-        WHERE o.created_at >= CURRENT_DATE - INTERVAL '30 days'
-        GROUP BY p.name
-        ORDER BY COUNT(oi.id) DESC
+        WHERE p.is_active = true
+        ORDER BY p.created_at DESC
         LIMIT 10
       `
       
@@ -41,7 +38,7 @@ export const GET: RequestHandler = async ({ platform }) => {
       const existingTerms = new Set(popularTerms.map((t: PopularTerm) => t.term))
       for (const pt of productTerms) {
         if (!existingTerms.has(pt.term) && popularTerms.length < 10) {
-          popularTerms.push({ term: pt.term, search_count: 0 })
+          popularTerms.push({ term: pt.term, count: 0 })
         }
       }
     }

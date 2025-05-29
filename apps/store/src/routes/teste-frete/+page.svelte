@@ -94,6 +94,38 @@
       loading = false;
     }
   }
+
+  async function testMultipleOptions() {
+    loading = true;
+    error = '';
+    
+    try {
+      const response = await fetch('/api/shipping/calculate-multiple', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postalCode,
+          sellerId,
+          items: [{
+            product: {
+              id: 'test-product-multiple',
+              name: productName + ' (Múltiplas Opções)',
+              price: productPrice,
+              weight: productWeight
+            },
+            quantity: 1
+          }]
+        })
+      });
+      
+      const data = await response.json();
+      result = data;
+    } catch (err) {
+      error = 'Erro no teste múltiplas opções: ' + err;
+    } finally {
+      loading = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -209,6 +241,14 @@
           class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
         >
           {loading ? '⏳' : '🎁'} Testar Frete Grátis
+        </button>
+        
+        <button 
+          on:click={testMultipleOptions}
+          disabled={loading}
+          class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
+        >
+          {loading ? '⏳' : '🚚'} Múltiplas Opções
         </button>
       </div>
     </div>

@@ -4,11 +4,6 @@ import type { Product } from '@mktplace/shared-types';
 // ENUMS & CONSTANTS
 // ============================================================================
 
-export const SHIPPING_MODES = {
-  GROUPED: 'grouped',
-  EXPRESS: 'express'
-} as const;
-
 export const COUPON_TYPES = {
   PERCENTAGE: 'percentage',
   FIXED: 'fixed'
@@ -24,26 +19,8 @@ export const COUPON_SCOPES = {
 // TYPE DEFINITIONS
 // ============================================================================
 
-export type ShippingMode = typeof SHIPPING_MODES[keyof typeof SHIPPING_MODES];
 export type CouponType = typeof COUPON_TYPES[keyof typeof COUPON_TYPES];
 export type CouponScope = typeof COUPON_SCOPES[keyof typeof COUPON_SCOPES];
-
-// Tipos de frete
-export interface ShippingOption {
-  id: string;
-  name: string;
-  price: number;
-  estimatedDays: number;
-  isFree: boolean;
-  mode: ShippingMode;
-}
-
-// Frete individual por produto (para modo express)
-export interface ProductShipping {
-  productId: string;
-  price: number;
-  estimatedDays: number;
-}
 
 // Tipos de cupom
 export interface Coupon {
@@ -57,7 +34,6 @@ export interface Coupon {
   validUntil?: Date;
   usageLimit?: number;
   usageCount?: number;
-  // Novo: indicar se inclui frete grátis
   includesFreeShipping?: boolean;
 }
 
@@ -77,7 +53,7 @@ export interface AppliedBenefits {
   };
 }
 
-// Item do carrinho expandido
+// Item do carrinho
 export interface CartItem {
   product: Product;
   quantity: number;
@@ -85,57 +61,26 @@ export interface CartItem {
   selectedSize?: string;
   sellerId: string;
   sellerName: string;
-  shippingOptions?: ShippingOption[];
-  selectedShipping?: string;
   appliedCoupon?: Coupon;
-  // Novo: frete individual para modo express
-  individualShipping?: ProductShipping;
-  // Novo: benefícios aplicados ao item
   benefits?: AppliedBenefits;
 }
 
-// Agrupamento por seller
+// Agrupamento por seller  
 export interface SellerGroup {
   sellerId: string;
   sellerName: string;
   items: CartItem[];
   subtotal: number;
-  shippingOptions: ShippingOption[];
-  selectedShipping?: string;
-  shippingCost: number;
+  shippingOptions: any[]; // Compatibilidade - será usado pelo sistema novo
+  shippingCost: number;   // Compatibilidade - será calculado pelo sistema novo
   appliedCoupon?: Coupon;
   discount: number;
   total: number;
-  groupedShipping?: {
-    price: number;
-    estimatedDays: number;
-  };
-  expressShipping?: {
-    price: number;
-    estimatedDays: number;
-  };
-  // Novo: benefícios do seller
   benefits?: AppliedBenefits;
-  // Novo: indicar se seller tem frete grátis
   hasFreeShipping?: boolean;
 }
 
-// Estado do carrinho
-export interface CartState {
-  items: CartItem[];
-  sellerGroups: SellerGroup[];
-  cartSubtotal: number;
-  totalShipping: number;
-  totalDiscount: number;
-  cartTotal: number;
-  appliedCartCoupon?: Coupon;
-  zipCode?: string;
-  // Novo: modalidade de entrega selecionada
-  shippingMode: ShippingMode;
-  appliedCoupon: Coupon | null;
-  lastUpdated: Date;
-}
-
+// Totais do carrinho
 export interface CartTotals {
   cartSubtotal: number;
   totalShipping: number;
@@ -145,6 +90,7 @@ export interface CartTotals {
   installmentValue: number;
 }
 
+// Endereços salvos
 export interface SavedAddress {
   id: string;
   zipCode: string;
@@ -163,10 +109,6 @@ export interface SavedAddress {
 // TYPE GUARDS
 // ============================================================================
 
-export function isValidShippingMode(mode: string): mode is ShippingMode {
-  return Object.values(SHIPPING_MODES).includes(mode as ShippingMode);
-}
-
 export function isValidCouponType(type: string): type is CouponType {
   return Object.values(COUPON_TYPES).includes(type as CouponType);
 }
@@ -179,17 +121,10 @@ export function isValidCouponScope(scope: string): scope is CouponScope {
 // UTILITY TYPES
 // ============================================================================
 
-export type CartItemInput = Omit<CartItem, 'individualShipping' | 'appliedCoupon'>;
+export type CartItemInput = Omit<CartItem, 'appliedCoupon'>;
 
 export type CouponInput = Pick<Coupon, 'code' | 'type' | 'value' | 'scope' | 'description'> & 
   Partial<Omit<Coupon, 'code' | 'type' | 'value' | 'scope' | 'description'>>;
-
-export type ShippingCalculationParams = {
-  sellerId: string;
-  zipCode: string;
-  items: CartItem[];
-  mode: ShippingMode;
-};
 
 export type CartAnalytics = {
   itemCount: number;

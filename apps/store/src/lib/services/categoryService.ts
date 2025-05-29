@@ -138,19 +138,36 @@ class CategoryService {
 				const url = new URL(API_ENDPOINT, window.location.origin);
 				url.searchParams.set('includeCount', String(includeCount));
 
+				console.log(`[CategoryService] Tentativa ${attempt}/${maxRetries} - URL: ${url.toString()}`);
+
+				// Criar AbortController para timeout manual
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => {
+					console.log(`[CategoryService] Timeout de 10s atingido na tentativa ${attempt}`);
+					controller.abort();
+				}, 10000); // Reduzido para 10s
+
+				console.log(`[CategoryService] Iniciando fetch...`);
+				const startTime = Date.now();
+
 				const response = await fetch(url.toString(), {
 					method: 'GET',
 					headers: {
 						'Accept': 'application/json',
 					},
-					signal: AbortSignal.timeout(10000) // 10s timeout
+					signal: controller.signal
 				});
+
+				const fetchTime = Date.now() - startTime;
+				console.log(`[CategoryService] Fetch completado em ${fetchTime}ms, status: ${response.status}`);
+
+				clearTimeout(timeoutId); // Limpar timeout se a requisição completou
 
 				if (!response.ok) {
 					// Se for erro 500, tentar novamente após um delay
 					if (response.status === 500 && attempt < maxRetries) {
 						console.warn(`[CategoryService] Erro 500, tentativa ${attempt}/${maxRetries}`);
-						await new Promise(resolve => setTimeout(resolve, 500 * attempt)); // Delay progressivo
+						await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Delay progressivo
 						continue;
 					}
 					
@@ -161,7 +178,9 @@ class CategoryService {
 					);
 				}
 
+				console.log(`[CategoryService] Parseando JSON...`);
 				const data: CategoryResponse = await response.json();
+				console.log(`[CategoryService] JSON parseado, success: ${data.success}, categorias: ${data.data?.categories?.length || 0}`);
 				
 				if (!data.success || !data.data) {
 					throw new CategoryServiceError(
@@ -177,16 +196,19 @@ class CategoryService {
 					timestamp: Date.now()
 				};
 
+				console.log(`[CategoryService] Cache atualizado com ${data.data.categories.length} categorias`);
 				return data.data.categories;
 			} catch (error) {
 				lastError = error as Error;
+				console.error(`[CategoryService] Erro na tentativa ${attempt}:`, error);
 				
-				// Se for erro de conexão e não for a última tentativa, tentar novamente
+				// Se for erro de timeout ou conexão e não for a última tentativa, tentar novamente
 				if (attempt < maxRetries && 
 					(error instanceof TypeError || 
+					 (error as any)?.name === 'AbortError' ||
 					 (error instanceof CategoryServiceError && error.code === 'FETCH_ERROR'))) {
-					console.warn(`[CategoryService] Erro de conexão, tentativa ${attempt}/${maxRetries}:`, error);
-					await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+					console.warn(`[CategoryService] Erro de conexão/timeout, tentativa ${attempt}/${maxRetries}:`, error);
+					await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
 					continue;
 				}
 				

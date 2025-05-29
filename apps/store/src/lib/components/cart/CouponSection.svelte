@@ -114,25 +114,30 @@
 	{:else}
 		<!-- Input de Cupom -->
 		<div class="space-y-2 sm:space-y-3">
-			<div class="flex gap-1.5 sm:gap-2">
-				<input 
-					type="text"
-					bind:value={couponCode}
-					placeholder="Código do cupom"
-					class="flex-1 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent uppercase placeholder:normal-case"
-					onkeydown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-					disabled={isApplying}
-				/>
-				<button 
-					onclick={handleApplyCoupon}
-					disabled={isApplying || !couponCode.trim()}
-					class="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#00BFB3] text-white rounded-lg font-medium text-xs sm:text-sm hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
-				>
-					{#if isApplying}
-						<div class="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-					{/if}
-					Aplicar
-				</button>
+			<!-- Layout sempre em coluna para mobile, linha para desktop -->
+			<div class="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:gap-3">
+				<div class="flex-1 min-w-0">
+					<input 
+						type="text"
+						bind:value={couponCode}
+						placeholder="Código do cupom"
+						class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] uppercase placeholder:normal-case transition-all duration-200"
+						onkeydown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+						disabled={isApplying}
+					/>
+				</div>
+				<div class="flex-shrink-0">
+					<button 
+						onclick={handleApplyCoupon}
+						disabled={isApplying || !couponCode.trim()}
+						class="w-full min-[400px]:w-auto px-4 py-2.5 bg-[#00BFB3] text-white rounded-lg font-medium text-sm hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap min-w-[90px]"
+					>
+						{#if isApplying}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{/if}
+						<span>Aplicar</span>
+					</button>
+				</div>
 			</div>
 			
 			{#if error}

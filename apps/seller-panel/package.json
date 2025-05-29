@@ -17,10 +17,9 @@
 		"test:e2e": "playwright test"
 	},
 	"dependencies": {
+		"@mktplace/db-hyperdrive": "workspace:*",
 		"@mktplace/shared-types": "workspace:*",
-		"@mktplace/ui": "workspace:*",
-		"@mktplace/utils": "workspace:*",
-		"@mktplace/xata-client": "workspace:*"
+		"@mktplace/utils": "workspace:*"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",

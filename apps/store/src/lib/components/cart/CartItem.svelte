@@ -9,19 +9,40 @@
 		item: CartItem;
 		estimatedDays?: number;
 		shippingMode?: 'express' | 'grouped';
+		selectedShippingOption?: {
+			name: string;
+			price: number;
+			delivery_days: number;
+			modality_name: string;
+		} | null;
 		onUpdateQuantity: (quantity: number) => void;
 		onRemove: () => void;
 	}
 	
-	let { item, estimatedDays, shippingMode, onUpdateQuantity, onRemove }: CartItemProps = $props();
+	let { 
+		item, 
+		estimatedDays, 
+		shippingMode, 
+		selectedShippingOption,
+		onUpdateQuantity, 
+		onRemove 
+	}: CartItemProps = $props();
 	
 	// Validações
 	if (!item || !item.product) {
 		throw new Error('CartItem: item e item.product são obrigatórios');
 	}
 	
-	// Usar $derived para garantir reatividade
-	const currentQuantity = $derived(item.quantity);
+	// Estado local para forçar reatividade
+	let localQuantity = $state(item.quantity);
+	
+	// Sincronizar com mudanças externas
+	$effect(() => {
+		localQuantity = item.quantity;
+	});
+	
+	// Usar diretamente item.quantity (será reativo automaticamente no Svelte 5)
+	// const currentQuantity = $derived(item.quantity);
 	
 	const hasLowStock = $derived(
 		item.product.stock !== undefined && 
@@ -31,22 +52,22 @@
 	
 	// Verificar se pode aumentar quantidade
 	const canIncreaseQuantity = $derived(
-		!item.product.stock || currentQuantity < item.product.stock
+		!item.product.stock || localQuantity < item.product.stock
 	);
 	
 	// Verificar se pode diminuir quantidade
-	const canDecreaseQuantity = $derived(currentQuantity > 1);
+	const canDecreaseQuantity = $derived(localQuantity > 1);
 	
 	// Verificar se tem frete grátis no produto
 	const hasFreeShipping = $derived(
-		item.individualShipping?.price === 0
+		selectedShippingOption?.price === 0
 	);
 	
 	// Calcular desconto do produto se houver cupom aplicado
 	const productDiscount = $derived(() => {
 		if (!item.appliedCoupon) return 0;
 		
-		const itemTotal = item.product.price * currentQuantity;
+		const itemTotal = item.product.price * localQuantity;
 		if (item.appliedCoupon.type === 'percentage') {
 			return itemTotal * (item.appliedCoupon.value / 100);
 		} else {
@@ -111,11 +132,15 @@
 		if (item.product.stock !== undefined && item.product.stock !== null && newQuantity > item.product.stock) {
 			// Limitar ao estoque disponível
 			onUpdateQuantity(item.product.stock);
-			// TODO: Mostrar notificação de estoque limitado
+			// Atualizar estado local também
+			localQuantity = item.product.stock;
 			return;
 		}
 		
-		// Atualizar quantidade
+		// Atualizar estado local imediatamente para feedback visual
+		localQuantity = newQuantity;
+		
+		// Atualizar no store
 		onUpdateQuantity(newQuantity);
 	}
 </script>
@@ -132,7 +157,7 @@
 		<img 
 			src={imageError ? '/api/placeholder/80/80' : (item.product.images?.[0] || '/api/placeholder/80/80')} 
 			alt={item.product.name}
-			class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg transition-all duration-300 group-hover:scale-105 {imageLoaded ? '' : 'opacity-0 absolute'}"
+			class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg transition-all duration-300 group-hover:scale-105 cursor-pointer {imageLoaded ? '' : 'opacity-0 absolute'}"
 			onload={() => imageLoaded = true}
 			onerror={handleImageError}
 		/>
@@ -191,10 +216,33 @@
 		</div>
 		
 		<!-- Informações de entrega -->
-		{#if estimatedDays}
+		{#if selectedShippingOption}
 			<div class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-1.5">
 				<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+				</svg>
+				<span class="truncate">
+					{#if selectedShippingOption.delivery_days === 0}
+						Hoje
+					{:else if selectedShippingOption.delivery_days === 1}
+						Amanhã
+					{:else}
+						{selectedShippingOption.delivery_days} dias úteis
+					{/if}
+					<span class="text-[#00A89D] font-medium">
+						({selectedShippingOption.modality_name}) 
+						{#if selectedShippingOption.price === 0}
+							• Grátis
+						{:else}
+							• R$ {selectedShippingOption.price.toFixed(2)}
+						{/if}
+					</span>
+				</span>
+			</div>
+		{:else if estimatedDays}
+			<div class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-1.5">
+				<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v12a2 2 0 002 2z" />
 				</svg>
 				<span class="truncate">
 					{estimatedDays}d úteis
@@ -282,44 +330,46 @@
 		
 		<div class="flex items-center justify-between mt-auto">
 			<!-- Quantity Controls -->
-			<button
-				class="quantity-control quantity-control--decrease"
-				onclick={() => handleQuantityChange(Math.max(1, currentQuantity - 1))}
-				aria-label="Diminuir quantidade"
-				disabled={!canDecreaseQuantity}
-				type="button"
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-				</svg>
-			</button>
-			<span class="w-6 sm:w-8 text-center text-xs sm:text-sm font-semibold text-gray-900">
-				{currentQuantity}
-			</span>
-			<button 
-				onclick={(e) => {
-					e.stopPropagation();
-					handleQuantityChange(currentQuantity + 1);
-				}}
-				disabled={!canIncreaseQuantity}
-				class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-white rounded hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-				aria-label="Aumentar quantidade"
-				title={!canIncreaseQuantity ? 'Estoque insuficiente' : ''}
-			>
-				<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-				</svg>
-			</button>
+			<div class="flex items-center gap-2">
+				<button
+					onclick={() => handleQuantityChange(localQuantity - 1)}
+					disabled={!canDecreaseQuantity}
+					class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-white border border-gray-300 rounded cursor-pointer hover:bg-[#00BFB3] hover:border-[#00BFB3] transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 group"
+					aria-label="Diminuir quantidade"
+					type="button"
+				>
+					<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600 group-hover:text-white group-disabled:group-hover:text-gray-600 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+					</svg>
+				</button>
+				<span class="w-6 sm:w-8 text-center text-xs sm:text-sm font-semibold text-gray-900">
+					{localQuantity}
+				</span>
+				<button 
+					onclick={(e) => {
+						e.stopPropagation();
+						handleQuantityChange(localQuantity + 1);
+					}}
+					disabled={!canIncreaseQuantity}
+					class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-white border border-gray-300 rounded cursor-pointer hover:bg-[#00BFB3] hover:border-[#00BFB3] transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 group"
+					aria-label="Aumentar quantidade"
+					title={!canIncreaseQuantity ? 'Estoque insuficiente' : ''}
+				>
+					<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600 group-hover:text-white group-disabled:group-hover:text-gray-600 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+					</svg>
+				</button>
+			</div>
 			
 			<!-- Price com animação e descontos -->
 			<div class="text-right">
 				{#if (item.product as any).original_price && (item.product as any).original_price > item.product.price}
 					<p class="text-[10px] sm:text-xs text-gray-500 line-through" transition:fade={{ duration: 200 }}>
-						{formatCurrency((item.product as any).original_price * currentQuantity)}
+						{formatCurrency((item.product as any).original_price * localQuantity)}
 					</p>
 				{/if}
 				<p class="text-sm sm:text-base font-bold text-[#00BFB3]">
-					{formatCurrency((item.product.price * currentQuantity) - productDiscount())}
+					{formatCurrency((item.product.price * localQuantity) - productDiscount())}
 				</p>
 				{#if productDiscount() > 0}
 					<p class="text-[9px] sm:text-[10px] text-[#00BFB3] font-medium">
@@ -337,7 +387,7 @@
 	<!-- Remove Button com hover effect -->
 	<button 
 		onclick={handleRemoveClick}
-		class="p-1.5 hover:bg-red-50 rounded-lg transition-all duration-200 group self-start hover:scale-110 active:scale-95"
+		class="p-1.5 hover:bg-red-50 rounded-lg transition-all duration-200 group self-start hover:scale-110 active:scale-95 cursor-pointer border border-transparent hover:border-red-200"
 		aria-label="Remover item"
 	>
 		<svg class="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -31,15 +31,8 @@
 	}
 	
 	onMount(() => {
-		// Pequeno delay para evitar requisições simultâneas durante a hidratação
-		const timer = setTimeout(() => {
-			loadCategories();
-		}, 150); // Um pouco mais de delay para mobile
-		
-		// Cleanup
-		return () => {
-			clearTimeout(timer);
-		};
+		// Carregar categorias imediatamente sem delay
+		loadCategories();
 	});
 	
 	$effect(() => {

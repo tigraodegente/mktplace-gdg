@@ -19,7 +19,14 @@ const CACHE_MAX_AGE = 300; // 5 minutes
 const STALE_WHILE_REVALIDATE = 60; // 1 minute
 
 export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
-  console.log('[Categories API] Request received');
+  console.log('[Categories API] 🔍 Request received');
+  console.log('[Categories API] 🔍 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
+  
+  let debugInfo: any = {
+    databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...',
+    platform: !!platform,
+    env: !!(platform as any)?.env
+  };
   
   try {
     // Parse query parameters
@@ -35,7 +42,20 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
     });
     
     const result = await withDatabase(platform, async (db) => {
-      console.log('[Categories API] Database connection established');
+      console.log('[Categories API] 🔌 Database connection established');
+      
+      // Debug: First check total categories
+      const totalCount = await db.query`SELECT COUNT(*) as total FROM categories`;
+      debugInfo.totalCategoriesInTable = totalCount[0]?.total;
+      console.log('[Categories API] 📊 Total categories in table:', totalCount[0]?.total);
+      
+      // Debug: Check all categories without filter
+      const allCats = await db.query`SELECT id, name, slug, is_active FROM categories ORDER BY name`;
+      debugInfo.allCategoriesFound = allCats.map((cat: any) => ({ name: cat.name, active: cat.is_active }));
+      console.log('[Categories API] 📂 All categories found:');
+      allCats.forEach((cat: any) => {
+        console.log(`   - ${cat.name} (active: ${cat.is_active})`);
+      });
       
       // Fetch all active categories
       const categories = await db.query<{
@@ -52,7 +72,11 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
         ORDER BY position ASC, name ASC
       `;
       
-      console.log('[Categories API] Categories fetched:', categories.length);
+      debugInfo.activeCategoriesFetched = categories.map((cat: any) => ({ name: cat.name, slug: cat.slug }));
+      console.log('[Categories API] ✅ Active categories fetched:', categories.length);
+      categories.forEach((cat: any) => {
+        console.log(`   - ${cat.name} (${cat.slug})`);
+      });
       
       // Build category hierarchy
       const { categoryMap, rootCategories } = buildCategoryHierarchy(categories);
@@ -70,6 +94,12 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
         ? rootCategories.map(({ subcategories, ...cat }) => cat)
         : rootCategories;
       
+      debugInfo.finalResultCategories = finalResult.map((cat: any) => ({ name: cat.name, productCount: cat.product_count }));
+      console.log('[Categories API] 🎯 Final result categories:', finalResult.length);
+      finalResult.forEach((cat: any) => {
+        console.log(`   - ${cat.name} (products: ${cat.product_count})`);
+      });
+      
       return {
         categories: finalResult,
         total: rootCategories.length
@@ -78,11 +108,12 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
     
     return json({
       success: true,
-      data: result
+      data: result,
+      debug: debugInfo
     });
     
   } catch (error) {
-    console.error('[Categories API] Error:', error);
+    console.error('[Categories API] ❌ Error:', error);
     
     // Return appropriate error response
     return json({
@@ -90,7 +121,8 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       error: {
         message: 'Erro ao buscar categorias',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
-      }
+      },
+      debug: debugInfo
     }, { 
       status: 500,
       headers: {

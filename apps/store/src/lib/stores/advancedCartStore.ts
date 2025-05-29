@@ -1,18 +1,17 @@
 /**
- * Advanced Cart Store
+ * Advanced Cart Store - Versão Limpa
  * 
- * Gerencia o estado global do carrinho com funcionalidades avançadas:
+ * Gerencia o estado global do carrinho com funcionalidades essenciais:
  * - Agrupamento por vendedor
- * - Cálculo de frete com cache
  * - Sistema de cupons
  * - Persistência em localStorage
- * - Modos de entrega (agrupada/expressa)
+ * 
+ * Nota: Sistema de frete foi movido para ShippingCartService
  */
 
 import { writable, derived, get } from 'svelte/store';
 import type { Product } from '@mktplace/shared-types';
-import type { CartItem, SellerGroup, ShippingOption, Coupon, CartState, ShippingMode, ProductShipping } from '$lib/types/cart';
-import { formatCurrency } from '@mktplace/utils';
+import type { CartItem, SellerGroup, Coupon } from '$lib/types/cart';
 
 // ============================================================================
 // CONSTANTS
@@ -20,162 +19,106 @@ import { formatCurrency } from '@mktplace/utils';
 
 const STORAGE_KEYS = {
   CART: 'advancedCart',
-  ZIP_CODE: 'cartZipCode',
-  SHIPPING_MODE: 'cartShippingMode',
   COUPON: 'cartCoupon'
 } as const;
 
-const SHIPPING_CONFIG = {
-  GROUPED_WEIGHT_MULTIPLIER: 4,
-  EXPRESS_WEIGHT_MULTIPLIER: 8,
-  FREE_SHIPPING_THRESHOLD: 199,
-  DEFAULT_PRODUCT_WEIGHT: 0.5,
-  API_DELAY: 500,
-  PRODUCT_API_DELAY: 200
-} as const;
-
-const SHIPPING_DELAYS = {
-  GROUPED_MIN: 7,
-  GROUPED_VARIANCE: 3,
-  EXPRESS_MIN: 2,
-  EXPRESS_VARIANCE: 2
-} as const;
-
 // ============================================================================
-// MOCK SERVICES (TODO: Replace with real API calls)
+// CUPOM SERVICES (Integrado com API)
 // ============================================================================
 
-async function calculateShipping(
-  sellerId: string, 
-  zipCode: string, 
-  items: CartItem[], 
-  mode: ShippingMode
-): Promise<ShippingOption[]> {
-  // Simular delay de API
-  await new Promise(resolve => setTimeout(resolve, SHIPPING_CONFIG.API_DELAY));
-  
-  const totalWeight = items.reduce(
-    (sum, item) => sum + ((item.product as any).weight || SHIPPING_CONFIG.DEFAULT_PRODUCT_WEIGHT) * item.quantity, 
-    0
-  );
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.product.price * item.quantity, 
-    0
-  );
-  
-  if (mode === 'grouped') {
-    // Entrega agrupada - opções econômicas
-    const basePrice = totalWeight * SHIPPING_CONFIG.GROUPED_WEIGHT_MULTIPLIER;
-    const isFreeShipping = subtotal >= SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD;
-    
-    const options: ShippingOption[] = [
-      {
-        id: 'grouped-economic',
-        name: 'Entrega Agrupada Econômica',
-        price: isFreeShipping ? 0 : basePrice,
-        estimatedDays: SHIPPING_DELAYS.GROUPED_MIN + Math.floor(Math.random() * SHIPPING_DELAYS.GROUPED_VARIANCE),
-        isFree: isFreeShipping,
-        mode: 'grouped'
-      }
-    ];
-    
-    // Adicionar opção premium se carrinho grande
-    if (subtotal > 150) {
-      options.push({
-        id: 'grouped-premium',
-        name: 'Entrega Agrupada Premium',
-        price: isFreeShipping ? 0 : basePrice * 1.3,
-        estimatedDays: Math.max(1, (SHIPPING_DELAYS.GROUPED_MIN + Math.floor(Math.random() * SHIPPING_DELAYS.GROUPED_VARIANCE)) - 2),
-        isFree: isFreeShipping,
-        mode: 'grouped'
-      });
+async function validateCoupon(code: string, items: CartItem[]): Promise<Coupon | null> {
+  try {
+    // Preparar dados para enviar para API
+    const cartItems = items.map(item => ({
+      product_id: item.product.id,
+      seller_id: item.sellerId,
+      category_id: (item.product as any).category?.id || '',
+      quantity: item.quantity,
+      price: item.product.price
+    }));
+
+    const response = await fetch('/api/coupons/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        code: code.toUpperCase(),
+        items: cartItems,
+        user_id: undefined, // TODO: Pegar do auth store
+        session_id: undefined, // TODO: Gerar session ID se não logado
+        shipping_cost: 0 // TODO: Calcular custo do frete se já conhecido
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success && result.coupon) {
+      return {
+        code: result.coupon.code,
+        type: result.coupon.type === 'percentage' ? 'percentage' : 'fixed',
+        value: result.coupon.value,
+        scope: result.coupon.scope === 'global' ? 'cart' : result.coupon.scope,
+        description: result.coupon.description || result.coupon.name,
+        minValue: 0, // TODO: Vem da API
+        ...(result.coupon.discount_amount && { discount_amount: result.coupon.discount_amount }),
+        ...(result.coupon.applied_to && { applied_to: result.coupon.applied_to })
+      };
+    } else {
+      console.warn('Erro na validação do cupom:', result.error);
+      return null;
     }
-    
-    return options;
-  } else {
-    // Entrega expressa - opções individuais mais rápidas
-    const expressPrice = totalWeight * SHIPPING_CONFIG.EXPRESS_WEIGHT_MULTIPLIER;
-    
-    const options: ShippingOption[] = [
-      {
-        id: 'express-standard',
-        name: 'Entrega Expressa Padrão',
-        price: expressPrice,
-        estimatedDays: SHIPPING_DELAYS.EXPRESS_MIN + Math.floor(Math.random() * SHIPPING_DELAYS.EXPRESS_VARIANCE),
-        isFree: false,
-        mode: 'express'
-      }
-    ];
-    
-    // Opção super expressa para itens pequenos
-    if (totalWeight < 2) {
-      options.push({
-        id: 'express-super',
-        name: 'Entrega Super Expressa',
-        price: expressPrice * 1.8,
-        estimatedDays: Math.max(1, SHIPPING_DELAYS.EXPRESS_MIN - 1),
-        isFree: false,
-        mode: 'express'
-      });
-    }
-    
-    return options;
+  } catch (error) {
+    console.error('Erro ao validar cupom:', error);
+    return null;
   }
 }
 
-async function calculateProductShipping(product: Product, zipCode: string): Promise<ProductShipping> {
-  // Simular cálculo individual por produto
-  await new Promise(resolve => setTimeout(resolve, SHIPPING_CONFIG.PRODUCT_API_DELAY));
-  
-  const weight = (product as any).weight || SHIPPING_CONFIG.DEFAULT_PRODUCT_WEIGHT;
-  const basePrice = weight * SHIPPING_CONFIG.EXPRESS_WEIGHT_MULTIPLIER;
-  
-  return {
-    productId: product.id,
-    price: basePrice + (Math.random() * 10),
-    estimatedDays: SHIPPING_DELAYS.EXPRESS_MIN + Math.floor(Math.random() * SHIPPING_DELAYS.EXPRESS_VARIANCE)
-  };
-}
+async function getAutomaticCoupons(items: CartItem[]): Promise<Coupon[]> {
+  try {
+    // Preparar dados para enviar para API
+    const cartItems = items.map(item => ({
+      product_id: item.product.id,
+      seller_id: item.sellerId,
+      category_id: (item.product as any).category?.id || '',
+      quantity: item.quantity,
+      price: item.product.price
+    }));
 
-async function validateCoupon(code: string): Promise<Coupon | null> {
-  // Simular validação de cupom
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  // Cupons disponíveis para a conta do usuário (viriam da API)
-  const userCoupons: Coupon[] = [
-    { 
-      code: 'BEMVINDO10', 
-      type: 'percentage', 
-      value: 10, 
-      scope: 'cart', 
-      description: '10% OFF - Boas vindas' 
-    },
-    { 
-      code: 'FRETE20', 
-      type: 'fixed', 
-      value: 20, 
-      scope: 'shipping', 
-      description: 'R$ 20 OFF no frete', 
-      minValue: 100 
-    },
-    { 
-      code: 'NATAL15', 
-      type: 'percentage', 
-      value: 15, 
-      scope: 'cart', 
-      description: '15% OFF - Promoção de Natal' 
-    },
-    { 
-      code: 'CLIENTE50', 
-      type: 'fixed', 
-      value: 50, 
-      scope: 'cart', 
-      description: 'R$ 50 OFF - Cliente especial', 
-      minValue: 200 
+    const response = await fetch('/api/coupons/automatic', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        items: cartItems,
+        user_id: undefined, // TODO: Pegar do auth store
+        session_id: undefined, // TODO: Gerar session ID se não logado
+        shipping_cost: 0 // TODO: Calcular custo do frete se já conhecido
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success && result.automatic_coupons) {
+      return result.automatic_coupons.map((coupon: any) => ({
+        code: coupon.code,
+        type: coupon.type === 'percentage' ? 'percentage' : 'fixed',
+        value: coupon.value,
+        scope: coupon.scope === 'global' ? 'cart' : coupon.scope,
+        description: coupon.description || coupon.name,
+        minValue: 0,
+        discount_amount: coupon.discount_amount,
+        applied_to: coupon.applied_to,
+        is_automatic: true
+      }));
+    } else {
+      return [];
     }
-  ];
-  
-  return userCoupons.find(c => c.code.toUpperCase() === code.toUpperCase()) || null;
+  } catch (error) {
+    console.error('Erro ao buscar cupons automáticos:', error);
+    return [];
+  }
 }
 
 // ============================================================================
@@ -223,17 +166,10 @@ function saveToStorage(key: string, value: any): void {
 function createAdvancedCartStore() {
   // ===== State Stores =====
   const items = writable<CartItem[]>(loadFromStorage(STORAGE_KEYS.CART, []));
-  const zipCode = writable<string>(loadFromStorage(STORAGE_KEYS.ZIP_CODE, ''));
-  const shippingMode = writable<ShippingMode>(loadFromStorage(STORAGE_KEYS.SHIPPING_MODE, 'express'));
-  const loadingShipping = writable<boolean>(false);
-  const shippingCache = writable<Record<string, ShippingOption[]>>({});
   const appliedCoupon = writable<Coupon | null>(loadFromStorage(STORAGE_KEYS.COUPON, null));
-  const shippingInfo = writable<Record<string, any>>({});
   
   // ===== Persistence Subscriptions =====
   items.subscribe(value => saveToStorage(STORAGE_KEYS.CART, value));
-  zipCode.subscribe(value => saveToStorage(STORAGE_KEYS.ZIP_CODE, value));
-  shippingMode.subscribe(value => saveToStorage(STORAGE_KEYS.SHIPPING_MODE, value));
   appliedCoupon.subscribe(value => {
     if (value) {
       saveToStorage(STORAGE_KEYS.COUPON, value);
@@ -246,8 +182,8 @@ function createAdvancedCartStore() {
   
   // Agrupar por seller
   const sellerGroups = derived(
-    [items, shippingMode, shippingInfo], 
-    ([$items, $mode, $shippingInfo]) => {
+    [items], 
+    ([$items]) => {
       const groups: Record<string, SellerGroup> = {};
       
       // Agrupar items por seller
@@ -261,9 +197,7 @@ function createAdvancedCartStore() {
             shippingOptions: [],
             shippingCost: 0,
             discount: 0,
-            total: 0,
-            groupedShipping: undefined,
-            expressShipping: undefined
+            total: 0
           };
         }
         groups[item.sellerId].items.push(item);
@@ -285,61 +219,36 @@ function createAdvancedCartStore() {
           group.discount = calculateDiscount(group.subtotal, group.appliedCoupon);
         }
         
-        // Aplicar informações de frete
-        const sellerShipping = $shippingInfo[group.sellerId];
-        if (sellerShipping) {
-          group.groupedShipping = sellerShipping.groupedShipping;
-          group.expressShipping = sellerShipping.expressShipping;
-          
-          if (sellerShipping.shippingOptions) {
-            group.shippingOptions = sellerShipping.shippingOptions;
-          }
-        }
-        
-        // Calcular frete baseado no modo
-        if ($mode === 'grouped') {
-          group.shippingCost = group.groupedShipping?.price || 0;
-        } else {
-          // Somar fretes individuais dos produtos
-          group.shippingCost = group.items.reduce(
-            (sum, item) => sum + (item.individualShipping?.price || 0), 
-            0
-          );
-        }
-        
-        group.total = group.subtotal - group.discount + group.shippingCost;
+        // Total sem frete (frete é calculado pelo sistema novo)
+        group.total = group.subtotal - group.discount;
       });
       
       return Object.values(groups);
     }
   );
   
-  // Totais do carrinho
+  // Totais do carrinho (sem frete - calculado pelo sistema novo)
   const cartTotals = derived(
-    [sellerGroups, items, appliedCoupon], 
-    ([$groups, $items, $appliedCoupon]) => {
+    [sellerGroups, appliedCoupon], 
+    ([$groups, $appliedCoupon]) => {
       const cartSubtotal = $groups.reduce((sum, group) => sum + group.subtotal, 0);
-      const totalShipping = $groups.reduce((sum, group) => sum + group.shippingCost, 0);
       const totalDiscount = $groups.reduce((sum, group) => sum + group.discount, 0);
       
       // Calcular desconto do cupom
       let couponDiscount = 0;
-      if ($appliedCoupon) {
-        const baseValue = $appliedCoupon.scope === 'shipping' 
-          ? totalShipping 
-          : cartSubtotal;
-        couponDiscount = calculateDiscount(baseValue, $appliedCoupon);
+      if ($appliedCoupon && $appliedCoupon.scope === 'cart') {
+        couponDiscount = calculateDiscount(cartSubtotal, $appliedCoupon);
       }
       
-      const finalTotal = cartSubtotal + totalShipping - totalDiscount - couponDiscount;
+      const finalTotal = cartSubtotal - totalDiscount - couponDiscount;
       
       return {
         cartSubtotal,
-        totalShipping,
+        totalShipping: 0, // Será calculado pelo sistema novo
         totalDiscount: totalDiscount + couponDiscount,
         couponDiscount,
         cartTotal: finalTotal,
-        installmentValue: finalTotal / 12 // Valor parcelado em 12x
+        installmentValue: finalTotal / 12
       };
     }
   );
@@ -354,6 +263,11 @@ function createAdvancedCartStore() {
     quantity = 1, 
     options?: { color?: string; size?: string }
   ) {
+    console.log('➕ ADICIONANDO ITEM AO CARRINHO');
+    console.log('📦 Produto:', product.name);
+    console.log('💰 Preço:', product.price);
+    console.log('🔢 Quantidade:', quantity);
+    
     items.update(currentItems => {
       const existingIndex = currentItems.findIndex(
         item => 
@@ -365,10 +279,13 @@ function createAdvancedCartStore() {
       
       if (existingIndex >= 0) {
         // Atualizar quantidade do item existente
+        const oldQuantity = currentItems[existingIndex].quantity;
         currentItems[existingIndex].quantity += quantity;
+        console.log(`📈 Quantidade atualizada: ${oldQuantity} → ${currentItems[existingIndex].quantity}`);
         return [...currentItems];
       } else {
         // Adicionar novo item
+        console.log('🆕 Novo item adicionado');
         return [...currentItems, {
           product,
           quantity,
@@ -379,6 +296,14 @@ function createAdvancedCartStore() {
         }];
       }
     });
+    
+    setTimeout(() => {
+      const totals = get(cartTotals);
+      console.log('💰 TOTAIS ATUALIZADOS:');
+      console.log('├─ Subtotal:', totals.cartSubtotal.toFixed(2));
+      console.log('├─ Total:', totals.cartTotal.toFixed(2));
+      console.log('=====================================');
+    }, 100);
   }
   
   // Remover item do carrinho
@@ -427,228 +352,237 @@ function createAdvancedCartStore() {
     });
   }
   
-  // Calcular frete para todos os sellers
-  async function calculateAllShipping(zip: string) {
-    if (!zip || zip.length < 8) return;
-    
-    loadingShipping.set(true);
-    const $items = get(items);
-    const $groups = get(sellerGroups);
-    const cache = get(shippingCache);
-    
-    try {
-      const newShippingInfo: Record<string, any> = {};
-      
-      // Calcular AMBAS as modalidades para cada seller
-      for (const group of $groups) {
-        const groupedCacheKey = `${group.sellerId}-${zip}-grouped`;
-        const expressCacheKey = `${group.sellerId}-${zip}-express`;
-        
-        let groupedOptions: ShippingOption[] = [];
-        let expressOptions: ShippingOption[] = [];
-        
-        // === Calcular Frete Agrupado ===
-        if (cache[groupedCacheKey]) {
-          groupedOptions = cache[groupedCacheKey];
-        } else {
-          groupedOptions = await calculateShipping(group.sellerId, zip, group.items, 'grouped');
-          shippingCache.update(c => ({ ...c, [groupedCacheKey]: groupedOptions }));
-        }
-        
-        // === Calcular Frete Express ===
-        if (cache[expressCacheKey]) {
-          expressOptions = cache[expressCacheKey];
-        } else {
-          expressOptions = await calculateShipping(group.sellerId, zip, group.items, 'express');
-          shippingCache.update(c => ({ ...c, [expressCacheKey]: expressOptions }));
-          
-          // Também calcular fretes individuais dos produtos para o modo express
-          for (const item of group.items) {
-            const shipping = await calculateProductShipping(item.product, zip);
-            updateProductShipping(item.product.id, group.sellerId, shipping);
-          }
-        }
-        
-        // === Montar informações do seller ===
-        newShippingInfo[group.sellerId] = {
-          // Frete agrupado
-          groupedShipping: groupedOptions.length > 0 ? {
-            price: groupedOptions[0].price,
-            estimatedDays: groupedOptions[0].estimatedDays
-          } : null,
-          
-          // Frete express
-          expressShipping: expressOptions.length > 0 ? {
-            price: expressOptions[0].price,
-            estimatedDays: expressOptions[0].estimatedDays
-          } : null,
-          
-          // Todas as opções disponíveis (para mostrar o selector)
-          shippingOptions: [...groupedOptions, ...expressOptions]
-        };
-      }
-      
-      // Atualizar shipping info
-      shippingInfo.set(newShippingInfo);
-      
-      // Setar CEP no store
-      zipCode.set(zip);
-      
-    } finally {
-      loadingShipping.set(false);
-    }
-  }
-  
-  // Atualizar frete individual do produto
-  function updateProductShipping(
-    productId: string, 
-    sellerId: string, 
-    shipping: ProductShipping
-  ) {
-    items.update(currentItems => {
-      return currentItems.map(item => {
-        if (item.product.id === productId && item.sellerId === sellerId) {
-          return { ...item, individualShipping: shipping };
-        }
-        return item;
-      });
-    });
-  }
-  
-  // Mudar modalidade de entrega
-  function setShippingMode(mode: ShippingMode) {
-    shippingMode.set(mode);
-    
-    // Recalcular fretes se já tiver CEP
-    const $zip = get(zipCode);
-    if ($zip) {
-      calculateAllShipping($zip);
-    }
-  }
-  
   // Aplicar cupom
   async function applyCoupon(code: string) {
-    const coupon = await validateCoupon(code);
+    console.log('🎫 APLICANDO CUPOM - INÍCIO');
+    console.log('📥 Código informado:', code);
+    
+    const currentItems = get(items);
+    console.log('🛒 Itens no carrinho:', currentItems.length);
+    console.log('📦 Detalhes dos itens:', currentItems.map(item => ({
+      produto: item.product.name,
+      preco: item.product.price,
+      quantidade: item.quantity,
+      subtotal: item.product.price * item.quantity,
+      vendedor: item.sellerName
+    })));
+
+    const coupon = await validateCoupon(code, currentItems);
     
     if (!coupon) {
+      console.log('❌ CUPOM INVÁLIDO');
       throw new Error('Cupom inválido ou expirado');
     }
-    
+
+    console.log('✅ CUPOM VÁLIDO ENCONTRADO:');
+    console.log('📋 Dados do cupom:', {
+      codigo: coupon.code,
+      nome: coupon.description,
+      tipo: coupon.type,
+      valor: coupon.value,
+      escopo: coupon.scope,
+      desconto_calculado: (coupon as any).discount_amount || 'Calculado dinamicamente'
+    });
+
     // Verificar valor mínimo
     const $totals = get(cartTotals);
+    console.log('💰 CÁLCULOS ANTES DO CUPOM:');
+    console.log('├─ Subtotal do carrinho:', $totals.cartSubtotal.toFixed(2));
+    console.log('├─ Desconto atual:', $totals.totalDiscount.toFixed(2));
+    console.log('├─ Total atual:', $totals.cartTotal.toFixed(2));
+    
     if (coupon.minValue && $totals.cartSubtotal < coupon.minValue) {
-      throw new Error(`Valor mínimo de ${formatCurrency(coupon.minValue)} não atingido`);
+      console.log('❌ VALOR MÍNIMO NÃO ATINGIDO');
+      console.log(`├─ Valor mínimo requerido: R$ ${coupon.minValue.toFixed(2)}`);
+      console.log(`└─ Valor atual: R$ ${$totals.cartSubtotal.toFixed(2)}`);
+      throw new Error(`Pedido mínimo de R$ ${coupon.minValue.toFixed(2)} para usar este cupom`);
     }
     
+    console.log('✅ APLICANDO CUPOM...');
     appliedCoupon.set(coupon);
-    return coupon;
+    
+    // Calcular totais após aplicação
+    setTimeout(() => {
+      const newTotals = get(cartTotals);
+      console.log('💰 CÁLCULOS APÓS APLICAÇÃO DO CUPOM:');
+      console.log('├─ Subtotal:', newTotals.cartSubtotal.toFixed(2));
+      console.log('├─ Desconto do cupom:', newTotals.couponDiscount.toFixed(2));
+      console.log('├─ Desconto total:', newTotals.totalDiscount.toFixed(2));
+      console.log('├─ Total final:', newTotals.cartTotal.toFixed(2));
+      console.log('└─ Economia total:', (newTotals.cartSubtotal - newTotals.cartTotal).toFixed(2));
+      
+      console.log('🔍 VERIFICAÇÃO DE INTEGRIDADE:');
+      const calculoManual = newTotals.cartSubtotal - newTotals.totalDiscount;
+      const diferencaCalculo = Math.abs(calculoManual - newTotals.cartTotal);
+      console.log('├─ Cálculo manual:', calculoManual.toFixed(2));
+      console.log('├─ Total calculado:', newTotals.cartTotal.toFixed(2));
+      console.log('├─ Diferença:', diferencaCalculo.toFixed(2));
+      console.log('└─ Integridade:', diferencaCalculo < 0.01 ? '✅ OK' : '❌ ERRO');
+      
+      console.log('🎫 APLICAÇÃO DE CUPOM - CONCLUÍDA');
+      console.log('=====================================');
+    }, 100);
   }
   
   // Remover cupom
   function removeCoupon() {
+    console.log('🗑️ REMOVENDO CUPOM');
+    const currentCoupon = get(appliedCoupon);
+    if (currentCoupon) {
+      console.log('📋 Cupom removido:', currentCoupon.code);
+      
+      const beforeTotals = get(cartTotals);
+      console.log('💰 TOTAIS ANTES DA REMOÇÃO:');
+      console.log('├─ Subtotal:', beforeTotals.cartSubtotal.toFixed(2));
+      console.log('├─ Desconto:', beforeTotals.totalDiscount.toFixed(2));
+      console.log('└─ Total:', beforeTotals.cartTotal.toFixed(2));
+    }
+    
     appliedCoupon.set(null);
+    
+    setTimeout(() => {
+      const afterTotals = get(cartTotals);
+      console.log('💰 TOTAIS APÓS REMOÇÃO:');
+      console.log('├─ Subtotal:', afterTotals.cartSubtotal.toFixed(2));
+      console.log('├─ Desconto:', afterTotals.totalDiscount.toFixed(2));
+      console.log('└─ Total:', afterTotals.cartTotal.toFixed(2));
+      console.log('🗑️ REMOÇÃO DE CUPOM - CONCLUÍDA');
+      console.log('=====================================');
+    }, 100);
   }
   
   // Limpar carrinho
   function clearCart() {
     items.set([]);
-    shippingCache.set({});
+    appliedCoupon.set(null);
   }
   
-  // Função para calcular total de items
+  // Total de itens
   function totalItems() {
-    return get(sellerGroups).reduce((sum, group) => 
-      sum + group.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
-    );
+    return get(items).reduce((sum, item) => sum + item.quantity, 0);
   }
-  
-  // Sincronização entre abas e persistência
-  function setupCrossBrowserSync() {
-    if (typeof window === 'undefined') return;
+
+  // Função de debug completo
+  function debugReport() {
+    const currentItems = get(items);
+    const currentTotals = get(cartTotals);
+    const currentCoupon = get(appliedCoupon);
+    const currentGroups = get(sellerGroups);
     
-    // Listener para mudanças no localStorage (outras abas)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'mktplace-cart' && e.newValue) {
-        try {
-          const cartData = JSON.parse(e.newValue);
-          // Atualizar store sem salvar novamente (evitar loop)
-          updateStoreFromStorage(cartData);
-        } catch (error) {
-          console.error('Erro ao sincronizar carrinho entre abas:', error);
-        }
+    console.log('📊 RELATÓRIO COMPLETO DE DEBUG');
+    console.log('===============================');
+    
+    console.log('🛒 CARRINHO GERAL:');
+    console.log(`├─ Total de itens: ${currentItems.length}`);
+    console.log(`├─ Quantidade total: ${totalItems()}`);
+    console.log(`├─ Vendedores únicos: ${currentGroups.length}`);
+    console.log(`└─ Status: ${currentItems.length > 0 ? 'Ativo' : 'Vazio'}`);
+    
+    console.log('\n📦 DETALHES DOS ITENS:');
+    currentItems.forEach((item, index) => {
+      const subtotal = item.product.price * item.quantity;
+      console.log(`${index + 1}. ${item.product.name}`);
+      console.log(`   ├─ Preço unitário: R$ ${item.product.price.toFixed(2)}`);
+      console.log(`   ├─ Quantidade: ${item.quantity}`);
+      console.log(`   ├─ Subtotal: R$ ${subtotal.toFixed(2)}`);
+      console.log(`   └─ Vendedor: ${item.sellerName}`);
+    });
+    
+    if (currentCoupon) {
+      console.log('\n🎫 CUPOM APLICADO:');
+      console.log(`├─ Código: ${currentCoupon.code}`);
+      console.log(`├─ Descrição: ${currentCoupon.description}`);
+      console.log(`├─ Tipo: ${currentCoupon.type}`);
+      console.log(`├─ Valor: ${currentCoupon.value}`);
+      console.log(`└─ Escopo: ${currentCoupon.scope}`);
+    }
+    
+    console.log('\n💰 CÁLCULOS FINANCEIROS:');
+    console.log(`├─ Subtotal: R$ ${currentTotals.cartSubtotal.toFixed(2)}`);
+    console.log(`├─ Desconto cupom: -R$ ${currentTotals.couponDiscount.toFixed(2)}`);
+    console.log(`├─ Desconto total: -R$ ${currentTotals.totalDiscount.toFixed(2)}`);
+    console.log(`├─ Total final: R$ ${currentTotals.cartTotal.toFixed(2)}`);
+    console.log(`└─ Economia: R$ ${(currentTotals.cartSubtotal - currentTotals.cartTotal).toFixed(2)}`);
+    
+    console.log('\n🏪 AGRUPAMENTO POR VENDEDOR:');
+    currentGroups.forEach((group, index) => {
+      console.log(`${index + 1}. ${group.sellerName}`);
+      console.log(`   ├─ Itens: ${group.items.length}`);
+      console.log(`   ├─ Subtotal: R$ ${group.subtotal.toFixed(2)}`);
+      console.log(`   ├─ Desconto: -R$ ${group.discount.toFixed(2)}`);
+      console.log(`   └─ Total: R$ ${group.total.toFixed(2)}`);
+    });
+    
+    // Verificação de integridade
+    const manualSubtotal = currentItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    const manualTotal = manualSubtotal - currentTotals.totalDiscount;
+    const subtotalDiff = Math.abs(manualSubtotal - currentTotals.cartSubtotal);
+    const totalDiff = Math.abs(manualTotal - currentTotals.cartTotal);
+    
+    console.log('\n🔍 VERIFICAÇÃO DE INTEGRIDADE:');
+    console.log(`├─ Subtotal calculado: R$ ${manualSubtotal.toFixed(2)}`);
+    console.log(`├─ Subtotal do store: R$ ${currentTotals.cartSubtotal.toFixed(2)}`);
+    console.log(`├─ Diferença subtotal: R$ ${subtotalDiff.toFixed(2)} ${subtotalDiff < 0.01 ? '✅' : '❌'}`);
+    console.log(`├─ Total calculado: R$ ${manualTotal.toFixed(2)}`);
+    console.log(`├─ Total do store: R$ ${currentTotals.cartTotal.toFixed(2)}`);
+    console.log(`├─ Diferença total: R$ ${totalDiff.toFixed(2)} ${totalDiff < 0.01 ? '✅' : '❌'}`);
+    console.log(`└─ Status geral: ${(subtotalDiff < 0.01 && totalDiff < 0.01) ? '✅ ÍNTEGRO' : '❌ ERRO DETECTADO'}`);
+    
+    console.log('\n📊 RELATÓRIO COMPLETO - FIM');
+    console.log('===============================');
+    
+    return {
+      items: currentItems,
+      totals: currentTotals,
+      coupon: currentCoupon,
+      groups: currentGroups,
+      integrity: {
+        subtotalDiff,
+        totalDiff,
+        isValid: subtotalDiff < 0.01 && totalDiff < 0.01
       }
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
   }
   
-  function updateStoreFromStorage(cartData: any) {
-    // Atualizar stores sem triggerar novos saves
-    items.set(cartData.items || []);
-    appliedCoupon.set(cartData.appliedCoupon || null);
-    zipCode.set(cartData.zipCode || '');
-    shippingMode.set(cartData.shippingMode || 'grouped');
-  }
-  
-  // Salvar no localStorage com throttle para performance
-  let saveTimeout: NodeJS.Timeout | null = null;
-  
-  function saveToStorageThrottled() {
-    if (typeof window === 'undefined') return;
-    
-    // Throttle saves para evitar muitas operações
-    if (saveTimeout) clearTimeout(saveTimeout);
-    
-    saveTimeout = setTimeout(() => {
-      try {
-        const cartData = {
-          items: get(items),
-          appliedCoupon: get(appliedCoupon),
-          zipCode: get(zipCode),
-          shippingMode: get(shippingMode),
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem('mktplace-cart', JSON.stringify(cartData));
-      } catch (error) {
-        console.error('Erro ao salvar carrinho:', error);
-      }
-    }, 300); // 300ms de throttle
-  }
-  
-  // ===== Public API =====
   return {
-    // States
+    // Stores
     items,
+    appliedCoupon,
     sellerGroups,
     cartTotals,
-    zipCode,
-    shippingMode,
-    loadingShipping,
-    appliedCoupon,
     
     // Actions
     addItem,
     removeItem,
     updateQuantity,
-    clearCart,
-    calculateAllShipping,
-    setShippingMode,
     applyCoupon,
     removeCoupon,
+    clearCart,
     totalItems,
-    setupCrossBrowserSync,
-    updateStoreFromStorage,
-    saveToStorageThrottled
+    debugReport
   };
 }
 
 // ============================================================================
-// EXPORT
+// EXPORT E DEBUG GLOBAL
 // ============================================================================
 
-export const advancedCartStore = createAdvancedCartStore(); 
+export const advancedCartStore = createAdvancedCartStore();
+
+// Tornar debug acessível globalmente para facilitar testes (apenas em dev)
+if (typeof window !== 'undefined' && !(window as any).cartDebug) {
+  (window as any).cartDebug = {
+    store: advancedCartStore,
+    report: advancedCartStore.debugReport,
+    log: (message: string) => console.log(`🛒 ${message}`),
+    clear: () => {
+      console.clear();
+      console.log('🛒 Console limpo - CartDebug ativo');
+    }
+  };
+  
+  console.log('🛒 CartDebug ativo! Use:');
+  console.log('  → window.cartDebug.report() - Relatório completo');
+  console.log('  → window.cartDebug.store - Acesso ao store');
+  console.log('  → window.cartDebug.clear() - Limpar console');
+} 

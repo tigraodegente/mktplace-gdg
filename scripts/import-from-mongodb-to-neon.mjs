@@ -7,49 +7,47 @@ import fs from 'fs/promises'
 
 const { Pool } = pg
 
-console.log('🚀 Script de Importação MongoDB → Neon PostgreSQL\n')
+console.log('🚀 Script de Importação MongoDB → PostgreSQL LOCAL\n')
 
 // Configuração MongoDB
 const MONGO_CONFIG = {
   uri: process.env.MONGODB_URI || 'mongodb://localhost:27017',
-  database: process.env.MONGODB_DATABASE || 'marketplace',
-  collection: process.env.MONGODB_COLLECTION || 'products',
+  database: process.env.MONGODB_DATABASE || 'graodegente',
+  collection: process.env.MONGODB_COLLECTION || 'm_product',
   batchSize: 100
 }
 
-// Configuração Neon PostgreSQL
-const neonPool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+// Configuração PostgreSQL LOCAL
+const localPool = new Pool({
+  connectionString: process.env.LOCAL_DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev',
+  // Sem SSL para banco local
 })
 
 // Configurações de dados mockados
 const MOCK_DEFAULTS = {
   seller: {
-    email: 'vendedor.padrao@marketplace.com',
-    name: 'Vendedor Padrão',
+    email: 'graodegente@marketplace.com',
+    name: 'Grão de Gente',
     password: 'temp123456',
-    company_name: 'Loja Padrão Marketplace',
-    company_document: '00000000000000',
-    description: '[PENDENTE] Descrição da empresa a ser preenchida',
-    is_verified: false,
-    rating_average: 0
+    company_name: 'Grão de Gente - Produtos para Bebê',
+    company_document: '12345678000123',
+    description: 'Loja especializada em produtos para bebê e quarto infantil',
+    is_verified: true,
+    rating_average: 4.8
   },
   
   defaultCategory: {
-    name: 'Produtos Gerais',
-    slug: 'produtos-gerais',
-    description: 'Categoria temporária para produtos sem categoria definida',
+    name: 'Produtos para Bebê',
+    slug: 'produtos-para-bebe',
+    description: 'Categoria para produtos infantis e de bebê',
     is_active: true,
-    display_order: 999
+    display_order: 1
   },
   
   product: {
     description: '[PENDENTE] Descrição detalhada do produto a ser preenchida via IA',
-    stock_quantity: 100,
-    weight: 1.0,
+    stock_quantity: 50,
+    weight: 0.5,
     dimensions: {
       length: 30,
       width: 20,
@@ -58,12 +56,12 @@ const MOCK_DEFAULTS = {
     },
     images: [],
     is_active: true,
-    is_featured: false,
-    tags: ['importado', 'pendente-enriquecimento', 'origem-mongodb'],
+    is_featured: true,
+    tags: ['grão-de-gente', 'bebê', 'mongodb-import'],
     metadata: {
       imported_at: new Date().toISOString(),
       needs_enrichment: true,
-      source: 'mongodb',
+      source: 'mongodb-graodegente',
       original_data: {}
     }
   },
@@ -86,9 +84,9 @@ function createSlug(text) {
 }
 
 function generateSKU(name, index, mongoId) {
-  const prefix = name.substring(0, 3).toUpperCase()
+  const prefix = 'GDG' // Grão de Gente
   const idPart = mongoId ? mongoId.toString().slice(-4) : Date.now().toString().slice(-4)
-  return `${prefix}-${idPart}-${index.toString().padStart(4, '0')}`
+  return `${prefix}-${idPart}-${index.toString().padStart(3, '0')}`
 }
 
 // Hash de senha simples para mock
@@ -97,147 +95,127 @@ function hashPassword(password) {
   return `mock:${password}`
 }
 
-// Mapear dados do MongoDB para PostgreSQL
-function mapMongoProductToNeon(mongoProduct, index, fieldMapping) {
-  // Usar mapeamento customizado ou padrão
-  const mapping = fieldMapping || {
-    name: 'name',
-    price: 'price',
-    description: 'description',
-    sku: 'sku',
-    category: 'category',
-    images: 'images',
-    stock: 'stock'
+// Mapear dados do MongoDB para PostgreSQL LOCAL
+function mapMongoProductToLocal(mongoProduct, index, fieldMapping) {
+  // Extrair dados do produto MongoDB da Grão de Gente
+  const name = mongoProduct.complementCompanyId || mongoProduct.name || `Produto ${index + 1}`
+  const price = mongoProduct.costPrice || 0
+  
+  // Extrair categoria
+  let categoryName = 'Produtos para Bebê'
+  if (mongoProduct.categories && mongoProduct.categories.length > 0) {
+    categoryName = mongoProduct.categories[0].name || categoryName
+  }
+  
+  // Extrair descrição
+  let description = MOCK_DEFAULTS.product.description
+  if (mongoProduct.descriptions && mongoProduct.descriptions.length > 0) {
+    const descObj = mongoProduct.descriptions.find(d => d.attribute?.name === 'Descrição')
+    if (descObj && descObj.attributeValue) {
+      description = descObj.attributeValue.replace(/<[^>]*>/g, '').trim() // Remove HTML
+    }
+  }
+  
+  // Extrair atributos/especificações
+  const attributes = {}
+  if (mongoProduct.attributes && mongoProduct.attributes.length > 0) {
+    mongoProduct.attributes.forEach(attr => {
+      if (attr.attributeValue) {
+        attributes[attr.attribute?._path || 'attr'] = attr.attributeValue
+      }
+    })
   }
   
   const mapped = {
-    // Campos básicos usando mapeamento
-    name: mongoProduct[mapping.name] || mongoProduct.name || mongoProduct.nome || `Produto ${index + 1}`,
-    price: parseFloat(mongoProduct[mapping.price] || mongoProduct.price || mongoProduct.preco || 0),
+    // Campos básicos
+    name: name,
+    price: parseFloat(price) || 0,
+    description: description,
     
-    // Descrição
-    description: mongoProduct[mapping.description] || mongoProduct.description || MOCK_DEFAULTS.product.description,
-    
-    // SKU e códigos
-    sku: mongoProduct[mapping.sku] || mongoProduct.sku || generateSKU(
-      mongoProduct[mapping.name] || 'PROD', 
-      index,
-      mongoProduct._id
-    ),
-    barcode: mongoProduct.barcode || mongoProduct.ean || mongoProduct.gtin || null,
+    // SKU e códigos usando dados reais
+    sku: mongoProduct.sku || generateSKU(name, index, mongoProduct._id),
+    barcode: mongoProduct.barcode || null,
     
     // Preços
-    compare_at_price: parseFloat(mongoProduct.compare_at_price || mongoProduct.preco_comparacao || 0) || null,
-    cost: parseFloat(mongoProduct.cost || mongoProduct.custo || 0) || null,
+    original_price: parseFloat(price * 1.2) || null, // Preço "de" 20% maior
+    cost: parseFloat(price * 0.7) || null, // Custo 30% menor
     
     // Estoque
-    stock_quantity: parseInt(
-      mongoProduct[mapping.stock] || 
-      mongoProduct.stock || 
-      mongoProduct.estoque || 
-      MOCK_DEFAULTS.product.stock_quantity
-    ),
-    stock_location: mongoProduct.stock_location || 'Estoque Principal',
+    quantity: mongoProduct.stock || 50,
+    stock_location: mongoProduct.defaultShippingPlace?.name || 'Estoque Principal',
     
     // Físico
-    weight: parseFloat(mongoProduct.weight || mongoProduct.peso || MOCK_DEFAULTS.product.weight),
-    dimensions: mongoProduct.dimensions || mongoProduct.dimensoes || MOCK_DEFAULTS.product.dimensions,
+    weight: parseFloat(mongoProduct.weight || MOCK_DEFAULTS.product.weight),
+    height: parseFloat(mongoProduct.height || 10),
+    width: parseFloat(mongoProduct.width || 20),  
+    length: parseFloat(mongoProduct.depth || 30),
     
     // Status
-    is_active: mongoProduct.active !== undefined ? mongoProduct.active : MOCK_DEFAULTS.product.is_active,
-    is_featured: mongoProduct.featured || mongoProduct.destaque || MOCK_DEFAULTS.product.is_featured,
+    is_active: mongoProduct.activeForSeo !== false,
+    featured: true, // Produtos MongoDB são especiais
     
-    // Arrays
-    images: [],
-    tags: [],
+    // Campos do banco local
+    status: 'active',
+    currency: 'BRL',
+    track_inventory: true,
+    allow_backorder: false,
+    delivery_days: mongoProduct.deliveryTime || 7,
+    has_free_shipping: true,
+    condition: 'new',
     
-    // Metadata
-    metadata: {
-      ...MOCK_DEFAULTS.product.metadata,
-      mongo_id: mongoProduct._id?.toString(),
-      original_data: mongoProduct
-    }
+    // Tags e metadata
+    tags: ['grão-de-gente', 'bebê', 'infantil', 'mongodb'],
+    attributes: attributes,
+    
+    // Metadata específica do banco local
+    view_count: 0,
+    sales_count: 0,
+    rating_average: 0,
+    rating_count: 0,
+    mongo_category: categoryName,
+    mongo_id: mongoProduct._id?.toString()
   }
-  
-  // Processar imagens
-  const imageField = mongoProduct[mapping.images] || mongoProduct.images || mongoProduct.imagens
-  if (imageField) {
-    if (Array.isArray(imageField)) {
-      mapped.images = imageField.map(img => ({
-        url: typeof img === 'string' ? img : (img.url || img.src),
-        alt: typeof img === 'string' ? mapped.name : (img.alt || mapped.name),
-        is_placeholder: false
-      }))
-    } else if (typeof imageField === 'string') {
-      mapped.images = [{
-        url: imageField,
-        alt: mapped.name,
-        is_placeholder: false
-      }]
-    }
-  }
-  
-  // Adicionar placeholder se não tiver imagens
-  if (mapped.images.length === 0) {
-    mapped.images = [MOCK_DEFAULTS.placeholderImage]
-  }
-  
-  // Processar tags
-  const tags = new Set(MOCK_DEFAULTS.product.tags)
-  
-  if (mongoProduct.tags && Array.isArray(mongoProduct.tags)) {
-    mongoProduct.tags.forEach(tag => tags.add(tag))
-  }
-  
-  if (mongoProduct._id) {
-    tags.add(`mongo-${mongoProduct._id.toString().slice(-6)}`)
-  }
-  
-  mapped.tags = Array.from(tags)
   
   // Gerar slug
-  mapped.slug = mongoProduct.slug || createSlug(mapped.name)
-  
-  // Categoria do MongoDB
-  mapped.mongo_category = mongoProduct[mapping.category] || mongoProduct.category || mongoProduct.categoria
+  mapped.slug = createSlug(mapped.name)
   
   return mapped
 }
 
 // Função principal de importação
-async function importFromMongoToNeon(options = {}) {
+async function importFromMongoToLocal(options = {}) {
   const mongoClient = new MongoClient(MONGO_CONFIG.uri)
   
   try {
     // 1. Conectar ao MongoDB
-    console.log('🔌 Conectando ao MongoDB...')
+    console.log('🔌 Conectando ao MongoDB Grão de Gente...')
     await mongoClient.connect()
     const db = mongoClient.db(MONGO_CONFIG.database)
     const collection = db.collection(MONGO_CONFIG.collection)
     
-    // 2. Conectar ao Neon
-    console.log('🔌 Conectando ao Neon PostgreSQL...')
-    await neonPool.query('SELECT NOW()')
-    console.log('✅ Conectado ao Neon!')
+    // 2. Conectar ao PostgreSQL Local
+    console.log('🔌 Conectando ao PostgreSQL LOCAL...')
+    await localPool.query('SELECT NOW()')
+    console.log('✅ Conectado ao banco LOCAL!')
     
     // 3. Contar produtos no MongoDB
     const totalCount = await collection.countDocuments(options.filter || {})
     console.log(`✅ ${totalCount} produtos encontrados no MongoDB\n`)
     
-    // 4. Criar/verificar vendedor padrão
-    console.log('👤 Verificando vendedor padrão...')
+    // 4. Criar/verificar vendedor Grão de Gente
+    console.log('👤 Verificando vendedor Grão de Gente...')
     
     let sellerId
-    const sellerCheck = await neonPool.query(
+    const sellerCheck = await localPool.query(
       'SELECT id FROM sellers WHERE company_document = $1',
       [MOCK_DEFAULTS.seller.company_document]
     )
     
     if (sellerCheck.rows.length === 0) {
-      console.log('Criando vendedor padrão...')
+      console.log('Criando vendedor Grão de Gente...')
       
       // Criar usuário primeiro
-      const userResult = await neonPool.query(`
+      const userResult = await localPool.query(`
         INSERT INTO users (email, name, password_hash, role, is_active)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id
@@ -252,7 +230,7 @@ async function importFromMongoToNeon(options = {}) {
       const userId = userResult.rows[0].id
       
       // Criar vendedor
-      const sellerResult = await neonPool.query(`
+      const sellerResult = await localPool.query(`
         INSERT INTO sellers (
           user_id, company_name, company_document, 
           description, is_verified, rating_average
@@ -269,67 +247,58 @@ async function importFromMongoToNeon(options = {}) {
       ])
       
       sellerId = sellerResult.rows[0].id
-      console.log('✅ Vendedor padrão criado')
+      console.log('✅ Vendedor Grão de Gente criado')
     } else {
       sellerId = sellerCheck.rows[0].id
-      console.log('✅ Vendedor padrão já existe')
+      console.log('✅ Vendedor Grão de Gente já existe')
     }
     
-    // 5. Criar/verificar categoria padrão
-    console.log('\n📁 Verificando categoria padrão...')
+    // 5. Criar/verificar categorias para bebê
+    console.log('\n📁 Verificando categorias para bebê...')
     
-    let defaultCategoryId
-    const categoryCheck = await neonPool.query(
-      'SELECT id FROM categories WHERE slug = $1',
-      [MOCK_DEFAULTS.defaultCategory.slug]
-    )
+    // Criar categorias específicas se não existirem
+    const categoriesToCreate = [
+      { name: 'Almofadas', slug: 'almofadas' },
+      { name: 'Berços', slug: 'bercos' },
+      { name: 'Cabanas e Tendas', slug: 'cabanas-tendas' },
+      { name: 'Roupinhas', slug: 'roupinhas' },
+      { name: 'Kit Berço', slug: 'kit-berco' }
+    ]
     
-    if (categoryCheck.rows.length === 0) {
-      console.log('Criando categoria padrão...')
-      
-      const categoryResult = await neonPool.query(`
-        INSERT INTO categories (name, slug, description, is_active, display_order)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id
-      `, [
-        MOCK_DEFAULTS.defaultCategory.name,
-        MOCK_DEFAULTS.defaultCategory.slug,
-        MOCK_DEFAULTS.defaultCategory.description,
-        MOCK_DEFAULTS.defaultCategory.is_active,
-        MOCK_DEFAULTS.defaultCategory.display_order
-      ])
-      
-      defaultCategoryId = categoryResult.rows[0].id
-      console.log('✅ Categoria padrão criada')
-    } else {
-      defaultCategoryId = categoryCheck.rows[0].id
-      console.log('✅ Categoria padrão já existe')
-    }
-    
-    // 6. Carregar categorias existentes
-    console.log('\n🗂️ Carregando categorias existentes...')
-    const categoriesResult = await neonPool.query('SELECT id, name, slug FROM categories')
     const categoryMap = new Map()
     
-    categoriesResult.rows.forEach(cat => {
-      categoryMap.set(cat.slug, cat.id)
-      categoryMap.set(cat.name.toLowerCase(), cat.id)
-    })
-    
-    console.log(`✅ ${categoriesResult.rows.length} categorias carregadas`)
-    
-    // 7. Carregar mapeamento de campos (se existir)
-    let fieldMapping = null
-    try {
-      const mappingFile = await fs.readFile('./field-mapping.json', 'utf-8')
-      fieldMapping = JSON.parse(mappingFile)
-      console.log('✅ Mapeamento customizado carregado')
-    } catch {
-      console.log('ℹ️ Usando mapeamento padrão')
+    for (const catData of categoriesToCreate) {
+      let category = await localPool.query(
+        'SELECT id FROM categories WHERE slug = $1',
+        [catData.slug]
+      )
+      
+      if (category.rows.length === 0) {
+        console.log(`Criando categoria: ${catData.name}`)
+        const result = await localPool.query(`
+          INSERT INTO categories (name, slug, description, is_active, position)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING id
+        `, [
+          catData.name,
+          catData.slug,
+          `Produtos de ${catData.name} para bebê`,
+          true,
+          1
+        ])
+        categoryMap.set(catData.name.toLowerCase(), result.rows[0].id)
+      } else {
+        categoryMap.set(catData.name.toLowerCase(), category.rows[0].id)
+      }
     }
     
-    // 8. Importar produtos em lotes
-    console.log('\n📦 Iniciando importação de produtos...')
+    // Categoria padrão
+    let defaultCategoryId = categoryMap.get('almofadas') || Array.from(categoryMap.values())[0]
+    
+    console.log(`✅ ${categoryMap.size} categorias preparadas`)
+    
+    // 6. Importar produtos em lotes
+    console.log('\n📦 Iniciando importação de produtos da Grão de Gente...')
     
     const results = {
       success: 0,
@@ -339,144 +308,133 @@ async function importFromMongoToNeon(options = {}) {
       details: []
     }
     
-    // Configurar cursor
-    const cursor = collection.find(options.filter || {})
+    // Configurar cursor - buscar produtos pelos nomes que sabemos que existem
+    const targetNames = ['Almofada', 'Cabana', 'Berço', 'Kit Body', 'Saia']
+    const cursor = collection.find({
+      $or: targetNames.map(name => ({
+        $or: [
+          { complementCompanyId: { $regex: name, $options: 'i' } },
+          { productName: { $regex: name, $options: 'i' } }
+        ]
+      })).flat()
+    }).limit(5) // Limitar a 5 produtos para teste inicial
     
-    if (options.limit) cursor.limit(options.limit)
-    if (options.skip) cursor.skip(options.skip)
-    
-    // Processar em lotes
-    let batch = []
+    // Processar produtos
     let index = 0
     
     for await (const mongoProduct of cursor) {
-      batch.push(mongoProduct)
-      
-      if (batch.length >= MONGO_CONFIG.batchSize) {
-        await processBatch(batch, index - batch.length + 1)
-        batch = []
-        results.batches++
+      try {
+        // Mapear produto
+        const productData = mapMongoProductToLocal(mongoProduct, index)
+        
+        // Verificar duplicata por SKU
+        const existing = await localPool.query(
+          'SELECT id FROM products WHERE sku = $1',
+          [productData.sku]
+        )
+        
+        if (existing.rows.length > 0) {
+          console.log(`⏭️ Produto ${index + 1}: ${productData.name} - SKU ${productData.sku} já existe`)
+          results.skipped++
+          index++
+          continue
+        }
+        
+        // Determinar categoria baseada no nome
+        let categoryId = defaultCategoryId
+        const productName = productData.name.toLowerCase()
+        
+        if (productName.includes('cabana')) {
+          categoryId = categoryMap.get('cabanas e tendas') || defaultCategoryId
+        } else if (productName.includes('almofada')) {
+          categoryId = categoryMap.get('almofadas') || defaultCategoryId
+        } else if (productName.includes('berço')) {
+          categoryId = categoryMap.get('berços') || categoryMap.get('kit berço') || defaultCategoryId
+        } else if (productName.includes('body') || productName.includes('saia')) {
+          categoryId = categoryMap.get('roupinhas') || defaultCategoryId
+        }
+        
+        // Buscar brand_id (assumir que existe uma marca padrão)
+        const brandResult = await localPool.query('SELECT id FROM brands LIMIT 1')
+        const brandId = brandResult.rows[0]?.id || null
+        
+        // Inserir produto usando schema do banco local
+        const insertResult = await localPool.query(`
+          INSERT INTO products (
+            sku, name, slug, description, brand_id, category_id, seller_id,
+            status, is_active, price, original_price, cost, currency,
+            quantity, stock_location, track_inventory, allow_backorder,
+            weight, height, width, length, tags, attributes,
+            view_count, sales_count, rating_average, rating_count,
+            featured, condition, delivery_days, has_free_shipping,
+            created_at, updated_at
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
+            $24, $25, $26, $27, $28, $29, $30, $31, NOW(), NOW()
+          )
+          RETURNING id
+        `, [
+          productData.sku,
+          productData.name,
+          productData.slug,
+          productData.description,
+          brandId,
+          categoryId,
+          sellerId,
+          productData.status,
+          productData.is_active,
+          productData.price,
+          productData.original_price,
+          productData.cost,
+          productData.currency,
+          productData.quantity,
+          productData.stock_location,
+          productData.track_inventory,
+          productData.allow_backorder,
+          productData.weight,
+          productData.height,
+          productData.width,
+          productData.length,
+          productData.tags,
+          JSON.stringify(productData.attributes),
+          productData.view_count,
+          productData.sales_count,
+          productData.rating_average,
+          productData.rating_count,
+          productData.featured,
+          productData.condition,
+          productData.delivery_days,
+          productData.has_free_shipping
+        ])
+        
+        console.log(`✅ Produto ${index + 1}: ${productData.name} (SKU: ${productData.sku})`)
+        results.success++
+        results.details.push({
+          name: productData.name,
+          sku: productData.sku,
+          id: insertResult.rows[0].id,
+          mongo_id: productData.mongo_id
+        })
+        
+      } catch (error) {
+        console.error(`❌ Erro no produto ${index + 1}: ${error.message}`)
+        results.errors++
       }
       
       index++
     }
     
-    // Processar último lote
-    if (batch.length > 0) {
-      await processBatch(batch, index - batch.length + 1)
-      results.batches++
-    }
-    
-    // Função para processar lote
-    async function processBatch(products, startIndex) {
-      console.log(`\n🔄 Processando lote ${results.batches + 1} (${products.length} produtos)...`)
-      
-      // Iniciar transação
-      const client = await neonPool.connect()
-      
-      try {
-        await client.query('BEGIN')
-        
-        for (let i = 0; i < products.length; i++) {
-          const mongoProduct = products[i]
-          const currentIndex = startIndex + i
-          
-          try {
-            // Mapear produto
-            const productData = mapMongoProductToNeon(mongoProduct, currentIndex, fieldMapping)
-            
-            // Verificar duplicata por MongoDB ID
-            if (mongoProduct._id) {
-              const existing = await client.query(
-                `SELECT id FROM products WHERE metadata->>'mongo_id' = $1`,
-                [mongoProduct._id.toString()]
-              )
-              
-              if (existing.rows.length > 0) {
-                console.log(`⏭️ Produto ${currentIndex}/${totalCount}: ${productData.name} - Já importado`)
-                results.skipped++
-                continue
-              }
-            }
-            
-            // Determinar categoria
-            let categoryId = defaultCategoryId
-            
-            if (productData.mongo_category) {
-              const catSearch = productData.mongo_category.toLowerCase()
-              if (categoryMap.has(catSearch)) {
-                categoryId = categoryMap.get(catSearch)
-              }
-            }
-            
-            // Inserir produto
-            const insertResult = await client.query(`
-              INSERT INTO products (
-                seller_id, category_id, name, slug, description,
-                price, compare_at_price, cost, sku, barcode,
-                stock_quantity, stock_location, weight, dimensions,
-                images, is_active, is_featured, tags, metadata
-              )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-              RETURNING id
-            `, [
-              sellerId,
-              categoryId,
-              productData.name,
-              productData.slug,
-              productData.description,
-              productData.price,
-              productData.compare_at_price,
-              productData.cost,
-              productData.sku,
-              productData.barcode,
-              productData.stock_quantity,
-              productData.stock_location,
-              productData.weight,
-              JSON.stringify(productData.dimensions),
-              JSON.stringify(productData.images),
-              productData.is_active,
-              productData.is_featured,
-              JSON.stringify(productData.tags),
-              JSON.stringify(productData.metadata)
-            ])
-            
-            console.log(`✅ Produto ${currentIndex}/${totalCount}: ${productData.name}`)
-            results.success++
-            results.details.push({
-              name: productData.name,
-              sku: productData.sku,
-              id: insertResult.rows[0].id,
-              mongo_id: mongoProduct._id?.toString(),
-              needs_enrichment: true
-            })
-            
-          } catch (error) {
-            console.error(`❌ Erro no produto ${currentIndex}: ${error.message}`)
-            results.errors++
-          }
-        }
-        
-        await client.query('COMMIT')
-        
-      } catch (error) {
-        await client.query('ROLLBACK')
-        throw error
-      } finally {
-        client.release()
-      }
-    }
-    
-    // 9. Salvar relatório
-    const reportPath = `./import-report-neon-${Date.now()}.json`
+    // 7. Salvar relatório
+    const reportPath = `./import-report-local-${Date.now()}.json`
     await fs.writeFile(reportPath, JSON.stringify(results, null, 2))
     
-    // 10. Resumo final
+    // 8. Resumo final
     console.log('\n📊 Resumo da Importação:')
     console.log(`✅ Sucesso: ${results.success} produtos`)
     console.log(`⏭️ Ignorados: ${results.skipped} produtos`)
     console.log(`❌ Erros: ${results.errors} produtos`)
-    console.log(`📦 Lotes processados: ${results.batches}`)
     console.log(`\n📄 Relatório salvo em: ${reportPath}`)
     
     return results
@@ -486,7 +444,7 @@ async function importFromMongoToNeon(options = {}) {
     throw error
   } finally {
     await mongoClient.close()
-    await neonPool.end()
+    await localPool.end()
   }
 }
 
@@ -496,53 +454,15 @@ async function main() {
   
   const options = {
     filter: {},
-    limit: null,
-    skip: null
+    limit: 5 // Apenas os 5 produtos que já temos
   }
   
-  // Processar argumentos
-  for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
-      case '--filter':
-        try {
-          options.filter = JSON.parse(args[++i])
-        } catch (e) {
-          console.error('❌ Filtro inválido')
-          process.exit(1)
-        }
-        break
-        
-      case '--limit':
-        options.limit = parseInt(args[++i])
-        break
-        
-      case '--skip':
-        options.skip = parseInt(args[++i])
-        break
-        
-      case '--help':
-        console.log(`
-Uso: node import-from-mongodb-to-neon.mjs [opções]
-
-Opções:
-  --filter <json>     Filtro MongoDB
-  --limit <n>         Limitar número de produtos
-  --skip <n>          Pular n produtos
-  --help              Mostrar ajuda
-
-Exemplos:
-  node import-from-mongodb-to-neon.mjs --limit 100
-  node import-from-mongodb-to-neon.mjs --filter '{"active":true}'
-        `)
-        process.exit(0)
-    }
-  }
-  
-  await importFromMongoToNeon(options)
+  await importFromMongoToLocal(options)
 }
 
+// Executar se chamado diretamente
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error)
 }
 
-export { importFromMongoToNeon } 
+export { importFromMongoToLocal } 

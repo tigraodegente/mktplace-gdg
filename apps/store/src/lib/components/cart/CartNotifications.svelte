@@ -5,7 +5,7 @@
   interface CartNotificationsProps {
     sellerGroups: SellerGroup[];
     zipCode: string;
-    shippingMode: 'express' | 'grouped';
+    shippingMode?: 'express' | 'grouped';
   }
   
   let { sellerGroups, zipCode, shippingMode }: CartNotificationsProps = $props();
