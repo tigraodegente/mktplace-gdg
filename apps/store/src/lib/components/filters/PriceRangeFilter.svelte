@@ -105,46 +105,54 @@
 
 <div class="price-range-filter {className}">
 	<!-- Inputs de texto -->
-	<div class="flex items-center gap-2 mb-4">
+	<div class="flex items-center gap-3 mb-6">
 		<div class="flex-1">
-			<label for="price-min" class="text-xs text-gray-600 block mb-1">Mín</label>
-			<input
-				id="price-min"
-				type="number"
-				value={minValue}
-				min={min}
-				max={maxValue - step}
-				step={step}
-				oninput={handleMinInput}
-				class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-			/>
+			<label for="price-min" class="text-xs font-medium text-gray-600 block mb-1.5">Mínimo</label>
+			<div class="relative">
+				<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+				<input
+					id="price-min"
+					type="number"
+					value={minValue}
+					min={min}
+					max={maxValue - step}
+					step={step}
+					oninput={handleMinInput}
+					class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+					placeholder={min.toString()}
+				/>
+			</div>
 		</div>
 		
-		<span class="text-gray-400 mt-6">-</span>
+		<span class="text-gray-400 mt-8">—</span>
 		
 		<div class="flex-1">
-			<label for="price-max" class="text-xs text-gray-600 block mb-1">Máx</label>
-			<input
-				id="price-max"
-				type="number"
-				value={maxValue}
-				min={minValue + step}
-				max={max}
-				step={step}
-				oninput={handleMaxInput}
-				class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-			/>
+			<label for="price-max" class="text-xs font-medium text-gray-600 block mb-1.5">Máximo</label>
+			<div class="relative">
+				<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+				<input
+					id="price-max"
+					type="number"
+					value={maxValue}
+					min={minValue + step}
+					max={max}
+					step={step}
+					oninput={handleMaxInput}
+					class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+					placeholder={max.toString()}
+				/>
+			</div>
 		</div>
 	</div>
 	
 	<!-- Slider duplo -->
-	<div class="relative h-2 mb-4">
+	<div class="relative h-2 mb-6">
 		<!-- Track background -->
 		<div class="absolute w-full h-2 bg-gray-200 rounded-full"></div>
 		
 		<!-- Track ativo -->
 		<div 
-			class="absolute h-2 bg-[#00BFB3] rounded-full"
+			class="absolute h-2 bg-gradient-to-r from-[#00BFB3] to-[#00A89D] rounded-full transition-all duration-150"
 			style="left: {minPercent}%; right: {100 - maxPercent}%"
 		></div>
 		
@@ -158,7 +166,7 @@
 			onchange={handleMinChange}
 			onmousedown={handleMouseDown}
 			aria-label="Preço mínimo"
-			class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00BFB3] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#00BFB3] [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:transition-transform [&::-moz-range-thumb]:hover:scale-110"
+			class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#00BFB3] [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:hover:shadow-xl [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[#00BFB3] [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:hover:shadow-xl"
 			style="z-index: {minValue > max - 100 ? 5 : 3}"
 		/>
 		
@@ -172,15 +180,16 @@
 			onchange={handleMaxChange}
 			onmousedown={handleMouseDown}
 			aria-label="Preço máximo"
-			class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00BFB3] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#00BFB3] [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:transition-transform [&::-moz-range-thumb]:hover:scale-110"
+			class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#00BFB3] [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:hover:shadow-xl [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[#00BFB3] [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:hover:shadow-xl"
 			style="z-index: 4"
 		/>
 	</div>
 	
 	<!-- Valores formatados -->
-	<div class="flex justify-between text-sm text-gray-600">
-		<span>{formatCurrency(minValue)}</span>
-		<span>{formatCurrency(maxValue)}</span>
+	<div class="flex justify-between text-sm font-medium">
+		<span class="text-gray-600">{formatCurrency(minValue)}</span>
+		<span class="text-[#00BFB3] font-semibold">até</span>
+		<span class="text-gray-600">{formatCurrency(maxValue)}</span>
 	</div>
 </div>
 

@@ -65,25 +65,101 @@ export interface SearchSuggestion {
 
 export interface SearchFilters {
   categories?: string[];
-  priceMin?: number;
-  priceMax?: number;
   brands?: string[];
   tags?: string[];
+  priceMin?: number;
+  priceMax?: number;
   hasDiscount?: boolean;
   hasFreeShipping?: boolean;
   inStock?: boolean;
   rating?: number;
+  condition?: 'new' | 'used' | 'refurbished';
+  sellers?: string[];
+  deliveryTime?: string;
+  location?: {
+    state?: string;
+    city?: string;
+  };
+  dynamicOptions?: Record<string, string[]>;
 }
 
 export interface SearchResult {
   products: Product[];
   totalCount: number;
-  facets: {
-    categories: Array<{ id: string; name: string; count: number }>;
-    brands: Array<{ id: string; name: string; count: number }>;
-    tags: Array<{ id: string; name: string; count: number }>;
-    priceRanges: Array<{ min: number; max: number; count: number }>;
+  page: number;
+  limit: number;
+  facets: SearchFacets;
+}
+
+export interface SearchFacets {
+  categories: Array<{
+    id: string;
+    name: string;
+    slug?: string;
+    count: number;
+  }>;
+  brands: Array<{
+    id: string;
+    name: string;
+    slug?: string;
+    count: number;
+  }>;
+  tags: Array<{
+    id: string;
+    name: string;
+    count: number;
+  }>;
+  priceRanges: Array<{
+    min: number;
+    max: number;
+    count: number;
+  }>;
+  ratings?: Array<{
+    value: number;
+    count: number;
+  }>;
+  conditions?: Array<{
+    value: 'new' | 'used' | 'refurbished';
+    label: string;
+    count: number;
+  }>;
+  deliveryOptions?: Array<{
+    value: string;
+    label: string;
+    count: number;
+  }>;
+  sellers?: Array<{
+    id: string;
+    name: string;
+    slug?: string;
+    rating?: number;
+    count: number;
+  }>;
+  locations?: {
+    states: Array<{
+      code: string;
+      name: string;
+      count: number;
+    }>;
+    cities: Array<{
+      name: string;
+      state: string;
+      count: number;
+    }>;
   };
+  benefits?: {
+    discount: number;
+    freeShipping: number;
+    outOfStock: number;
+  };
+  dynamicOptions?: Array<{
+    name: string;
+    slug: string;
+    values: Array<{
+      value: string;
+      count: number;
+    }>;
+  }>;
 }
 
 class SearchService {
@@ -91,6 +167,9 @@ class SearchService {
   private readonly MAX_HISTORY_ITEMS = 10;
   private readonly DEBOUNCE_DELAY = 300;
   private searchCache = new Map<string, SearchResult>();
+  private popularSearchesCache: string[] | null = null;
+  private popularSearchesCacheTime: number = 0;
+  private readonly POPULAR_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
   constructor() {
     this.loadSearchHistory();
@@ -124,6 +203,21 @@ class SearchService {
       if (filters.hasFreeShipping) params.set('frete_gratis', 'true');
       if (filters.inStock !== undefined) params.set('disponivel', filters.inStock.toString());
       if (filters.rating !== undefined) params.set('avaliacao', filters.rating.toString());
+      if (filters.condition) params.set('condicao', filters.condition);
+      if (filters.sellers?.length) params.set('vendedor', filters.sellers.join(','));
+      if (filters.deliveryTime) params.set('entrega', filters.deliveryTime);
+      if (filters.location?.state) params.set('estado', filters.location.state);
+      if (filters.location?.city) params.set('cidade', filters.location.city);
+      
+      // Adicionar filtros dinâmicos
+      if (filters.dynamicOptions) {
+        for (const [optionSlug, values] of Object.entries(filters.dynamicOptions)) {
+          if (values.length > 0) {
+            params.set(`opcao_${optionSlug}`, values.join(','));
+          }
+        }
+      }
+      
       params.set('pagina', page.toString());
       params.set('itens', limit.toString());
       
@@ -143,6 +237,8 @@ class SearchService {
       const searchResult = {
         products: result.data.products,
         totalCount: result.data.totalCount,
+        page: page,
+        limit: limit,
         facets: result.data.facets
       };
       
@@ -165,11 +261,21 @@ class SearchService {
       return {
         products: [],
         totalCount: 0,
+        page: 1,
+        limit: 20,
         facets: {
           categories: [],
           brands: [],
           tags: [],
-          priceRanges: []
+          priceRanges: [],
+          ratings: [],
+          conditions: [],
+          deliveryOptions: [],
+          sellers: [],
+          locations: {
+            states: [],
+            cities: []
+          }
         }
       };
     }
@@ -226,14 +332,50 @@ class SearchService {
     }
   }
 
-  // Adicionar ao histórico
-  addToHistory(query: string) {
+  // Adicionar ao histórico e rastrear busca
+  async addToHistory(query: string, resultsCount?: number) {
     if (query && !this.searchHistory.includes(query)) {
       this.searchHistory.unshift(query);
       if (this.searchHistory.length > this.MAX_HISTORY_ITEMS) {
         this.searchHistory.pop();
       }
       this.saveSearchHistory();
+    }
+    
+    // Rastrear busca no servidor
+    try {
+      await fetch('/api/search/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query,
+          resultsCount: resultsCount || 0
+        })
+      });
+    } catch (error) {
+      // Não bloquear se falhar o tracking
+      console.error('Erro ao rastrear busca:', error);
+    }
+  }
+
+  // Rastrear clique em produto da busca
+  async trackSearchClick(query: string, productId: string, position: number) {
+    try {
+      await fetch('/api/search/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query,
+          clickedProductId: productId,
+          clickedPosition: position
+        })
+      });
+    } catch (error) {
+      console.error('Erro ao rastrear clique:', error);
     }
   }
 
@@ -248,19 +390,43 @@ class SearchService {
     this.saveSearchHistory();
   }
 
-  // Obter sugestões populares
-  getPopularSearches(): string[] {
+  // Obter sugestões populares da API
+  async getPopularSearches(): Promise<string[]> {
+    // Verificar cache
+    const now = Date.now();
+    if (this.popularSearchesCache && (now - this.popularSearchesCacheTime) < this.POPULAR_CACHE_DURATION) {
+      return this.popularSearchesCache;
+    }
+    
+    try {
+      const response = await fetch('/api/search/popular-terms');
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar termos populares');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        this.popularSearchesCache = result.data;
+        this.popularSearchesCacheTime = now;
+        return result.data;
+      }
+      
+    } catch (error) {
+      console.error('Erro ao buscar termos populares:', error);
+    }
+    
+    // Fallback para termos padrão
     return [
-      'Kit berço completo',
-      'Lençol infantil',
-      'Organizador de berço',
-      'Tapete infantil',
-      'Toalha de banho com capuz',
-      'Edredom infantil',
-      'Protetor de berço',
-      'Mosquiteiro para berço',
-      'Almofada de amamentação',
-      'Saco de dormir bebê'
+      'samsung',
+      'iphone',
+      'notebook',
+      'fone de ouvido',
+      'tv',
+      'playstation',
+      'smartphone',
+      'monitor'
     ];
   }
 

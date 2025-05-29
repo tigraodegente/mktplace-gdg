@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+
+# Diretórios importantes
+Allow: /produto/
+Allow: /categoria/
+Allow: /busca
+
+# Bloquear páginas privadas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cart/shared/
+Disallow: /_app/
+
+# Bloquear parâmetros de sessão
+Disallow: /*?session=
+Disallow: /*?token=
+
+# Sitemap
+Sitemap: https://marketplace-gdg.com/sitemap.xml
+
+# Crawl-delay para bots agressivos
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10 

@@ -26,6 +26,7 @@
 	// State
 	let isFavorite = $state(wishlistStore.hasItem(product.id));
 	let isAddingToCart = $state(false);
+	let isOutOfStock = $state(product.stock === 0);
 	
 	// Computed values
 	const discount = $derived(() => {
@@ -64,8 +65,15 @@
 	
 	// Get main image
 	const mainImage = $derived(() => {
-		return product.image || (product.images && product.images[0]) || '/placeholder.jpg';
+		return product.image || (product.images && product.images[0]) || '/api/placeholder/262/350';
 	});
+	
+	// Handler para erro de imagem
+	let imageError = $state(false);
+	
+	function handleImageError() {
+		imageError = true;
+	}
 	
 	// Handlers
 	function handleToggleFavorite(e: Event) {
@@ -108,19 +116,34 @@
 	}
 </script>
 
-<article class="product-card">
-	<!-- Discount Badge -->
-	{#if discount() > 0}
-		<div class="discount-badge">
-			{discount()}% <span class="discount-badge__off">OFF</span>
-		</div>
-	{/if}
-	
+<article class="product-card {isOutOfStock ? 'product-card--out-of-stock' : ''}">
 	<!-- Product Image Section -->
 	<div class="product-card__image-container">
+		<!-- Discount Badge - No canto superior esquerdo -->
+		{#if discount() > 0 && !isOutOfStock}
+			<div class="discount-badge">
+				<span class="discount-badge__value">{discount()}%</span>
+				<span class="discount-badge__off">OFF</span>
+			</div>
+		{/if}
+		
+		<!-- Out of Stock Overlay -->
+		{#if isOutOfStock}
+			<div class="out-of-stock-overlay">
+				<div class="out-of-stock-badge">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="12" y1="8" x2="12" y2="12"></line>
+						<line x1="12" y1="16" x2="12.01" y2="16"></line>
+					</svg>
+					<span>Produto Indisponível</span>
+				</div>
+			</div>
+		{/if}
+		
 		<!-- Material Badge -->
-		{#if materialTag()}
-			<div class="material-badge">
+		{#if materialTag() && !isOutOfStock}
+			<div class="material-badge" class:material-badge--with-discount={discount() > 0}>
 				{materialTag()}
 			</div>
 		{/if}
@@ -152,10 +175,11 @@
 		<!-- Product Image -->
 		<a href="/produto/{product.slug}" class="product-card__image-link">
 			<img 
-				src={mainImage()} 
+				src={imageError ? '/api/placeholder/262/350' : mainImage()} 
 				alt={product.name}
 				loading="lazy"
 				class="product-card__image"
+				onerror={handleImageError}
 			/>
 		</a>
 	</div>
@@ -216,7 +240,7 @@
 				<span class="product-card__price-label">por</span>
 				<span class="product-card__price-count">{INSTALLMENTS}x</span>
 				<span class="product-card__price-label">de</span>
-				<span class="product-card__price-value">{installmentPrice()}</span>
+				<span class="product-card__price-value">{formatCurrency(installmentPrice())}</span>
 			</div>
 			
 			<p class="product-card__price-pix">
@@ -249,13 +273,20 @@
 		
 		<!-- Add to Cart Button -->
 		<button 
-			class="add-to-cart-button {isAddingToCart ? 'add-to-cart-button--loading' : ''}"
+			class="add-to-cart-button {isAddingToCart ? 'add-to-cart-button--loading' : ''} {isOutOfStock ? 'add-to-cart-button--disabled' : ''}"
 			onclick={handleAddToCart}
-			disabled={isAddingToCart}
+			disabled={isAddingToCart || isOutOfStock}
 			type="button"
-			aria-label="Adicionar ao carrinho"
+			aria-label={isOutOfStock ? 'Produto indisponível' : 'Adicionar ao carrinho'}
 		>
-			{#if isAddingToCart}
+			{#if isOutOfStock}
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="12" cy="12" r="10"></circle>
+					<line x1="15" y1="9" x2="9" y2="15"></line>
+					<line x1="9" y1="9" x2="15" y2="15"></line>
+				</svg>
+				<span>Indisponível</span>
+			{:else if isAddingToCart}
 				<svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none">
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.25"/>
 					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
@@ -274,39 +305,54 @@
 <style>
 	/* ===== Base Card Styles ===== */
 	.product-card {
-		width: 262.65px;
+		width: 100%;
+		height: 100%;
 		display: flex;
 		flex-direction: column;
 		background: transparent;
 		position: relative;
+		transition: opacity 0.3s ease;
+	}
+	
+	.product-card--out-of-stock {
+		opacity: 0.8;
 	}
 	
 	/* ===== Discount Badge ===== */
 	.discount-badge {
+		position: absolute;
+		top: 12px;
+		left: 12px;
+		background: #FF4444;
+		color: white;
+		padding: 6px 10px;
+		border-radius: 6px;
 		font-family: 'Lato', sans-serif;
-		font-size: 15px;
 		font-weight: 700;
-		color: #2C1D1D;
-		margin-bottom: 8px;
-		text-align: left;
-		line-height: 100%;
-		font-feature-settings: 'swsh' on;
-		width: auto;
-		height: auto;
-		flex-shrink: 0;
+		line-height: 1;
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	}
+	
+	.discount-badge__value {
+		font-size: 18px;
+		font-weight: 900;
 	}
 	
 	.discount-badge__off {
-		color: #00BFB3;
+		font-size: 12px;
 		font-weight: 700;
-		font-feature-settings: 'swsh' on;
+		opacity: 0.9;
 	}
 	
 	/* ===== Image Container ===== */
 	.product-card__image-container {
 		position: relative;
-		width: 262.65px;
-		height: 350.2px;
+		width: 100%;
+		aspect-ratio: 1 / 1;
 		overflow: hidden;
 		border-radius: 12px;
 		background: #F5F5F5;
@@ -357,6 +403,10 @@
 		letter-spacing: 0.5px;
 	}
 	
+	.material-badge--with-discount {
+		top: 50px; /* Abaixo do badge de desconto */
+	}
+	
 	/* ===== Favorite Button ===== */
 	.favorite-button {
 		position: absolute;
@@ -402,6 +452,7 @@
 		flex-direction: column;
 		gap: 4px;
 		background: transparent;
+		flex: 1; /* Faz a seção crescer para ocupar o espaço disponível */
 	}
 	
 	.product-card__pieces {
@@ -419,8 +470,7 @@
 	
 	.product-card__title {
 		width: 100%;
-		min-height: 40px;
-		height: auto;
+		height: 44px; /* Altura fixa para 2 linhas */
 		flex-shrink: 0;
 		color: #000;
 		font-family: 'Lato', sans-serif;
@@ -645,13 +695,12 @@
 	@media (max-width: 768px) {
 		.product-card {
 			width: 100%;
-			max-width: 262.65px;
 		}
 		
 		.product-card__image-container {
 			width: 100%;
 			height: auto;
-			aspect-ratio: 262.65 / 350.2;
+			aspect-ratio: 1 / 1;
 		}
 		
 		.product-card__title {
@@ -669,7 +718,7 @@
 	/* ===== Add to Cart Button ===== */
 	.add-to-cart-button {
 		width: 100%;
-		margin-top: 12px;
+		margin-top: auto; /* Empurra o botão para o final do card */
 		padding: 12px 16px;
 		background: #00BFB3;
 		color: white;
@@ -702,6 +751,18 @@
 		cursor: not-allowed;
 	}
 	
+	.add-to-cart-button--disabled {
+		background: #E0E0E0;
+		color: #666;
+		cursor: not-allowed;
+	}
+	
+	.add-to-cart-button--disabled:hover {
+		background: #E0E0E0;
+		transform: none;
+		box-shadow: none;
+	}
+	
 	.add-to-cart-button svg {
 		width: 20px;
 		height: 20px;
@@ -715,5 +776,43 @@
 	@keyframes spin {
 		from { transform: rotate(0deg); }
 		to { transform: rotate(360deg); }
+	}
+	
+	/* ===== Out of Stock Overlay ===== */
+	.out-of-stock-overlay {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(255, 255, 255, 0.85);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 10;
+		border-radius: 12px;
+	}
+	
+	.out-of-stock-badge {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		padding: 20px;
+		background: white;
+		border-radius: 12px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	}
+	
+	.out-of-stock-badge svg {
+		color: #666;
+	}
+	
+	.out-of-stock-badge span {
+		font-family: 'Lato', sans-serif;
+		font-size: 14px;
+		font-weight: 600;
+		color: #666;
+		text-align: center;
 	}
 </style> 

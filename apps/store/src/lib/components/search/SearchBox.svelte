@@ -22,7 +22,10 @@
 	onMount(() => {
 		// Carregar dados iniciais
 		searchHistory = searchService.getHistory();
-		popularSearches = searchService.getPopularSearches();
+		// Buscar termos populares de forma assíncrona
+		searchService.getPopularSearches().then(terms => {
+			popularSearches = terms;
+		});
 	});
 
 	async function handleSearchInput() {
@@ -66,14 +69,19 @@
 
 	function performSearch(query: string) {
 		searchQuery = query; // Preencher o campo com o termo buscado
-		searchService.addToHistory(query);
+		searchService.addToHistory(query); // Agora é assíncrono mas não precisamos esperar
 		searchFocused = false;
 		goto(`/busca?q=${encodeURIComponent(query)}`);
 	}
 
-	function selectSuggestion(suggestion: SearchSuggestion) {
+	function selectSuggestion(suggestion: SearchSuggestion, index: number) {
 		// Fechar o dropdown imediatamente
 		searchFocused = false;
+		
+		// Rastrear clique se for produto
+		if (suggestion.type === 'product' && suggestion.id && searchQuery) {
+			searchService.trackSearchClick(searchQuery, suggestion.id, index);
+		}
 		
 		if (suggestion.type === 'product' && suggestion.slug) {
 			goto(`/produto/${suggestion.slug}`);
@@ -108,7 +116,7 @@
 				e.preventDefault();
 				if (selectedIndex >= 0) {
 					if (suggestions.length > 0) {
-						selectSuggestion(suggestions[selectedIndex]);
+						selectSuggestion(suggestions[selectedIndex], selectedIndex);
 					} else if (searchQuery.length === 0 && selectedIndex < searchHistory.length) {
 						// Selecionar do histórico
 						performSearch(searchHistory[selectedIndex]);
@@ -140,8 +148,8 @@
 	});
 </script>
 
-<div class="search-container relative {className}">
-	<form onsubmit={handleSearchSubmit} class="relative">
+<div class="search-container relative w-full {className}">
+	<form onsubmit={handleSearchSubmit} class="relative w-full">
 		<input
 			bind:this={searchInput}
 			type="search"
@@ -183,7 +191,7 @@
 					{#each suggestions as suggestion, index}
 						{@const isSelected = index === selectedIndex}
 						<button
-							onclick={() => selectSuggestion(suggestion)}
+							onclick={() => selectSuggestion(suggestion, index)}
 							class="w-full text-left transition-colors {isSelected ? 'bg-gray-100' : ''}"
 						>
 							{#if suggestion.type === 'product'}

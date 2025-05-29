@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Estilos compartilhados do Marketplace GDG */
 
@@ -26,22 +29,24 @@ body {
   --white: #FFFFFF;
   
   /* Tons de Cyan */
-  --cyan50: #EEFDFF;
-  --cyan100: #DFF9F7;
-  --cyan200: #B3ECE9;
-  --cyan300: #2FA9A9;
+  --cyan50: #E0F7F6;
+  --cyan100: #B3F0ED;
+  --cyan200: #80E8E3;
+  --cyan300: #4DE0D9;
+  --cyan400: #26D9D0;
   --cyan500: #00BFB3;
-  --cyan600: #017F77;
-  --cyan700: #2D8289;
+  --cyan600: #00A89D;
+  --cyan700: #008A82;
+  --cyan800: #006B66;
+  --cyan900: #005653;
   
   /* Tons de Cinza */
-  --gray50: #F4F4F4;
-  --gray100: #C4C4C4;
-  --gray150: #F6F6F6;
-  --gray200: #7B7C7F;
-  --gray300: #666666;
-  --gray400: #555555;
-  --gray500: #4F4F4F;
+  --gray50: #F9FAFB;
+  --gray100: #F3F4F6;
+  --gray200: #E5E7EB;
+  --gray300: #9CA3AF;
+  --gray400: #6B7280;
+  --gray500: #4B5563;
   --gray600: #323232;
   --gray800: rgba(0, 0, 0, 0.03);
   
@@ -195,6 +200,71 @@ body {
   
   .transition-slow {
     @apply transition-all duration-500 ease-in-out;
+  }
+  
+  /* Estilo moderno para todos os selects */
+  select {
+    @apply appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 
+           text-gray-700 font-medium text-sm cursor-pointer transition-all duration-200
+           hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00BFB3] 
+           focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 
+           disabled:cursor-not-allowed;
+    
+    /* Ícone de seta customizado */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+  }
+  
+  /* Hover state */
+  select:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23374151'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  }
+  
+  /* Focus state */
+  select:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2300BFB3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  }
+  
+  /* Tamanhos de select */
+  select.select-sm {
+    @apply px-3 py-1.5 text-sm pr-8;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+  }
+  
+  select.select-lg {
+    @apply px-4 py-3 text-base pr-12;
+    background-position: right 1rem center;
+    background-size: 1.5rem;
+  }
+  
+  /* Variantes de select */
+  select.select-primary {
+    @apply border-[#00BFB3] focus:ring-[#00BFB3];
+  }
+  
+  select.select-error {
+    @apply border-red-500 focus:ring-red-500;
+  }
+  
+  /* Container para select com ícone */
+  .select-wrapper {
+    @apply relative;
+  }
+  
+  .select-wrapper select {
+    @apply w-full;
+  }
+  
+  /* Estilo para options */
+  option {
+    @apply py-2 px-4;
+  }
+  
+  option:disabled {
+    @apply text-gray-400;
   }
 }
 

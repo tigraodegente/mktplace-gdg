@@ -3,10 +3,10 @@
 import 'dotenv/config'
 import { Database } from '../packages/db-hyperdrive/dist/index.js'
 
-console.log('🚀 Criando estrutura completa do banco de dados...\n')
+console.log('🚀 Iniciando criação do banco de dados...\n')
 
 // Criar conexão com o banco
-const dbUrl = process.env.DATABASE_URL || 'postgresql://localhost/mktplace'
+const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
 const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')
 
 const db = new Database({
@@ -19,8 +19,28 @@ const db = new Database({
   }
 })
 
-async function createTables() {
+async function createDatabase() {
   try {
+    // Criar extensões necessárias
+    console.log('📦 Criando extensões...')
+    await db.execute`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`
+    await db.execute`CREATE EXTENSION IF NOT EXISTS "pg_trgm"` // Para busca fuzzy
+    console.log('✅ Extensões criadas\n')
+
+    // Criar conexão com o banco
+    const dbUrl = process.env.DATABASE_URL || 'postgresql://localhost/mktplace'
+    const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')
+
+    const db = new Database({
+      provider: 'postgres',
+      connectionString: dbUrl,
+      options: {
+        postgres: {
+          ssl: isLocal ? false : 'require'
+        }
+      }
+    })
+
     // 1. USERS - Tabela base de usuários
     await db.execute`
       CREATE TABLE IF NOT EXISTS users (
@@ -631,4 +651,4 @@ async function createTables() {
 }
 
 // Executar
-createTables().catch(console.error) 
+createDatabase().catch(console.error) 

@@ -129,57 +129,87 @@ class CategoryService {
 	 * Busca categorias da API
 	 */
 	private async fetchCategories(includeCount: boolean): Promise<Category[]> {
-		try {
-			const url = new URL(API_ENDPOINT, window.location.origin);
-			url.searchParams.set('includeCount', String(includeCount));
+		let lastError: Error | null = null;
+		const maxRetries = 3;
+		
+		// Retry logic para erros de conexão
+		for (let attempt = 1; attempt <= maxRetries; attempt++) {
+			try {
+				const url = new URL(API_ENDPOINT, window.location.origin);
+				url.searchParams.set('includeCount', String(includeCount));
 
-			const response = await fetch(url.toString(), {
-				method: 'GET',
-				headers: {
-					'Accept': 'application/json',
-				},
-				signal: AbortSignal.timeout(10000) // 10s timeout
-			});
+				const response = await fetch(url.toString(), {
+					method: 'GET',
+					headers: {
+						'Accept': 'application/json',
+					},
+					signal: AbortSignal.timeout(10000) // 10s timeout
+				});
 
-			if (!response.ok) {
+				if (!response.ok) {
+					// Se for erro 500, tentar novamente após um delay
+					if (response.status === 500 && attempt < maxRetries) {
+						console.warn(`[CategoryService] Erro 500, tentativa ${attempt}/${maxRetries}`);
+						await new Promise(resolve => setTimeout(resolve, 500 * attempt)); // Delay progressivo
+						continue;
+					}
+					
+					throw new CategoryServiceError(
+						`Erro ao buscar categorias: ${response.statusText}`,
+						'FETCH_ERROR',
+						{ status: response.status }
+					);
+				}
+
+				const data: CategoryResponse = await response.json();
+				
+				if (!data.success || !data.data) {
+					throw new CategoryServiceError(
+						data.error?.message || 'Resposta inválida da API',
+						'INVALID_RESPONSE',
+						data.error
+					);
+				}
+
+				// Atualizar cache
+				this.cache = {
+					data: data.data.categories,
+					timestamp: Date.now()
+				};
+
+				return data.data.categories;
+			} catch (error) {
+				lastError = error as Error;
+				
+				// Se for erro de conexão e não for a última tentativa, tentar novamente
+				if (attempt < maxRetries && 
+					(error instanceof TypeError || 
+					 (error instanceof CategoryServiceError && error.code === 'FETCH_ERROR'))) {
+					console.warn(`[CategoryService] Erro de conexão, tentativa ${attempt}/${maxRetries}:`, error);
+					await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+					continue;
+				}
+				
+				// Re-throw se já for CategoryServiceError
+				if (error instanceof CategoryServiceError) {
+					throw error;
+				}
+
+				// Wrap outros erros
+				console.error('[CategoryService] Erro ao buscar categorias:', error);
 				throw new CategoryServiceError(
-					`Erro ao buscar categorias: ${response.statusText}`,
-					'FETCH_ERROR',
-					{ status: response.status }
+					'Erro ao buscar categorias',
+					'UNKNOWN_ERROR',
+					error
 				);
 			}
-
-			const data: CategoryResponse = await response.json();
-			
-			if (!data.success || !data.data) {
-				throw new CategoryServiceError(
-					data.error?.message || 'Resposta inválida da API',
-					'INVALID_RESPONSE',
-					data.error
-				);
-			}
-
-			// Atualizar cache
-			this.cache = {
-				data: data.data.categories,
-				timestamp: Date.now()
-			};
-
-			return data.data.categories;
-		} catch (error) {
-			// Re-throw se já for CategoryServiceError
-			if (error instanceof CategoryServiceError) {
-				throw error;
-			}
-
-			// Wrap outros erros
-			console.error('[CategoryService] Erro ao buscar categorias:', error);
-			throw new CategoryServiceError(
-				'Erro ao buscar categorias',
-				'UNKNOWN_ERROR',
-				error
-			);
 		}
+		
+		// Se chegou aqui, todas as tentativas falharam
+		throw lastError || new CategoryServiceError(
+			'Erro ao buscar categorias após múltiplas tentativas',
+			'MAX_RETRIES_EXCEEDED'
+		);
 	}
 
 	/**

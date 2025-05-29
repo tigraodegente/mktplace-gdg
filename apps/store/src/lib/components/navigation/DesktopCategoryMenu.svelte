@@ -10,6 +10,11 @@
 	let hoverTimeout: NodeJS.Timeout;
 	let isMenuOpen = $state(false);
 	
+	// Calcular total de produtos
+	let totalProducts = $derived(categories.reduce((total, category) => {
+		return total + (category.product_count || 0);
+	}, 0));
+	
 	// Buscar categorias
 	async function loadCategories() {
 		try {
@@ -25,10 +30,14 @@
 	}
 	
 	onMount(() => {
-		loadCategories();
+		// Pequeno delay para evitar requisições simultâneas durante a hidratação
+		const timer = setTimeout(() => {
+			loadCategories();
+		}, 100);
 		
 		// Cleanup
 		return () => {
+			clearTimeout(timer);
 			if (hoverTimeout) clearTimeout(hoverTimeout);
 		};
 	});
@@ -82,74 +91,71 @@
 
 <svelte:window on:keydown={handleKeyDown} on:click={handleClickOutside} />
 
-<nav class="category-menu-container bg-white border-b border-gray-200 relative">
-	<div class="container mx-auto px-4">
-		<div class="flex items-center justify-center">
-			{#if isLoading}
-				<div class="py-3 text-gray-500">
-					<div class="flex items-center gap-2">
-						<div class="w-4 h-4 border-2 border-[#00BFB3] border-t-transparent rounded-full animate-spin"></div>
-						<span class="text-sm">Carregando categorias...</span>
-					</div>
-				</div>
-			{:else if error}
-				<div class="py-3 text-red-500 text-sm">
-					{error}
-				</div>
-			{:else if categories.length > 0}
-				<ul class="flex items-center gap-1">
-					{#each categories as category}
-						<li>
-							<a
-								href="/categoria/{category.slug}"
-								class="flex items-center gap-2 px-4 py-3 text-gray-700 hover:text-[#00BFB3] transition-colors relative group"
-								onmouseenter={() => handleMouseEnter(category.id)}
-								onmouseleave={handleMouseLeave}
-								style="font-family: 'Lato', sans-serif; font-weight: 500; font-size: 14px;"
-							>
-								{@html categoryService.getCategoryIcon(category)}
-								<span>{category.name}</span>
-								{#if category.product_count && category.product_count > 0}
-									<span class="text-xs text-gray-500">({category.product_count})</span>
-								{/if}
-								
-								{#if category.subcategories.length > 0}
-									<svg class="w-4 h-4 text-gray-400 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-									</svg>
-								{/if}
-								
-								<!-- Indicador ativo -->
-								{#if activeCategory === category.id}
-									<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00BFB3]"></span>
-								{/if}
-							</a>
-						</li>
-					{/each}
-					
-					<!-- Separador -->
-					<li class="h-6 w-px bg-gray-300 mx-2"></li>
-					
-					<!-- Link Ver Todas -->
+<div class="w-full h-full px-8">
+	<div class="h-full flex items-center">
+		{#if isLoading}
+			<div class="flex items-center gap-8">
+				{#each Array(6) as _}
+					<div class="h-4 w-24 bg-white/20 rounded animate-pulse"></div>
+				{/each}
+			</div>
+		{:else if error}
+			<p class="text-white/80">Erro ao carregar categorias</p>
+		{:else if categories.length > 0}
+			<ul class="flex items-center w-full justify-between">
+				<!-- Link Ver Todas - Primeiro item -->
+				<li>
+					<a
+						href="/categorias"
+						class="flex items-center gap-2 py-3 text-white hover:text-white/90 transition-all group relative"
+						style="font-family: 'Lato', sans-serif; font-weight: 700; font-size: 14px;"
+					>
+						<span>Ver Todas</span>
+						{#if totalProducts > 0}
+							<span class="text-xs text-white/70 group-hover:text-white/90 transition-colors">({totalProducts})</span>
+						{/if}
+						
+						<!-- Indicador hover -->
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+					</a>
+				</li>
+				
+				{#each categories as category, index}
 					<li>
 						<a
-							href="/categorias"
-							class="flex items-center gap-2 px-4 py-3 text-[#00BFB3] hover:text-[#00A89D] transition-colors"
+							href="/busca?categoria={category.slug}"
+							class="flex items-center gap-2 py-3 text-white hover:text-white/90 transition-all relative group"
+							onmouseenter={() => handleMouseEnter(category.id)}
+							onmouseleave={handleMouseLeave}
 							style="font-family: 'Lato', sans-serif; font-weight: 600; font-size: 14px;"
 						>
-							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-							</svg>
-							<span>Ver Todas</span>
+							<span>{category.name}</span>
+							{#if category.product_count && category.product_count > 0}
+								<span class="text-xs text-white/70">({category.product_count})</span>
+							{/if}
+							
+							{#if category.subcategories.length > 0}
+								<svg class="w-4 h-4 text-white/70 group-hover:text-white/90 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+								</svg>
+							{/if}
+							
+							<!-- Indicador hover -->
+							<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+							
+							<!-- Indicador ativo -->
+							{#if activeCategory === category.id}
+								<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white"></span>
+							{/if}
 						</a>
 					</li>
-				</ul>
-			{:else}
-				<div class="py-3 text-gray-500 text-sm">
-					Nenhuma categoria disponível
-				</div>
-			{/if}
-		</div>
+				{/each}
+			</ul>
+		{:else}
+			<div class="py-3 text-white/80 text-sm mx-auto">
+				Nenhuma categoria disponível
+			</div>
+		{/if}
 	</div>
 	
 	<!-- Mega Menu -->
@@ -164,7 +170,7 @@
 				role="menu"
 				aria-label="Submenu de {activecat.name}"
 			>
-				<div class="container mx-auto px-4 py-6">
+				<div class="w-full max-w-[1440px] mx-auto px-8 py-6">
 					<div class="grid grid-cols-4 gap-8">
 						<!-- Subcategorias - 2 colunas -->
 						<div class="col-span-2">
@@ -174,7 +180,7 @@
 							<div class="grid grid-cols-2 gap-x-8 gap-y-2">
 								{#each activecat.subcategories as subcategory}
 									<a
-										href="/categoria/{activecat.slug}/{subcategory.slug}"
+										href="/busca?categoria={subcategory.slug}"
 										class="flex items-center justify-between py-2 text-gray-600 hover:text-[#00BFB3] transition-colors group"
 										style="font-family: 'Lato', sans-serif; font-size: 14px;"
 									>
@@ -191,7 +197,7 @@
 							<!-- Link Ver Todos -->
 							<div class="mt-4 pt-4 border-t border-gray-200">
 								<a
-									href="/categoria/{activecat.slug}"
+									href="/busca?categoria={activecat.slug}"
 									class="inline-flex items-center gap-2 text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors"
 									style="font-family: 'Lato', sans-serif; font-size: 14px;"
 								>
@@ -247,7 +253,7 @@
 			</div>
 		{/if}
 	{/if}
-</nav>
+</div>
 
 <style>
 	.category-menu-container {

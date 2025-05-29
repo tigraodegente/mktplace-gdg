@@ -19,10 +19,14 @@ const CACHE_MAX_AGE = 300; // 5 minutes
 const STALE_WHILE_REVALIDATE = 60; // 1 minute
 
 export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
+  console.log('[Categories API] Request received');
+  
   try {
     // Parse query parameters
     const includeCount = url.searchParams.get('includeCount') === 'true';
     const parentOnly = url.searchParams.get('parentOnly') === 'true';
+    
+    console.log('[Categories API] Parameters:', { includeCount, parentOnly });
     
     // Set cache headers for better performance
     setHeaders({
@@ -31,6 +35,8 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
     });
     
     const result = await withDatabase(platform, async (db) => {
+      console.log('[Categories API] Database connection established');
+      
       // Fetch all active categories
       const categories = await db.query<{
         id: string;
@@ -45,6 +51,8 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
         WHERE is_active = true
         ORDER BY position ASC, name ASC
       `;
+      
+      console.log('[Categories API] Categories fetched:', categories.length);
       
       // Build category hierarchy
       const { categoryMap, rootCategories } = buildCategoryHierarchy(categories);

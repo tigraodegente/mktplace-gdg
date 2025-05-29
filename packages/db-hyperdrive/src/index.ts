@@ -1,11 +1,31 @@
 import postgres from 'postgres'
-import type { DatabaseConfig, DatabaseEnv } from './types'
+import type { Sql, Options } from 'postgres'
 
-export * from './types'
+// Tipos exportados diretamente
+export interface DatabaseConfig {
+  provider: 'hyperdrive' | 'xata' | 'supabase' | 'neon' | 'postgres'
+  connectionString: string
+  options?: {
+    postgres?: {
+      ssl?: boolean | 'require' | 'prefer'
+      max?: number
+      idleTimeout?: number
+      connectTimeout?: number
+    }
+  }
+}
+
+export interface DatabaseEnv {
+  HYPERDRIVE_DB?: {
+    connectionString: string
+  }
+  DATABASE_URL?: string
+}
 
 export class Database {
   private sql: postgres.Sql
   private config: DatabaseConfig
+  private isLocal: boolean
   
   constructor(config: DatabaseConfig | string) {
     // Se for string, assume PostgreSQL direto
@@ -19,19 +39,21 @@ export class Database {
     }
     
     // Detectar se é conexão local
-    const isLocal = this.config.connectionString.includes('localhost') || 
+    this.isLocal = this.config.connectionString.includes('localhost') || 
                    this.config.connectionString.includes('127.0.0.1')
     
     // Configurações base para todos os provedores
-    const baseOptions = {
-      prepare: false, // Importante para Cloudflare Workers
-      ssl: isLocal ? false : (this.config.options?.postgres?.ssl ?? 'require'),
+    const baseOptions: Options<any> = {
+      ssl: this.isLocal ? false : (this.config.options?.postgres?.ssl ?? 'require'),
       connection: {
         application_name: 'mktplace-db'
       },
       max: this.config.options?.postgres?.max ?? 1,
       idle_timeout: this.config.options?.postgres?.idleTimeout ?? 20,
-      connect_timeout: this.config.options?.postgres?.connectTimeout ?? 10
+      connect_timeout: this.config.options?.postgres?.connectTimeout ?? 10,
+      transform: {
+        undefined: null
+      }
     }
     
     // Ajustes específicos por provedor
@@ -39,6 +61,7 @@ export class Database {
       case 'hyperdrive':
         // Hyperdrive já gerencia pooling
         baseOptions.max = 1
+        baseOptions.prepare = false // Importante para Cloudflare Workers
         break
       case 'supabase':
         // Supabase precisa de pooling
@@ -101,6 +124,10 @@ export class Database {
   
   // Fechar conexão
   async close() {
+    // Em desenvolvimento local, não fecha a conexão para evitar CONNECTION_ENDED
+    if (this.isLocal) {
+      return
+    }
     await this.sql.end()
   }
   

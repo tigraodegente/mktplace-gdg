@@ -13,10 +13,11 @@ declare global {
 		}
 		// interface PageData {}
 		interface Platform {
-			env?: {
+			env: {
 				HYPERDRIVE_DB?: {
 					connectionString: string
 				}
+				CACHE_KV?: KVNamespace
 			}
 			context?: {
 				waitUntil(promise: Promise<any>): void
@@ -24,6 +25,34 @@ declare global {
 			caches?: CacheStorage & { default: Cache }
 		}
 	}
+	
+	// Cloudflare KV types
+	interface KVNamespace {
+		get(key: string, options?: { type: 'text' }): Promise<string | null>
+		get<T = unknown>(key: string, options: { type: 'json' }): Promise<T | null>
+		get(key: string, options: { type: 'arrayBuffer' }): Promise<ArrayBuffer | null>
+		get(key: string, options: { type: 'stream' }): Promise<ReadableStream | null>
+		
+		put(key: string, value: string | ArrayBuffer | ReadableStream, options?: {
+			expirationTtl?: number
+			expiration?: number
+			metadata?: any
+		}): Promise<void>
+		
+		delete(key: string): Promise<void>
+		
+		list(options?: {
+			prefix?: string
+			limit?: number
+			cursor?: string
+		}): Promise<{
+			keys: Array<{
+				name: string
+				expiration?: number
+				metadata?: any
+			}>
+			list_complete: boolean
+			cursor?: string
 }
 
 export {};

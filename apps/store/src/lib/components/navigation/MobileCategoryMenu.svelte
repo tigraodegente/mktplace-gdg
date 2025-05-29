@@ -31,7 +31,15 @@
 	}
 	
 	onMount(() => {
-		loadCategories();
+		// Pequeno delay para evitar requisições simultâneas durante a hidratação
+		const timer = setTimeout(() => {
+			loadCategories();
+		}, 150); // Um pouco mais de delay para mobile
+		
+		// Cleanup
+		return () => {
+			clearTimeout(timer);
+		};
 	});
 	
 	$effect(() => {
@@ -170,14 +178,13 @@
 								<div class="bg-gray-50">
 									{#each category.subcategories as subcategory}
 										<a
-											href="/categoria/{category.slug}/{subcategory.slug}"
+											href="/busca?categoria={subcategory.slug}"
+											class="block py-2 pl-12 pr-4 text-sm text-gray-600 hover:bg-gray-50 hover:text-[#00BFB3] transition-colors"
 											onclick={onClose}
-											class="block px-8 py-2.5 text-sm text-gray-600 hover:text-[#00BFB3] hover:bg-gray-100 transition-colors"
-											style="font-family: 'Lato', sans-serif;"
 										>
 											{subcategory.name}
 											{#if subcategory.product_count && subcategory.product_count > 0}
-												<span class="text-xs text-gray-500">({subcategory.product_count})</span>
+												<span class="text-xs text-gray-400 ml-1">({subcategory.product_count})</span>
 											{/if}
 										</a>
 									{/each}
@@ -185,17 +192,14 @@
 							{/if}
 						{:else}
 							<a
-								href="/categoria/{category.slug}"
+								href="/busca?categoria={category.slug}"
+								class="block py-3 px-4 text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3] transition-colors font-medium"
 								onclick={onClose}
-								class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-								style="font-family: 'Lato', sans-serif;"
 							>
-								<span class="flex items-center gap-2">
-									{category.name}
-									{#if category.product_count && category.product_count > 0}
-										<span class="text-xs text-gray-500">({category.product_count})</span>
-									{/if}
-								</span>
+								{category.name}
+								{#if category.product_count && category.product_count > 0}
+									<span class="text-xs text-gray-500 ml-1">({category.product_count})</span>
+								{/if}
 							</a>
 						{/if}
 					</div>

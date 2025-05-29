@@ -3,21 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import ProductCard from '$lib/components/product/ProductCard.svelte';
+	import ProductCardSkeleton from '$lib/components/ui/ProductCardSkeleton.svelte';
+	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
+	import SaveSearchButton from '$lib/components/search/SaveSearchButton.svelte';
 	import { searchService, type SearchFilters, type SearchResult } from '$lib/services/searchService';
-	
-	// Tipo Product
-	interface Product {
-		id: string;
-		name: string;
-		slug: string;
-		price: number;
-		original_price?: number;
-		discount?: number;
-		rating?: number;
-		sold_count?: number;
-		created_at: string | Date;
-		[key: string]: any;
-	}
 	
 	// Reactive URL params
 	let searchParams = $derived($page.url.searchParams);
@@ -33,13 +22,27 @@
 	let hasFreeShipping = $derived(searchParams.get('frete_gratis') === 'true');
 	let inStock = $derived(searchParams.get('disponivel') !== 'false');
 	let minRating = $derived(searchParams.get('avaliacao') ? Number(searchParams.get('avaliacao')) : undefined);
-	let condition = $derived(searchParams.get('condicao') || '');
+	let condition = $derived(searchParams.get('condicao') as 'new' | 'used' | 'refurbished' | '' || '');
 	let deliveryTime = $derived(searchParams.get('entrega') || '');
 	let selectedSellers = $derived(searchParams.get('vendedor')?.split(',').filter(Boolean) || []);
+	let selectedState = $derived(searchParams.get('estado') || '');
+	let selectedCity = $derived(searchParams.get('cidade') || '');
 	let sortBy = $derived(searchParams.get('ordenar') || 'relevancia');
 	let currentPage = $derived(Number(searchParams.get('pagina')) || 1);
 	let itemsPerPage = $derived(Number(searchParams.get('itens')) || 20);
 	let viewMode = $derived<'grid' | 'list'>(searchParams.get('visualizar') === 'lista' ? 'list' : 'grid');
+	
+	// Filtros dinâmicos de opções (cor, tamanho, volt, etc)
+	let selectedDynamicOptions = $derived((() => {
+		const options: Record<string, string[]> = {};
+		for (const [key, value] of searchParams.entries()) {
+			if (key.startsWith('opcao_')) {
+				const optionSlug = key.replace('opcao_', '');
+				options[optionSlug] = value.split(',').filter(Boolean);
+			}
+		}
+		return options;
+	})());
 	
 	// Estados locais
 	let searchResult = $state<SearchResult | null>(null);
@@ -48,6 +51,7 @@
 	let showMobileFilters = $state(false);
 	let compareProducts = $state<string[]>([]);
 	let savedFilters = $state<any[]>([]);
+	let lastSearchKey = $state('');
 	
 	// Inputs temporários para preço
 	let tempPriceMin = $state<string>('');
@@ -92,7 +96,16 @@
 		priceMax,
 		hasDiscount,
 		hasFreeShipping,
-		inStock
+		inStock,
+		rating: minRating,
+		condition: condition as 'new' | 'used' | 'refurbished' | undefined,
+		sellers: selectedSellers,
+		deliveryTime,
+		location: selectedState || selectedCity ? {
+			state: selectedState,
+			city: selectedCity
+		} : undefined,
+		dynamicOptions: selectedDynamicOptions
 	});
 	
 	// Atualizar URL com novos parâmetros
@@ -119,36 +132,53 @@
 	
 	// Carregar produtos quando mudar query ou filtros
 	$effect(() => {
+		const searchKey = JSON.stringify({ searchQuery, filters, currentPage, itemsPerPage });
+		if (searchKey !== lastSearchKey) {
+			console.log('🔄 Effect disparado - mudança detectada');
+			lastSearchKey = searchKey;
 		performSearch();
+		}
 	});
 	
 	async function performSearch() {
 		isLoading = true;
+		console.log('🔍 Iniciando busca:', { searchQuery, filters, currentPage, itemsPerPage });
+		
+		// Timeout de segurança
+		const timeoutId = setTimeout(() => {
+			if (isLoading) {
+				console.error('⏱️ Timeout na busca - forçando finalização');
+				isLoading = false;
+			}
+		}, 5000); // 5 segundos
 		
 		try {
 			const result = await searchService.search(searchQuery, filters, currentPage, itemsPerPage);
+			console.log('✅ Resultado da busca:', result);
 			searchResult = result;
 			
 			// Adicionar ao histórico se for uma nova busca
 			if (currentPage === 1 && searchQuery) {
-				searchService.addToHistory(searchQuery);
+				searchService.addToHistory(searchQuery, result.totalCount);
 			}
 			
 			// Atualizar inputs de preço se estiverem vazios
 			if (!tempPriceMin && priceMin) tempPriceMin = String(priceMin);
 			if (!tempPriceMax && priceMax) tempPriceMax = String(priceMax);
 		} catch (error) {
-			console.error('Erro na busca:', error);
+			console.error('❌ Erro na busca:', error);
 			searchResult = null;
 		} finally {
+			clearTimeout(timeoutId);
 			isLoading = false;
+			console.log('🏁 Busca finalizada, isLoading:', isLoading);
 		}
 	}
 	
 	// Aplicar ordenação localmente
 	let sortedProducts = $derived(searchResult?.products ? sortProducts(searchResult.products) : []);
 	
-	function sortProducts(products: Product[]): Product[] {
+	function sortProducts(products: SearchResult['products']): SearchResult['products'] {
 		const sorted = [...products];
 		
 		switch (sortBy) {
@@ -208,7 +238,18 @@
 			preco_max: undefined,
 			promocao: undefined,
 			frete_gratis: undefined,
-			disponivel: undefined
+			disponivel: undefined,
+			avaliacao: undefined,
+			condicao: undefined,
+			entrega: undefined,
+			vendedor: undefined,
+			estado: undefined,
+			cidade: undefined,
+			// Limpar filtros dinâmicos
+			...Object.keys(selectedDynamicOptions).reduce((acc, key) => ({
+				...acc,
+				[`opcao_${key}`]: undefined
+			}), {})
 		});
 		tempPriceMin = '';
 		tempPriceMax = '';
@@ -223,7 +264,14 @@
 			priceMax !== undefined ||
 			hasDiscount ||
 			hasFreeShipping ||
-			!inStock
+			!inStock ||
+			minRating ||
+			condition ||
+			deliveryTime ||
+			selectedSellers.length ||
+			selectedState ||
+			selectedCity ||
+			Object.keys(selectedDynamicOptions).length
 		);
 	}
 	
@@ -330,11 +378,17 @@
 		
 		<!-- Header com resultados -->
 		<div class="mb-6">
+			<div class="flex items-start justify-between gap-4">
+				<div>
 			<h1 class="text-2xl font-bold text-gray-900">
 				{#if searchQuery}
 					Resultados para "{searchQuery}"
 				{:else if selectedCategories.length}
-					{selectedCategories.join(', ')}
+							{@const categoryNames = selectedCategories.map(id => {
+								const cat = searchResult?.facets.categories.find(c => (c.slug || c.id) === id || c.id === id);
+								return cat?.name || id;
+							})}
+							{categoryNames.join(', ')}
 				{:else}
 					Todos os produtos
 				{/if}
@@ -346,425 +400,189 @@
 			{/if}
 		</div>
 		
+				{#if searchResult && !isLoading && searchResult.totalCount > 0}
+					<SaveSearchButton
+						{searchQuery}
+						{filters}
+						resultCount={searchResult.totalCount}
+					/>
+						{/if}
+									</div>
+								</div>
+								
 		<div class="flex gap-6">
 			<!-- Filtros Desktop -->
 			<aside class="w-64 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}">
-				<div class="bg-white rounded-lg shadow-sm sticky top-6">
-					<!-- Header dos filtros -->
-					<div class="p-4 border-b flex items-center justify-between">
-						<h2 class="text-lg font-semibold">Filtros</h2>
-						<div class="flex items-center gap-2">
-							{#if hasActiveFilters()}
-								<button 
-									onclick={clearAllFilters}
-									class="text-sm text-[#00BFB3] hover:text-[#00A89D]"
-								>
-									Limpar
-								</button>
-							{/if}
-							<button
-								onclick={() => showDesktopFilters = false}
-								class="p-1 hover:bg-gray-100 rounded"
-								aria-label="Fechar filtros"
-							>
-								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-								</svg>
-							</button>
-						</div>
-					</div>
-					
-					<div class="p-4 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-						<!-- Filtros Rápidos Populares -->
-						<div class="bg-[#00BFB3]/5 p-3 rounded-lg">
-							<h3 class="text-sm font-medium text-gray-900 mb-2">🔥 Mais procurados</h3>
-							<div class="flex flex-wrap gap-2">
-								<button
-									onclick={() => updateURL({ promocao: true, frete_gratis: true })}
-									class="text-xs px-3 py-1 bg-white rounded-full hover:bg-[#00BFB3] hover:text-white transition-colors"
-								>
-									Ofertas + Frete Grátis
-								</button>
-								<button
-									onclick={() => updateURL({ avaliacao: 4 })}
-									class="text-xs px-3 py-1 bg-white rounded-full hover:bg-[#00BFB3] hover:text-white transition-colors"
-								>
-									4★ ou mais
-								</button>
-								<button
-									onclick={() => updateURL({ entrega: '24h' })}
-									class="text-xs px-3 py-1 bg-white rounded-full hover:bg-[#00BFB3] hover:text-white transition-colors"
-								>
-									Entrega Rápida
-								</button>
-							</div>
-						</div>
-
-						<!-- Categorias -->
-						{#if searchResult?.facets.categories.length}
-							<div>
-								<h3 class="font-medium text-gray-900 mb-3 flex items-center justify-between">
-									Categorias
-									<span class="text-xs text-gray-500">{selectedCategories.length} selecionadas</span>
-								</h3>
-								<div class="space-y-2">
-									{#each searchResult.facets.categories as category}
-										<label class="flex items-center cursor-pointer hover:text-gray-700 group">
-											<input 
-												type="checkbox"
-												checked={selectedCategories.includes(category.id)}
-												onchange={() => toggleCategory(category.id)}
-												class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
-											/>
-											<span class="ml-2 text-sm flex-1 group-hover:font-medium">{category.name}</span>
-											<span class="text-xs text-gray-500">({category.count})</span>
-										</label>
-									{/each}
-								</div>
-							</div>
-						{/if}
-						
-						<!-- Faixa de Preço com Preview -->
-						<div>
-							<h3 class="font-medium text-gray-900 mb-3 flex items-center justify-between">
-								Faixa de Preço
-								{#if priceMin || priceMax}
-									<span class="text-xs text-[#00BFB3]">Filtro ativo</span>
-								{/if}
-							</h3>
-							<div class="space-y-3">
-								<div>
-									<label for="price-min" class="text-sm text-gray-600">Mínimo</label>
-									<div class="relative mt-1">
-										<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-										<input 
-											id="price-min"
-											type="number"
-											bind:value={tempPriceMin}
-											min="0"
-											placeholder="0"
-											onkeydown={(e) => e.key === 'Enter' && applyPriceFilter()}
-											oninput={debouncePreview}
-											class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-										/>
-									</div>
-								</div>
-								<div>
-									<label for="price-max" class="text-sm text-gray-600">Máximo</label>
-									<div class="relative mt-1">
-										<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-										<input 
-											id="price-max"
-											type="number"
-											bind:value={tempPriceMax}
-											min="0"
-											placeholder="1000"
-											onkeydown={(e) => e.key === 'Enter' && applyPriceFilter()}
-											oninput={debouncePreview}
-											class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-										/>
-									</div>
-								</div>
-								
-								{#if previewCount !== null}
-									<p class="text-xs text-center text-gray-600">
-										{isPreviewLoading ? 'Calculando...' : `${previewCount} produtos nesta faixa`}
-									</p>
-								{/if}
-								
-								<button
-									onclick={applyPriceFilter}
-									class="w-full py-2 bg-[#00BFB3] text-white rounded-md hover:bg-[#00A89D] transition-colors text-sm font-medium"
-								>
-									Aplicar Filtro
-								</button>
-							</div>
-							
-							<!-- Sugestões de faixa -->
-							{#if searchResult?.facets.priceRanges.length}
-								<div class="mt-3 space-y-1">
-									<p class="text-xs text-gray-500 mb-1">Sugestões rápidas:</p>
-									{#each searchResult.facets.priceRanges as range}
-										<button
-											onclick={() => {
-												tempPriceMin = String(range.min);
-												tempPriceMax = range.max === Infinity ? '' : String(range.max);
-												applyPriceFilter();
-											}}
-											class="text-xs text-gray-600 hover:text-[#00BFB3] block w-full text-left pl-2 py-1 hover:bg-gray-50 rounded"
-										>
-											{range.min === 0 ? 'Até' : `R$ ${range.min} -`} 
-											{range.max === Infinity ? 'ou mais' : `R$ ${range.max}`}
-											<span class="text-gray-400"> ({range.count})</span>
-										</button>
-									{/each}
-								</div>
-							{/if}
-						</div>
-						
-						<!-- Avaliações -->
-						<div>
-							<h3 class="font-medium text-gray-900 mb-3">Avaliação dos Clientes</h3>
-							<div class="space-y-2">
-								{#each [5, 4, 3, 2] as stars}
-									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
-										<input 
-											type="radio"
-											name="rating"
-											checked={minRating === stars}
-											onchange={() => updateURL({ avaliacao: minRating === stars ? undefined : stars })}
-											class="sr-only"
-										/>
-										<div class="flex items-center gap-2">
-											<div class="flex">
-												{#each Array(5) as _, i}
-													<svg class="w-4 h-4 {i < stars ? 'text-yellow-400' : 'text-gray-300'}" fill="currentColor" viewBox="0 0 20 20">
-														<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-													</svg>
-												{/each}
-											</div>
-											<span class="text-sm {minRating === stars ? 'font-medium text-[#00BFB3]' : 'text-gray-600'}">
-												{stars === 5 ? '5 estrelas' : `${stars} ou mais`}
-											</span>
-										</div>
-									</label>
-								{/each}
-							</div>
-						</div>
-						
-						<!-- Marcas -->
-						{#if searchResult?.facets.brands?.length}
-							<div>
-								<h3 class="font-medium text-gray-900 mb-3">Marcas</h3>
-								<div class="space-y-2 max-h-48 overflow-y-auto">
-									{#each searchResult.facets.brands as brand}
-										<label class="flex items-center cursor-pointer hover:text-gray-700">
-											<input 
-												type="checkbox"
-												checked={selectedBrands.includes(brand.id)}
-												onchange={() => toggleBrand(brand.id)}
-												class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
-											/>
-											<span class="ml-2 text-sm flex-1">{brand.name}</span>
-											<span class="text-xs text-gray-500">({brand.count})</span>
-										</label>
-									{/each}
-								</div>
-							</div>
-						{/if}
-						
-						<!-- Condição do Produto -->
-						<div>
-							<h3 class="font-medium text-gray-900 mb-3">Condição</h3>
-							<div class="space-y-2">
-								{#each [
-									{ value: 'novo', label: 'Novo', icon: '✨' },
-									{ value: 'usado', label: 'Usado', icon: '♻️' },
-									{ value: 'recondicionado', label: 'Recondicionado', icon: '🔧' }
-								] as cond}
-									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
-										<input 
-											type="radio"
-											name="condition"
-											checked={condition === cond.value}
-											onchange={() => updateURL({ condicao: condition === cond.value ? undefined : cond.value })}
-											class="w-4 h-4 text-[#00BFB3] border-gray-300 focus:ring-[#00BFB3]"
-										/>
-										<span class="ml-2 text-sm flex items-center gap-1">
-											<span>{cond.icon}</span>
-											{cond.label}
-										</span>
-									</label>
-								{/each}
-							</div>
-						</div>
-						
-						<!-- Tempo de Entrega -->
-						<div>
-							<h3 class="font-medium text-gray-900 mb-3">Tempo de Entrega</h3>
-							<div class="space-y-2">
-								{#each [
-									{ value: 'hoje', label: 'Receba Hoje', badge: 'RÁPIDO' },
-									{ value: '24h', label: 'Em 24 horas' },
-									{ value: '48h', label: 'Em 48 horas' },
-									{ value: '7dias', label: 'Até 7 dias' }
-								] as delivery}
-									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
-										<input 
-											type="radio"
-											name="delivery"
-											checked={deliveryTime === delivery.value}
-											onchange={() => updateURL({ entrega: deliveryTime === delivery.value ? undefined : delivery.value })}
-											class="w-4 h-4 text-[#00BFB3] border-gray-300 focus:ring-[#00BFB3]"
-										/>
-										<span class="ml-2 text-sm flex-1">{delivery.label}</span>
-										{#if delivery.badge}
-											<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">{delivery.badge}</span>
-										{/if}
-									</label>
-								{/each}
-							</div>
-						</div>
-						
-						<!-- Tags/Características -->
-						{#if searchResult?.facets.tags.length}
-							<div>
-								<h3 class="font-medium text-gray-900 mb-3">Características</h3>
-								<div class="flex flex-wrap gap-2">
-									{#each searchResult.facets.tags as tag}
-										<button
-											onclick={() => toggleTag(tag.id)}
-											class="px-3 py-1 text-xs rounded-full transition-all {
-												selectedTags.includes(tag.id)
-													? 'bg-[#00BFB3] text-white scale-105'
-													: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-											}"
-										>
-											{tag.name}
-											<span class="ml-1">({tag.count})</span>
-										</button>
-									{/each}
-								</div>
-							</div>
-						{/if}
-						
-						<!-- Outras opções -->
-						<div>
-							<h3 class="font-medium text-gray-900 mb-3">Benefícios</h3>
-							<div class="space-y-2">
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
-									<input 
-										type="checkbox" 
-										checked={hasFreeShipping}
-										onchange={() => updateURL({ frete_gratis: !hasFreeShipping })}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]" 
-									/>
-									<span class="ml-2 text-sm flex items-center gap-2">
-										<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-										</svg>
-										Frete Grátis
-									</span>
-								</label>
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
-									<input 
-										type="checkbox" 
-										checked={hasDiscount}
-										onchange={() => updateURL({ promocao: !hasDiscount })}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]" 
-									/>
-									<span class="ml-2 text-sm flex items-center gap-2">
-										<span class="text-red-600">%</span>
-										Em Promoção
-									</span>
-								</label>
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
-									<input 
-										type="checkbox" 
-										checked={inStock}
-										onchange={() => updateURL({ disponivel: !inStock })}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]" 
-									/>
-									<span class="ml-2 text-sm flex items-center gap-2">
-										<div class="w-2 h-2 bg-green-500 rounded-full"></div>
-										Pronta Entrega
-									</span>
-								</label>
-							</div>
-						</div>
-						
-						<!-- Salvar Busca -->
-						<div class="border-t pt-4">
-							<button
-								onclick={saveCurrentFilters}
-								class="w-full py-2 border border-[#00BFB3] text-[#00BFB3] rounded-md hover:bg-[#00BFB3] hover:text-white transition-colors text-sm font-medium flex items-center justify-center gap-2"
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-								</svg>
-								Salvar esta busca
-							</button>
-						</div>
-					</div>
-				</div>
+				<FilterSidebar
+					categories={searchResult?.facets.categories.map(c => ({
+						...c,
+						selected: selectedCategories.includes(c.slug || c.id)
+					})) || []}
+					brands={searchResult?.facets.brands?.map(b => ({
+						...b,
+						selected: selectedBrands.includes(b.slug || b.id)
+					})) || []}
+					priceRange={searchResult && searchResult.products.length > 0 ? {
+						min: 0,
+						max: Math.max(...searchResult.products.map(p => p.price), 10000),
+						current: { 
+							min: priceMin !== undefined ? priceMin : 0, 
+							max: priceMax !== undefined ? priceMax : Math.max(...searchResult.products.map(p => p.price), 10000)
+						}
+					} : undefined}
+					ratingCounts={searchResult?.facets.ratings?.reduce<Record<number, number>>((acc, r) => ({ ...acc, [r.value]: r.count }), {}) || {}}
+					currentRating={minRating}
+					conditions={searchResult?.facets.conditions || [
+						{ value: 'new', label: 'Novo', count: 0 },
+						{ value: 'used', label: 'Usado', count: 0 },
+						{ value: 'refurbished', label: 'Recondicionado', count: 0 }
+					]}
+					selectedConditions={condition ? [condition] : []}
+					deliveryOptions={searchResult?.facets.deliveryOptions || [
+						{ value: '24h', label: 'Entrega em 24h', count: 0 },
+						{ value: '48h', label: 'Até 2 dias', count: 0 },
+						{ value: '3days', label: 'Até 3 dias úteis', count: 0 },
+						{ value: '7days', label: 'Até 7 dias úteis', count: 0 },
+						{ value: '15days', label: 'Até 15 dias', count: 0 }
+					]}
+					selectedDeliveryTime={deliveryTime}
+					sellers={searchResult?.facets.sellers || []}
+					selectedSellers={selectedSellers}
+					states={searchResult?.facets.locations?.states || []}
+					cities={searchResult?.facets.locations?.cities || []}
+					selectedLocation={{ state: selectedState, city: selectedCity }}
+					hasDiscount={hasDiscount}
+					hasFreeShipping={hasFreeShipping}
+					showOutOfStock={!inStock}
+					benefitsCounts={searchResult?.facets.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 }}
+					tags={searchResult?.facets.tags || []}
+					selectedTags={selectedTags}
+					dynamicOptions={searchResult?.facets.dynamicOptions || []}
+					selectedDynamicOptions={selectedDynamicOptions}
+					loading={isLoading}
+					showCloseButton={true}
+					onClose={() => showDesktopFilters = false}
+					on:filterChange={(e) => {
+						updateURL({
+							categoria: e.detail.categories,
+							marca: e.detail.brands,
+							preco_min: e.detail.priceRange?.min,
+							preco_max: e.detail.priceRange?.max
+						});
+					}}
+					on:ratingChange={(e) => updateURL({ avaliacao: e.detail.rating })}
+					on:conditionChange={(e) => updateURL({ condicao: e.detail.conditions[0] })}
+					on:deliveryChange={(e) => updateURL({ entrega: e.detail.deliveryTime })}
+					on:sellerChange={(e) => updateURL({ vendedor: e.detail.sellers })}
+					on:locationChange={(e) => updateURL({ estado: e.detail.state, cidade: e.detail.city })}
+					on:tagChange={(e) => updateURL({ tag: e.detail.tags })}
+					on:dynamicOptionChange={(e) => updateURL({ [`opcao_${e.detail.optionSlug}`]: e.detail.values })}
+					on:benefitChange={(e) => {
+						switch (e.detail.benefit) {
+							case 'discount':
+								updateURL({ promocao: e.detail.value || undefined });
+								break;
+							case 'freeShipping':
+								updateURL({ frete_gratis: e.detail.value || undefined });
+								break;
+							case 'outOfStock':
+								updateURL({ disponivel: !e.detail.value || undefined });
+								break;
+						}
+					}}
+					on:clearAll={clearAllFilters}
+				/>
 			</aside>
 			
 			<!-- Produtos -->
 			<div class="flex-1">
 				<!-- Barra de controles -->
-				<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-					<div class="flex flex-wrap items-center justify-between gap-4">
-						<div class="flex items-center gap-4">
+				<div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
+					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+						<!-- Lado esquerdo - Filtros e View Mode -->
+						<div class="flex items-center gap-2 sm:gap-3">
 							<!-- Toggle filtros desktop -->
 							{#if !showDesktopFilters}
 								<button 
 									onclick={() => showDesktopFilters = true}
-									class="hidden lg:flex items-center gap-2 text-gray-700 hover:text-gray-900"
+									class="hidden lg:flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
 								>
 									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
 									</svg>
-									Mostrar Filtros
+									<span class="hidden xl:inline">Mostrar Filtros</span>
 								</button>
 							{/if}
 							
 							<!-- Filtros mobile -->
 							<button 
 								onclick={() => showMobileFilters = true}
-								class="lg:hidden flex items-center gap-2 px-4 py-2 bg-[#00BFB3] text-white rounded-lg"
+								class="lg:hidden flex items-center gap-2 px-3 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
 							>
-								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
 								</svg>
-								Filtros
+								<span class="text-sm sm:text-base">Filtros</span>
 								{#if hasActiveFilters()}
-									<span class="bg-white text-[#00BFB3] text-xs px-2 py-0.5 rounded-full font-semibold">
-										{selectedCategories.length + selectedBrands.length + selectedTags.length + (hasDiscount ? 1 : 0) + (hasFreeShipping ? 1 : 0)}
+									<span class="bg-white text-[#00BFB3] text-xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center">
+										{selectedCategories.length + selectedBrands.length + selectedTags.length + (hasDiscount ? 1 : 0) + (hasFreeShipping ? 1 : 0) + Object.values(selectedDynamicOptions).reduce((sum, values) => sum + values.length, 0)}
 									</span>
 								{/if}
 							</button>
 							
 							<!-- View mode -->
-							<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+							<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
 								<button
 									onclick={() => updateURL({ visualizar: undefined })}
-									class="p-2 {viewMode === 'grid' ? 'bg-gray-100' : 'hover:bg-gray-50'}"
+									class="p-1.5 sm:p-2 {viewMode === 'grid' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-colors"
 									aria-label="Visualização em grade"
+									title="Visualização em grade"
 								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
 									</svg>
 								</button>
 								<button
 									onclick={() => updateURL({ visualizar: 'lista' })}
-									class="p-2 {viewMode === 'list' ? 'bg-gray-100' : 'hover:bg-gray-50'}"
+									class="p-1.5 sm:p-2 {viewMode === 'list' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-colors"
 									aria-label="Visualização em lista"
+									title="Visualização em lista"
 								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
 									</svg>
 								</button>
 							</div>
+							
+							<!-- Contador de resultados - visível apenas em telas maiores -->
+							{#if searchResult}
+								<div class="hidden sm:block text-sm text-gray-600 px-2">
+									<span class="font-medium">{searchResult.totalCount}</span> produtos
+								</div>
+							{/if}
 						</div>
 						
-						<div class="flex items-center gap-4">
-							<!-- Items por página -->
-							<select 
-								value={itemsPerPage}
-								onchange={(e) => updateURL({ itens: e.currentTarget.value })}
-								class="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-							>
-								<option value={20}>20 por página</option>
-								<option value={40}>40 por página</option>
-								<option value={60}>60 por página</option>
-								<option value={100}>100 por página</option>
-							</select>
+						<!-- Lado direito - Dropdowns -->
+						<div class="flex items-center gap-2 sm:gap-3">
+							<!-- Items por página - oculto em mobile -->
+							<div class="hidden sm:block">
+								<select 
+									value={itemsPerPage}
+									onchange={(e) => updateURL({ itens: e.currentTarget.value })}
+									class="select-sm"
+								>
+									<option value={20}>20 por página</option>
+									<option value={40}>40 por página</option>
+									<option value={60}>60 por página</option>
+									<option value={100}>100 por página</option>
+								</select>
+							</div>
 							
 							<!-- Ordenação -->
 							<select 
 								value={sortBy}
 								onchange={(e) => updateURL({ ordenar: e.currentTarget.value })}
-								class="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+								class="select-sm min-w-[180px]"
 							>
 								{#each sortOptions as option}
 									<option value={option.value}>{option.label}</option>
@@ -773,185 +591,44 @@
 						</div>
 					</div>
 					
-					<!-- Filtros ativos (chips) -->
-					{#if hasActiveFilters()}
-						<div class="mt-4">
-							<div class="flex items-center justify-between mb-2">
-								<p class="text-sm text-gray-600">Filtros aplicados:</p>
-								<button
-									onclick={clearAllFilters}
-									class="text-sm text-red-600 hover:text-red-700 font-medium"
-								>
-									Limpar todos
-								</button>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								{#each selectedCategories as categoryId}
-									{@const category = searchResult?.facets.categories.find(c => c.id === categoryId)}
-									{#if category}
-										<span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-sm rounded-full group hover:bg-gray-200">
-											<span class="text-xs text-gray-500">Categoria:</span>
-											{category.name}
-											<button
-												onclick={() => toggleCategory(categoryId)}
-												class="ml-1 text-gray-400 hover:text-red-600"
-												aria-label="Remover filtro de categoria {category.name}"
-											>
-												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-												</svg>
-											</button>
-										</span>
-									{/if}
-								{/each}
-								
-								{#each selectedBrands as brandId}
-									{@const brand = searchResult?.facets.brands?.find(b => b.id === brandId)}
-									{#if brand}
-										<span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-sm rounded-full group hover:bg-gray-200">
-											<span class="text-xs text-gray-500">Marca:</span>
-											{brand.name}
-											<button
-												onclick={() => toggleBrand(brandId)}
-												class="ml-1 text-gray-400 hover:text-red-600"
-												aria-label="Remover filtro de marca {brand.name}"
-											>
-												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-												</svg>
-											</button>
-										</span>
-									{/if}
-								{/each}
-								
-								{#if priceMin !== undefined || priceMax !== undefined}
-									<span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-sm rounded-full">
-										<span class="text-xs text-green-700">💰</span>
-										R$ {priceMin || 0} - {priceMax || '∞'}
-										<button
-											onclick={() => {
-												updateURL({ preco_min: undefined, preco_max: undefined });
-												tempPriceMin = '';
-												tempPriceMax = '';
-											}}
-											class="ml-1 text-green-600 hover:text-red-600"
-											aria-label="Remover filtro de preço"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-											</svg>
-										</button>
-									</span>
-								{/if}
-								
-								{#if minRating}
-									<span class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-sm rounded-full">
-										<span class="text-xs">⭐</span>
-										{minRating}+ estrelas
-										<button
-											onclick={() => updateURL({ avaliacao: undefined })}
-											class="ml-1 text-yellow-600 hover:text-red-600"
-											aria-label="Remover filtro de avaliação"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-											</svg>
-										</button>
-									</span>
-								{/if}
-								
-								{#if condition}
-									<span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-sm rounded-full">
-										{condition === 'novo' ? '✨ Novo' : condition === 'usado' ? '♻️ Usado' : '🔧 Recondicionado'}
-										<button
-											onclick={() => updateURL({ condicao: undefined })}
-											class="ml-1 text-blue-600 hover:text-red-600"
-											aria-label="Remover filtro de condição"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-											</svg>
-										</button>
-									</span>
-								{/if}
-								
-								{#if deliveryTime}
-									<span class="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-sm rounded-full">
-										🚚 {deliveryTime === 'hoje' ? 'Hoje' : deliveryTime === '24h' ? '24h' : deliveryTime === '48h' ? '48h' : '7 dias'}
-										<button
-											onclick={() => updateURL({ entrega: undefined })}
-											class="ml-1 text-orange-600 hover:text-red-600"
-											aria-label="Remover filtro de tempo de entrega"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-											</svg>
-										</button>
-									</span>
-								{/if}
-								
-								{#if hasDiscount}
-									<span class="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-sm rounded-full">
-										% Em Promoção
-										<button
-											onclick={() => updateURL({ promocao: undefined })}
-											class="ml-1 text-red-600 hover:text-red-700"
-											aria-label="Remover filtro de promoção"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-											</svg>
-										</button>
-									</span>
-								{/if}
-								
-								{#if hasFreeShipping}
-									<span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-sm rounded-full">
-										✓ Frete Grátis
-										<button
-											onclick={() => updateURL({ frete_gratis: undefined })}
-											class="ml-1 text-green-600 hover:text-red-600"
-											aria-label="Remover filtro de frete grátis"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-											</svg>
-										</button>
-									</span>
-								{/if}
-								
-								{#each selectedTags as tagId}
-									{@const tag = searchResult?.facets.tags.find(t => t.id === tagId)}
-									{#if tag}
-										<span class="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-sm rounded-full">
-											{tag.name}
-											<button
-												onclick={() => toggleTag(tagId)}
-												class="ml-1 text-purple-600 hover:text-red-600"
-												aria-label="Remover filtro de tag {tag.name}"
-											>
-												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-												</svg>
-											</button>
-										</span>
-									{/if}
-								{/each}
-							</div>
+					<!-- Contador mobile -->
+					{#if searchResult}
+						<div class="sm:hidden text-sm text-gray-600 mt-2">
+							<span class="font-medium">{searchResult.totalCount}</span> produtos encontrados
 						</div>
 					{/if}
 				</div>
 				
 				<!-- Grid/Lista de produtos -->
 				{#if isLoading}
-					<div class="flex items-center justify-center h-64">
-						<div class="text-center">
-							<div class="w-12 h-12 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-							<p class="text-gray-600">Buscando produtos...</p>
+					<div class="{viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'space-y-4'}">
+						{#each Array(itemsPerPage) as _}
+							{#if viewMode === 'grid'}
+								<ProductCardSkeleton />
+							{:else}
+								<!-- Skeleton para lista -->
+								<div class="bg-white rounded-lg shadow-sm p-4 flex gap-4 animate-pulse">
+									<div class="w-24 h-24 bg-gray-200 rounded"></div>
+									<div class="flex-1 space-y-3">
+										<div class="h-4 bg-gray-200 rounded w-3/4"></div>
+										<div class="h-3 bg-gray-200 rounded w-full"></div>
+										<div class="h-3 bg-gray-200 rounded w-2/3"></div>
+										<div class="flex items-center gap-4">
+											<div class="h-5 bg-gray-200 rounded w-20"></div>
+											<div class="h-6 bg-gray-200 rounded w-24"></div>
 						</div>
+									</div>
+									<div class="flex flex-col gap-2">
+										<div class="w-32 h-10 bg-gray-200 rounded-lg"></div>
+										<div class="w-10 h-10 bg-gray-200 rounded-lg"></div>
+									</div>
+								</div>
+							{/if}
+						{/each}
 					</div>
 				{:else if !searchResult || sortedProducts.length === 0}
 					<div class="bg-white rounded-lg shadow-sm p-12 text-center">
+						{console.log('📭 Renderizando estado vazio', { searchResult, sortedProducts })}
 						<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 						</svg>
@@ -974,9 +651,9 @@
 					</div>
 				{:else}
 					{#if viewMode === 'grid'}
-						<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+						<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
 							{#each sortedProducts as product}
-								<ProductCard {product} />
+								<ProductCard product={product as any} />
 							{/each}
 						</div>
 					{:else}
@@ -1108,125 +785,85 @@
 			</div>
 			
 			<!-- Conteúdo dos filtros -->
-			<div class="flex-1 overflow-y-auto p-4 space-y-6">
-				<!-- Mesmos filtros do desktop -->
-				<!-- Categorias -->
-				{#if searchResult?.facets.categories.length}
-					<div>
-						<h3 class="font-medium text-gray-900 mb-3">Categorias</h3>
-						<div class="space-y-2">
-							{#each searchResult.facets.categories as category}
-								<label class="flex items-center cursor-pointer hover:text-gray-700">
-									<input 
-										type="checkbox"
-										checked={selectedCategories.includes(category.id)}
-										onchange={() => toggleCategory(category.id)}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
-									/>
-									<span class="ml-2 text-sm flex-1">{category.name}</span>
-									<span class="text-xs text-gray-500">({category.count})</span>
-								</label>
-							{/each}
-						</div>
-					</div>
-				{/if}
-				
-				<!-- Faixa de Preço -->
-				<div>
-					<h3 class="font-medium text-gray-900 mb-3">Faixa de Preço</h3>
-					<div class="space-y-3">
-						<div>
-							<label for="price-min-mobile" class="text-sm text-gray-600">Mínimo</label>
-							<div class="relative mt-1">
-								<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-								<input 
-									id="price-min-mobile"
-									type="number"
-									bind:value={tempPriceMin}
-									min="0"
-									placeholder="0"
-									class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-								/>
-							</div>
-						</div>
-						<div>
-							<label for="price-max-mobile" class="text-sm text-gray-600">Máximo</label>
-							<div class="relative mt-1">
-								<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-								<input 
-									id="price-max-mobile"
-									type="number"
-									bind:value={tempPriceMax}
-									min="0"
-									placeholder="1000"
-									class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-								/>
-							</div>
-						</div>
-						<button
-							onclick={applyPriceFilter}
-							class="w-full py-2 bg-[#00BFB3] text-white rounded-md hover:bg-[#00A89D] transition-colors text-sm"
-						>
-							Aplicar
-						</button>
-					</div>
-				</div>
-				
-				<!-- Tags/Características -->
-				{#if searchResult?.facets.tags.length}
-					<div>
-						<h3 class="font-medium text-gray-900 mb-3">Características</h3>
-						<div class="flex flex-wrap gap-2">
-							{#each searchResult.facets.tags as tag}
-								<button
-									onclick={() => toggleTag(tag.id)}
-									class="px-3 py-1 text-xs rounded-full transition-colors {
-										selectedTags.includes(tag.id)
-											? 'bg-[#00BFB3] text-white'
-											: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-									}"
-								>
-									{tag.name}
-									<span class="ml-1">({tag.count})</span>
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
-				
-				<!-- Outras opções -->
-				<div>
-					<h3 class="font-medium text-gray-900 mb-3">Outras opções</h3>
-					<div class="space-y-2">
-						<label class="flex items-center cursor-pointer">
-							<input 
-								type="checkbox" 
-								checked={hasFreeShipping}
-								onchange={() => updateURL({ frete_gratis: !hasFreeShipping })}
-								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]" 
-							/>
-							<span class="ml-2 text-sm">Frete Grátis</span>
-						</label>
-						<label class="flex items-center cursor-pointer">
-							<input 
-								type="checkbox" 
-								checked={hasDiscount}
-								onchange={() => updateURL({ promocao: !hasDiscount })}
-								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]" 
-							/>
-							<span class="ml-2 text-sm">Em Promoção</span>
-						</label>
-						<label class="flex items-center cursor-pointer">
-							<input 
-								type="checkbox" 
-								checked={inStock}
-								onchange={() => updateURL({ disponivel: !inStock })}
-								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]" 
-							/>
-							<span class="ml-2 text-sm">Disponível em estoque</span>
-						</label>
-					</div>
-				</div>
+			<div class="flex-1 overflow-y-auto">
+				<FilterSidebar
+					categories={searchResult?.facets.categories.map(c => ({
+						...c,
+						selected: selectedCategories.includes(c.slug || c.id)
+					})) || []}
+					brands={searchResult?.facets.brands?.map(b => ({
+						...b,
+						selected: selectedBrands.includes(b.slug || b.id)
+					})) || []}
+					priceRange={searchResult && searchResult.products.length > 0 ? {
+						min: 0,
+						max: Math.max(...searchResult.products.map(p => p.price), 10000),
+						current: { 
+							min: priceMin !== undefined ? priceMin : 0, 
+							max: priceMax !== undefined ? priceMax : Math.max(...searchResult.products.map(p => p.price), 10000)
+						}
+					} : undefined}
+					ratingCounts={searchResult?.facets.ratings?.reduce<Record<number, number>>((acc, r) => ({ ...acc, [r.value]: r.count }), {}) || {}}
+					currentRating={minRating}
+					conditions={searchResult?.facets.conditions || [
+						{ value: 'new', label: 'Novo', count: 0 },
+						{ value: 'used', label: 'Usado', count: 0 },
+						{ value: 'refurbished', label: 'Recondicionado', count: 0 }
+					]}
+					selectedConditions={condition ? [condition] : []}
+					deliveryOptions={searchResult?.facets.deliveryOptions || [
+						{ value: '24h', label: 'Entrega em 24h', count: 0 },
+						{ value: '48h', label: 'Até 2 dias', count: 0 },
+						{ value: '3days', label: 'Até 3 dias úteis', count: 0 },
+						{ value: '7days', label: 'Até 7 dias úteis', count: 0 },
+						{ value: '15days', label: 'Até 15 dias', count: 0 }
+					]}
+					selectedDeliveryTime={deliveryTime}
+					sellers={searchResult?.facets.sellers || []}
+					selectedSellers={selectedSellers}
+					states={searchResult?.facets.locations?.states || []}
+					cities={searchResult?.facets.locations?.cities || []}
+					selectedLocation={{ state: selectedState, city: selectedCity }}
+					hasDiscount={hasDiscount}
+					hasFreeShipping={hasFreeShipping}
+					showOutOfStock={!inStock}
+					benefitsCounts={searchResult?.facets.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 }}
+					tags={searchResult?.facets.tags || []}
+					selectedTags={selectedTags}
+					dynamicOptions={searchResult?.facets.dynamicOptions || []}
+					selectedDynamicOptions={selectedDynamicOptions}
+					loading={isLoading}
+					class="bg-transparent shadow-none p-0"
+					on:filterChange={(e) => {
+						updateURL({
+							categoria: e.detail.categories,
+							marca: e.detail.brands,
+							preco_min: e.detail.priceRange?.min,
+							preco_max: e.detail.priceRange?.max
+						});
+					}}
+					on:ratingChange={(e) => updateURL({ avaliacao: e.detail.rating })}
+					on:conditionChange={(e) => updateURL({ condicao: e.detail.conditions[0] })}
+					on:deliveryChange={(e) => updateURL({ entrega: e.detail.deliveryTime })}
+					on:sellerChange={(e) => updateURL({ vendedor: e.detail.sellers })}
+					on:locationChange={(e) => updateURL({ estado: e.detail.state, cidade: e.detail.city })}
+					on:tagChange={(e) => updateURL({ tag: e.detail.tags })}
+					on:dynamicOptionChange={(e) => updateURL({ [`opcao_${e.detail.optionSlug}`]: e.detail.values })}
+					on:benefitChange={(e) => {
+						switch (e.detail.benefit) {
+							case 'discount':
+								updateURL({ promocao: e.detail.value || undefined });
+								break;
+							case 'freeShipping':
+								updateURL({ frete_gratis: e.detail.value || undefined });
+								break;
+							case 'outOfStock':
+								updateURL({ disponivel: !e.detail.value || undefined });
+								break;
+						}
+					}}
+					on:clearAll={clearAllFilters}
+				/>
 			</div>
 			
 			<!-- Footer com ações -->
