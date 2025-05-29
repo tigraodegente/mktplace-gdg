@@ -16,6 +16,7 @@
 	import MobileCategoryMenu from '$lib/components/navigation/MobileCategoryMenu.svelte';
 	import BannerCarousel from '$lib/components/layout/BannerCarousel.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
+	import { frontendCache } from '$lib/cache/frontend-cache';
 
 	// Constants
 	const CAROUSEL_INTERVAL_MS = 4000;
@@ -78,6 +79,11 @@
 
 	// Lifecycle
 	onMount(() => {
+		// Inicializar cache do frontend
+		frontendCache.init().then(() => {
+			frontendCache.preload();
+		});
+		
 		// Check auth
 		auth.checkAuth();
 		

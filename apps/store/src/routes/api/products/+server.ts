@@ -3,6 +3,10 @@ import type { RequestHandler } from './$types';
 import { withDatabase } from '$lib/db';
 import { createCache } from '$lib/cache/kv-cache';
 
+// Cache de contagens aproximadas em memória
+const countCache = new Map<string, { count: number; timestamp: number }>();
+const COUNT_CACHE_TTL = 60 * 60 * 1000; // 1 hora
+
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
     // Usar cache KV se disponível
@@ -47,6 +51,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const selectedState = url.searchParams.get('estado');
     const selectedCity = url.searchParams.get('cidade');
     
+    // Paginação por cursor (novo!)
+    const cursor = url.searchParams.get('cursor');
+    const useCursor = cursor && page === 1; // Só usa cursor se não especificou página
+    
     // Filtros dinâmicos de opções (cor, tamanho, volt, etc)
     const dynamicOptions: Record<string, string[]> = {};
     for (const [key, value] of url.searchParams.entries()) {
@@ -61,6 +69,18 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       const conditions: string[] = ['p.is_active = true'];
       const params: any[] = [];
       let paramIndex = 1;
+      
+      // Adicionar condição de cursor se existir
+      if (useCursor && cursor) {
+        try {
+          const decodedCursor = JSON.parse(Buffer.from(cursor, 'base64').toString());
+          conditions.push(`(p.created_at, p.id) < ($${paramIndex}, $${paramIndex + 1})`);
+          params.push(decodedCursor.created_at, decodedCursor.id);
+          paramIndex += 2;
+        } catch (e) {
+          console.error('Invalid cursor:', e);
+        }
+      }
     
     if (inStock) {
         conditions.push('p.quantity > 0');
