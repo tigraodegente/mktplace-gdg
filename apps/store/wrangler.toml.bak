@@ -16,8 +16,8 @@ NODE_ENV = "production"
 # KV Namespaces para cache
 [[kv_namespaces]]
 binding = "CACHE_KV"
-id = "YOUR_KV_NAMESPACE_ID" # Será criado automaticamente em dev
-preview_id = "YOUR_PREVIEW_KV_ID" # Para ambientes de preview
+id = "780e9e83f99b45f4a6ac7a44f6ee8f4b" # Será criado automaticamente em dev
+preview_id = "f7678a2cec1d438a9bb518f1c820d114" # Para ambientes de preview
 
 # D1 Database (se você quiser usar no futuro)
 # [[d1_databases]]

@@ -86,7 +86,7 @@
 		if (suggestion.type === 'product' && suggestion.slug) {
 			goto(`/produto/${suggestion.slug}`);
 		} else if (suggestion.type === 'category' && suggestion.slug) {
-			goto(`/categoria/${suggestion.slug}`);
+			goto(`/busca?categoria=${suggestion.slug}`);
 		} else if (suggestion.type === 'brand' && suggestion.slug) {
 			goto(`/busca?marca=${suggestion.id}`);
 		} else {
