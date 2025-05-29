@@ -57,6 +57,24 @@ export interface Coupon {
   validUntil?: Date;
   usageLimit?: number;
   usageCount?: number;
+  // Novo: indicar se inclui frete grátis
+  includesFreeShipping?: boolean;
+}
+
+// Benefícios aplicados
+export interface AppliedBenefits {
+  freeShipping?: {
+    level: 'product' | 'seller' | 'cart';
+    reason: string;
+  };
+  cashback?: {
+    percentage: number;
+    maxValue?: number;
+  };
+  points?: {
+    multiplier: number;
+    bonusPoints?: number;
+  };
 }
 
 // Item do carrinho expandido
@@ -72,6 +90,8 @@ export interface CartItem {
   appliedCoupon?: Coupon;
   // Novo: frete individual para modo express
   individualShipping?: ProductShipping;
+  // Novo: benefícios aplicados ao item
+  benefits?: AppliedBenefits;
 }
 
 // Agrupamento por seller
@@ -94,6 +114,10 @@ export interface SellerGroup {
     price: number;
     estimatedDays: number;
   };
+  // Novo: benefícios do seller
+  benefits?: AppliedBenefits;
+  // Novo: indicar se seller tem frete grátis
+  hasFreeShipping?: boolean;
 }
 
 // Estado do carrinho

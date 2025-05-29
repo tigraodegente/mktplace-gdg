@@ -14,7 +14,45 @@
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
 		
+		<!-- Preconnect para recursos externos -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		
+		<!-- DNS Prefetch para domínios que serão usados -->
+		<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+		<link rel="dns-prefetch" href="https://api.seu-dominio.com">
+		
+		<!-- Preload do CSS crítico (será injetado pelo SvelteKit) -->
 		%sveltekit.head%
+		
+		<!-- Early hints para recursos críticos -->
+		<script>
+			// Detectar conexão lenta e ajustar comportamento
+			if ('connection' in navigator) {
+				const connection = navigator.connection;
+				if (connection.effectiveType === '3g' || connection.effectiveType === '2g') {
+					document.documentElement.classList.add('slow-connection');
+				}
+			}
+			
+			// Prefetch de imagens visíveis no viewport
+			if ('IntersectionObserver' in window) {
+				window.imagePrefetchObserver = new IntersectionObserver((entries) => {
+					entries.forEach(entry => {
+						if (entry.isIntersecting) {
+							const img = entry.target;
+							const src = img.getAttribute('data-src');
+							if (src && !img.src) {
+								const link = document.createElement('link');
+								link.rel = 'prefetch';
+								link.href = src;
+								document.head.appendChild(link);
+							}
+						}
+					});
+				}, { rootMargin: '50px' });
+			}
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>

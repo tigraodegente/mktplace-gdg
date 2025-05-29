@@ -6,7 +6,7 @@
  */
 
 // Componente principal
-export { default as CartPreview } from '$lib/components/CartPreview.svelte';
+export { default as CartPreview } from './CartPreview.svelte';
 
 // Componentes modulares
 export { default as CartHeader } from './CartHeader.svelte';
@@ -14,7 +14,9 @@ export { default as CartItem } from './CartItem.svelte';
 export { default as CartFooter } from './CartFooter.svelte';
 export { default as CouponSection } from './CouponSection.svelte';
 export { default as EmptyCart } from './EmptyCart.svelte';
-export { default as SellerGroup } from './SellerGroup.svelte';
+export { default as SellerGroupSummary } from './SellerGroupSummary.svelte';
+export { default as BenefitBadge } from './BenefitBadge.svelte';
+export { default as CartNotifications } from './CartNotifications.svelte';
 export { default as ShareCart } from './ShareCart.svelte';
 export { default as ShippingCalculator } from './ShippingCalculator.svelte';
 export { default as ShippingModeSelector } from './ShippingModeSelector.svelte';

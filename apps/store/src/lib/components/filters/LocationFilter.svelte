@@ -108,9 +108,9 @@
 		</div>
 		
 		<!-- Cidade -->
-		{#if selectedState && filteredCities.length > 0}
-			<div transition:slide={{ duration: 200 }}>
-				<label for="city-select" class="block text-sm font-medium text-gray-700 mb-1.5">
+		{#if selectedState && cities.length > 0}
+			<div>
+				<label for="city-select" class="block text-sm font-medium text-gray-700 mb-2">
 					Cidade
 				</label>
 				<select
@@ -145,9 +145,9 @@
 	<!-- Distância (se tiver localização) -->
 	{#if (selectedState || userLocation) && !loading}
 		<div class="pt-3 mt-3 border-t border-gray-200">
-			<label class="block text-sm font-medium text-gray-700 mb-3">
+			<div class="block text-sm font-medium text-gray-700 mb-3">
 				Distância máxima
-			</label>
+			</div>
 			<div class="space-y-2">
 				{#each [
 					{ value: 10, label: 'Até 10 km' },

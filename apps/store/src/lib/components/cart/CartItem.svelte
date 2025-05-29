@@ -3,6 +3,7 @@
 	import type { CartItem } from '$lib/types/cart';
 	import { scale, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import BenefitBadge from './BenefitBadge.svelte';
 	
 	interface CartItemProps {
 		item: CartItem;
@@ -25,7 +26,7 @@
 	const hasLowStock = $derived(
 		item.product.stock !== undefined && 
 		item.product.stock > 0 && 
-		item.product.stock <= (item.product.stock_alert_threshold || 5)
+		item.product.stock <= 5
 	);
 	
 	// Verificar se pode aumentar quantidade
@@ -35,6 +36,36 @@
 	
 	// Verificar se pode diminuir quantidade
 	const canDecreaseQuantity = $derived(currentQuantity > 1);
+	
+	// Verificar se tem frete grátis no produto
+	const hasFreeShipping = $derived(
+		item.individualShipping?.price === 0
+	);
+	
+	// Calcular desconto do produto se houver cupom aplicado
+	const productDiscount = $derived(() => {
+		if (!item.appliedCoupon) return 0;
+		
+		const itemTotal = item.product.price * currentQuantity;
+		if (item.appliedCoupon.type === 'percentage') {
+			return itemTotal * (item.appliedCoupon.value / 100);
+		} else {
+			return Math.min(item.appliedCoupon.value, itemTotal);
+		}
+	});
+	
+	// Propriedades extras do produto (simuladas por enquanto)
+	const productCashback = $derived(0); // Por enquanto sem cashback
+	const productPoints = $derived(Math.floor(item.product.price * 0.1)); // 10% do valor em pontos
+	
+	// Calcular desconto percentual se houver diferença de preço
+	const discountPercentage = $derived(() => {
+		const original = (item.product as any).original_price;
+		if (original && original > item.product.price) {
+			return Math.round(((original - item.product.price) / original) * 100);
+		}
+		return 0;
+	});
 	
 	let imageLoaded = $state(false);
 	let removing = $state(false);
@@ -105,12 +136,12 @@
 			onload={() => imageLoaded = true}
 			onerror={handleImageError}
 		/>
-		{#if item.product.discount}
+		{#if discountPercentage() > 0}
 			<span 
 				class="absolute -top-1 -left-1 bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm"
 				transition:scale={{ duration: 300, delay: 100, easing: cubicOut }}
 			>
-				-{item.product.discount}%
+				-{discountPercentage()}%
 			</span>
 		{/if}
 	</div>
@@ -121,6 +152,45 @@
 			{item.product.name}
 		</h5>
 		
+		<!-- Badges de benefícios do produto -->
+		<div class="flex flex-wrap gap-1.5 mb-2">
+			{#if hasFreeShipping}
+				<BenefitBadge 
+					type="free-shipping" 
+					level="product"
+					description="Este produto tem frete grátis"
+				/>
+			{/if}
+			
+			{#if item.appliedCoupon}
+				<BenefitBadge 
+					type="coupon" 
+					level="product"
+					value={item.appliedCoupon.value}
+					description={item.appliedCoupon.description}
+				/>
+			{/if}
+			
+			{#if productCashback > 0}
+				<BenefitBadge 
+					type="cashback" 
+					level="product"
+					value={productCashback}
+					description={`Ganhe ${productCashback}% de volta`}
+				/>
+			{/if}
+			
+			{#if productPoints > 0}
+				<BenefitBadge 
+					type="points" 
+					level="product"
+					value={productPoints}
+					description={`Ganhe ${productPoints} pontos neste produto`}
+				/>
+			{/if}
+		</div>
+		
+		<!-- Informações de entrega -->
 		{#if estimatedDays}
 			<div class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-1.5">
 				<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +199,9 @@
 				<span class="truncate">
 					{estimatedDays}d úteis
 					{#if shippingMode === 'express'}
-						<span class="text-orange-600 font-medium">(Expressa)</span>
+						<span class="text-[#00A89D] font-medium">(Entrega Expressa)</span>
+					{:else}
+						<span class="text-[#00A89D] font-medium">(Entrega Agrupada)</span>
 					{/if}
 				</span>
 			</div>
@@ -239,19 +311,25 @@
 				</svg>
 			</button>
 			
-			<!-- Price com animação -->
+			<!-- Price com animação e descontos -->
 			<div class="text-right">
-				{#if item.product.original_price && item.product.original_price > item.product.price}
+				{#if (item.product as any).original_price && (item.product as any).original_price > item.product.price}
 					<p class="text-[10px] sm:text-xs text-gray-500 line-through" transition:fade={{ duration: 200 }}>
-						{formatCurrency(item.product.original_price * currentQuantity)}
+						{formatCurrency((item.product as any).original_price * currentQuantity)}
 					</p>
 				{/if}
 				<p class="text-sm sm:text-base font-bold text-[#00BFB3]">
-					{formatCurrency(item.product.price * currentQuantity)}
+					{formatCurrency((item.product.price * currentQuantity) - productDiscount())}
 				</p>
-				<p class="text-[9px] sm:text-[10px] text-gray-600">
-					{formatCurrency(item.product.price)}/un
-				</p>
+				{#if productDiscount() > 0}
+					<p class="text-[9px] sm:text-[10px] text-[#00BFB3] font-medium">
+						-{formatCurrency(productDiscount())} desconto
+					</p>
+				{:else}
+					<p class="text-[9px] sm:text-[10px] text-gray-600">
+						{formatCurrency(item.product.price)}/un
+					</p>
+				{/if}
 			</div>
 		</div>
 	</div>

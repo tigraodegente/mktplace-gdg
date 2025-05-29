@@ -1,0 +1,37 @@
+{
+  "success": 5,
+  "errors": 0,
+  "skipped": 0,
+  "details": [
+    {
+      "name": "Cabana Quarto de Bebê Raposinha Laranja",
+      "sku": "85390",
+      "id": "68925346-07a2-4333-b2e5-334ae4ea80c1",
+      "mongo_id": "65306f5524a6b1d4adce5239"
+    },
+    {
+      "name": "Almofada Quadrada Planeta Terra e o Foguete 30cm",
+      "sku": "144523",
+      "id": "db07dd2f-38cf-4e86-bfb1-f926f3034f70",
+      "mongo_id": "65306f5b24a6b1d4adce56c3"
+    },
+    {
+      "name": "Berço Americano Branco Mel + Kit Berço Trança Frutinhas Poá + Colchão e Protetor",
+      "sku": "187363",
+      "id": "5d4a5f3d-ccb5-4fea-87fa-e39dd9223edf",
+      "mongo_id": "65306f5c24a6b1d4adce57c2"
+    },
+    {
+      "name": "Kit Body Manga Curta Amiguinhas 4 peças Tam G",
+      "sku": "179357",
+      "id": "78ad3a93-dc96-4a67-9e80-94240a663f50",
+      "mongo_id": "65306f5c24a6b1d4adce58d7"
+    },
+    {
+      "name": "Saia de Cama Infantil Amiguinhos Verde",
+      "sku": "93656",
+      "id": "f5bed10d-d668-477e-9926-785674857f9a",
+      "mongo_id": "65306f5e24a6b1d4adce5bb2"
+    }
+  ]
+}

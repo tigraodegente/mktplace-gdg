@@ -15,14 +15,24 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     // Criar chave de cache baseada nos parâmetros
     const cacheKey = `products:${url.search || 'all'}`;
     
+    // Variável para rastrear se veio do cache
+    let fromCache = false;
+    
     // Tentar buscar do cache primeiro
     if (cache) {
       const cached = await cache.get(cacheKey);
       if (cached) {
+        fromCache = true;
         return json({
           success: true,
           data: cached,
           cached: true
+        }, {
+          headers: {
+            'X-Cache-Status': 'HIT',
+            'X-Cache-Key': cacheKey.substring(0, 50) + '...',
+            'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
+          }
         });
       }
     }
@@ -1132,6 +1142,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     return json({
       success: true,
       data: result
+    }, {
+      headers: {
+        'X-Cache-Status': fromCache ? 'HIT' : 'MISS',
+        'X-Cache-Key': cacheKey.substring(0, 50) + '...',
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
+      }
     });
     
   } catch (error) {

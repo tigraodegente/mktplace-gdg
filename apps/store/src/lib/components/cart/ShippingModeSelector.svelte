@@ -13,25 +13,23 @@
 	const groupedDeliveryDays = $derived(() => {
 		if (!sellerGroups.length) return null;
 		
-		// Para entrega agrupada, pegar o maior prazo de cada vendedor
-		const maxDaysBySeller = sellerGroups.map(group => {
-			// Usar a primeira opção de frete ou o prazo do frete agrupado
-			const firstOption = group.shippingOptions?.[0];
-			return firstOption?.estimatedDays || group.groupedShipping?.estimatedDays || 0;
-		});
+		// Para entrega agrupada, pegar o maior prazo entre todos os sellers
+		const groupedDays = sellerGroups
+			.map(group => group.groupedShipping?.estimatedDays)
+			.filter(days => days !== undefined);
 		
-		return Math.max(...maxDaysBySeller);
+		return groupedDays.length > 0 ? Math.max(...groupedDays) : null;
 	});
 	
 	const expressDeliveryDays = $derived(() => {
 		if (!sellerGroups.length) return null;
 		
-		// Para entrega expressa, pegar o menor prazo disponível
-		const allDays = sellerGroups.flatMap(group => 
-			group.shippingOptions?.map(opt => opt.estimatedDays) || []
-		);
+		// Para entrega expressa, pegar o menor prazo entre todos os sellers
+		const expressDays = sellerGroups
+			.map(group => group.expressShipping?.estimatedDays)
+			.filter(days => days !== undefined);
 		
-		return allDays.length > 0 ? Math.min(...allDays) : null;
+		return expressDays.length > 0 ? Math.min(...expressDays) : null;
 	});
 </script>
 

@@ -62,9 +62,12 @@
 	
 	// Limpar erro após 3 segundos
 	$effect(() => {
-		if (error) {
+		if (error && error.trim() !== '') {
 			const timer = setTimeout(() => {
-				error = '';
+				// Só limpar se ainda tiver o mesmo erro
+				if (error) {
+					error = '';
+				}
 			}, 3000);
 			return () => clearTimeout(timer);
 		}

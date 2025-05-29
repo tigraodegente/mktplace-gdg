@@ -43,9 +43,13 @@
 			}
 		};
 		
-		document.addEventListener('click', handleClickOutside);
+		// Usar timeout para evitar loops
+		const timeoutId = setTimeout(() => {
+			document.addEventListener('click', handleClickOutside);
+		}, 0);
 		
 		return () => {
+			clearTimeout(timeoutId);
 			document.removeEventListener('click', handleClickOutside);
 		};
 	});

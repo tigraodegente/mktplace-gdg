@@ -7,10 +7,8 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	resolve: {
 		alias: {
-			'@mktplace/utils': new URL('../../packages/utils/src/index.ts', import.meta.url).pathname,
 			'@mktplace/shared-types': new URL('../../packages/shared-types/src/index.ts', import.meta.url).pathname,
-			'@mktplace/ui': new URL('../../packages/ui/src/index.ts', import.meta.url).pathname,
-			'@mktplace/xata-client': new URL('../../packages/xata-client/src/index.ts', import.meta.url).pathname
+			'@mktplace/utils': new URL('../../packages/utils/src/index.ts', import.meta.url).pathname
 		}
 	},
 	test: {

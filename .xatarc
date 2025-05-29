@@ -1,6 +1,0 @@
-{
-  "databaseURL": "https://GUSTAVO-FERRO-s-workspace-787mk0.us-east-1.xata.sh/db/mktplace-gdg-orm",
-  "codegen": {
-    "output": "packages/xata-client/src/xata.ts"
-  }
-}

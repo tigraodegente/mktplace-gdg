@@ -308,3 +308,168 @@ body {
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+/* ===== Sistema Unificado de Transições ===== */
+
+/* Transições Base - Use estas classes em todos os componentes */
+.transition-base {
+  transition-property: opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-fast {
+  transition-duration: 150ms;
+}
+
+.transition-slow {
+  transition-duration: 300ms;
+}
+
+/* Transições de Opacidade */
+.transition-opacity {
+  transition-property: opacity;
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+/* Transições de Escala */
+.transition-scale {
+  transition-property: transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Transições de Altura (para acordeões) */
+.transition-height {
+  transition-property: height, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+  overflow: hidden;
+}
+
+/* Estados de Entrada/Saída */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+/* Slide Down */
+.slide-enter {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+.slide-enter-active {
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 200ms ease-out, opacity 200ms ease-out;
+}
+
+/* Scale */
+.scale-enter {
+  transform: scale(0.95);
+  opacity: 0;
+}
+
+.scale-enter-active {
+  transform: scale(1);
+  opacity: 1;
+  transition: transform 200ms ease-out, opacity 200ms ease-out;
+}
+
+/* Prevenir Layout Shift */
+.no-shift {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Skeleton Loading - Sem piscadas */
+.skeleton-loading {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Desabilitar transições durante SSR */
+.ssr-only {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Transições para Filtros */
+.filter-transition {
+  transition: background-color 150ms ease-out, 
+              border-color 150ms ease-out,
+              color 150ms ease-out;
+}
+
+.filter-transition:hover {
+  transition-duration: 100ms;
+}
+
+/* Transições para Cards de Produto */
+.product-card-transition {
+  transition: transform 200ms ease-out, 
+              box-shadow 200ms ease-out;
+  will-change: transform;
+}
+
+.product-card-transition:hover {
+  transform: translateY(-2px);
+}
+
+/* Transições para Menus */
+.menu-transition {
+  transition: opacity 200ms ease-out,
+              transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top;
+}
+
+/* Utilitário para desabilitar transições temporariamente */
+.no-transition {
+  transition: none !important;
+}
+
+/* Melhorar performance em dispositivos móveis */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Desabilitar TODAS as transições quando necessário */
+body.no-transition *,
+body.no-transition *::before,
+body.no-transition *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}

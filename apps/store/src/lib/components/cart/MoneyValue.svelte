@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatCurrency } from '@mktplace/utils';
+	import { untrack } from 'svelte';
 	
 	interface Props {
 		value: number;
@@ -10,6 +11,7 @@
 	
 	let element: HTMLSpanElement;
 	let rafId: number;
+	let lastValue: number = -1;
 	
 	function updateValue(newValue: number) {
 		if (rafId) {
@@ -17,14 +19,20 @@
 		}
 		
 		rafId = requestAnimationFrame(() => {
-			if (element) {
+			if (element && lastValue !== newValue) {
 				element.textContent = formatCurrency(newValue);
+				lastValue = newValue;
 			}
 		});
 	}
 	
 	$effect(() => {
-		updateValue(value);
+		// Usar untrack para evitar loops infinitos
+		untrack(() => {
+			if (lastValue !== value) {
+				updateValue(value);
+			}
+		});
 		
 		return () => {
 			if (rafId) {

@@ -224,11 +224,18 @@ class SearchService {
       // Fazer chamada para API
       const response = await fetch(`/api/products?${params.toString()}`);
       
+      console.log('🌐 URL da API:', `/api/products?${params.toString()}`);
+      console.log('📡 Status da resposta:', response.status);
+      
       if (!response.ok) {
         throw new Error('Erro ao buscar produtos');
       }
       
       const result = await response.json();
+      
+      console.log('📦 Resposta da API:', result);
+      console.log('✅ Success:', result.success);
+      console.log('📊 Total de produtos:', result.data?.products?.length);
       
       if (!result.success) {
         throw new Error(result.error?.message || 'Erro desconhecido');
@@ -241,6 +248,8 @@ class SearchService {
         limit: limit,
         facets: result.data.facets
       };
+      
+      console.log('🎯 SearchResult formatado:', searchResult);
       
       // Adicionar ao cache
       this.searchCache.set(cacheKey, searchResult);

@@ -4,6 +4,8 @@
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
 	import { wishlistStore } from '$lib/stores/wishlistStore';
 	import { toastStore } from '$lib/stores/toastStore';
+	import Rating from '$lib/components/ui/Rating.svelte';
+	import { onMount } from 'svelte';
 	
 	// Props
 	let { product }: { product: Product } = $props();
@@ -27,6 +29,35 @@
 	let isFavorite = $state(wishlistStore.hasItem(product.id));
 	let isAddingToCart = $state(false);
 	let isOutOfStock = $state(product.stock === 0);
+	
+	// Carousel state
+	let currentImageIndex = $state(0);
+	let isHovering = $state(false);
+	let touchStartX = $state(0);
+	let touchEndX = $state(0);
+	let imagesLoaded = $state<boolean[]>([]);
+	let carouselContainer: HTMLDivElement;
+	
+	// Get all product images
+	const productImages = $derived(() => {
+		if (product.images && product.images.length > 0) {
+			return product.images;
+		}
+		return [product.image || '/api/placeholder/262/350'];
+	});
+	
+	// Initialize images loaded state
+	$effect(() => {
+		const newLength = productImages().length;
+		
+		// Só atualizar se o tamanho mudou realmente
+		if (!imagesLoaded || imagesLoaded.length !== newLength) {
+			imagesLoaded = new Array(newLength).fill(false);
+			if (newLength > 0) {
+				imagesLoaded[0] = true; // First image is always loaded
+			}
+		}
+	});
 	
 	// Computed values
 	const discount = $derived(() => {
@@ -75,6 +106,102 @@
 		imageError = true;
 	}
 	
+	// Carousel handlers
+	function goToImage(index: number) {
+		if (index >= 0 && index < productImages().length) {
+			currentImageIndex = index;
+			// Preload next image
+			if (index < productImages().length - 1 && !imagesLoaded[index + 1]) {
+				preloadImage(index + 1);
+			}
+		}
+	}
+	
+	function nextImage(e?: Event) {
+		if (e) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+		goToImage((currentImageIndex + 1) % productImages().length);
+	}
+	
+	function prevImage(e?: Event) {
+		if (e) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+		goToImage((currentImageIndex - 1 + productImages().length) % productImages().length);
+	}
+	
+	function preloadImage(index: number) {
+		if (imagesLoaded[index]) return;
+		
+		const img = new Image();
+		img.onload = () => {
+			imagesLoaded[index] = true;
+		};
+		img.src = productImages()[index];
+	}
+	
+	// Desktop hover auto-play
+	let hoverInterval: ReturnType<typeof setInterval> | undefined;
+	
+	function startHoverAutoPlay() {
+		if (productImages().length <= 1) return;
+		
+		isHovering = true;
+		// Preload all images when hovering
+		productImages().forEach((_, index) => {
+			if (!imagesLoaded[index]) {
+				preloadImage(index);
+			}
+		});
+		
+		hoverInterval = setInterval(() => {
+			nextImage();
+		}, 1500); // Change image every 1.5 seconds
+	}
+	
+	function stopHoverAutoPlay() {
+		isHovering = false;
+		if (hoverInterval) {
+			clearInterval(hoverInterval);
+			hoverInterval = undefined;
+		}
+		// Reset to first image when hover ends
+		currentImageIndex = 0;
+	}
+	
+	// Touch handlers for mobile
+	function handleTouchStart(e: TouchEvent) {
+		touchStartX = e.touches[0].clientX;
+	}
+	
+	function handleTouchMove(e: TouchEvent) {
+		touchEndX = e.touches[0].clientX;
+	}
+	
+	function handleTouchEnd() {
+		if (!touchStartX || !touchEndX) return;
+		
+		const diff = touchStartX - touchEndX;
+		const threshold = 50; // Minimum swipe distance
+		
+		if (Math.abs(diff) > threshold) {
+			if (diff > 0) {
+				// Swipe left - next image
+				nextImage();
+			} else {
+				// Swipe right - previous image
+				prevImage();
+			}
+		}
+		
+		// Reset values
+		touchStartX = 0;
+		touchEndX = 0;
+	}
+	
 	// Handlers
 	function handleToggleFavorite(e: Event) {
 		e.preventDefault();
@@ -98,27 +225,52 @@
 		
 		isAddingToCart = true;
 		
-		// Adicionar ao carrinho
-		advancedCartStore.addItem(
-			product,
-			product.seller_id || 'seller-1',
-			product.seller_name || 'Loja Exemplo',
-			1
-		);
-		
-		// Mostrar notificação
-		toastStore.success('Produto adicionado ao carrinho!');
-		
-		// Feedback visual
-		setTimeout(() => {
-			isAddingToCart = false;
-		}, 1000);
+		try {
+			// Adicionar ao carrinho
+			advancedCartStore.addItem(
+				product,
+				product.seller_id || 'seller-1',
+				product.seller_name || 'Loja Exemplo',
+				1
+			);
+			
+			// Mostrar notificação simples
+			toastStore.success('Produto adicionado ao carrinho!');
+			
+		} catch (error) {
+			console.error('Erro ao adicionar produto:', error);
+			toastStore.error('Erro ao adicionar produto ao carrinho');
+		} finally {
+			// Feedback visual
+			setTimeout(() => {
+				isAddingToCart = false;
+			}, 1000);
+		}
 	}
+	
+	// Cleanup on unmount
+	onMount(() => {
+		return () => {
+			if (hoverInterval) {
+				clearInterval(hoverInterval);
+			}
+		};
+	});
 </script>
 
 <article class="product-card {isOutOfStock ? 'product-card--out-of-stock' : ''}">
 	<!-- Product Image Section -->
-	<div class="product-card__image-container">
+	<div 
+		class="product-card__image-container"
+		bind:this={carouselContainer}
+		onmouseenter={startHoverAutoPlay}
+		onmouseleave={stopHoverAutoPlay}
+		ontouchstart={handleTouchStart}
+		ontouchmove={handleTouchMove}
+		ontouchend={handleTouchEnd}
+		role="img"
+		aria-label="Galeria de imagens do produto {product.name}"
+	>
 		<!-- Discount Badge - No canto superior esquerdo -->
 		{#if discount() > 0 && !isOutOfStock}
 			<div class="discount-badge">
@@ -161,8 +313,8 @@
 					cx="16" 
 					cy="16" 
 					r="15" 
-					fill={isFavorite ? '#F17179' : 'white'} 
-					stroke={isFavorite ? '#F17179' : '#E0E0E0'} 
+					fill={isFavorite ? '#00BFB3' : 'white'} 
+					stroke={isFavorite ? '#00BFB3' : '#E0E0E0'} 
 					stroke-width="1"
 				/>
 				<path 
@@ -172,16 +324,48 @@
 			</svg>
 		</button>
 		
-		<!-- Product Image -->
+		<!-- Product Images Carousel -->
 		<a href="/produto/{product.slug}" class="product-card__image-link">
-			<img 
-				src={imageError ? '/api/placeholder/262/350' : mainImage()} 
-				alt={product.name}
-				loading="lazy"
-				class="product-card__image"
-				onerror={handleImageError}
-			/>
+			<div class="carousel-container">
+				{#each productImages() as image, index}
+					<img 
+						src={index === 0 || imagesLoaded[index] ? image : '/api/placeholder/262/350'} 
+						alt="{product.name} - Imagem {index + 1}"
+						loading={index === 0 ? 'eager' : 'lazy'}
+						class="product-card__image {currentImageIndex === index ? 'product-card__image--active' : ''}"
+						onerror={handleImageError}
+					/>
+				{/each}
+			</div>
 		</a>
+		
+		<!-- Carousel Indicators -->
+		{#if productImages().length > 1}
+			<!-- Progress Bar for Mobile -->
+			<div class="carousel-progress">
+				{#each productImages() as _, index}
+					<div 
+						class="progress-segment {currentImageIndex === index ? 'progress-segment--active' : ''}"
+						onclick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(index); }}
+						role="button"
+						tabindex="0"
+						aria-label="Ir para imagem {index + 1}"
+					></div>
+				{/each}
+			</div>
+			
+			<!-- Dots for Desktop -->
+			<div class="carousel-dots">
+				{#each productImages() as _, index}
+					<button 
+						class="carousel-dot {currentImageIndex === index ? 'carousel-dot--active' : ''}"
+						onclick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(index); }}
+						aria-label="Ir para imagem {index + 1}"
+						type="button"
+					></button>
+				{/each}
+			</div>
+		{/if}
 	</div>
 	
 	<!-- Product Information -->
@@ -207,19 +391,11 @@
 		{#if product.rating || product.sold_count}
 			<div class="product-card__stats">
 				{#if product.rating}
-					<div class="product-card__rating">
-						<div class="stars">
-							{#each Array(5) as _, i}
-								<svg class="star {i < Math.floor(product.rating) ? 'star--filled' : ''}" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-									<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-								</svg>
-							{/each}
-						</div>
-						<span class="rating-value">{product.rating}</span>
-						{#if product.reviews_count}
-							<span class="reviews-count">({product.reviews_count})</span>
-						{/if}
-					</div>
+					<Rating 
+						rating={product.rating} 
+						size="sm" 
+						reviewsCount={product.reviews_count}
+					/>
 				{/if}
 				
 				{#if product.sold_count && product.sold_count > 50}
@@ -311,7 +487,6 @@
 		flex-direction: column;
 		background: transparent;
 		position: relative;
-		transition: opacity 0.3s ease;
 	}
 	
 	.product-card--out-of-stock {
@@ -323,7 +498,7 @@
 		position: absolute;
 		top: 12px;
 		left: 12px;
-		background: #FF4444;
+		background: #00BFB3;
 		color: white;
 		padding: 6px 10px;
 		border-radius: 6px;
@@ -334,7 +509,7 @@
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		box-shadow: 0 2px 8px rgba(0, 191, 179, 0.15);
 	}
 	
 	.discount-badge__value {
@@ -365,15 +540,135 @@
 		height: 100%;
 	}
 	
+	/* ===== Carousel Styles ===== */
+	.carousel-container {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+	}
+	
 	.product-card__image {
+		position: absolute;
+		top: 0;
+		left: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		transition: transform 0.3s ease;
+		opacity: 0;
+		transition: opacity 0.3s ease;
 	}
 	
-	.product-card:hover .product-card__image {
-		transform: scale(1.05);
+	.product-card__image--active {
+		opacity: 1;
+	}
+	
+	/* Progress Bar Indicator */
+	.carousel-progress {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+		background: rgba(0, 0, 0, 0.1);
+		display: flex;
+		z-index: 2;
+	}
+	
+	.progress-segment {
+		flex: 1;
+		height: 100%;
+		background: transparent;
+		cursor: pointer;
+		position: relative;
+		transition: background 0.3s ease;
+	}
+	
+	.progress-segment::after {
+		content: '';
+		position: absolute;
+		top: -10px;
+		bottom: -10px;
+		left: 0;
+		right: 0;
+	}
+	
+	.progress-segment--active {
+		background: #00BFB3;
+	}
+	
+	.progress-segment:hover:not(.progress-segment--active) {
+		background: rgba(0, 191, 179, 0.3);
+	}
+	
+	/* Alternative: Dots for Desktop */
+	@media (min-width: 768px) {
+		.carousel-progress {
+			display: none;
+		}
+		
+		.carousel-dots {
+			position: absolute;
+			bottom: 8px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			gap: 4px;
+			z-index: 2;
+			padding: 4px 8px;
+			background: rgba(255, 255, 255, 0.9);
+			border-radius: 12px;
+			backdrop-filter: blur(8px);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		}
+		
+		.carousel-dot {
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: #E0E0E0;
+			border: none;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			padding: 0;
+		}
+		
+		.carousel-dot--active {
+			background: #00BFB3;
+			width: 16px;
+			border-radius: 3px;
+		}
+		
+		.carousel-dot:hover:not(.carousel-dot--active) {
+			background: #00BFB3;
+			opacity: 0.5;
+		}
+	}
+	
+	/* Mobile optimizations */
+	@media (max-width: 767px) {
+		.carousel-progress {
+			height: 4px;
+		}
+		
+		.carousel-dots {
+			display: none;
+		}
+	}
+	
+	/* Touch feedback */
+	@media (hover: none) {
+		.product-card__image-container {
+			touch-action: pan-y pinch-zoom;
+		}
+	}
+	
+	/* Hover effects on desktop */
+	@media (hover: hover) {
+		.product-card:hover .product-card__image--active {
+			transform: scale(1.05);
+			transition: transform 0.3s ease;
+		}
 	}
 	
 	/* ===== Material Badge ===== */
@@ -422,12 +717,12 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		transition: all 0.2s ease;
 		z-index: 3;
 	}
 	
 	.favorite-button:hover {
 		transform: scale(1.1);
+		transition: transform 0.2s ease;
 	}
 	
 	.favorite-button svg {
@@ -490,11 +785,11 @@
 	.product-card__title a {
 		color: inherit;
 		text-decoration: none;
-		transition: color 0.2s ease;
 	}
 	
 	.product-card__title a:hover {
 		color: var(--cyan600);
+		transition: color 0.2s ease;
 	}
 	
 	.product-card__sku {
@@ -648,40 +943,6 @@
 		flex-wrap: wrap;
 	}
 	
-	.product-card__rating {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-	}
-	
-	.stars {
-		display: flex;
-		gap: 1px;
-	}
-	
-	.star {
-		color: #E0E0E0;
-		transition: color 0.2s ease;
-	}
-	
-	.star--filled {
-		color: #FFC107;
-	}
-	
-	.rating-value {
-		font-family: 'Lato', sans-serif;
-		font-size: 13px;
-		font-weight: 600;
-		color: #333;
-		margin-left: 2px;
-	}
-	
-	.reviews-count {
-		font-family: 'Lato', sans-serif;
-		font-size: 12px;
-		color: #666;
-	}
-	
 	.sold-count {
 		font-family: 'Lato', sans-serif;
 		font-size: 12px;
@@ -718,27 +979,28 @@
 	/* ===== Add to Cart Button ===== */
 	.add-to-cart-button {
 		width: 100%;
-		margin-top: auto; /* Empurra o botão para o final do card */
-		padding: 12px 16px;
+		height: 48px;
+		padding: 0 16px;
 		background: #00BFB3;
-		color: white;
 		border: none;
 		border-radius: 8px;
+		color: white;
 		font-family: 'Lato', sans-serif;
 		font-size: 14px;
 		font-weight: 600;
 		cursor: pointer;
-		transition: all 0.2s ease;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
+		margin-top: auto;
 	}
 	
 	.add-to-cart-button:hover:not(:disabled) {
 		background: #00A89D;
 		transform: translateY(-1px);
-		box-shadow: 0 4px 8px rgba(0, 191, 179, 0.3);
+		box-shadow: 0 4px 12px rgba(0, 191, 179, 0.3);
+		transition: all 0.2s ease;
 	}
 	
 	.add-to-cart-button:active:not(:disabled) {

@@ -8,7 +8,7 @@
 	import LocationFilter from './LocationFilter.svelte';
 	import TagFilter from './TagFilter.svelte';
 	import DynamicOptionFilter from './DynamicOptionFilter.svelte';
-	import { slide } from 'svelte/transition';
+	import { preventFlicker } from '$lib/utils/transitions';
 	
 	interface Filter {
 		id: string;
@@ -120,25 +120,40 @@
 	let selectedBrands = $state<Set<string>>(new Set());
 	let selectedPrice = $state(priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 }));
 	
-	// Sincronizar categorias e marcas selecionadas com as props
-	$effect(() => {
-		// Sincronizar categorias selecionadas
+	// Sincronizar categorias e marcas selecionadas com as props usando $derived.by
+	$effect.pre(() => {
+		// Sincronizar categorias selecionadas apenas na primeira vez
 		const currentCategories = categories.filter(c => c.selected).map(c => c.slug || c.id);
-		selectedCategories = new Set(currentCategories);
+		const newSet = new Set(currentCategories);
+		
+		// Só atualizar se realmente mudou
+		if (selectedCategories.size !== newSet.size || 
+			![...selectedCategories].every(cat => newSet.has(cat))) {
+			selectedCategories = newSet;
+		}
 	});
 	
-	$effect(() => {
-		// Sincronizar marcas selecionadas
+	$effect.pre(() => {
+		// Sincronizar marcas selecionadas apenas na primeira vez
 		const currentBrands = brands.filter(b => b.selected).map(b => b.slug || b.id);
-		selectedBrands = new Set(currentBrands);
+		const newSet = new Set(currentBrands);
+		
+		// Só atualizar se realmente mudou
+		if (selectedBrands.size !== newSet.size || 
+			![...selectedBrands].every(brand => newSet.has(brand))) {
+			selectedBrands = newSet;
+		}
 	});
 	
-	// Atualizar selectedPrice quando priceRange mudar
-	$effect(() => {
-		if (priceRange && !priceRange.current) {
-			selectedPrice = { min: priceRange.min, max: priceRange.max };
-		} else if (priceRange?.current) {
-			selectedPrice = priceRange.current;
+	// Atualizar selectedPrice quando priceRange mudar - com guard
+	$effect.pre(() => {
+		if (!priceRange) return;
+		
+		const newPrice = priceRange.current || { min: priceRange.min, max: priceRange.max };
+		
+		// Só atualizar se realmente mudou
+		if (selectedPrice.min !== newPrice.min || selectedPrice.max !== newPrice.max) {
+			selectedPrice = newPrice;
 		}
 	});
 	
@@ -276,26 +291,26 @@
 	);
 </script>
 
-<aside class="bg-white rounded-lg shadow-sm p-4 {className}">
+<aside class="bg-white rounded-lg shadow-sm p-4 {className} no-shift" use:preventFlicker>
 	<!-- Header -->
 	<div class="flex items-center justify-between mb-6">
 		<h2 class="text-xl font-bold text-gray-900">Filtros</h2>
 		<div class="flex items-center gap-2">
-			{#if activeFilterCount > 0}
-				<button
-					onclick={clearFilters}
-					class="text-sm font-medium text-[#00BFB3] hover:text-[#00A89D] transition-colors flex items-center gap-1"
-				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-					Limpar ({activeFilterCount})
-				</button>
-			{/if}
+		{#if activeFilterCount > 0}
+			<button
+				onclick={clearFilters}
+				class="text-sm font-medium text-[#00BFB3] hover:text-[#00A89D] transition-fast flex items-center gap-1 hover:gap-2"
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+				Limpar ({activeFilterCount})
+			</button>
+		{/if}
 			{#if showCloseButton && onClose}
 				<button 
 					onclick={onClose}
-					class="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+					class="p-1 hover:bg-gray-100 rounded-lg transition-fast"
 					aria-label="Ocultar filtros"
 					title="Ocultar filtros"
 				>
@@ -312,10 +327,10 @@
 		<div class="space-y-4">
 			{#each Array(3) as _}
 				<div class="space-y-2">
-					<div class="h-5 bg-gray-200 rounded animate-pulse w-24"></div>
+					<div class="h-5 bg-gray-200 rounded skeleton-loading w-24"></div>
 					<div class="space-y-2">
 						{#each Array(4) as _}
-							<div class="h-4 bg-gray-100 rounded animate-pulse"></div>
+							<div class="h-4 bg-gray-100 rounded skeleton-loading"></div>
 						{/each}
 					</div>
 				</div>
@@ -328,12 +343,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('categories')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('categories')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Categorias</h3>
+						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Categorias</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('categories') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('categories') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -343,60 +358,60 @@
 					</button>
 					
 					{#if expandedGroups.has('categories')}
-						<div class="mt-3 space-y-2" transition:slide={{ duration: 200 }}>
-							{#each categories.filter(c => !c.parent_id) as category}
+						<div class="mt-3 space-y-2">
+							{#each categories.filter(c => !c.parent_id) as category (category.id)}
 								{@const hasSubcategories = category.subcategories && category.subcategories.length > 0}
 								{@const totalCount = category.count || 0}
 								
 								<div class="space-y-1">
 									<!-- Categoria Principal -->
-									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors {totalCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {totalCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 										<input
 											type="checkbox"
 											checked={selectedCategories.has(category.slug || category.id)}
 											onchange={() => toggleFilter('category', category)}
 											disabled={totalCount === 0}
-											class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-colors"
+											class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
 										/>
-										<span class="ml-3 text-sm font-medium text-gray-700 flex-1 {totalCount === 0 ? 'text-gray-400' : ''}">{category.name}</span>
-										<span class="text-xs font-medium {totalCount === 0 ? 'text-gray-400' : 'text-gray-500'}">({totalCount})</span>
+										<span class="ml-3 text-sm font-medium text-gray-700 flex-1 {totalCount === 0 ? 'text-gray-400' : ''} transition-fast">{category.name}</span>
+										<span class="text-xs font-medium {totalCount === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({totalCount})</span>
 									</label>
 									
 									<!-- Subcategorias sempre visíveis -->
 									{#if hasSubcategories && category.subcategories}
 										<div class="ml-6 space-y-1">
-											{#each category.subcategories as subcategory}
-												<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors text-sm {subcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
-													<input
-														type="checkbox"
+											{#each category.subcategories as subcategory (subcategory.id)}
+												<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition text-sm {subcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+									<input
+										type="checkbox"
 														checked={selectedCategories.has(subcategory.slug || subcategory.id)}
 														onchange={() => toggleFilter('category', subcategory)}
 														disabled={subcategory.count === 0}
-														class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-colors"
+														class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
 													/>
-													<span class="ml-3 text-sm text-gray-600 flex-1 {subcategory.count === 0 ? 'text-gray-400' : ''}">
+													<span class="ml-3 text-sm text-gray-600 flex-1 {subcategory.count === 0 ? 'text-gray-400' : ''} transition-fast">
 														{subcategory.name}
 													</span>
-													<span class="text-xs {subcategory.count === 0 ? 'text-gray-400' : 'text-gray-500'}">({subcategory.count})</span>
-												</label>
-											{/each}
-										</div>
-									{/if}
-								</div>
+													<span class="text-xs {subcategory.count === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({subcategory.count})</span>
+								</label>
+							{/each}
+						</div>
+					{/if}
+				</div>
 							{/each}
 							
 							<!-- Subcategorias órfãs (sem categoria pai na lista) -->
-							{#each categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)) as orphanSubcategory}
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors {orphanSubcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+							{#each categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)) as orphanSubcategory (orphanSubcategory.id)}
+								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {orphanSubcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
 										checked={selectedCategories.has(orphanSubcategory.slug || orphanSubcategory.id)}
 										onchange={() => toggleFilter('category', orphanSubcategory)}
 										disabled={orphanSubcategory.count === 0}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-colors"
+										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
 									/>
-									<span class="ml-3 text-sm text-gray-700 flex-1 {orphanSubcategory.count === 0 ? 'text-gray-400' : ''}">{orphanSubcategory.name}</span>
-									<span class="text-xs {orphanSubcategory.count === 0 ? 'text-gray-400' : 'text-gray-500'}">({orphanSubcategory.count})</span>
+									<span class="ml-3 text-sm text-gray-700 flex-1 {orphanSubcategory.count === 0 ? 'text-gray-400' : ''} transition-fast">{orphanSubcategory.name}</span>
+									<span class="text-xs {orphanSubcategory.count === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({orphanSubcategory.count})</span>
 								</label>
 							{/each}
 						</div>
@@ -409,12 +424,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('price')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('price')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Preço</h3>
+						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Preço</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('price') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('price') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -424,7 +439,7 @@
 					</button>
 					
 					{#if expandedGroups.has('price')}
-						<div class="mt-4" transition:slide={{ duration: 200 }}>
+						<div class="mt-4">
 							<PriceRangeFilter
 								min={priceRange.min}
 								max={priceRange.max}
@@ -442,12 +457,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('brands')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('brands')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Marcas</h3>
+						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Marcas</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('brands') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('brands') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -457,19 +472,19 @@
 					</button>
 					
 					{#if expandedGroups.has('brands')}
-						<div class="mt-3 space-y-2" transition:slide={{ duration: 200 }}>
-							{#each brands.filter(b => !b.count || b.count > 0) as brand}
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors {brand.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+						<div class="mt-3 space-y-2">
+							{#each brands.filter(b => !b.count || b.count > 0) as brand (brand.id)}
+								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {brand.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
 										checked={selectedBrands.has(brand.slug || brand.id)}
 										onchange={() => toggleFilter('brand', brand)}
 										disabled={brand.count === 0}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-colors"
+										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
 									/>
-									<span class="ml-3 text-sm text-gray-700 flex-1 {brand.count === 0 ? 'text-gray-400' : ''}">{brand.name}</span>
+									<span class="ml-3 text-sm text-gray-700 flex-1 {brand.count === 0 ? 'text-gray-400' : ''} transition-fast">{brand.name}</span>
 									{#if brand.count !== undefined}
-										<span class="text-xs {brand.count === 0 ? 'text-gray-400' : 'text-gray-500'}">({brand.count})</span>
+										<span class="text-xs {brand.count === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({brand.count})</span>
 									{/if}
 								</label>
 							{/each}
@@ -482,12 +497,12 @@
 			<div class="border-b border-gray-200 pb-4">
 				<button
 					onclick={() => toggleGroup('benefits')}
-					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 					aria-expanded={expandedGroups.has('benefits')}
 				>
-					<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Ofertas e Benefícios</h3>
+					<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Ofertas e Benefícios</h3>
 					<svg 
-						class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('benefits') ? 'rotate-180' : ''}"
+						class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('benefits') ? 'rotate-180' : ''}"
 						fill="none" 
 						stroke="currentColor" 
 						viewBox="0 0 24 24"
@@ -497,9 +512,9 @@
 				</button>
 				
 				{#if expandedGroups.has('benefits')}
-					<div class="mt-3 space-y-3" transition:slide={{ duration: 200 }}>
+					<div class="mt-3 space-y-3">
 						<!-- Em Promoção - Primeiro pois é gatilho de compra -->
-						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
+						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded filter-transition">
 							<input
 								type="checkbox"
 								checked={hasDiscount}
@@ -518,7 +533,7 @@
 						</label>
 						
 						<!-- Frete Grátis -->
-						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
+						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded filter-transition">
 							<input
 								type="checkbox"
 								checked={hasFreeShipping}
@@ -545,12 +560,12 @@
 			<div class="border-b border-gray-200 pb-4">
 				<button
 					onclick={() => toggleGroup('rating')}
-					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 					aria-expanded={expandedGroups.has('rating')}
 				>
 					<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Avaliação</h3>
 					<svg 
-						class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('rating') ? 'rotate-180' : ''}"
+						class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('rating') ? 'rotate-180' : ''}"
 						fill="none" 
 						stroke="currentColor" 
 						viewBox="0 0 24 24"
@@ -560,7 +575,7 @@
 				</button>
 				
 				{#if expandedGroups.has('rating')}
-					<div class="mt-3" transition:slide={{ duration: 200 }}>
+					<div class="mt-3">
 						<RatingFilter
 							{currentRating}
 							counts={ratingCounts}
@@ -575,12 +590,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('condition')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('condition')}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Condição</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('condition') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('condition') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -590,7 +605,7 @@
 					</button>
 					
 					{#if expandedGroups.has('condition')}
-						<div class="mt-3" transition:slide={{ duration: 200 }}>
+						<div class="mt-3">
 							<ConditionFilter
 								selected={selectedConditions}
 								options={conditions}
@@ -606,12 +621,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('delivery')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('delivery')}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Tempo de Entrega</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('delivery') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('delivery') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -621,7 +636,7 @@
 					</button>
 					
 					{#if expandedGroups.has('delivery')}
-						<div class="mt-3" transition:slide={{ duration: 200 }}>
+						<div class="mt-3">
 							<DeliveryTimeFilter
 								selected={selectedDeliveryTime}
 								options={deliveryOptions}
@@ -633,16 +648,16 @@
 			{/if}
 			
 			<!-- 8. FILTROS DINÂMICOS (Cor, Tamanho, etc) - Específicos por categoria -->
-			{#each dynamicOptions as option}
+			{#each dynamicOptions as option (option.slug)}
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup(`dynamic_${option.slug}`)}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has(`dynamic_${option.slug}`)}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">{option.name}</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has(`dynamic_${option.slug}`) ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has(`dynamic_${option.slug}`) ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -652,7 +667,7 @@
 					</button>
 					
 					{#if expandedGroups.has(`dynamic_${option.slug}`)}
-						<div class="mt-3" transition:slide={{ duration: 200 }}>
+						<div class="mt-3">
 							<DynamicOptionFilter
 								optionName={option.name}
 								optionSlug={option.slug}
@@ -670,12 +685,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('sellers')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('sellers')}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Vendedores</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('sellers') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('sellers') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -685,7 +700,7 @@
 					</button>
 					
 					{#if expandedGroups.has('sellers')}
-						<div class="mt-3" transition:slide={{ duration: 200 }}>
+						<div class="mt-3">
 							<SellerFilter
 								selected={selectedSellers}
 								{sellers}
@@ -701,12 +716,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('location')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('location')}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Localização</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('location') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('location') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -716,7 +731,7 @@
 					</button>
 					
 					{#if expandedGroups.has('location')}
-						<div class="mt-3" transition:slide={{ duration: 200 }}>
+						<div class="mt-3">
 							<LocationFilter
 								selectedState={selectedLocation?.state}
 								selectedCity={selectedLocation?.city}
@@ -735,12 +750,12 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('tags')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has('tags')}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Características</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has('tags') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('tags') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -750,7 +765,7 @@
 					</button>
 					
 					{#if expandedGroups.has('tags')}
-						<div class="mt-3" transition:slide={{ duration: 200 }}>
+						<div class="mt-3">
 							<TagFilter
 								{tags}
 								selected={selectedTags}
@@ -763,7 +778,7 @@
 			
 			<!-- 12. DISPONIBILIDADE - Por último, é mais uma preferência -->
 			<div class="border-b border-gray-200 pb-4">
-				<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
+				<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded filter-transition">
 					<input
 						type="checkbox"
 						checked={showOutOfStock}
@@ -782,16 +797,16 @@
 			</div>
 			
 			<!-- Filtros Customizados (se houver) -->
-			{#each customFilters as group}
+			{#each customFilters as group (group.id)}
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup(group.id)}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
 						aria-expanded={expandedGroups.has(group.id)}
 					>
 						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">{group.label}</h3>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-[#00BFB3] {expandedGroups.has(group.id) ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has(group.id) ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -801,9 +816,9 @@
 					</button>
 					
 					{#if expandedGroups.has(group.id)}
-						<div class="mt-3 space-y-2" transition:slide={{ duration: 200 }}>
-							{#each group.filters as filter}
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+						<div class="mt-3 space-y-2">
+							{#each group.filters as filter (filter.id)}
+								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition">
 									<input
 										type={group.type || 'checkbox'}
 										name={group.id}

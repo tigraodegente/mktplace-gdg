@@ -1,0 +1,1373 @@
+{
+  "timestamp": "2025-05-29T15:28:23.315Z",
+  "database": "graodegente",
+  "collection": "m_product",
+  "totalDocuments": 35615,
+  "sampleSize": 100,
+  "structure": {
+    "_id": {
+      "type": "object",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        "65306f5524a6b1d4adce5239",
+        "65306f5b24a6b1d4adce56c3",
+        "65306f5c24a6b1d4adce57c2"
+      ],
+      "fillRate": "100%"
+    },
+    "activeForSeo": {
+      "type": "boolean",
+      "purpose": "active",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        true,
+        true,
+        true
+      ],
+      "fillRate": "100%"
+    },
+    "attributes": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [],
+        [
+          {
+            "attribute": {
+              "_id": "65b120323f663bdb1dc08400",
+              "_path": "m_attribute/wmp7WR5WeNFvxV88Abx0"
+            },
+            "attributeValuesRef": [
+              {
+                "_id": "65b2c182e244a27cbda9392d",
+                "_path": "m_attribute/wmp7WR5WeNFvxV88Abx0/atributeValues/fymNqDkeCFkLvJ4JZ0Zm",
+                "name": "Microfibra",
+                "value": {
+                  "image": {
+                    "downloadURL": "",
+                    "name": "",
+                    "type": "",
+                    "lastModifiedTS": null
+                  },
+                  "hexcolor": "",
+                  "name": "Microfibra"
+                }
+              }
+            ]
+          },
+          {
+            "attribute": {
+              "_id": "65b120303f663bdb1dc08029",
+              "_path": "m_attribute/ayRh7wmnuiMQvLduV8xq"
+            },
+            "attributeValuesRef": [
+              {
+                "_id": "65b2c17fe244a27cbda938bd",
+                "_path": "m_attribute/ayRh7wmnuiMQvLduV8xq/atributeValues/pEY14EFRZNS8DeBfXRGf",
+                "name": "Azul",
+                "value": {
+                  "name": "Azul",
+                  "hexcolor": "#beecfb"
+                }
+              }
+            ]
+          },
+          {
+            "attribute": {
+              "_id": "65b120313f663bdb1dc08093",
+              "_path": "m_attribute/mk0D2JiLztjXZk0oTSMV"
+            },
+            "attributeValue": "Microfibra 100% Poliéster"
+          },
+          {
+            "attribute": {
+              "_id": "65b1202e3f663bdb1dc07e79",
+              "_path": "m_attribute/QCE2KMvGuAVXvh2ckYwT"
+            },
+            "attributeValuesRef": [
+              {
+                "_id": "65b2c17de244a27cbda93716",
+                "_path": "m_attribute/QCE2KMvGuAVXvh2ckYwT/atributeValues/D3cBjpeyEiT7tOHmygqs",
+                "name": "Menino",
+                "value": {
+                  "name": "Menino"
+                }
+              }
+            ]
+          },
+          {
+            "attribute": {
+              "_id": "65b120303f663bdb1dc08049",
+              "_path": "m_attribute/dz2Ry3MfmomK9gLVknRr"
+            },
+            "attributeValue": "30cm"
+          }
+        ],
+        [
+          {
+            "attribute": {
+              "_id": "65b1202f3f663bdb1dc07f13",
+              "_path": "m_attribute/TYA5AJmTZykvT8HCZtyj"
+            },
+            "attributeValue": "97cm"
+          },
+          {
+            "attribute": {
+              "_id": "65b120303f663bdb1dc08029",
+              "_path": "m_attribute/ayRh7wmnuiMQvLduV8xq"
+            },
+            "attributeValuesRef": [
+              {
+                "_id": "65b2c17fe244a27cbda9387a",
+                "_path": "m_attribute/ayRh7wmnuiMQvLduV8xq/atributeValues/QrEf0MrWgAu0yhtebWKp",
+                "name": "Colorido",
+                "value": {
+                  "name": "Colorido",
+                  "image": {
+                    "downloadURL": "https://dmhxz00kguanp.cloudfront.net/cor-predominante/82132/colorido.jpg",
+                    "name": "colorido.jpg",
+                    "type": "jpg"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "attribute": {
+              "_id": "65b1202c3f663bdb1dc07549",
+              "_path": "m_attribute/0YXZMFsLbdmTHSx9ZDJ7"
+            },
+            "attributeValue": "75,9cm"
+          },
+          {
+            "attribute": {
+              "_id": "65b120303f663bdb1dc08049",
+              "_path": "m_attribute/dz2Ry3MfmomK9gLVknRr"
+            },
+            "attributeValue": "1,33m"
+          },
+          {
+            "attribute": {
+              "_id": "65b1202b3f663bdb1dc07160",
+              "_path": "m_attribute/0YXZMFsLbdmTHSx9ZDJ5"
+            },
+            "attributeValuesRef": [
+              {
+                "_id": "65b2c179e244a27cbda936c6",
+                "_path": "m_attribute/0YXZMFsLbdmTHSx9ZDJ5/atributeValues/zzzzzzzzzzzzzzzzzzzp",
+                "name": "Com Colchão + Protetor",
+                "value": {
+                  "name": "Com Colchão + Protetor"
+                }
+              }
+            ]
+          },
+          {
+            "attribute": {
+              "_id": "65b120313f663bdb1dc08093",
+              "_path": "m_attribute/mk0D2JiLztjXZk0oTSMV"
+            },
+            "attributeValue": "100% Poliéster"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "audit": {
+      "type": "object",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        {
+          "createdAt": "2024-01-25T21:22:50.293Z",
+          "createdBy": "65b2d12a18d0ba37280c0512",
+          "updatedAt": "2024-01-25T21:22:50.293Z",
+          "updatedBy": "65b2d12a18d0ba37280c0513",
+          "deletedAt": null,
+          "deletedBy": null
+        },
+        {
+          "createdAt": "2024-01-25T21:39:03.919Z",
+          "createdBy": "65b2d4f718d0ba37280c06b0",
+          "updatedAt": "2024-07-27T14:03:44.411Z",
+          "updatedBy": "65b2d4f718d0ba37280c06b1",
+          "deletedAt": null,
+          "deletedBy": null
+        },
+        {
+          "createdAt": "2024-01-25T21:40:59.612Z",
+          "createdBy": "65b2d56b18d0ba37280c06de",
+          "updatedAt": "2024-07-27T14:00:28.280Z",
+          "updatedBy": "65b2d56b18d0ba37280c06df",
+          "deletedAt": null,
+          "deletedBy": null
+        }
+      ],
+      "fillRate": "100%"
+    },
+    "campaigns": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [],
+        [
+          {
+            "_id": "65848bcfd3e5f5ca76783d31",
+            "_path": "c_campaign/Fcj29nataJ69MAxQwt8j"
+          },
+          {
+            "_id": "65848bd5d3e5f5ca76783df7",
+            "_path": "c_campaign/lujhFa6iphcA3ghlqCjk"
+          },
+          {
+            "_id": "65848bd6d3e5f5ca76783e14",
+            "_path": "c_campaign/qfyUixHF7WqmEWNROMvI"
+          }
+        ],
+        [
+          {
+            "_id": "65848bd4d3e5f5ca76783dd0",
+            "_path": "c_campaign/dQItaNWvisGxnvd2Cr2H"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "categories": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [
+          {
+            "_id": "65848c39d3e5f5ca767870d7",
+            "_path": "m_category/xXUAYKbrFutLl6My1dO1",
+            "name": "Cabanas e Tendas"
+          }
+        ],
+        [
+          {
+            "_id": "65848c2dd3e5f5ca76786b56",
+            "_path": "m_category/KVNEywUVPe8q1bbuuBSL",
+            "name": "Almofada Quarto de Bebê"
+          }
+        ],
+        [
+          {
+            "_id": "65848c28d3e5f5ca76786879",
+            "_path": "m_category/0BbpPZwBljr9EiOnRw4I",
+            "name": "Kit Berço + Berço"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "defaultShippingPlace": {
+      "type": "object",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        {
+          "_id": "65303f4b1d96df03bc062057",
+          "_path": "c_distributioncenter",
+          "name": "CD4",
+          "expeditionTime": 12
+        },
+        {
+          "_id": "65303f4b1d96df03bc062057",
+          "_path": "c_distributioncenter",
+          "name": "CD4",
+          "expeditionTime": 12
+        },
+        {
+          "_id": "65303f4b1d96df03bc062057",
+          "_path": "c_distributioncenter",
+          "name": "CD4",
+          "expeditionTime": 12
+        }
+      ],
+      "fillRate": "100%"
+    },
+    "cfopCategory": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "collections": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [
+          {
+            "_id": "65848c12d3e5f5ca76784a5d",
+            "_path": "m_collection/CKdkXMmbjnJwOUVpJVGD",
+            "name": "Raposa Laranja"
+          }
+        ],
+        [
+          {
+            "_id": "65848c21d3e5f5ca76786027",
+            "_path": "m_collection/nEulKMPyEtaUSB8Hidu3",
+            "name": "Menino Astronauta"
+          }
+        ],
+        [
+          {
+            "_id": "65848c1dd3e5f5ca76785b41",
+            "_path": "m_collection/dQ60hXr23E2a0609pY7q",
+            "name": "Frutinhas Poá"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "complementCompanyId": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        "Cru e Laranja",
+        "Menino Astronauta - 04",
+        "Berço + Kit Berço 9 Peças + Colchão e Protetor"
+      ],
+      "fillRate": "100%"
+    },
+    "costPrice": {
+      "type": "number",
+      "purpose": "price",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        85.65,
+        14.68,
+        362.33
+      ],
+      "fillRate": "100%"
+    },
+    "deliveryTime": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        15,
+        16,
+        22
+      ],
+      "fillRate": "100%"
+    },
+    "depth": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        56,
+        22,
+        77
+      ],
+      "fillRate": "100%"
+    },
+    "descriptions": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [],
+        [
+          {
+            "attribute": {
+              "_id": "65b2a6903f663bdb1d3bd034",
+              "displaytype": "TEXTAREA",
+              "name": "Descrição Google Shopping",
+              "showlist": true,
+              "exibitionorder": 60,
+              "_path": "m_description/cn4gJNBMnhWPyY14CcTv"
+            },
+            "attributeValue": ""
+          },
+          {
+            "attribute": {
+              "_id": "65b2a68f3f663bdb1d3bcf95",
+              "displaytype": "TEXTAREA",
+              "name": "Composição",
+              "showlist": true,
+              "exibitionorder": 54,
+              "_path": "m_description/2UFUwnC5cLKD0xUJbJzD"
+            },
+            "attributeValue": "<div></div><div id=\"pastingspan1\">Tecido</div><div id=\"pastingspan1\">Microfibra 100% Poli&#233;ster</div><div>&nbsp;&nbsp;</div><div id=\"pastingspan1\">  </div><div id=\"pastingspan1\">Enchimento</div><div id=\"pastingspan1\">100% Fibra de Poli&#233;ster</div><div></div>"
+          },
+          {
+            "attribute": {
+              "_id": "65b2a6913f663bdb1d3bd0bc",
+              "displaytype": "TEXTAREA",
+              "name": "Descrição",
+              "showlist": true,
+              "exibitionorder": 21,
+              "_path": "m_description/eCnenlx8XckAc3fuUOoT"
+            },
+            "attributeValue": "A <strong>Almofada Quadrada Planeta Terra e o Foguete </strong> &#233; um produto exclusivo da Gr&#227;o de Gente, a principal marca de enxoval e quarto de beb&#234; da Am&#233;rica Latina. Essa almofadinha encantadora traz uma estampa em alta defini&#231;&#227;o para compor a decora&#231;&#227;o com aconchego e originalidade. Ela j&#225; vem com enchimento, o tecido n&#227;o amassa e a estampa sublimada &#233; feita com tinta at&#243;xica (a base de &#225;gua) e toque zero, mais confort&#225;vel para os pequenos."
+          },
+          {
+            "attribute": {
+              "_id": "65b2a6903f663bdb1d3bcfff",
+              "displaytype": "TEXTAREA",
+              "name": "Especificações",
+              "showlist": true,
+              "exibitionorder": 82,
+              "_path": "m_description/Q3389c1HucQGD4a4Pxhn"
+            },
+            "attributeValue": "<div id=\"pastingspan1\">1 Almofada 30cm x 30cm</div><div></div><div><strong></strong></div><div id=\"pastingspan1\"></div><div id=\"pastingspan1\"></div><div>\r\n</div>"
+          },
+          {
+            "attribute": {
+              "_id": "65b2a6903f663bdb1d3bd056",
+              "displaytype": "TEXTAREA",
+              "name": "Descrição Marketplace",
+              "showlist": true,
+              "exibitionorder": 91,
+              "_path": "m_description/fHQsmvYDJF1ofALfcafD"
+            },
+            "attributeValue": "1 Almofada 30cm x 30cm\r\n\r\nTecido\r\nTecido Microfibra 100% Poliéster\r\n\r\nEnchimento\r\n100% Fibra de Poliéster"
+          }
+        ],
+        [
+          {
+            "attribute": {
+              "_id": "65b2a6903f663bdb1d3bd056",
+              "displaytype": "TEXTAREA",
+              "name": "Descrição Marketplace",
+              "showlist": true,
+              "exibitionorder": 91,
+              "_path": "m_description/fHQsmvYDJF1ofALfcafD"
+            },
+            "attributeValue": ""
+          },
+          {
+            "attribute": {
+              "_id": "65b2a6903f663bdb1d3bcfff",
+              "displaytype": "TEXTAREA",
+              "name": "Especificações",
+              "showlist": true,
+              "exibitionorder": 82,
+              "_path": "m_description/Q3389c1HucQGD4a4Pxhn"
+            },
+            "attributeValue": "<div id=\"pastingspan1\"><strong>Ber&#231;o:&nbsp;</strong>1,33m larg. x 97cm alt. x 75,9cm prof.</div><div>&nbsp;</div><div><div id=\"pastingspan1\"><strong>Altura das regulagens:&nbsp;</strong>Regulagem 1: 30 cm | Regulagem 2: 60 cm</div><div>&nbsp;</div></div><div><div id=\"pastingspan1\"><strong>Tamanho do Colch&#227;o:&nbsp;</strong>1,30m x 70cm x 10cm&nbsp;</div><div id=\"pastingspan1\"><strong>Protetor de Colch&#227;o Imperme&#225;vel:</strong> 1,30m x 70cm&nbsp;</div><div>&nbsp;</div><div><strong>Acess&#243;rios:&nbsp;</strong>Suporte para Mosquiteiro |&nbsp;<strong>Peso Suportado: </strong>50kg |&nbsp;<strong>Prazo de Garantia:&nbsp;</strong>03 meses</div></div><div><div id=\"pastingspan1\">&nbsp;</div></div><div><div id=\"pastingspan1\"><strong>Kit Ber&#231;o 9 Pe&#231;as</strong></div><div><div id=\"pastingspan1\">01 Edredom de Ber&#231;o 1,45m comp. x 1m larg.</div><div id=\"pastingspan1\">01 Cabeceira com amarril e z&#237;per 62cm larg. x 42cm alt.</div><div id=\"pastingspan1\"><div id=\"pastingspan1\">01 Protetor lateral com amarril e z&#237;per 1,30m larg. x 28cm alt.</div><div id=\"pastingspan1\">01 Tran&#231;a Protetora com amarril 1,20m larg. x 15cm alt.</div></div><div id=\"pastingspan1\">01 Travesseiro de manta liso 30cm comp. x 20cm larg.</div><div id=\"pastingspan1\">01 Len&#231;ol de ber&#231;o liso com el&#225;stico 1,55m comp. x 1,05m larg.</div><div id=\"pastingspan1\">01 Fronha lisa 35cm comp. x 25cm larg.</div><div id=\"pastingspan1\">01 Mosquiteiro varal de tule 6m comp.</div><div id=\"pastingspan1\">01 Band&#244; 1,35m larg. x 18cm alt.</div>&nbsp; &nbsp;&nbsp;</div><div></div></div><div><div id=\"pastingspan1\"></div><div><div id=\"pastingspan1\"></div></div></div><div></div><div><div id=\"pastingspan1\"><strong>Aten&#231;&#227;o:</strong> Montagem do produto n&#227;o inclusa.</div><div><strong>Imagem Ilustrativa: </strong>O Kit Ber&#231;o &#233; indicado para ber&#231;o americano e nacional.&nbsp;Estampa e fornecedor de colch&#227;o podem variar de acordo com a disponibilidade de estoque.</div></div>"
+          },
+          {
+            "attribute": {
+              "_id": "65b2a6903f663bdb1d3bd034",
+              "displaytype": "TEXTAREA",
+              "name": "Descrição Google Shopping",
+              "showlist": true,
+              "exibitionorder": 60,
+              "_path": "m_description/cn4gJNBMnhWPyY14CcTv"
+            },
+            "attributeValue": "<div id=\"pastingspan1\"></div>"
+          },
+          {
+            "attribute": {
+              "_id": "65b2a6913f663bdb1d3bd0bc",
+              "displaytype": "TEXTAREA",
+              "name": "Descrição",
+              "showlist": true,
+              "exibitionorder": 21,
+              "_path": "m_description/eCnenlx8XckAc3fuUOoT"
+            },
+            "attributeValue": "<div>A Gr&#227;o de Gente traz uma grande novidade, o combo&nbsp;<strong>Ber&#231;o + Kit Ber&#231;o + Colch&#227;o e Protetor</strong>. Confira os detalhes:&nbsp;</div><div>&nbsp;</div><div>Se voc&#234; busca seguran&#231;a, conforto e praticidade para montar o quarto de beb&#234;, o <strong>Ber&#231;o Americano Branco Mel</strong> &#233; o ber&#231;o dos seus sonhos! Esse m&#243;vel desempenha v&#225;rias fun&#231;&#245;es e o mais importante &#233; que, gra&#231;as ao seu modelo e qualidade, ele ser&#225; aproveitado por muitos anos de vida do nen&#233;m, acompanhando seu crescimento e revelando um excelente custo-benef&#237;cio. Cria um verdadeiro cantinho de ninar, com conforto, design moderno e detalhes caprichosos. Pensando na prote&#231;&#227;o do rec&#233;m-nascido.&nbsp;<strong>(Registro 001677/2020 - Certifica&#231;&#227;o 177.001/20).</strong></div><div>&nbsp;</div><div>O <strong>Kit Ber&#231;o Tran&#231;a Frutinhas Po&#225; </strong>traz estampas exclusivas em alta defini&#231;&#227;o para compor a decora&#231;&#227;o do quarto de beb&#234; com aconchego e originalidade. Esse enxoval com cores suaves &#233; uma &#243;tima escolha para receber a nova menina da fam&#237;lia com muito amor e um toque de criativo. Perinha, Laranjinha e Ma&#231;&#227; fazem uma festinha do pijama na cabeceira e na lateral, al&#233;m de convidar a sua menina para doces sonhos!</div><div>&nbsp; &nbsp;&nbsp;</div><div><div id=\"pastingspan1\">O <strong>Colch&#227;o para Ber&#231;o</strong> &#233; feito com uma placa de espuma D18 de alta resist&#234;ncia, 75g/m&#178;, possui revestimento superior e lateral com tecido plano 100% poli&#233;ster que proporciona maior conforto na movimenta&#231;&#227;o. Parte inferior com revestimento pl&#225;stico 100% polietileno e l&#226;mina de espuma flex&#237;vel de poliuretano convencional com Densidade D18Kg/m&#178; durante o sono. &#193;rea plastificada em um dos lados para aumentar a resist&#234;ncia &#224; l&#237;quidos e a durabilidade do colch&#227;o.3</div><div>&nbsp; &nbsp;&nbsp;</div><div>    </div><div id=\"pastingspan1\"></div><div id=\"pastingspan1\"><strong>Protetor de Colch&#227;o Imperme&#225;vel</strong></div><div id=\"pastingspan1\">Cor: Branco</div><div id=\"pastingspan1\">Tecido: 100% Poli&#233;ster</div><div id=\"pastingspan1\">Forro: 100% Policloreto de Vinila&nbsp;</div></div><div>&nbsp; &nbsp;&nbsp;</div><div><div id=\"pastingspan1\"> </div><div></div><div><div><strong>Fabricado com todo o cuidado</strong></div><div id=\"pastingspan1\">O produto chega at&#233; voc&#234; embalado em caixas de papel&#227;o, com mantas internas de prote&#231;&#227;o entre pe&#231;as e revestidas externamente por cobertura de pl&#225;stico termo contr&#225;til.&nbsp;</div></div></div>"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "ean": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        "",
+        "",
+        ""
+      ],
+      "fillRate": "100%"
+    },
+    "firestoreId": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        "m_product/03SZJBJHZOKjIN3JFFyJ",
+        "m_product/0PhB8FI2iJEHY33wYOwy",
+        "m_product/0RzVyrUMYBGQ4mxDjFxy"
+      ],
+      "fillRate": "100%"
+    },
+    "googleProductName": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        "Cabana Quarto de Bebê Bege, Laranja e Madeira - Tenda - 90cm",
+        "Almofada Quadrada Planeta Terra e o Foguete Bebê ou Infantil com Enchimento",
+        "Berço Americano Branco Mel + Kit Berço Trança Frutinhas Poá + Colchão e Protetor Grão de Gente"
+      ],
+      "fillRate": "100%"
+    },
+    "height": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        11,
+        6,
+        12
+      ],
+      "fillRate": "100%"
+    },
+    "hideInList": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        true
+      ],
+      "fillRate": "100%"
+    },
+    "hideInSearch": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        true
+      ],
+      "fillRate": "100%"
+    },
+    "isActive": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        false
+      ],
+      "fillRate": "100%"
+    },
+    "isOld": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        false
+      ],
+      "fillRate": "100%"
+    },
+    "marketplaceProductName": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        "Cabana Infantil Branca e Laranja Raposinha Grão de Gente",
+        "Almofada Quadrada Planeta Terra e o Foguete Grão de Gente",
+        ""
+      ],
+      "fillRate": "100%"
+    },
+    "minimumStock": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "notSalable": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        false
+      ],
+      "fillRate": "100%"
+    },
+    "outSourcedCost": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        13.8,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "photos": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/85390/cabana-quarto-de-bebe-raposinha-laranja-189926.jpg",
+              "name": "cabana-quarto-de-bebe-raposinha-laranja-189926.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "cabana-quarto-de-bebe-raposinha-laranja-189926.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/85390/cabana-quarto-de-bebe-raposinha-laranja-189927.jpg",
+              "name": "cabana-quarto-de-bebe-raposinha-laranja-189927.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "cabana-quarto-de-bebe-raposinha-laranja-189927.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/85390/cabana-quarto-de-bebe-raposinha-laranja-189925.jpg",
+              "name": "cabana-quarto-de-bebe-raposinha-laranja-189925.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": true,
+            "name": "cabana-quarto-de-bebe-raposinha-laranja-189925.jpg"
+          }
+        ],
+        [
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/144523/almofada-quadrada-planeta-terra-e-o-foguete-308144.jpg",
+              "name": "almofada-quadrada-planeta-terra-e-o-foguete-308144.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": true,
+            "name": "almofada-quadrada-planeta-terra-e-o-foguete-308144.jpg"
+          }
+        ],
+        [
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436204.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436204.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436204.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436205.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436205.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436205.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436206.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436206.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436206.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436207.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436207.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436207.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436208.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436208.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436208.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436209.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436209.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436209.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436210.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436210.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": false,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436210.jpg"
+          },
+          {
+            "file": {
+              "downloadURL": "https://grao-cdn.s3.bhs.perf.cloud.ovh.net/fotos/187363/berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436203.jpg",
+              "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436203.jpg",
+              "type": "jpg",
+              "lastModiefiedTS": 0
+            },
+            "isPrimary": true,
+            "name": "berco-americano-branco-mel-kit-berco-tranca-frutinhas-poa-colchao-e-protetor-436203.jpg"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "piecesQuantity": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        1,
+        1,
+        12
+      ],
+      "fillRate": "100%"
+    },
+    "price": {
+      "type": "number",
+      "purpose": "price",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        415.42,
+        55.68,
+        1109.42
+      ],
+      "fillRate": "100%"
+    },
+    "productCompanyId": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        "Cabana",
+        "Almofada",
+        "56728-combo"
+      ],
+      "fillRate": "100%"
+    },
+    "productId": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        85390,
+        144523,
+        187363
+      ],
+      "fillRate": "100%"
+    },
+    "productName": {
+      "type": "string",
+      "purpose": "name",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        "Cabana Quarto de Bebê Raposinha Laranja",
+        "Almofada Quadrada Planeta Terra e o Foguete 30cm",
+        "Berço Americano Branco Mel + Kit Berço Trança Frutinhas Poá + Colchão e Protetor"
+      ],
+      "fillRate": "100%"
+    },
+    "productOrigin": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        "0",
+        "0",
+        "0"
+      ],
+      "fillRate": "100%"
+    },
+    "productType": {
+      "type": "string",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        "FANTASMA",
+        "SIMPLES",
+        "COMBOVARIACAO"
+      ],
+      "fillRate": "100%"
+    },
+    "promotionalPrice": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "promotionEndDate": {
+      "type": "null",
+      "purpose": "unknown",
+      "nullable": true,
+      "unique": true,
+      "examples": [],
+      "fillRate": "0%"
+    },
+    "promotionStartDate": {
+      "type": "null",
+      "purpose": "unknown",
+      "nullable": true,
+      "unique": true,
+      "examples": [],
+      "fillRate": "0%"
+    },
+    "qtyOrdered": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        5,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "rawMaterialCost": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0.879999999999999,
+        362.33
+      ],
+      "fillRate": "100%"
+    },
+    "realStock": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "seals": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [],
+        [],
+        []
+      ],
+      "fillRate": "100%"
+    },
+    "sellers": {
+      "type": "object",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        {
+          "_id": "653040591d96df03bc065832",
+          "_path": "c_seller/AL2ABJKvc4BMzdwbo0F0"
+        },
+        {
+          "_id": "653040591d96df03bc065832",
+          "_path": "c_seller/AL2ABJKvc4BMzdwbo0F0"
+        },
+        {
+          "_id": "653040591d96df03bc065832",
+          "_path": "c_seller/AL2ABJKvc4BMzdwbo0F0"
+        }
+      ],
+      "fillRate": "100%"
+    },
+    "soldQuantityYesterday": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "suppliers": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [
+          {
+            "_id": "65303f971d96df03bc063236",
+            "_path": "c_supplier/R3RFPdfdJiFRgtBS52uo",
+            "name": "DIWEB"
+          }
+        ],
+        [
+          {
+            "_id": "65303f941d96df03bc062db4",
+            "_path": "c_supplier/0S2MlAaKVkzpArPlr83b",
+            "name": "Happy Baby Daiana"
+          }
+        ],
+        [
+          {
+            "_id": "65303f981d96df03bc06338a",
+            "_path": "c_supplier/Y2VA6tt10tLjwqRw5MCf",
+            "name": "LGF"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "theme": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [
+          {
+            "_id": "65b120923f663bdb1dc191e8",
+            "_path": "c_theme/tkYJ8at1CFvomzzl5iAm",
+            "name": "Bichinhos"
+          }
+        ],
+        [
+          {
+            "_id": "65b120913f663bdb1dc19085",
+            "_path": "c_theme/bZfKLOu7x370gngO56Zr",
+            "name": "Astronautas"
+          }
+        ],
+        [
+          {
+            "_id": "65b120913f663bdb1dc18ca3",
+            "_path": "c_theme/HPY774sew4NJrOVBC9Pi",
+            "name": "Frutas e Comidinhas"
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "variationAttributes": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [],
+        [],
+        [
+          {
+            "attribute": {
+              "_id": "65b1202b3f663bdb1dc07160",
+              "_path": "m_attribute/0YXZMFsLbdmTHSx9ZDJ5"
+            },
+            "attributeValuesRef": [
+              {
+                "_id": "65b2c179e244a27cbda936c6",
+                "_path": "m_attribute/0YXZMFsLbdmTHSx9ZDJ5/atributeValues/zzzzzzzzzzzzzzzzzzzp",
+                "name": "Com Colchão + Protetor",
+                "value": {
+                  "name": "Com Colchão + Protetor"
+                }
+              }
+            ],
+            "order": 3
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "virtualStock": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "volumeQuantity": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        0,
+        0
+      ],
+      "fillRate": "100%"
+    },
+    "weight": {
+      "type": "number",
+      "purpose": "weight",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        3380,
+        180,
+        35280
+      ],
+      "fillRate": "100%"
+    },
+    "width": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        88,
+        37,
+        132
+      ],
+      "fillRate": "100%"
+    },
+    "brand": {
+      "type": "object",
+      "purpose": "brand",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        {
+          "_id": "65b145603f663bdb1dd32249",
+          "_path": "c_brand/dBywg3pZ7w6nSloJE24f",
+          "name": "Grão de Gente"
+        },
+        {
+          "_id": "65b145603f663bdb1dd32249",
+          "_path": "c_brand/dBywg3pZ7w6nSloJE24f",
+          "name": "Grão de Gente"
+        },
+        {
+          "_id": "65b145603f663bdb1dd32249",
+          "_path": "c_brand/dBywg3pZ7w6nSloJE24f",
+          "name": "Grão de Gente"
+        }
+      ],
+      "fillRate": "100%"
+    },
+    "ncm": {
+      "type": "object",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        {
+          "_id": "65305c7a1d96df03bc0e0af8",
+          "_path": "lbr_ncm/EXT5utDMFp0Y7uixKai1"
+        },
+        {
+          "_id": "65305c7b1d96df03bc0e0bb9",
+          "_path": "lbr_ncm/IAwhkyUdcKUv5nkGLoyN"
+        },
+        {
+          "_id": "65305c7a1d96df03bc0e0aed",
+          "_path": "lbr_ncm/8JROe00VtE88snLjtpZ5"
+        }
+      ],
+      "fillRate": "100%"
+    },
+    "hasPacking": {
+      "type": "boolean",
+      "purpose": "active",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        true,
+        true,
+        true
+      ],
+      "fillRate": "100%"
+    },
+    "isFather": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        false
+      ],
+      "fillRate": "100%"
+    },
+    "overridesSupplierDeliveryTime": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        false
+      ],
+      "fillRate": "100%"
+    },
+    "parentID": {
+      "type": "number",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        0,
+        187361,
+        153024
+      ],
+      "fillRate": "100%"
+    },
+    "productSubstituteTaxation": {
+      "type": "boolean",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": false,
+      "examples": [
+        false,
+        false,
+        false
+      ],
+      "fillRate": "100%"
+    },
+    "phanthom": {
+      "type": "object",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        {
+          "_id": "6530746f24a6b1d4adddb28b",
+          "path": "m_product/0RzVyrUMYBGQ4mxDjFxy"
+        },
+        {
+          "_id": "653074ee24a6b1d4addf4a6b",
+          "path": "m_product/01y6nYPzcnHRLhUAffox"
+        },
+        {
+          "_id": "6530736024a6b1d4add9e561",
+          "path": "m_product/0EH6z8HOVFnbms8yT0ID"
+        }
+      ],
+      "fillRate": "100%"
+    },
+    "itensCombo": {
+      "type": "array",
+      "purpose": "unknown",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        [
+          {
+            "product": "m_product/8QhpuAlQbhTWt1A2P8rH",
+            "quantity": 1
+          },
+          {
+            "product": "m_product/9sbAwnqdPnGhGEOVUFop",
+            "quantity": 1
+          },
+          {
+            "product": "m_product/rlEkGIQrjsya5eydn8yZ",
+            "quantity": 1
+          },
+          {
+            "product": "m_product/mnJuOHVphnSlG55LEX8p",
+            "quantity": 1
+          }
+        ],
+        [
+          {
+            "product": "m_product/A8Ao0nRpq2ZCSIBanCl5",
+            "quantity": 1
+          },
+          {
+            "product": "m_product/QMviJp412Us0YK1P3QXF",
+            "quantity": 1
+          },
+          {
+            "product": "m_product/oc8iGSyDr5vAHiBZu8mQ",
+            "quantity": 1
+          },
+          {
+            "product": "m_product/BF5DWCyQDo0aQCrwVlTT",
+            "quantity": 1
+          }
+        ],
+        [
+          {
+            "product": "m_product/UsrgskMF0ppxXSvLkTgx",
+            "quantity": 2
+          }
+        ]
+      ],
+      "fillRate": "100%"
+    },
+    "stock": {
+      "type": "number",
+      "purpose": "stock",
+      "nullable": false,
+      "unique": true,
+      "examples": [
+        2,
+        3,
+        5
+      ],
+      "fillRate": "100%"
+    }
+  },
+  "suggestedMapping": {
+    "name": "productName",
+    "price": "costPrice",
+    "description": null,
+    "sku": null,
+    "category": null,
+    "brand": "brand",
+    "images": null,
+    "stock": "stock",
+    "weight": "weight",
+    "dimensions": null,
+    "tags": null,
+    "active": "activeForSeo"
+  },
+  "unmappedFields": [
+    "attributes",
+    "audit",
+    "campaigns",
+    "categories",
+    "defaultShippingPlace",
+    "cfopCategory",
+    "collections",
+    "complementCompanyId",
+    "deliveryTime",
+    "depth",
+    "descriptions",
+    "ean",
+    "firestoreId",
+    "googleProductName",
+    "height",
+    "hideInList",
+    "hideInSearch",
+    "isActive",
+    "isOld",
+    "marketplaceProductName",
+    "minimumStock",
+    "notSalable",
+    "outSourcedCost",
+    "photos",
+    "piecesQuantity",
+    "price",
+    "productCompanyId",
+    "productId",
+    "productOrigin",
+    "productType",
+    "promotionalPrice",
+    "promotionEndDate",
+    "promotionStartDate",
+    "qtyOrdered",
+    "rawMaterialCost",
+    "realStock",
+    "seals",
+    "sellers",
+    "soldQuantityYesterday",
+    "suppliers",
+    "theme",
+    "variationAttributes",
+    "virtualStock",
+    "volumeQuantity",
+    "width",
+    "ncm",
+    "hasPacking",
+    "isFather",
+    "overridesSupplierDeliveryTime",
+    "parentID",
+    "productSubstituteTaxation",
+    "phanthom",
+    "itensCombo"
+  ]
+}

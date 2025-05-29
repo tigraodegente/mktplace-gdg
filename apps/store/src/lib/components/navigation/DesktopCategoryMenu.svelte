@@ -168,6 +168,7 @@
 				onmouseleave={handleMouseLeave}
 				transition:fade={{ duration: 200 }}
 				role="menu"
+				tabindex="0"
 				aria-label="Submenu de {activecat.name}"
 			>
 				<div class="w-full max-w-[1440px] mx-auto px-8 py-6">

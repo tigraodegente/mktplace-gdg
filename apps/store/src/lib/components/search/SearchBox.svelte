@@ -141,10 +141,17 @@
 	}
 
 	$effect(() => {
-		if (searchFocused) {
+		if (!searchFocused) return;
+		
+		// Usar timeout para evitar loops
+		const timeoutId = setTimeout(() => {
 			document.addEventListener('click', handleClickOutside);
-			return () => document.removeEventListener('click', handleClickOutside);
-		}
+		}, 0);
+		
+		return () => {
+			clearTimeout(timeoutId);
+			document.removeEventListener('click', handleClickOutside);
+		};
 	});
 </script>
 

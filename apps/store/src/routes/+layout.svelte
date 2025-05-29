@@ -1,11 +1,11 @@
 <!-- Deploy seletivo funcionando! -->
 <script lang="ts">
 	import '../app.css';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { auth, user, isAuthenticated } from '$lib/stores/auth';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import SearchBox from '$lib/components/search/SearchBox.svelte';
-	import CartPreview from '$lib/components/cart/CartPreview.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import { advancedCartStore } from '$lib/stores/advancedCartStore';
 	import { wishlistCount } from '$lib/stores/wishlistStore';
@@ -55,27 +55,24 @@
 	let { children } = $props();
 
 	// State
-	let cartPreviewOpen = $state(false);
 	let mobileMenuOpen = $state(false);
 	let currentSlide = $state(0);
-	let isPaused = $state(false);
+	let carouselPaused = $state(false);
+	let carouselInterval: NodeJS.Timeout | null = null;
 	
 	// Touch state
 	let touchStartX = 0;
 	let touchEndX = 0;
 	
-	// Refs
-	let carouselInterval: ReturnType<typeof setInterval> | null = null;
-	
 	// Stores
 	const { sellerGroups } = advancedCartStore;
 	
 	// Computed
-	const totalItems = $derived(() => {
-		return $sellerGroups.reduce((sum, group) => 
+	let totalItems = $derived(
+		$sellerGroups.reduce((sum, group) => 
 			sum + group.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
-		);
-	});
+		)
+	);
 
 	// Lifecycle
 	onMount(() => {
@@ -86,47 +83,49 @@
 		
 		// Check auth
 		auth.checkAuth();
-		
-		// Start carousel
-		startCarousel();
-		
-		// Cleanup
-		return () => {
-			stopCarousel();
-		};
 	});
-
-	// Carousel functions
-	function startCarousel(): void {
-		if (!isPaused && !carouselInterval) {
-			carouselInterval = setInterval(() => {
+	
+	// CARROSSEL DESABILITADO TEMPORARIAMENTE PARA EVITAR LOOPS
+	// Funções do carrossel
+	function startCarousel() {
+		// DESABILITADO
+		/*
+		if (carouselInterval) return; // Evitar múltiplos intervalos
+		
+		carouselInterval = setInterval(() => {
+			if (!carouselPaused) {
 				currentSlide = (currentSlide + 1) % BANNER_MESSAGES.length;
-			}, CAROUSEL_INTERVAL_MS);
-		}
+			}
+		}, CAROUSEL_INTERVAL_MS);
+		*/
 	}
 	
-	function stopCarousel(): void {
+	function stopCarousel() {
 		if (carouselInterval) {
 			clearInterval(carouselInterval);
 			carouselInterval = null;
 		}
 	}
 	
-	function pauseCarousel(): void {
-		isPaused = true;
+	function restartCarousel() {
 		stopCarousel();
-	}
-	
-	function resumeCarousel(): void {
-		isPaused = false;
 		startCarousel();
 	}
 	
+	// Carousel hover handlers
+	function pauseCarousel() {
+		carouselPaused = true;
+	}
+	
+	function resumeCarousel() {
+		carouselPaused = false;
+	}
+
+	// Carousel functions
 	function goToSlide(index: number): void {
 		currentSlide = index;
-		// Reset interval when user interacts
-		stopCarousel();
-		startCarousel();
+		// Reiniciar carrossel após navegação manual
+		restartCarousel();
 	}
 	
 	// Touch handlers
@@ -176,7 +175,8 @@
 	}
 	
 	function openCart(): void {
-		cartPreviewOpen = true;
+		// Ir direto para a página do carrinho em vez de abrir preview
+		goto('/cart');
 	}
 
 	// Helper function for banner icons
@@ -270,7 +270,7 @@
 
 <!-- Header Desktop -->
 <Header 
-	totalItems={totalItems()} 
+	totalItems={totalItems} 
 	onOpenCart={openCart}
 	onLogout={handleLogout}
 	class="hidden lg:block"
@@ -282,6 +282,8 @@
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
+	onmouseenter={pauseCarousel}
+	onmouseleave={resumeCarousel}
 	ontouchstart={handleTouchStart}
 	ontouchmove={handleTouchMove}
 	ontouchend={handleTouchEnd}
@@ -319,7 +321,7 @@
 
 <!-- Header Mobile -->
 <MobileHeader 
-	totalItems={totalItems()} 
+	totalItems={totalItems} 
 	onOpenCart={openCart}
 	onOpenMenu={() => mobileMenuOpen = true}
 	class="lg:hidden"
@@ -327,11 +329,6 @@
 
 <!-- Mobile Menu -->
 <MobileCategoryMenu bind:isOpen={mobileMenuOpen} onClose={() => mobileMenuOpen = false} />
-
-<!-- Cart Preview -->
-{#if cartPreviewOpen}
-	<CartPreview bind:isOpen={cartPreviewOpen} />
-{/if}
 
 <!-- Main Content -->
 <main class="min-h-screen bg-gray-50">

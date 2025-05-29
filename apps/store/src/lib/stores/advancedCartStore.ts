@@ -55,7 +55,7 @@ async function calculateShipping(
   await new Promise(resolve => setTimeout(resolve, SHIPPING_CONFIG.API_DELAY));
   
   const totalWeight = items.reduce(
-    (sum, item) => sum + (item.product.weight || SHIPPING_CONFIG.DEFAULT_PRODUCT_WEIGHT) * item.quantity, 
+    (sum, item) => sum + ((item.product as any).weight || SHIPPING_CONFIG.DEFAULT_PRODUCT_WEIGHT) * item.quantity, 
     0
   );
   const subtotal = items.reduce(
@@ -64,7 +64,7 @@ async function calculateShipping(
   );
   
   if (mode === 'grouped') {
-    // Entrega agrupada - um frete por seller
+    // Entrega agrupada - opções econômicas
     const basePrice = totalWeight * SHIPPING_CONFIG.GROUPED_WEIGHT_MULTIPLIER;
     const isFreeShipping = subtotal >= SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD;
     
@@ -79,21 +79,47 @@ async function calculateShipping(
       }
     ];
     
+    // Adicionar opção premium se carrinho grande
+    if (subtotal > 150) {
+      options.push({
+        id: 'grouped-premium',
+        name: 'Entrega Agrupada Premium',
+        price: isFreeShipping ? 0 : basePrice * 1.3,
+        estimatedDays: Math.max(1, (SHIPPING_DELAYS.GROUPED_MIN + Math.floor(Math.random() * SHIPPING_DELAYS.GROUPED_VARIANCE)) - 2),
+        isFree: isFreeShipping,
+        mode: 'grouped'
+      });
+    }
+    
     return options;
   } else {
-    // Entrega expressa - retornar opção geral (será calculado por produto)
+    // Entrega expressa - opções individuais mais rápidas
     const expressPrice = totalWeight * SHIPPING_CONFIG.EXPRESS_WEIGHT_MULTIPLIER;
     
-    return [
+    const options: ShippingOption[] = [
       {
-        id: 'express-individual',
-        name: 'Entrega Expressa Individual',
+        id: 'express-standard',
+        name: 'Entrega Expressa Padrão',
         price: expressPrice,
         estimatedDays: SHIPPING_DELAYS.EXPRESS_MIN + Math.floor(Math.random() * SHIPPING_DELAYS.EXPRESS_VARIANCE),
         isFree: false,
         mode: 'express'
       }
     ];
+    
+    // Opção super expressa para itens pequenos
+    if (totalWeight < 2) {
+      options.push({
+        id: 'express-super',
+        name: 'Entrega Super Expressa',
+        price: expressPrice * 1.8,
+        estimatedDays: Math.max(1, SHIPPING_DELAYS.EXPRESS_MIN - 1),
+        isFree: false,
+        mode: 'express'
+      });
+    }
+    
+    return options;
   }
 }
 
@@ -101,7 +127,7 @@ async function calculateProductShipping(product: Product, zipCode: string): Prom
   // Simular cálculo individual por produto
   await new Promise(resolve => setTimeout(resolve, SHIPPING_CONFIG.PRODUCT_API_DELAY));
   
-  const weight = product.weight || SHIPPING_CONFIG.DEFAULT_PRODUCT_WEIGHT;
+  const weight = (product as any).weight || SHIPPING_CONFIG.DEFAULT_PRODUCT_WEIGHT;
   const basePrice = weight * SHIPPING_CONFIG.EXPRESS_WEIGHT_MULTIPLIER;
   
   return {
@@ -408,82 +434,66 @@ function createAdvancedCartStore() {
     loadingShipping.set(true);
     const $items = get(items);
     const $groups = get(sellerGroups);
-    const $mode = get(shippingMode);
     const cache = get(shippingCache);
     
     try {
       const newShippingInfo: Record<string, any> = {};
       
-      if ($mode === 'grouped') {
-        // Calcular frete agrupado por seller
-        for (const group of $groups) {
-          const cacheKey = `${group.sellerId}-${zip}-grouped`;
-          
-          if (cache[cacheKey]) {
-            // Usar cache
-            const options = cache[cacheKey];
-            newShippingInfo[group.sellerId] = {
-              groupedShipping: {
-                price: options[0].price,
-                estimatedDays: options[0].estimatedDays
-              },
-              shippingOptions: options
-            };
-          } else {
-            // Calcular novo
-            const options = await calculateShipping(group.sellerId, zip, group.items, 'grouped');
-            
-            // Atualizar cache
-            shippingCache.update(c => ({ ...c, [cacheKey]: options }));
-            
-            // Atualizar grupo
-            if (options.length > 0) {
-              newShippingInfo[group.sellerId] = {
-                groupedShipping: {
-                  price: options[0].price,
-                  estimatedDays: options[0].estimatedDays
-                },
-                shippingOptions: options
-              };
-            }
-          }
+      // Calcular AMBAS as modalidades para cada seller
+      for (const group of $groups) {
+        const groupedCacheKey = `${group.sellerId}-${zip}-grouped`;
+        const expressCacheKey = `${group.sellerId}-${zip}-express`;
+        
+        let groupedOptions: ShippingOption[] = [];
+        let expressOptions: ShippingOption[] = [];
+        
+        // === Calcular Frete Agrupado ===
+        if (cache[groupedCacheKey]) {
+          groupedOptions = cache[groupedCacheKey];
+        } else {
+          groupedOptions = await calculateShipping(group.sellerId, zip, group.items, 'grouped');
+          shippingCache.update(c => ({ ...c, [groupedCacheKey]: groupedOptions }));
         }
-      } else {
-        // Calcular frete individual por produto
-        for (const group of $groups) {
-          const productShippings: ShippingOption[] = [];
+        
+        // === Calcular Frete Express ===
+        if (cache[expressCacheKey]) {
+          expressOptions = cache[expressCacheKey];
+        } else {
+          expressOptions = await calculateShipping(group.sellerId, zip, group.items, 'express');
+          shippingCache.update(c => ({ ...c, [expressCacheKey]: expressOptions }));
           
+          // Também calcular fretes individuais dos produtos para o modo express
           for (const item of group.items) {
             const shipping = await calculateProductShipping(item.product, zip);
             updateProductShipping(item.product.id, group.sellerId, shipping);
-            
-            // Criar opção de frete para o produto
-            productShippings.push({
-              id: `express-${item.product.id}`,
-              name: `Entrega Expressa - ${item.product.name}`,
-              price: shipping.price,
-              estimatedDays: shipping.estimatedDays,
-              isFree: false,
-              mode: 'express'
-            });
           }
-          
-          // Calcular totais express para o grupo
-          const totalExpressPrice = productShippings.reduce((sum, opt) => sum + opt.price, 0);
-          const minDays = Math.min(...productShippings.map(opt => opt.estimatedDays));
-          
-          newShippingInfo[group.sellerId] = {
-            expressShipping: {
-              price: totalExpressPrice,
-              estimatedDays: minDays
-            },
-            shippingOptions: productShippings
-          };
         }
+        
+        // === Montar informações do seller ===
+        newShippingInfo[group.sellerId] = {
+          // Frete agrupado
+          groupedShipping: groupedOptions.length > 0 ? {
+            price: groupedOptions[0].price,
+            estimatedDays: groupedOptions[0].estimatedDays
+          } : null,
+          
+          // Frete express
+          expressShipping: expressOptions.length > 0 ? {
+            price: expressOptions[0].price,
+            estimatedDays: expressOptions[0].estimatedDays
+          } : null,
+          
+          // Todas as opções disponíveis (para mostrar o selector)
+          shippingOptions: [...groupedOptions, ...expressOptions]
+        };
       }
       
       // Atualizar shipping info
       shippingInfo.set(newShippingInfo);
+      
+      // Setar CEP no store
+      zipCode.set(zip);
+      
     } finally {
       loadingShipping.set(false);
     }
@@ -552,6 +562,64 @@ function createAdvancedCartStore() {
     );
   }
   
+  // Sincronização entre abas e persistência
+  function setupCrossBrowserSync() {
+    if (typeof window === 'undefined') return;
+    
+    // Listener para mudanças no localStorage (outras abas)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'mktplace-cart' && e.newValue) {
+        try {
+          const cartData = JSON.parse(e.newValue);
+          // Atualizar store sem salvar novamente (evitar loop)
+          updateStoreFromStorage(cartData);
+        } catch (error) {
+          console.error('Erro ao sincronizar carrinho entre abas:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }
+  
+  function updateStoreFromStorage(cartData: any) {
+    // Atualizar stores sem triggerar novos saves
+    items.set(cartData.items || []);
+    appliedCoupon.set(cartData.appliedCoupon || null);
+    zipCode.set(cartData.zipCode || '');
+    shippingMode.set(cartData.shippingMode || 'grouped');
+  }
+  
+  // Salvar no localStorage com throttle para performance
+  let saveTimeout: NodeJS.Timeout | null = null;
+  
+  function saveToStorageThrottled() {
+    if (typeof window === 'undefined') return;
+    
+    // Throttle saves para evitar muitas operações
+    if (saveTimeout) clearTimeout(saveTimeout);
+    
+    saveTimeout = setTimeout(() => {
+      try {
+        const cartData = {
+          items: get(items),
+          appliedCoupon: get(appliedCoupon),
+          zipCode: get(zipCode),
+          shippingMode: get(shippingMode),
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('mktplace-cart', JSON.stringify(cartData));
+      } catch (error) {
+        console.error('Erro ao salvar carrinho:', error);
+      }
+    }, 300); // 300ms de throttle
+  }
+  
   // ===== Public API =====
   return {
     // States
@@ -572,7 +640,10 @@ function createAdvancedCartStore() {
     setShippingMode,
     applyCoupon,
     removeCoupon,
-    totalItems
+    totalItems,
+    setupCrossBrowserSync,
+    updateStoreFromStorage,
+    saveToStorageThrottled
   };
 }
 

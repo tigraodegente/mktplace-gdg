@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import { advancedCartStore } from '$lib/stores/advancedCartStore';
 	
 	interface CartHeaderProps {
 		itemCount: number;
@@ -10,6 +11,12 @@
 	}
 	
 	let { itemCount, sellerCount, onClose, onShare }: CartHeaderProps = $props();
+	
+	function handleClearCart() {
+		if (confirm('Tem certeza que deseja remover todos os produtos do carrinho?')) {
+			advancedCartStore.clearCart();
+		}
+	}
 </script>
 
 <div class="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
@@ -33,24 +40,38 @@
 		</div>
 	</div>
 	
-	<div class="flex items-center gap-2">
+	<div class="flex items-center gap-1 sm:gap-2">
+		{#if itemCount > 0}
+			<button 
+				onclick={handleClearCart}
+				class="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+				aria-label="Limpar carrinho"
+				title="Limpar carrinho"
+			>
+				<svg class="w-4 h-4 sm:w-5 sm:h-5 text-red-500 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+				</svg>
+			</button>
+		{/if}
+		
 		{#if onShare && itemCount > 0}
 			<button 
 				onclick={onShare}
 				class="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
 				aria-label="Compartilhar carrinho"
 			>
-				<svg class="w-5 h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.032 4.026a3 3 0 10-2.684-4.026m-9.032 0a3 3 0 002.684 4.026m9.032 0l-2.684-4.026M12 9a3 3 0 100-6 3 3 0 000 6z" />
 				</svg>
 			</button>
 		{/if}
+		
 		<button 
 			onclick={onClose}
 			class="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
 			aria-label="Fechar carrinho"
 		>
-			<svg class="w-5 h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 			</svg>
 		</button>
@@ -65,9 +86,5 @@
 		50% {
 			transform: translateY(-5px);
 		}
-	}
-	
-	.animate-float {
-		animation: float 3s ease-in-out infinite;
 	}
 </style> 

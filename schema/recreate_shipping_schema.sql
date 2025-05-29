@@ -1,0 +1,213 @@
+-- ============================================================================
+-- RECRIAR ESTRUTURA DE FRETE UNIVERSAL
+-- ============================================================================
+
+-- 1. Remover estrutura antiga (com cuidado)
+DROP VIEW IF EXISTS shipping_complete CASCADE;
+DROP TABLE IF EXISTS shipping_quotes CASCADE;
+DROP TABLE IF EXISTS shipping_exceptions CASCADE; 
+DROP TABLE IF EXISTS seller_shipping_configs CASCADE;
+DROP TABLE IF EXISTS shipping_rates CASCADE;
+DROP TABLE IF EXISTS shipping_zones CASCADE;
+DROP TABLE IF EXISTS shipping_methods CASCADE;
+DROP TABLE IF EXISTS shipping_carriers CASCADE;
+
+-- 2. CARRIERS (Transportadoras)
+CREATE TABLE shipping_carriers (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    name VARCHAR(255) NOT NULL,              -- 'Frenet', 'Correios', 'Custom'
+    type VARCHAR(50) NOT NULL,               -- 'api', 'table', 'manual'
+    api_endpoint VARCHAR(500),               -- URL da API se for tipo 'api'
+    api_credentials JSONB,                   -- Credenciais seguras
+    is_active BOOLEAN DEFAULT true,
+    settings JSONB DEFAULT '{}',             -- Configurações específicas
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 3. SHIPPING ZONES (Zonas Universais)
+CREATE TABLE shipping_zones (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    carrier_id TEXT REFERENCES shipping_carriers(id),
+    name VARCHAR(255) NOT NULL,              -- 'SP Capital', 'Interior RJ'
+    uf VARCHAR(2),
+    cities TEXT[],                          -- Array de cidades ou ['*'] para todas
+    postal_code_ranges JSONB,               -- [{"from": "01000000", "to": "01999999"}]
+    zone_type VARCHAR(50),                   -- 'capital', 'interior', 'remote'
+    delivery_days_min INTEGER,
+    delivery_days_max INTEGER,
+    restrictions JSONB DEFAULT '{}',         -- Restrições especiais
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 4. SHIPPING RATES (Preços Base por Zona)
+CREATE TABLE shipping_rates (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    zone_id TEXT REFERENCES shipping_zones(id),
+    
+    -- Regras de peso/dimensão (flexível para qualquer carrier)
+    weight_rules JSONB DEFAULT '[]',         -- [{"from": 0, "to": 300, "price": 8.50}]
+    dimension_rules JSONB DEFAULT '[]',      -- Regras por dimensão
+    
+    -- Preços base
+    base_price DECIMAL(10,2) DEFAULT 0,
+    price_per_kg DECIMAL(10,2) DEFAULT 0,
+    price_per_km DECIMAL(10,2) DEFAULT 0,   -- Para distância
+    
+    -- Taxas adicionais (flexível)
+    additional_fees JSONB DEFAULT '{}',      -- {"gris": 0.30, "adv": 0.30, "pedagio": 0}
+    
+    -- Condições especiais
+    conditions JSONB DEFAULT '{}',           -- Condições de aplicação
+    valid_from DATE DEFAULT CURRENT_DATE,
+    valid_to DATE,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 5. SELLER SHIPPING CONFIGS (Configurações por Seller + Global)
+CREATE TABLE seller_shipping_configs (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    seller_id TEXT,                         -- NULL = configuração global
+    carrier_id TEXT REFERENCES shipping_carriers(id),
+    zone_id TEXT REFERENCES shipping_zones(id),
+    
+    -- Configurações do seller
+    is_enabled BOOLEAN DEFAULT true,
+    markup_percentage DECIMAL(5,2) DEFAULT 0,    -- Seller pode adicionar margem
+    
+    -- FRETE GRÁTIS (Múltiplos níveis)
+    free_shipping_threshold DECIMAL(10,2),       -- Por seller/global
+    free_shipping_products TEXT[],               -- IDs de produtos com frete grátis
+    free_shipping_categories TEXT[],             -- IDs de categorias com frete grátis
+    
+    -- Limites físicos
+    max_weight_kg DECIMAL(8,2),                  -- Peso máximo
+    max_dimensions JSONB,                        -- {"length": 100, "width": 100, "height": 100}
+    
+    -- Exceções
+    product_exceptions JSONB DEFAULT '{}',       -- Produtos que não usa esse carrier
+    category_exceptions JSONB DEFAULT '{}',     -- Categorias com regras especiais
+    
+    priority INTEGER DEFAULT 1,                 -- Ordem de preferência
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 6. SHIPPING EXCEPTIONS (Exceções Complexas)
+CREATE TABLE shipping_exceptions (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    seller_id TEXT,                             -- NULL = global
+    
+    -- Tipo de exceção
+    exception_type VARCHAR(50) NOT NULL,        -- 'product', 'category', 'region', 'weight'
+    target_ids TEXT[],                         -- IDs dos produtos/categorias afetados
+    
+    -- Regra da exceção
+    rule_type VARCHAR(50) NOT NULL,            -- 'block', 'custom_price', 'add_days', 'free_shipping'
+    custom_settings JSONB DEFAULT '{}',        -- Configurações específicas
+    
+    message TEXT,                             -- Mensagem para o usuário
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 7. SHIPPING QUOTES (Cache de Cotações)
+CREATE TABLE shipping_quotes (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    
+    -- Chave do cache
+    cache_key VARCHAR(255) UNIQUE,           -- MD5(seller_id + postal_code + items_hash)
+    
+    -- Dados da cotação
+    seller_id TEXT,
+    postal_code VARCHAR(8),
+    items_data JSONB,                        -- Array de produtos com peso/dimensões
+    
+    -- Resultado
+    shipping_options JSONB,                  -- Array de opções calculadas
+    
+    -- Controle de cache
+    expires_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================================================
+-- ÍNDICES OTIMIZADOS
+-- ============================================================================
+
+-- shipping_zones
+CREATE INDEX idx_shipping_zones_carrier ON shipping_zones(carrier_id);
+CREATE INDEX idx_shipping_zones_uf ON shipping_zones(uf);
+CREATE INDEX idx_shipping_zones_postal ON shipping_zones USING GIN(postal_code_ranges);
+
+-- shipping_rates
+CREATE INDEX idx_shipping_rates_zone ON shipping_rates(zone_id);
+
+-- seller_shipping_configs
+CREATE INDEX idx_seller_shipping_seller ON seller_shipping_configs(seller_id);
+CREATE INDEX idx_seller_shipping_carrier ON seller_shipping_configs(carrier_id);
+CREATE INDEX idx_seller_shipping_priority ON seller_shipping_configs(priority);
+
+-- shipping_quotes
+CREATE INDEX idx_shipping_quotes_cache ON shipping_quotes(cache_key);
+CREATE INDEX idx_shipping_quotes_expires ON shipping_quotes(expires_at);
+
+-- ============================================================================
+-- FUNÇÕES AUXILIARES
+-- ============================================================================
+
+-- Função para buscar zona por CEP
+CREATE OR REPLACE FUNCTION find_shipping_zone(
+    p_postal_code VARCHAR(8),
+    p_carrier_id TEXT DEFAULT NULL
+) RETURNS TABLE (
+    zone_id TEXT,
+    zone_name VARCHAR(255),
+    carrier_id TEXT,
+    delivery_days_min INTEGER,
+    delivery_days_max INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        z.id,
+        z.name,
+        z.carrier_id,
+        z.delivery_days_min,
+        z.delivery_days_max
+    FROM shipping_zones z
+    JOIN shipping_carriers c ON z.carrier_id = c.id
+    WHERE z.is_active = true 
+      AND c.is_active = true
+      AND (p_carrier_id IS NULL OR z.carrier_id = p_carrier_id)
+      AND EXISTS (
+          SELECT 1 
+          FROM jsonb_array_elements(z.postal_code_ranges) as range
+          WHERE p_postal_code BETWEEN (range->>'from') AND (range->>'to')
+      )
+    ORDER BY z.delivery_days_min ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- DADOS INICIAIS
+-- ============================================================================
+
+-- Carrier Frenet
+INSERT INTO shipping_carriers (id, name, type, api_endpoint) VALUES 
+('frenet-carrier', 'Frenet', 'table', NULL);
+
+-- Carrier Global (fallback)
+INSERT INTO shipping_carriers (id, name, type) VALUES 
+('global-carrier', 'Global Shipping', 'table');
+
+-- Configuração global padrão
+INSERT INTO seller_shipping_configs (
+    id, seller_id, carrier_id, zone_id, 
+    free_shipping_threshold, max_weight_kg, priority
+) VALUES (
+    'global-config', NULL, 'global-carrier', NULL,
+    299.00, 50.0, 999
+); 

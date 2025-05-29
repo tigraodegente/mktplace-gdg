@@ -29,8 +29,13 @@
 	
 	// Atualizar valores quando props mudam
 	$effect(() => {
-		minValue = currentMin;
-		maxValue = currentMax;
+		// Só atualizar se os valores realmente mudaram
+		if (minValue !== currentMin) {
+			minValue = currentMin;
+		}
+		if (maxValue !== currentMax) {
+			maxValue = currentMax;
+		}
 	});
 	
 	// Calcular porcentagens para posicionamento

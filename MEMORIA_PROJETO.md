@@ -2,6 +2,40 @@
 
 ## 📅 Histórico de Decisões Importantes
 
+### 28/11/2024 - Fluxo de Compra Completo Implementado
+
+**Conquista**: Implementação completa do fluxo de compra (carrinho → checkout → sucesso)
+
+**Implementações**:
+- ✅ Página principal do carrinho (`/cart`)
+- ✅ Página de produto completa com galeria, variações e tabs
+- ✅ Fluxo de checkout em 3 etapas (endereço, pagamento, revisão)
+- ✅ Página de sucesso com instruções de pagamento
+- ✅ API endpoint para buscar produto por slug
+
+**Features do Carrinho**:
+- Agrupamento por vendedor
+- Cálculo de frete com modos (agrupado/expresso)
+- Sistema de cupons
+- Responsivo e acessível
+
+**Features do Produto**:
+- Galeria de imagens com zoom
+- Seleção de cor e tamanho
+- Tabs de informações
+- Produtos relacionados
+- Integração com carrinho
+
+**Features do Checkout**:
+- Validação de formulários
+- Busca de CEP automática
+- Máscaras de input
+- Múltiplas formas de pagamento (cartão, PIX, boleto)
+- Cálculo de parcelas
+- Revisão completa do pedido
+
+---
+
 ### 27/11/2024 - Estratégia de Componentes
 
 **Contexto**: Discussão sobre onde manter componentes - compartilhados vs específicos por app
@@ -75,23 +109,29 @@ packages/
 - Estrutura base das 3 aplicações
 - Deploy automático configurado
 - Componentes base (Button, Input, Card)
-- Sistema de busca com sugestões
+- Sistema de busca com sugestões e filtros avançados
 - Páginas de categorias
 - ProductCard completo
+- **Carrinho de compras completo**
+- **Página de produto detalhada**
+- **Fluxo de checkout em 3 etapas**
+- **Página de sucesso do pedido**
+- Sistema de cache e otimizações de performance
 
 ### 🚧 Em Desenvolvimento:
-- Sistema de produtos completo
-- Carrinho de compras
-- Dashboard do vendedor
-- Painel administrativo
+- Sistema de pedidos (backend)
+- Integração com gateway de pagamento real
+- Dashboard do vendedor funcional
+- Painel administrativo completo
+- Sistema de notificações
 
 ### 📋 Backlog:
-- Sistema de pagamentos
-- Gestão de pedidos
+- Gestão de pedidos completa
 - Sistema de avaliações
 - Chat vendedor-cliente
-- Notificações
-- Analytics
+- Analytics e relatórios
+- Sistema de devoluções
+- Programa de afiliados
 
 ---
 
@@ -135,7 +175,8 @@ packages/
 2. **Build Local**: Usar `pnpm dev:store` (ou admin/seller)
 3. **Deploy**: Push para main dispara deploy automático
 4. **Componentes**: Verificar `/docs/arquitetura/componentes.md` antes de criar novos
+5. **Performance**: Sistema já otimizado com cache em múltiplas camadas
 
 ---
 
-**Última atualização**: 27/11/2024 
+**Última atualização**: 28/11/2024 
