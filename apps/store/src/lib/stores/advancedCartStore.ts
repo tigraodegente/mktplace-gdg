@@ -54,9 +54,19 @@ async function validateCoupon(code: string, items: CartItem[]): Promise<Coupon |
     const result = await response.json();
 
     if (result.success && result.coupon) {
+      // Mapear tipo correto da API
+      let couponType: 'percentage' | 'fixed' | 'free_shipping' = 'fixed';
+      if (result.coupon.type === 'percentage') {
+        couponType = 'percentage';
+      } else if (result.coupon.type === 'free_shipping') {
+        couponType = 'free_shipping';
+      } else {
+        couponType = 'fixed';
+      }
+
       return {
         code: result.coupon.code,
-        type: result.coupon.type === 'percentage' ? 'percentage' : 'fixed',
+        type: couponType,
         value: result.coupon.value,
         scope: result.coupon.scope === 'global' ? 'cart' : result.coupon.scope,
         description: result.coupon.description || result.coupon.name,
@@ -227,26 +237,37 @@ function createAdvancedCartStore() {
     }
   );
   
-  // Totais do carrinho (sem frete - calculado pelo sistema novo)
+  // Totais do carrinho (integrado com página do carrinho)
   const cartTotals = derived(
     [sellerGroups, appliedCoupon], 
     ([$groups, $appliedCoupon]) => {
       const cartSubtotal = $groups.reduce((sum, group) => sum + group.subtotal, 0);
       const totalDiscount = $groups.reduce((sum, group) => sum + group.discount, 0);
       
-      // Calcular desconto do cupom
+      // Calcular desconto do cupom (apenas cupons normais, não frete grátis)
       let couponDiscount = 0;
+      
       if ($appliedCoupon && $appliedCoupon.scope === 'cart') {
-        couponDiscount = calculateDiscount(cartSubtotal, $appliedCoupon);
+        if ($appliedCoupon.type === 'free_shipping') {
+          // Para cupom de frete grátis, não calcular desconto aqui
+          // O sistema da página do carrinho gerencia isso baseado no frete real
+          console.log(`🚚 CUPOM FRETE GRÁTIS DETECTADO - Gerenciado pelo sistema real da página`);
+        } else {
+          // Cupom de desconto normal
+          couponDiscount = calculateDiscount(cartSubtotal, $appliedCoupon);
+        }
       }
       
-      const finalTotal = cartSubtotal - totalDiscount - couponDiscount;
+      const totalDiscountWithCoupon = totalDiscount + couponDiscount;
+      const finalTotal = cartSubtotal - totalDiscountWithCoupon;
       
       return {
         cartSubtotal,
-        totalShipping: 0, // Será calculado pelo sistema novo
-        totalDiscount: totalDiscount + couponDiscount,
+        totalShipping: 0, // Sempre 0 aqui, calculado na página do carrinho
+        totalDiscount: totalDiscountWithCoupon,
         couponDiscount,
+        freeShippingSavings: 0, // Calculado na página do carrinho
+        hasFreeShipping: $appliedCoupon?.type === 'free_shipping',
         cartTotal: finalTotal,
         installmentValue: finalTotal / 12
       };
@@ -585,4 +606,4 @@ if (typeof window !== 'undefined' && !(window as any).cartDebug) {
   console.log('  → window.cartDebug.report() - Relatório completo');
   console.log('  → window.cartDebug.store - Acesso ao store');
   console.log('  → window.cartDebug.clear() - Limpar console');
-} 
+}

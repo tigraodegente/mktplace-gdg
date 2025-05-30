@@ -6,7 +6,8 @@ import type { Product } from '@mktplace/shared-types';
 
 export const COUPON_TYPES = {
   PERCENTAGE: 'percentage',
-  FIXED: 'fixed'
+  FIXED: 'fixed',
+  FREE_SHIPPING: 'free_shipping'
 } as const;
 
 export const COUPON_SCOPES = {

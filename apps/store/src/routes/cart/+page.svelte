@@ -41,10 +41,9 @@
     )
   );
   
-  // Calcular totais reais baseados no sistema novo
+  // Calcular totais reais baseados no sistema novo (VERSÃO UNIFICADA)
   const realCartTotals = $derived(() => {
     const cartSubtotal = $cartTotals.cartSubtotal;
-    const totalDiscount = $cartTotals.totalDiscount;
     
     // Calcular frete total baseado nas opções selecionadas
     const shippingCalculation = ShippingCartService.calculateCartShippingTotal(
@@ -52,13 +51,32 @@
       selectedShippingOptions
     );
     
-    const totalShipping = shippingCalculation.totalShipping;
-    const cartTotal = cartSubtotal - totalDiscount + totalShipping;
+    let totalShipping = shippingCalculation.totalShipping;
+    let freeShippingSavings = 0;
+    
+    // 🚚 APLICAR CUPOM DE FRETE GRÁTIS (com valor real)
+    if ($appliedCoupon && $appliedCoupon.type === 'free_shipping') {
+      freeShippingSavings = totalShipping; // Economia real = frete que seria cobrado
+      totalShipping = 0; // Zerar frete real quando há cupom de frete grátis
+      console.log(`🎫 CUPOM FRETE GRÁTIS - Economia real: R$ ${freeShippingSavings.toFixed(2)}`);
+    }
+    
+    // Somar todos os descontos (produtos + cupom normal + frete grátis)
+    const productDiscounts = $cartTotals.totalDiscount - $cartTotals.couponDiscount; // Descontos de produtos apenas
+    const couponDiscount = $appliedCoupon && $appliedCoupon.type !== 'free_shipping' 
+      ? $cartTotals.couponDiscount 
+      : 0;
+    const totalDiscount = productDiscounts + couponDiscount + freeShippingSavings;
+    
+    const cartTotal = cartSubtotal - productDiscounts - couponDiscount + totalShipping;
     
     return {
       cartSubtotal,
       totalShipping,
       totalDiscount,
+      productDiscounts,
+      couponDiscount,
+      freeShippingSavings,
       cartTotal,
       installmentValue: cartTotal / 12,
       maxDeliveryDays: shippingCalculation.maxDeliveryDays,
@@ -67,19 +85,9 @@
     };
   });
   
-  // Calcular economia total
+  // Calcular economia total (SIMPLIFICADO)
   const totalSavings = $derived(() => {
-    let savings = realCartTotals().totalDiscount;
-    if (hasCartFreeShipping) {
-      // Estimar economia do frete grátis
-      const estimatedShipping = realShippingQuotes.reduce((sum, quote) => {
-        if (!quote.shippingResult.success) return sum;
-        const cheapest = ShippingCartService.getCheapestOption(quote.shippingResult.options);
-        return sum + (cheapest?.price || 0);
-      }, 0);
-      savings += estimatedShipping;
-    }
-    return savings;
+    return realCartTotals().totalDiscount;
   });
   
   // Função para calcular frete real
@@ -143,6 +151,18 @@
       [sellerId]: optionId
     };
   }
+  
+  // 🔄 RECÁLCULO AUTOMÁTICO quando muda seleção de frete com cupom ativo
+  $effect(() => {
+    if ($appliedCoupon && $appliedCoupon.type === 'free_shipping' && realShippingQuotes.length > 0) {
+      const shippingCost = ShippingCartService.calculateCartShippingTotal(
+        realShippingQuotes,
+        selectedShippingOptions
+      ).totalShipping;
+      
+      console.log(`🔄 RECÁLCULO AUTO - Novo frete: R$ ${shippingCost.toFixed(2)}, Cupom: ${$appliedCoupon.code}`);
+    }
+  });
 
   async function handleApplyCoupon(code: string) {
     await applyCoupon(code);
@@ -213,23 +233,6 @@
           </p>
         {/if}
       </div>
-      
-      {#if $sellerGroups.length > 0}
-        <button 
-          onclick={() => {
-            if (confirm('Tem certeza que deseja remover todos os produtos do carrinho?')) {
-              clearCart();
-            }
-          }}
-          class="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200 border border-red-200 hover:border-red-300"
-          aria-label="Limpar carrinho"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          <span class="text-sm font-medium hidden sm:block">Limpar carrinho</span>
-        </button>
-      {/if}
     </div>
     
     {#if $sellerGroups.length === 0}
@@ -386,6 +389,8 @@
             <div class="mb-6">
               <CouponSection
                 appliedCoupon={$appliedCoupon}
+                hasShippingCalculated={$zipCode !== '' && realShippingQuotes.length > 0}
+                shippingCost={realShippingQuotes.length > 0 ? ShippingCartService.calculateCartShippingTotal(realShippingQuotes, selectedShippingOptions).totalShipping : 0}
                 onApplyCoupon={handleApplyCoupon}
                 onRemoveCoupon={removeCoupon}
               />
@@ -403,7 +408,7 @@
               {#if $zipCode && realShippingQuotes.length > 0}
                 <div class="flex justify-between">
                   <span class="text-gray-600">Frete total</span>
-                  <span class="font-medium {hasCartFreeShipping ? 'text-[#00BFB3]' : ''}">
+                  <span class="font-medium {realCartTotals().totalShipping === 0 ? 'text-[#00BFB3]' : ''}">
                     {realCartTotals().totalShipping === 0 ? 'Grátis' : `R$ ${realCartTotals().totalShipping.toFixed(2)}`}
                   </span>
                 </div>
@@ -414,11 +419,34 @@
                 </div>
               {/if}
               
-              <!-- Descontos -->
+              <!-- Descontos (UNIFICADO) -->
               {#if realCartTotals().totalDiscount > 0}
-                <div class="flex justify-between text-[#00BFB3]">
-                  <span>Descontos totais</span>
-                  <span>-R$ {realCartTotals().totalDiscount.toFixed(2)}</span>
+                <div class="space-y-1">
+                  {#if realCartTotals().productDiscounts > 0}
+                    <div class="flex justify-between text-[#00BFB3] text-xs">
+                      <span>Descontos de produtos</span>
+                      <span>-R$ {realCartTotals().productDiscounts.toFixed(2)}</span>
+                    </div>
+                  {/if}
+                  
+                  {#if realCartTotals().couponDiscount > 0}
+                    <div class="flex justify-between text-[#00BFB3] text-xs">
+                      <span>Cupom de desconto</span>
+                      <span>-R$ {realCartTotals().couponDiscount.toFixed(2)}</span>
+                    </div>
+                  {/if}
+                  
+                  {#if realCartTotals().freeShippingSavings > 0}
+                    <div class="flex justify-between text-[#00BFB3] text-xs">
+                      <span>Frete grátis (cupom)</span>
+                      <span>-R$ {realCartTotals().freeShippingSavings.toFixed(2)}</span>
+                    </div>
+                  {/if}
+                  
+                  <div class="flex justify-between text-[#00BFB3] font-medium pt-1 border-t border-[#00BFB3]/20">
+                    <span>Total de descontos</span>
+                    <span>-R$ {realCartTotals().totalDiscount.toFixed(2)}</span>
+                  </div>
                 </div>
               {/if}
               
@@ -446,7 +474,7 @@
                 </p>
                 
                 <!-- Economia Total -->
-                {#if totalSavings() > 0}
+                {#if realCartTotals().totalDiscount > 0}
                   <div class="mt-3 bg-[#00BFB3]/10 border border-[#00BFB3]/30 rounded-lg p-3">
                     <div class="flex items-center gap-2">
                       <svg class="w-5 h-5 text-[#00BFB3] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -456,9 +484,16 @@
                         <p class="font-semibold text-[#00A89D]">
                           Você está economizando!
                         </p>
-                        <p class="text-[#00BFB3]">
-                          R$ {totalSavings().toFixed(2)} no total
-                        </p>
+                        <div class="text-[#00BFB3] space-y-0.5">
+                          <p class="font-bold">
+                            R$ {realCartTotals().totalDiscount.toFixed(2)} no total
+                          </p>
+                          {#if realCartTotals().freeShippingSavings > 0}
+                            <p class="text-xs">
+                              Incluindo R$ {realCartTotals().freeShippingSavings.toFixed(2)} de frete grátis
+                            </p>
+                          {/if}
+                        </div>
                       </div>
                     </div>
                   </div>
