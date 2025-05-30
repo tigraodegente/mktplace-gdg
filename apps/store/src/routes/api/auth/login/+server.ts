@@ -1,15 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { withDatabase } from '$lib/db';
-import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
-
-// Helper para verificar senha com PBKDF2
-function verifyPassword(password: string, storedHash: string): boolean {
-  const [salt, hash] = storedHash.split(':');
-  const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return hash === verifyHash;
-}
 
 export const POST: RequestHandler = async ({ request, cookies, platform }) => {
   try {
@@ -39,8 +32,8 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         };
       }
       
-      // Comparar senha usando PBKDF2
-      const isValidPassword = verifyPassword(password, user.password_hash);
+      // Comparar senha usando bcrypt
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
       
       if (!isValidPassword) {
         return {
@@ -109,20 +102,6 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       secure: import.meta.env.PROD,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7 // 7 dias
-    });
-    
-    // Também manter o cookie antigo para compatibilidade
-    cookies.set('session', JSON.stringify({
-      userId: result.user!.id,
-      email: result.user!.email,
-      name: result.user!.name,
-      role: result.user!.role
-    }), {
-      path: '/',
-      httpOnly: true,
-      secure: import.meta.env.PROD,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7
     });
     
     return json({

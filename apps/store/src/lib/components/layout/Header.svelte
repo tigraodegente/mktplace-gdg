@@ -181,6 +181,9 @@
 								onClose={() => miniCartVisible = false}
 								onViewCart={handleViewCart}
 								onCheckout={handleCheckout}
+								showQuickActions={true}
+								maxItems={4}
+								autoHideDelay={3000}
 							/>
 						</div>
 					</div>

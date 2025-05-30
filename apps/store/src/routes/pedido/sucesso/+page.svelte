@@ -2,174 +2,96 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   
-  let orderId = $state('');
-  let orderData = $state<any>(null);
+  let orderNumber = '';
   
   onMount(() => {
-    // Pegar o ID do pedido da URL
-    const urlParams = new URLSearchParams($page.url.search);
-    orderId = urlParams.get('orderId') || '';
-    
-    // TODO: Buscar dados reais do pedido
-    // Por enquanto, vamos mockar
-    orderData = {
-      id: orderId,
-      status: 'pending_payment',
-      paymentMethod: 'pix',
-      pixCode: '00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000',
-      total: 299.90,
-      estimatedDelivery: '7 a 10 dias úteis'
-    };
+    orderNumber = $page.url.searchParams.get('order') || '';
   });
-  
-  function copyPixCode() {
-    if (orderData?.pixCode) {
-      navigator.clipboard.writeText(orderData.pixCode);
-      alert('Código PIX copiado!');
-    }
-  }
 </script>
 
 <svelte:head>
-  <title>Pedido Realizado com Sucesso - Marketplace GDG</title>
-  <meta name="description" content="Seu pedido foi realizado com sucesso" />
+  <title>Pedido Criado com Sucesso - Marketplace GDG</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 py-12">
-  <div class="max-w-3xl mx-auto px-4">
-    <!-- Sucesso -->
-    <div class="bg-white rounded-lg shadow-sm p-8 text-center mb-8">
-      <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+<main class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <!-- Ícone de sucesso -->
+    <div class="text-center">
+      <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100">
+        <svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
         </svg>
       </div>
       
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">Pedido Realizado com Sucesso!</h1>
-      <p class="text-gray-600 mb-6">
-        Seu pedido <span class="font-semibold">#{orderId}</span> foi recebido e está sendo processado.
-      </p>
+      <h1 class="mt-6 text-3xl font-bold text-gray-900">
+        Pedido Criado com Sucesso!
+      </h1>
       
-      {#if orderData?.paymentMethod === 'pix'}
-        <!-- Instruções PIX -->
-        <div class="bg-orange-50 border border-orange-200 rounded-lg p-6 text-left mb-6">
-          <h2 class="text-lg font-semibold text-orange-900 mb-3">
-            Aguardando Pagamento via PIX
-          </h2>
-          <p class="text-sm text-orange-800 mb-4">
-            Para confirmar seu pedido, realize o pagamento usando o código PIX abaixo:
-          </p>
-          
-          <div class="bg-white border border-orange-300 rounded p-3 mb-3">
-            <p class="text-xs text-gray-600 mb-1">Código PIX (copia e cola)</p>
-            <p class="font-mono text-sm break-all">{orderData.pixCode}</p>
-          </div>
-          
-          <button
-            onclick={copyPixCode}
-            class="w-full bg-orange-600 text-white py-2 px-4 rounded font-medium
-                   hover:bg-orange-700 transition-colors"
-          >
-            Copiar Código PIX
-          </button>
-          
-          <p class="text-xs text-orange-700 mt-3">
-            * O código expira em 30 minutos. Após o pagamento, seu pedido será confirmado automaticamente.
-          </p>
-        </div>
-        
-        <!-- QR Code (placeholder) -->
-        <div class="mb-6">
-          <p class="text-sm text-gray-600 mb-3">Ou escaneie o QR Code:</p>
-          <div class="w-48 h-48 bg-gray-200 mx-auto rounded-lg flex items-center justify-center">
-            <span class="text-gray-500">QR Code PIX</span>
-          </div>
-        </div>
-      {:else if orderData?.paymentMethod === 'boleto'}
-        <!-- Instruções Boleto -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-left mb-6">
-          <h2 class="text-lg font-semibold text-blue-900 mb-3">
-            Boleto Bancário Gerado
-          </h2>
-          <p class="text-sm text-blue-800 mb-4">
-            Seu boleto foi gerado e enviado para seu e-mail. Você tem até 3 dias úteis para efetuar o pagamento.
-          </p>
-          
-          <a
-            href="#"
-            class="inline-block bg-blue-600 text-white py-2 px-6 rounded font-medium
-                   hover:bg-blue-700 transition-colors"
-          >
-            Baixar Boleto
-          </a>
-        </div>
+      {#if orderNumber}
+        <p class="mt-2 text-lg text-gray-600">
+          Número do pedido: <span class="font-semibold text-gray-900">{orderNumber}</span>
+        </p>
       {/if}
+    </div>
+
+    <!-- Informações do pedido -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">O que acontece agora?</h2>
       
-      <!-- Informações do Pedido -->
-      <div class="border-t pt-6">
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p class="text-gray-600">Valor Total</p>
-            <p class="font-semibold text-lg">R$ {orderData?.total?.toFixed(2) || '0,00'}</p>
+      <div class="space-y-4">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100">
+              <span class="text-sm font-medium text-blue-600">1</span>
+            </div>
           </div>
-          <div>
-            <p class="text-gray-600">Prazo de Entrega</p>
-            <p class="font-semibold">{orderData?.estimatedDelivery || 'A calcular'}</p>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-gray-900">Confirmação por e-mail</h3>
+            <p class="text-sm text-gray-500">Você receberá um e-mail com os detalhes do seu pedido.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100">
+              <span class="text-sm font-medium text-blue-600">2</span>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-gray-900">Processamento</h3>
+            <p class="text-sm text-gray-500">Seu pedido será processado e preparado para envio.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100">
+              <span class="text-sm font-medium text-blue-600">3</span>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-gray-900">Acompanhamento</h3>
+            <p class="text-sm text-gray-500">Você receberá atualizações sobre o status do pedido.</p>
           </div>
         </div>
       </div>
     </div>
-    
-    <!-- Próximos Passos -->
-    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-      <h2 class="text-lg font-semibold mb-4">Próximos Passos</h2>
-      <ol class="space-y-3">
-        <li class="flex items-start">
-          <span class="flex-shrink-0 w-6 h-6 bg-[#00BFB3] text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
-            1
-          </span>
-          <div>
-            <p class="font-medium">Confirmação do Pagamento</p>
-            <p class="text-sm text-gray-600">Aguardamos a confirmação do seu pagamento</p>
-          </div>
-        </li>
-        <li class="flex items-start">
-          <span class="flex-shrink-0 w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
-            2
-          </span>
-          <div>
-            <p class="font-medium">Preparação do Pedido</p>
-            <p class="text-sm text-gray-600">O vendedor preparará seu pedido para envio</p>
-          </div>
-        </li>
-        <li class="flex items-start">
-          <span class="flex-shrink-0 w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
-            3
-          </span>
-          <div>
-            <p class="font-medium">Envio e Rastreamento</p>
-            <p class="text-sm text-gray-600">Você receberá o código de rastreamento por e-mail</p>
-          </div>
-        </li>
-      </ol>
-    </div>
-    
+
     <!-- Ações -->
-    <div class="flex flex-col sm:flex-row gap-4">
-      <a
-        href="/pedidos"
-        class="flex-1 bg-[#00BFB3] text-white py-3 px-6 rounded-lg font-semibold text-center
-               hover:bg-[#00A89D] transition-colors"
-      >
-        Acompanhar Pedido
-      </a>
-      <a
-        href="/"
-        class="flex-1 bg-white text-[#00BFB3] py-3 px-6 rounded-lg font-semibold text-center
-               border-2 border-[#00BFB3] hover:bg-[#00BFB3]/10 transition-colors"
+    <div class="flex flex-col space-y-3">
+      <a 
+        href="/" 
+        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
       >
         Continuar Comprando
       </a>
+      
+      <a 
+        href="/pedidos" 
+        class="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+      >
+        Ver Meus Pedidos
+      </a>
     </div>
   </div>
-</div> 
+</main> 

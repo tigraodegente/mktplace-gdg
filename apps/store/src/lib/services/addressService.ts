@@ -11,6 +11,8 @@ export interface SavedAddress {
 	neighborhood: string;
 	city: string;
 	state: string;
+	type?: 'shipping' | 'billing';
+	phone?: string;
 	isDefault?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
@@ -34,74 +36,70 @@ export function validateAddress(address: Partial<SavedAddress>): string[] {
 // Store para endereços salvos
 function createAddressStore() {
 	const { subscribe, set, update } = writable<SavedAddress[]>([]);
+	let isLoading = writable(false);
 	let currentUserId: string | null = null;
 	
 	// Observar mudanças no usuário e autenticação
 	user.subscribe(($user) => {
 		if ($user?.id && $user.id !== currentUserId) {
 			currentUserId = $user.id;
-			loadAddresses($user.id);
+			loadAddresses();
 		} else if (!$user) {
 			currentUserId = null;
 			set([]);
 		}
 	});
 	
-	function getStorageKey(userId: string): string {
-		return `user_addresses_${userId}`;
-	}
-	
-	function loadAddresses(userId: string) {
+	// Carregar endereços da API
+	async function loadAddresses() {
+		if (!currentUserId) return;
+		
+		isLoading.set(true);
+		
 		try {
-			const saved = localStorage.getItem(getStorageKey(userId));
-			if (saved) {
-				const addresses = JSON.parse(saved);
+			const response = await fetch('/api/addresses', {
+				credentials: 'include'
+			});
+			
+			if (!response.ok) {
+				if (response.status === 401) {
+					// Usuário não autenticado, limpar store
+					set([]);
+					return;
+				}
+				throw new Error('Erro ao carregar endereços');
+			}
+			
+			const result = await response.json();
+			
+			if (result.success) {
 				// Converter strings de data para objetos Date
-				addresses.forEach((addr: SavedAddress) => {
-					addr.createdAt = new Date(addr.createdAt);
-					addr.updatedAt = new Date(addr.updatedAt);
-				});
+				const addresses = result.data.map((addr: any) => ({
+					...addr,
+					createdAt: new Date(addr.createdAt),
+					updatedAt: new Date(addr.updatedAt)
+				}));
 				set(addresses);
 			} else {
-				// Dados mock apenas para demonstração inicial
-				const mockAddresses: SavedAddress[] = [
-					{
-						id: '1',
-						name: 'Casa',
-						zipCode: '01310100',
-						street: 'Av. Paulista',
-						number: '1578',
-						neighborhood: 'Bela Vista',
-						city: 'São Paulo',
-						state: 'SP',
-						isDefault: true,
-						createdAt: new Date('2024-01-01'),
-						updatedAt: new Date('2024-01-01')
-					}
-				];
-				set(mockAddresses);
-				saveToLocalStorage(mockAddresses, userId);
+				console.error('Erro da API:', result.error);
+				set([]);
 			}
 		} catch (error) {
 			console.error('Erro ao carregar endereços:', error);
 			set([]);
-		}
-	}
-	
-	function saveToLocalStorage(addresses: SavedAddress[], userId?: string) {
-		try {
-			const id = userId || currentUserId;
-			if (!id) return;
-			
-			localStorage.setItem(getStorageKey(id), JSON.stringify(addresses));
-		} catch (error) {
-			console.error('Erro ao salvar endereços:', error);
+		} finally {
+			isLoading.set(false);
 		}
 	}
 	
 	return {
 		subscribe,
+		isLoading: { subscribe: isLoading.subscribe },
 		
+		// Recarregar endereços
+		reload: loadAddresses,
+		
+		// Adicionar novo endereço
 		add: async (address: Omit<SavedAddress, 'id' | 'createdAt' | 'updatedAt'>): Promise<SavedAddress> => {
 			// Validar endereço
 			const errors = validateAddress(address);
@@ -109,133 +107,143 @@ function createAddressStore() {
 				throw new Error(`Erro de validação: ${errors.join(', ')}`);
 			}
 			
-			const newAddress: SavedAddress = {
-				...address,
-				id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			};
+			isLoading.set(true);
 			
-			return new Promise((resolve) => {
-				update(addresses => {
-					// Se for o primeiro endereço ou marcado como padrão, desmarcar outros
-					if (addresses.length === 0 || address.isDefault) {
-						addresses = addresses.map(addr => ({ ...addr, isDefault: false }));
-						newAddress.isDefault = true;
-					}
-					
-					const updated = [...addresses, newAddress];
-					saveToLocalStorage(updated);
-					
-					// Simular delay de API
-					setTimeout(() => resolve(newAddress), 300);
-					
-					return updated;
-				});
-			});
-		},
-		
-		remove: (id: string): boolean => {
-			let removed = false;
-			
-			update(addresses => {
-				const filtered = addresses.filter(addr => addr.id !== id);
-				removed = filtered.length < addresses.length;
-				
-				if (removed) {
-					// Se removeu o endereço padrão e ainda há endereços, marcar o primeiro como padrão
-					if (filtered.length > 0 && !filtered.some(addr => addr.isDefault)) {
-						filtered[0].isDefault = true;
-						filtered[0].updatedAt = new Date();
-					}
-					
-					saveToLocalStorage(filtered);
-				}
-				
-				return filtered;
-			});
-			
-			return removed;
-		},
-		
-		update: (id: string, updates: Partial<SavedAddress>): boolean => {
-			let updated = false;
-			
-			update(addresses => {
-				const newAddresses = addresses.map(addr => {
-					if (addr.id === id) {
-						updated = true;
-						
-						// Se está marcando como padrão, desmarcar outros
-						if (updates.isDefault) {
-							addresses.forEach(a => {
-								if (a.id !== id) {
-									a.isDefault = false;
-									a.updatedAt = new Date();
-								}
-							});
-						}
-						
-						return { 
-							...addr, 
-							...updates, 
-							updatedAt: new Date() 
-						};
-					}
-					return addr;
+			try {
+				const response = await fetch('/api/addresses', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					credentials: 'include',
+					body: JSON.stringify({
+						...address,
+						zipCode: address.zipCode.replace(/\D/g, ''), // Limpar formatação
+						state: address.state.toUpperCase()
+					})
 				});
 				
-				if (updated) {
-					saveToLocalStorage(newAddresses);
+				const result = await response.json();
+				
+				if (!response.ok || !result.success) {
+					throw new Error(result.error?.message || 'Erro ao salvar endereço');
 				}
 				
-				return newAddresses;
-			});
-			
-			return updated;
+				const newAddress = {
+					...result.data,
+					createdAt: new Date(result.data.createdAt),
+					updatedAt: new Date(result.data.updatedAt)
+				};
+				
+				// Atualizar store local
+				update(addresses => [...addresses, newAddress]);
+				
+				return newAddress;
+			} catch (error) {
+				throw error;
+			} finally {
+				isLoading.set(false);
+			}
 		},
 		
-		setDefault: (id: string): boolean => {
-			let found = false;
+		// Remover endereço
+		remove: async (id: string): Promise<boolean> => {
+			isLoading.set(true);
 			
-			update(addresses => {
-				const updated = addresses.map(addr => {
-					if (addr.id === id) {
-						found = true;
-					}
-					
-					return {
-						...addr,
-						isDefault: addr.id === id,
-						updatedAt: addr.id === id || addr.isDefault ? new Date() : addr.updatedAt
-					};
+			try {
+				const response = await fetch(`/api/addresses/${id}`, {
+					method: 'DELETE',
+					credentials: 'include'
 				});
 				
-				if (found) {
-					saveToLocalStorage(updated);
+				const result = await response.json();
+				
+				if (!response.ok || !result.success) {
+					throw new Error(result.error?.message || 'Erro ao remover endereço');
 				}
 				
-				return updated;
-			});
-			
-			return found;
+				// Atualizar store local
+				update(addresses => addresses.filter(addr => addr.id !== id));
+				
+				return true;
+			} catch (error) {
+				console.error('Erro ao remover endereço:', error);
+				return false;
+			} finally {
+				isLoading.set(false);
+			}
 		},
 		
+		// Atualizar endereço
+		update: async (id: string, updates: Partial<SavedAddress>): Promise<boolean> => {
+			isLoading.set(true);
+			
+			try {
+				// Limpar zipCode se fornecido
+				if (updates.zipCode) {
+					updates.zipCode = updates.zipCode.replace(/\D/g, '');
+				}
+				
+				// Converter state para maiúsculo se fornecido
+				if (updates.state) {
+					updates.state = updates.state.toUpperCase();
+				}
+				
+				const response = await fetch(`/api/addresses/${id}`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					credentials: 'include',
+					body: JSON.stringify(updates)
+				});
+				
+				const result = await response.json();
+				
+				if (!response.ok || !result.success) {
+					throw new Error(result.error?.message || 'Erro ao atualizar endereço');
+				}
+				
+				const updatedAddress = {
+					...result.data,
+					createdAt: new Date(result.data.createdAt),
+					updatedAt: new Date(result.data.updatedAt)
+				};
+				
+				// Atualizar store local
+				update(addresses => addresses.map(addr => 
+					addr.id === id ? updatedAddress : addr
+				));
+				
+				return true;
+			} catch (error) {
+				console.error('Erro ao atualizar endereço:', error);
+				return false;
+			} finally {
+				isLoading.set(false);
+			}
+		},
+		
+		// Marcar como padrão
+		setDefault: async (id: string): Promise<boolean> => {
+			return await addressStore.update(id, { isDefault: true });
+		},
+		
+		// Buscar por CEP
 		findByZipCode: (zipCode: string): SavedAddress | undefined => {
 			const currentStore = get(addressStore);
 			return currentStore.find(addr => addr.zipCode === zipCode.replace(/\D/g, ''));
 		},
 		
+		// Buscar por ID
 		getById: (id: string): SavedAddress | undefined => {
 			const currentStore = get(addressStore);
 			return currentStore.find(addr => addr.id === id);
 		},
 		
+		// Limpar store
 		clear: () => {
 			set([]);
-			if (currentUserId) {
-				localStorage.removeItem(getStorageKey(currentUserId));
-			}
 		}
 	};
 }
@@ -252,6 +260,12 @@ export const defaultAddress = derived(
 export const addressCount = derived(
 	addressStore,
 	$addresses => $addresses.length
+);
+
+// Store derivado para loading
+export const addressLoading = derived(
+	addressStore.isLoading,
+	$loading => $loading
 );
 
 // Interface para resposta da API ViaCEP
