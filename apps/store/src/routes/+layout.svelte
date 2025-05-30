@@ -209,7 +209,7 @@
 
 <!-- Banner Promocional Desktop com Carrossel -->
 <div 
-	class="hidden lg:block bg-[#F4F4F4] h-[48px] relative overflow-hidden"
+	class="hidden lg:block bg-white h-[36px] mb-2 relative overflow-hidden"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -228,7 +228,7 @@
 					<a href={message.link} class="flex items-center gap-2 hover:opacity-90 transition-opacity">
 						{@html getBannerIcon(message.icon)}
 						<span class="text-black font-medium text-xs" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
-						<span class="text-[#00BFB3] font-black text-[11px] uppercase underline hover:no-underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
+						<span class="text-[#00BFB3] font-black text-[10px] uppercase underline hover:no-underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
 					</a>
 				</div>
 			{/each}
@@ -237,30 +237,30 @@
 		<!-- Navigation Arrows -->
 		<button 
 			onclick={() => goToSlide((currentSlide - 1 + BANNER_MESSAGES.length) % BANNER_MESSAGES.length)}
-			class="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
+			class="absolute left-1/2 -translate-x-[200px] top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
 			aria-label="Slide anterior"
 		>
-			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 			</svg>
 		</button>
 		
 		<button 
 			onclick={() => goToSlide((currentSlide + 1) % BANNER_MESSAGES.length)}
-			class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
+			class="absolute left-1/2 translate-x-[180px] top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-all"
 			aria-label="Próximo slide"
 		>
-			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 			</svg>
 		</button>
 		
 		<!-- Dots Indicator -->
-		<div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+		<div class="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-1">
 			{#each BANNER_MESSAGES as _, index}
 				<button
 					onclick={() => goToSlide(index)}
-					class="w-1 h-1 rounded-full transition-all duration-300 hover:bg-gray-600 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
+					class="w-0.5 h-0.5 rounded-full transition-all duration-300 hover:bg-gray-600 {index === currentSlide ? 'bg-gray-700 w-2' : 'bg-gray-400'}"
 					aria-label="Ir para slide {index + 1}"
 				></button>
 			{/each}
@@ -278,7 +278,7 @@
 
 <!-- Banner Promocional Mobile com Carrossel -->
 <div 
-	class="lg:hidden bg-[#F4F4F4] h-[44px] relative overflow-hidden"
+	class="lg:hidden bg-white h-[32px] mb-2 relative overflow-hidden"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -299,19 +299,19 @@
 				>
 					<a href={message.link} class="flex items-center gap-2">
 						{@html getBannerIcon(message.icon)}
-						<span class="text-black font-medium text-[11px]" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
-						<span class="text-[#00BFB3] font-black text-[10px] uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
+						<span class="text-black font-medium text-[10px]" style="font-family: 'Lato', sans-serif; font-weight: 500;">{message.text}</span>
+						<span class="text-[#00BFB3] font-black text-[9px] uppercase underline" style="font-family: 'Lato', sans-serif; font-weight: 900;">{message.linkText}</span>
 					</a>
 				</div>
 			{/each}
 		</div>
 		
 		<!-- Dots Indicator Mobile -->
-		<div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5">
+		<div class="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-1">
 			{#each BANNER_MESSAGES as _, index}
 				<button
 					onclick={() => goToSlide(index)}
-					class="w-1 h-1 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-700 w-3' : 'bg-gray-400'}"
+					class="w-0.5 h-0.5 rounded-full transition-all duration-300 {index === currentSlide ? 'bg-gray-700 w-2' : 'bg-gray-400'}"
 					aria-label="Ir para slide {index + 1}"
 				></button>
 			{/each}

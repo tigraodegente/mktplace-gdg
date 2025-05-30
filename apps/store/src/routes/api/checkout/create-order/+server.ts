@@ -79,9 +79,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               id, 
               name, 
               price, 
-              stock_quantity,
+              quantity,
               status,
-              images
+              attributes
             FROM products 
             WHERE id = ${item.productId} 
             AND status = 'active'
@@ -93,8 +93,8 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             throw new Error(`Produto ${item.productId} não encontrado ou inativo`);
           }
 
-          if (product.stock_quantity < item.quantity) {
-            throw new Error(`Estoque insuficiente para ${product.name}. Disponível: ${product.stock_quantity}`);
+          if (product.quantity < item.quantity) {
+            throw new Error(`Estoque insuficiente para ${product.name}. Disponível: ${product.quantity}`);
           }
 
           const itemPrice = parseFloat(product.price);
@@ -110,7 +110,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             productSnapshot: {
               name: product.name,
               price: itemPrice,
-              images: product.images,
+              attributes: product.attributes,
               id: product.id
             }
           });
@@ -230,7 +230,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           // Reduzir estoque
           await sql`
             UPDATE products 
-            SET stock_quantity = stock_quantity - ${item.quantity}
+            SET quantity = quantity - ${item.quantity}
             WHERE id = ${item.productId}
           `;
         }

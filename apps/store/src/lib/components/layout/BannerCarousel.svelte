@@ -170,7 +170,7 @@
 
 <!-- Desktop Banner -->
 <div 
-	class="hidden lg:block bg-[#F4F4F4] h-[48px] relative overflow-hidden {className}"
+	class="hidden lg:block bg-white h-[48px] relative overflow-hidden {className}"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -240,7 +240,7 @@
 
 <!-- Mobile Banner -->
 <div 
-	class="lg:hidden bg-[#F4F4F4] h-[44px] relative overflow-hidden {className}"
+	class="lg:hidden bg-white h-[44px] relative overflow-hidden {className}"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
