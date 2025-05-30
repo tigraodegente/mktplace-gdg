@@ -67,6 +67,7 @@
 	let touchEndX = 0;
 	let carouselInterval: ReturnType<typeof setInterval>;
 	let isLoaded = $state(false);
+	let isMobile = $state(false); // Adicionar estado para detectar mobile
 	
 	// Derived
 	let totalSlides = $derived(slides.length);
@@ -74,12 +75,25 @@
 	
 	onMount(() => {
 		isLoaded = true;
+		
+		// Detectar se é mobile após o mount
+		const checkIsMobile = () => {
+			isMobile = window.innerWidth < 1024;
+		};
+		
+		checkIsMobile();
+		
+		// Adicionar listener para mudança de tamanho
+		const handleResize = () => checkIsMobile();
+		window.addEventListener('resize', handleResize);
+		
 		if (autoPlay && hasMultipleSlides) {
 			startCarousel();
 		}
 		
 		return () => {
 			clearInterval(carouselInterval);
+			window.removeEventListener('resize', handleResize);
 		};
 	});
 	
@@ -201,7 +215,7 @@
 						<!-- Imagem responsiva -->
 						<div class="relative w-full h-full">
 							<img
-								src={slide.mobileImage && window?.innerWidth < 1024 ? slide.mobileImage : slide.image}
+								src={slide.mobileImage && isMobile ? slide.mobileImage : slide.image}
 								alt={slide.imageAlt}
 								class="w-full h-full object-cover"
 								loading={index === 0 ? 'eager' : 'lazy'}

@@ -10,7 +10,7 @@ const COUNT_CACHE_TTL = 60 * 60 * 1000; // 1 hora
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
     // Usar cache KV se disponível
-    const cache = platform?.env?.CACHE_KV ? createCache(platform.env.CACHE_KV) : null;
+    const cache = (platform as any)?.env?.CACHE_KV ? createCache((platform as any).env.CACHE_KV) : null;
     
     // Criar chave de cache baseada nos parâmetros
     const cacheKey = `products:${url.search || 'all'}`;
@@ -409,7 +409,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         sku: product.sku,
         pieces: product.pieces,
         is_black_friday: product.is_black_friday || false,
-        has_fast_delivery: product.has_fast_delivery !== false
+        has_fast_delivery: product.has_fast_delivery !== false,
+        // 🚚 PESO E DIMENSÕES PARA CÁLCULO DE FRETE
+        weight: product.weight ? Number(product.weight) : 0.5, // kg - default 500g
+        height: product.height ? Number(product.height) : 10,   // cm
+        width: product.width ? Number(product.width) : 10,      // cm
+        length: product.length ? Number(product.length) : 10    // cm
       }));
       
       // Buscar facetas (categorias e marcas disponíveis)

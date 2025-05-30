@@ -8,6 +8,9 @@ interface ShippingItem {
     weight?: number;
     price: number;
     category_id?: string;
+    height?: number;
+    width?: number;
+    length?: number;
 }
 
 interface ShippingRequest {
@@ -82,12 +85,18 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             const zone = zoneResult[0];
 
             // 2. Calcular peso total
-            const totalWeight = items.reduce((total, item) => {
-                const weight = item.weight || 0.3; // Peso padrão 300g
-                return total + (weight * item.quantity);
-            }, 0);
+            const totalWeight = calculateTotalWeight(items);
 
-            // 3. Buscar opções calculadas para a zona (usar estrutura Frenet importada)
+            // 3. Calcular volume total
+            const totalVolume = calculateTotalVolume(items);
+
+            // 4. Calcular peso cúbico
+            const cubicWeight = calculateCubicWeight(totalVolume);
+
+            // 5. Calcular peso efetivo
+            const effectiveWeight = calculateEffectiveWeight(items);
+
+            // 6. Buscar opções calculadas para a zona (usar estrutura Frenet importada)
             const optionsResult = await db.query`
                 SELECT 
                     sco.id,
@@ -109,10 +118,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
             const shippingOptions: AdvancedShippingOption[] = [];
 
-            // 4. Processar cada opção
+            // 7. Processar cada opção
             for (const option of optionsResult) {
-                // Calcular preço baseado no peso (estrutura Frenet importada)
-                const price = calculatePriceForWeight(option.calculated_weight_rules, totalWeight);
+                // 🔧 USAR PESO EFETIVO para cálculo de preço (considera volume)
+                const price = calculatePriceForWeight(option.calculated_weight_rules, effectiveWeight);
                 const finalPrice = applyAdditionalFees(price, option.calculated_fees);
                 
                 // Verificar frete grátis
@@ -140,7 +149,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 shippingOptions.push(shippingOption);
             }
 
-            // 5. Ordenar por preço
+            // 8. Ordenar por preço
             shippingOptions.sort((a, b) => a.price - b.price);
 
             return {
@@ -154,6 +163,9 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 },
                 calculation_info: {
                     total_weight: totalWeight,
+                    total_volume: totalVolume,
+                    cubic_weight: cubicWeight,
+                    effective_weight: effectiveWeight,
                     postal_code: cleanPostalCode,
                     items_count: items.length
                 }
@@ -282,4 +294,47 @@ function generateShippingName(modalityName: string, days: number): string {
     if (days === 0) return `${modalityName} - Entrega Hoje`;
     if (days === 1) return `${modalityName} - Entrega Amanhã`;
     return `${modalityName} - ${days} dias úteis`;
+}
+
+/**
+ * 🚚 FUNÇÕES DE CÁLCULO DE PESO/VOLUME AVANÇADO
+ */
+function calculateTotalWeight(items: ShippingItem[]): number {
+    return items.reduce((total, item) => {
+        const weight = item.weight || 0.3; // Default 300g
+        return total + (weight * item.quantity);
+    }, 0);
+}
+
+function calculateTotalVolume(items: ShippingItem[]): number {
+    return items.reduce((total, item) => {
+        const height = item.height || 10; // cm
+        const width = item.width || 10;   // cm 
+        const length = item.length || 15; // cm
+        const volume = height * width * length; // cm³
+        return total + (volume * item.quantity);
+    }, 0);
+}
+
+function calculateCubicWeight(volume: number, transportType: 'aereo' | 'rodoviario' = 'rodoviario'): number {
+    const divisor = transportType === 'aereo' ? 6000 : 5000;
+    return volume / divisor; // kg
+}
+
+function calculateEffectiveWeight(items: ShippingItem[]): number {
+    const realWeight = calculateTotalWeight(items);
+    const totalVolume = calculateTotalVolume(items);
+    const cubicWeight = calculateCubicWeight(totalVolume);
+    
+    // O peso efetivo é sempre o maior
+    const effectiveWeight = Math.max(realWeight, cubicWeight);
+    
+    console.log(`📦 Cálculo de peso avançado:`, {
+        realWeight: `${realWeight.toFixed(2)}kg`,
+        totalVolume: `${totalVolume.toFixed(0)}cm³`,
+        cubicWeight: `${cubicWeight.toFixed(2)}kg`,
+        effectiveWeight: `${effectiveWeight.toFixed(2)}kg`
+    });
+    
+    return effectiveWeight;
 } 

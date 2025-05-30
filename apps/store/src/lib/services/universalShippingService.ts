@@ -76,9 +76,9 @@ export class UniversalShippingService {
       console.log(`⚙️ Encontradas ${configs.length} configurações:`, configs.map((c: any) => c.carrier_name));
       
       // 2. Calcular peso e valor totais
-      const totalWeight = this.calculateTotalWeight(items);
+      const totalWeight = this.calculateEffectiveWeight(items);
       const totalValue = this.calculateTotalValue(items);
-      console.log(`📦 Peso total: ${totalWeight}g, Valor total: R$ ${totalValue.toFixed(2)}`);
+      console.log(`📦 Peso efetivo: ${(totalWeight/1000).toFixed(2)}kg, Valor total: R$ ${totalValue.toFixed(2)}`);
       
       // 3. Buscar zonas de frete disponíveis
       const zones = await this.findShippingZones(db, postalCode, configs);
@@ -432,6 +432,49 @@ export class UniversalShippingService {
       const weight = (item.product as any).weight || 0.5; // Default 500g
       return total + (weight * 1000 * item.quantity); // Converter para gramas
     }, 0);
+  }
+  
+  /**
+   * Calcular volume total dos itens (em cm³)
+   */
+  private static calculateTotalVolume(items: ShippingItem[]): number {
+    return items.reduce((total, item) => {
+      const product = item.product as any;
+      const height = product.height || 10; // cm
+      const width = product.width || 10;   // cm 
+      const length = product.length || 10; // cm
+      const volume = height * width * length; // cm³
+      return total + (volume * item.quantity);
+    }, 0);
+  }
+  
+  /**
+   * Calcular peso cubado (volume/6000 para aéreo, volume/5000 para rodoviário)
+   */
+  private static calculateCubicWeight(volume: number, transportType: 'aereo' | 'rodoviario' = 'rodoviario'): number {
+    const divisor = transportType === 'aereo' ? 6000 : 5000;
+    return volume / divisor; // kg
+  }
+  
+  /**
+   * Calcular peso efetivo (maior entre peso real e peso cubado)
+   */
+  private static calculateEffectiveWeight(items: ShippingItem[]): number {
+    const realWeight = this.calculateTotalWeight(items) / 1000; // Converter para kg
+    const totalVolume = this.calculateTotalVolume(items);
+    const cubicWeight = this.calculateCubicWeight(totalVolume);
+    
+    // O peso efetivo é sempre o maior
+    const effectiveWeight = Math.max(realWeight, cubicWeight);
+    
+    console.log(`📦 Cálculo de peso:`, {
+      realWeight: `${realWeight.toFixed(2)}kg`,
+      totalVolume: `${totalVolume.toFixed(0)}cm³`,
+      cubicWeight: `${cubicWeight.toFixed(2)}kg`,
+      effectiveWeight: `${effectiveWeight.toFixed(2)}kg`
+    });
+    
+    return effectiveWeight * 1000; // Retornar em gramas para compatibilidade
   }
   
   /**

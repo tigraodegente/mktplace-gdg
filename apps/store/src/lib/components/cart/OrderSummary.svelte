@@ -104,14 +104,24 @@
         
         {#if totals.couponDiscount && totals.couponDiscount > 0}
           <div class="flex justify-between text-[#00BFB3] text-xs">
-            <span>Cupom de desconto</span>
+            <span>
+              Cupom de desconto
+              {#if appliedCoupon}
+                <span class="font-medium">({appliedCoupon.code})</span>
+              {/if}
+            </span>
             <span>-{formatCurrency(totals.couponDiscount)}</span>
           </div>
         {/if}
         
         {#if totals.freeShippingSavings && totals.freeShippingSavings > 0}
           <div class="flex justify-between text-[#00BFB3] text-xs">
-            <span>Frete grátis (cupom)</span>
+            <span>
+              Frete grátis (cupom)
+              {#if appliedCoupon && appliedCoupon.type === 'free_shipping'}
+                <span class="font-medium">({appliedCoupon.code})</span>
+              {/if}
+            </span>
             <span>-{formatCurrency(totals.freeShippingSavings)}</span>
           </div>
         {/if}

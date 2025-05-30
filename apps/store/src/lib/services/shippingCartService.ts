@@ -19,6 +19,9 @@ export interface ShippingItem {
     weight?: number;
     price: number;
     category_id?: string;
+    height?: number;
+    width?: number;
+    length?: number;
 }
 
 export interface AdvancedShippingOption {
@@ -77,7 +80,10 @@ export class ShippingCartService {
                 quantity: item.quantity,
                 weight: (item.product as any).weight || 0.3, // Default 300g
                 price: item.product.price,
-                category_id: (item.product as any).category_id
+                category_id: (item.product as any).category_id,
+                height: (item.product as any).height,
+                width: (item.product as any).width,
+                length: (item.product as any).length
             }));
 
             const requestBody: ShippingCalculationRequest = {
@@ -143,7 +149,22 @@ export class ShippingCartService {
                 );
 
                 const totalWeight = sellerItems.reduce(
-                    (sum, item) => sum + ((item.product as any).weight || 0.3) * item.quantity,
+                    (sum, item) => {
+                        // 🚚 CÁLCULO COMPLETO: peso real + peso cubado
+                        const realWeight = ((item.product as any).weight || 0.3) * item.quantity;
+                        
+                        // Calcular volume e peso cubado
+                        const height = (item.product as any).height || 10;
+                        const width = (item.product as any).width || 10;
+                        const length = (item.product as any).length || 15;
+                        const volume = height * width * length * item.quantity;
+                        const cubicWeight = volume / 5000; // divisor rodoviário
+                        
+                        // Usar o maior entre peso real e peso cubado
+                        const effectiveWeight = Math.max(realWeight, cubicWeight);
+                        
+                        return sum + effectiveWeight;
+                    },
                     0
                 );
 
