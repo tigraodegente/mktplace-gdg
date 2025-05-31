@@ -94,19 +94,19 @@
 						<div class="card-body">
 							<div class="grid grid-cols-4 gap-2 text-center">
 								<div class="p-2">
-									<span class="text-2xl">📊</span>
+									<Icon name="dashboard" size="lg" fallbackColor="text-cyan-600" />
 									<p class="text-xs mt-1">Dashboard</p>
 								</div>
 								<div class="p-2">
-									<span class="text-2xl">📦</span>
+									<Icon name="products" size="lg" fallbackColor="text-cyan-600" />
 									<p class="text-xs mt-1">Produtos</p>
 								</div>
 								<div class="p-2">
-									<span class="text-2xl">👥</span>
+									<Icon name="users" size="lg" fallbackColor="text-cyan-600" />
 									<p class="text-xs mt-1">Usuários</p>
 								</div>
 								<div class="p-2">
-									<span class="text-2xl">⚙️</span>
+									<Icon name="settings" size="lg" fallbackColor="text-cyan-600" />
 									<p class="text-xs mt-1">Config</p>
 								</div>
 							</div>
@@ -188,12 +188,14 @@
 								<ul class="list-disc list-inside text-sm text-gray-600 mt-2">
 									<li>Cores cyan (#00BFB3) consistentes</li>
 									<li>Botões, cards, tabelas padronizados</li>
-									<li>Ícones emoji unificados</li>
+									<li>Ícones SVG profissionais unificados</li>
 									<li>Formulários com estilos iguais</li>
-									<li><strong>UM arquivo CSS = DOIS painéis iguais!</strong></li>
+									<li><strong>UM arquivo CSS = TRÊS apps iguais!</strong></li>
 								</ul>
 							</div>
-							<div class="text-6xl">🏪</div>
+							<div class="text-6xl">
+								<Icon name="store" size="xl" fallbackColor="text-cyan-600" />
+							</div>
 						</div>
 					</div>
 				</div>

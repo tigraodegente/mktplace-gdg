@@ -23,6 +23,10 @@
 				<div class="mt-4 space-y-3 text-sm">
 					<a href="/central-de-atendimento" class="block text-white/80 hover:text-white transition">Central de Atendimento</a>
 					<a href="/meu-cadastro" class="block text-white/80 hover:text-white transition">Meu Cadastro</a>
+					<a href="/meus-pedidos" class="block text-white/80 hover:text-white transition">Meus Pedidos</a>
+					<a href="/favoritos" class="block text-white/80 hover:text-white transition">Favoritos</a>
+					<a href="/listas-presentes" class="block text-white/80 hover:text-white transition">Listas de Presentes</a>
+					<a href="/blog" class="block text-white/80 hover:text-white transition">Blog</a>
 				</div>
 			</details>
 
@@ -158,32 +162,19 @@
 					</ul>
 				</div>
 
-				<!-- Contato Column -->
+				<!-- Fale Conosco Column -->
 				<div>
 					<h4 class="text-lg font-bold mb-4 flex items-center gap-2">
 						<div class="w-1 h-6 bg-white rounded-full"></div>
 						Fale Conosco
 					</h4>
-					<ul class="space-y-3 text-sm">
-						<li class="flex items-start gap-2">
-							<svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-							</svg>
-							<div>
-								<p class="text-white/80">E-mail:</p>
-								<p class="font-semibold">contato@graodegente.com.br</p>
-							</div>
-						</li>
-						<li class="flex items-start gap-2">
-							<svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-							</svg>
-							<div>
-								<p class="text-white/80">Horário de atendimento:</p>
-								<p class="font-semibold">Seg a Sex: 8h às 18h</p>
-								<p class="font-semibold">Sáb: 8h às 12h</p>
-							</div>
-						</li>
+					<ul class="space-y-2 text-sm">
+						<li><a href="/contato" class="text-white/80 hover:text-white transition duration-200">Fale Conosco</a></li>
+						<li><a href="/blog" class="text-white/80 hover:text-white transition duration-200">Blog</a></li>
+						<li><a href="/nossas-lojas" class="text-white/80 hover:text-white transition duration-200">Nossas Lojas</a></li>
+						<li><a href="/trabalhe-conosco" class="text-white/80 hover:text-white transition duration-200">Trabalhe Conosco</a></li>
+						<li><a href="/app-graodegente" class="text-white/80 hover:text-white transition duration-200">App Grão de Gente</a></li>
+						<li><a href="/promocoes" class="text-white/80 hover:text-white transition duration-200">Promoções</a></li>
 					</ul>
 				</div>
 

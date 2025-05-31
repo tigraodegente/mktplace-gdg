@@ -4,7 +4,6 @@
 	import SearchBox from '../search/SearchBox.svelte';
 	import DesktopCategoryMenu from '../navigation/DesktopCategoryMenu.svelte';
 	import MiniCart from '../cart/MiniCart.svelte';
-	import type { User } from '@mktplace/shared-types';
 	
 	interface HeaderProps {
 		totalItems: number;
@@ -120,14 +119,12 @@
 							
 							{#if userMenuOpen}
 								<div 
-									class="absolute top-full left-0 w-48 bg-white shadow-lg rounded-lg py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+									class="absolute top-full left-0 w-48 bg-white shadow-lg rounded-lg py-2 transition-all duration-200 z-50"
 									role="menu"
-									onmouseenter={() => showDropdown = true}
-									onmouseleave={() => showDropdown = false}
 								>
 									<a 
 										href="/minha-conta"
-										class="px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors text-sm"
+										class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
 										role="menuitem"
 									>
 										Minha Conta
@@ -149,6 +146,15 @@
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
 										</svg>
 										Chat & Suporte
+									</a>
+									<a
+										href="/listas-presentes?user_id={$user?.id}"
+										class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+									>
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 0v1.5a2 2 0 108 8 2 2 0 11-4 0V8a2 2 0 11-4 0zM9 21V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z" />
+										</svg>
+										🎁 Minhas Listas
 									</a>
 									<a
 										href="/notificacoes"
@@ -177,7 +183,7 @@
 										</svg>
 										Devoluções & Trocas
 									</a>
-									<div class="border-t border-gray-100"></div>
+									<div class="border-t border-gray-100 my-1"></div>
 									<button 
 										onclick={onLogout}
 										class="block w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -249,6 +255,13 @@
 		<!-- Navigation Menu -->
 		<nav class="h-[48px]">
 			<DesktopCategoryMenu />
+			<nav class="hidden lg:flex items-center space-x-8">
+				<a href="/categorias" class="text-gray-700 hover:text-primary transition font-medium">Categorias</a>
+				<a href="/blog" class="text-gray-700 hover:text-primary transition font-medium">Blog</a>
+				<a href="/promocoes" class="text-gray-700 hover:text-primary transition font-medium">Promoções</a>
+				<a href="/novidades" class="text-gray-700 hover:text-primary transition font-medium">Novidades</a>
+				<a href="/suporte" class="text-gray-700 hover:text-primary transition font-medium">Suporte</a>
+			</nav>
 		</nav>
 	</div>
 </header> 

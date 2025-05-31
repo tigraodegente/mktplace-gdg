@@ -117,6 +117,20 @@
 					</a>
 				</li>
 				
+				<!-- Link Blog -->
+				<li>
+					<a
+						href="/blog"
+						class="flex items-center gap-2 py-3 text-white hover:text-white/90 transition-all group relative"
+						style="font-family: 'Lato', sans-serif; font-weight: 700; font-size: 14px;"
+					>
+						<span>📝 Blog</span>
+						
+						<!-- Indicador hover -->
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+					</a>
+				</li>
+				
 				{#each categories as category, index}
 					<li>
 						<a

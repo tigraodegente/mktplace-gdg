@@ -1,125 +1,94 @@
 <script lang="ts">
-	import '../app.css';
-	import Icon from '../lib/Icon.svelte';
-	import { onMount } from 'svelte';
+	import '$lib/app.css';
+	import ProfessionalHeader from '@mktplace/ui/components/layout/ProfessionalHeader.svelte';
+	import { page } from '$app/stores';
 	
-	// Dados específicos do Seller Panel
-	const title = 'Seller Panel';
-	const titleIcon = '🏪';
-	const userInfo = {
-		name: 'João da Silva',
-		subtitle: 'Tech Store',
-		initials: 'JS',
-		role: 'seller'
-	};
-	
-	// Menu específico do Seller - CENTRALIZADO
-	const menuItems = [
-		{ path: '/', icon: 'dashboard', label: 'Dashboard' },
-		{ path: '/produtos', icon: 'products', label: 'Meus Produtos' },
-		{ path: '/pedidos', icon: 'orders', label: 'Pedidos' },
-		{ path: '/financeiro', icon: 'financial', label: 'Financeiro' },
-		{ path: '/avaliacoes', icon: 'reviews', label: 'Avaliações' },
-		{ separator: true },
-		{ path: '/estoque', icon: 'stock', label: 'Estoque' },
-		{ path: '/configuracoes', icon: 'settings', label: 'Configurações' }
+	// Mock data - seria substituído por dados reais da sessão
+	const breadcrumbs = [
+		{ label: 'Dashboard', href: '/seller' },
+		{ label: 'Produtos' } // sem href = página atual
 	];
-	
-	let currentPath = '';
-	
-	onMount(() => {
-		currentPath = window.location.pathname;
-	});
-	
-	function isActiveRoute(path: string): boolean {
-		return currentPath === path;
-	}
 </script>
 
-<!-- Layout usando CSS Global Centralizado -->
-<div class="min-h-screen bg-gray-50">
-	<!-- Header usando estilos globais -->
-	<header class="bg-white shadow-sm border-b border-gray-200">
-		<div class="max-w-[1440px] mx-auto px-8">
-			<div class="flex items-center justify-between h-16">
-				<!-- Logo e Título -->
-				<div class="flex items-center">
-					<div class="flex-shrink-0">
-						<h1 class="text-xl font-bold text-gray-900">
-							<span class="text-cyan-500">{titleIcon} {title}</span>
-							<span class="text-gray-400 text-sm ml-2">| Marketplace GDG</span>
-						</h1>
-					</div>
-				</div>
-				
-				<!-- User Menu -->
-				<div class="flex items-center space-x-4">
-					<!-- Notificações -->
-					<button class="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg transition-colors">
-						<span class="sr-only">Ver notificações</span>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-						</svg>
-						<span class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-					</button>
-					
-					<!-- User Profile -->
-					<div class="flex items-center space-x-3">
-						<div class="text-right">
-							<p class="text-sm font-medium text-gray-900">{userInfo.name}</p>
-							<p class="text-xs text-gray-500">{userInfo.subtitle}</p>
-						</div>
-						<div class="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center">
-							<span class="text-white font-semibold text-sm">
-								{userInfo.initials}
-							</span>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</header>
+<div class="min-h-screen bg-gray-50 flex flex-col">
+	<!-- Header Profissional -->
+	<ProfessionalHeader 
+		appType="seller"
+		currentPage="Dashboard"
+		userName="Vendedor GDG"
+		userRole="Vendedor"
+		breadcrumbs={breadcrumbs}
+		notifications={5}
+	/>
 	
-	<div class="flex">
-		<!-- Sidebar usando navegação centralizada -->
-		<aside class="w-64 bg-white shadow-sm min-h-screen border-r border-gray-200">
-			<nav class="p-4">
-				<div class="space-y-1">
-					{#each menuItems as item}
-						{#if item.separator}
-							<div class="border-t border-gray-200 my-4"></div>
-						{:else}
-							<a 
-								href={item.path}
-								class="nav-link {isActiveRoute(item.path || '') ? 'active' : ''}"
-							>
-								{#if item.icon}
-									<Icon name={item.icon} size="md" />
-								{/if}
-								{item.label}
-							</a>
-						{/if}
-					{/each}
-				</div>
+	<div class="flex flex-1">
+		<!-- Sidebar será implementada aqui -->
+		<aside class="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto">
+			<nav class="flex-1 px-4 py-6 space-y-2">
+				<!-- Dashboard -->
+				<a href="/seller" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg bg-[#00BFB3] text-white shadow-sm">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m8 7 4-4 4 4"/>
+					</svg>
+					<span class="ml-3">Dashboard</span>
+				</a>
 				
-				<!-- Footer da Sidebar -->
-				<div class="mt-8 pt-4 border-t border-gray-200">
-					<button class="nav-link w-full">
-						<Icon name="switch" size="md" />
-						Trocar Role
-					</button>
-					
-					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1">
-						<Icon name="logout" size="md" fallbackColor="text-red-600" />
-						Sair
-					</button>
-				</div>
+				<!-- Meus Produtos -->
+				<a href="/seller/produtos" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3]">
+					<svg class="w-5 h-5 text-gray-400 group-hover:text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+					</svg>
+					<span class="ml-3">Meus Produtos</span>
+				</a>
+				
+				<!-- Estoque -->
+				<a href="/seller/estoque" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3]">
+					<svg class="w-5 h-5 text-gray-400 group-hover:text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+					</svg>
+					<span class="ml-3">Estoque</span>
+				</a>
+				
+				<!-- Pedidos -->
+				<a href="/seller/pedidos" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3]">
+					<svg class="w-5 h-5 text-gray-400 group-hover:text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+					</svg>
+					<span class="ml-3">Pedidos</span>
+					<span class="ml-auto px-2 py-0.5 text-xs font-medium bg-red-100 text-red-600 rounded-full">3</span>
+				</a>
+				
+				<!-- Vendas -->
+				<a href="/seller/vendas" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3]">
+					<svg class="w-5 h-5 text-gray-400 group-hover:text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+					</svg>
+					<span class="ml-3">Vendas</span>
+				</a>
+				
+				<!-- Avaliações -->
+				<a href="/seller/avaliacoes" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3]">
+					<svg class="w-5 h-5 text-gray-400 group-hover:text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+					</svg>
+					<span class="ml-3">Avaliações</span>
+				</a>
+				
+				<!-- Configurações -->
+				<a href="/seller/configuracoes" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3]">
+					<svg class="w-5 h-5 text-gray-400 group-hover:text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+					</svg>
+					<span class="ml-3">Configurações</span>
+				</a>
 			</nav>
 		</aside>
 		
 		<!-- Main Content -->
-		<main class="flex-1 p-8 bg-gray-50">
-			<div class="max-w-[1440px] mx-auto">
+		<main class="flex-1 overflow-auto">
+			<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				<slot />
 			</div>
 		</main>
