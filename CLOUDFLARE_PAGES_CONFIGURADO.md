@@ -21,10 +21,15 @@
 - **Solução**: Atualizado lockfile sincronizando com package.json
 - **Commit**: `a117d9e`
 
-#### **ERRO 4: Arquivo _headers no Local Incorreto ✅**
+#### **ERRO 4: Arquivo _headers no Local Incorreto**
 - **Problema**: `The _headers file should be placed in the project root rather than the /opt/buildhome/repo/apps/store/static directory`
 - **Solução**: Movido `apps/store/static/_headers` → `apps/store/_headers`
 - **Commit**: `b802579`
+
+#### **ERRO 5: Arquivo _redirects no Local Incorreto ✅**
+- **Problema**: `The _redirects file should be placed in the project root rather than the /opt/buildhome/repo/apps/store/static directory`
+- **Solução**: Movido `apps/store/static/_redirects` → `apps/store/_redirects`
+- **Commit**: `74b9330`
 
 ### 🔧 **Configurações Cloudflare Pages Finais**
 
@@ -62,6 +67,7 @@ HYPERDRIVE_DB=mktplace-neon-db
 #### **Configurações de Build**
 3. **`apps/store/vite.config.js`** - Configuração minimalista
 4. **`apps/store/_headers`** - Headers de segurança e cache (movido de /static)
+5. **`apps/store/_redirects`** - Redirects SPA (movido de /static)
 
 ### 🎯 **Status Atual das Dependencies**
 
@@ -72,6 +78,7 @@ HYPERDRIVE_DB=mktplace-neon-db
 | ✅ `@mktplace/shared-types` | OK | Apenas types (funciona) |
 | ✅ **pnpm-lock.yaml** | Sincronizado | Atualizado |
 | ✅ **_headers** | Posicionado | Raiz do projeto |
+| ✅ **_redirects** | Posicionado | Raiz do projeto |
 
 ### 🚀 **Deploy Automático**
 
@@ -94,7 +101,7 @@ Com todas as correções aplicadas, o próximo build deve ser **bem-sucedido**.
 
 ---
 
-**Última atualização**: Deploy commit `b802579` - Arquivo _headers corrigido
+**Última atualização**: Deploy commit `74b9330` - Arquivo _redirects corrigido
 **Próximo passo**: Aguardar build automático e verificar sucesso
 
 ## 🎯 STATUS: PRONTO PARA PRODUÇÃO
