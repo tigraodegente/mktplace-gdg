@@ -53,6 +53,8 @@ declare global {
 			}>
 			list_complete: boolean
 			cursor?: string
+		}>
+	}
 }
 
 export {};

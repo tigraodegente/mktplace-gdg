@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { formatCurrency } from '@mktplace/utils';
-	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { cartStore } from '$lib/stores/cartStore';
 	import { fade, scale, fly, slide } from 'svelte/transition';
 	import { cubicOut, elasticOut } from 'svelte/easing';
 	import { goto } from '$app/navigation';
@@ -32,7 +32,7 @@
 		autoHideDelay = 0
 	}: MiniCartProps = $props();
 	
-	const { sellerGroups, cartTotals } = advancedCartStore;
+	const { sellerGroups, cartTotals } = cartStore;
 	
 	// Estados locais
 	let isHovered = false;
@@ -88,7 +88,7 @@
 		await new Promise(resolve => setTimeout(resolve, 200));
 		
 		// Remover item do carrinho
-		advancedCartStore.removeItem(productId, sellerId, variant);
+		cartStore.removeItem(productId, sellerId, variant);
 		
 		removingItemId = null;
 		dispatch('itemRemoved', { productId });
@@ -103,7 +103,7 @@
 		if (newQuantity <= 0) {
 			await handleRemoveItem(productId, sellerId, variant);
 		} else {
-			advancedCartStore.updateQuantity(productId, sellerId, newQuantity, variant);
+			cartStore.updateQuantity(productId, sellerId, newQuantity, variant);
 		}
 	}
 	

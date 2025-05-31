@@ -68,8 +68,10 @@
 		showModal = false;
 		searchName = '';
 		
-		// TODO: Implementar notificação de sucesso
-		alert('Busca salva com sucesso!');
+		// Mostrar feedback de sucesso
+		setTimeout(() => {
+			alert('Busca salva com sucesso! Você receberá notificações quando houver atualizações.');
+		}, 100);
 	}
 	
 	function deleteSearch(id: string) {
@@ -175,18 +177,16 @@
 		<h4 class="font-medium mb-2">Buscas salvas:</h4>
 		<ul class="space-y-2">
 			{#each savedSearches as search}
-				<li class="flex items-center justify-between text-sm">
-					<a href="?{search.url}" class="text-[#00BFB3] hover:underline">
-						{search.name}
-					</a>
+				<li class="flex items-center justify-between p-2 bg-white rounded border">
+					<span class="text-sm">{search.name}</span>
 					<button
 						onclick={() => deleteSearch(search.id)}
-						class="text-red-600 hover:text-red-700"
+						class="text-red-500 hover:text-red-700 text-sm"
 					>
-						Excluir
+						Remover
 					</button>
 				</li>
 			{/each}
 		</ul>
 	</div>
-{/if} 
+{/if}

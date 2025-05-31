@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { formatCurrency } from '@mktplace/utils';
-  import { advancedCartStore } from '$lib/stores/advancedCartStore';
+  import { cartStore } from '$lib/stores/cartStore';
   import { goto } from '$app/navigation';
   import type { Product } from '@mktplace/shared-types';
   import { fade, fly } from 'svelte/transition';
@@ -43,7 +43,7 @@
     images?: string[];
   }
   
-  const { addItem } = advancedCartStore;
+  const { addItem } = cartStore;
   
   let product = $state<ExtendedProduct | null>(data.product);
   let loading = $state(false);
@@ -60,6 +60,7 @@
   let calculatingShipping = $state(false);
   let shippingZip = $state('');
   let shippingOptions = $state<any[]>([]);
+  let validationError = $state<string>('');
   
   // Lazy loading para imagens
   let imageObserver: IntersectionObserver | null = null;
@@ -164,6 +165,7 @@
   // Função para selecionar cor
   function selectColor(color: string) {
     selectedColor = color;
+    validationError = ''; // Limpar erro ao selecionar
     updateURLWithVariations();
     
     // Se o produto tem imagens específicas por cor, mudar a imagem
@@ -183,6 +185,7 @@
   // Função para selecionar tamanho
   function selectSize(size: string) {
     selectedSize = size;
+    validationError = ''; // Limpar erro ao selecionar
     updateURLWithVariations();
   }
   
@@ -215,13 +218,8 @@
       viewingCount = Math.floor(Math.random() * 20) + 5;
     }, 30000);
     
-    // Processar variações se existirem
-    if (product && (!product.variations || product.variations.length === 0)) {
-      setupMockVariations();
-    }
-    
-    // Extrair cores e tamanhos únicos
-    if (product?.variations) {
+    // Extrair cores e tamanhos únicos das variações reais do produto
+    if (product?.variations && product.variations.length > 0) {
       availableColors = getUniqueColors(product.variations);
       availableSizes = getUniqueSizes(product.variations);
     }
@@ -236,60 +234,8 @@
     };
   });
   
-  function setupMockVariations() {
-    if (!product) return;
-    
-    product.variations = [
-      {
-        color: 'Preto',
-        size: 'P',
-        price: product.price,
-        original_price: product.original_price,
-        stock: 5,
-        sku: `${product.id}-preto-p`,
-        images: product.images
-      },
-      {
-        color: 'Preto',
-        size: 'M',
-        price: product.price,
-        original_price: product.original_price,
-        stock: 10,
-        sku: `${product.id}-preto-m`
-      },
-      {
-        color: 'Preto',
-        size: 'G',
-        price: product.price * 1.1,
-        original_price: product.original_price ? product.original_price * 1.1 : undefined,
-        stock: 8,
-        sku: `${product.id}-preto-g`
-      },
-      {
-        color: 'Branco',
-        size: 'P',
-        price: product.price * 0.95,
-        original_price: product.original_price,
-        stock: 3,
-        sku: `${product.id}-branco-p`
-      },
-      {
-        color: 'Branco',
-        size: 'M',
-        price: product.price,
-        original_price: product.original_price,
-        stock: 15,
-        sku: `${product.id}-branco-m`
-      },
-      {
-        color: 'Azul',
-        size: 'M',
-        price: product.price * 1.2,
-        stock: 2,
-        sku: `${product.id}-azul-m`
-      }
-    ];
-  }
+  // Função removida - setupMockVariations não é mais necessária
+  // As variações agora vêm diretamente do banco de dados
   
   async function fetchRelatedProducts(categoryId: string) {
     try {
@@ -325,17 +271,22 @@
   }
   
   function handleAddToCart() {
-    if (!product) return;
+    if (!product) return false;
+    
+    // Limpar erros anteriores
+    validationError = '';
     
     // Validações
     if (availableColors.length > 0 && !selectedColor) {
-      alert('Por favor, selecione uma cor');
-      return;
+      validationError = 'Por favor, selecione uma cor';
+      setTimeout(() => validationError = '', 4000); // Remove após 4 segundos
+      return false;
     }
     
     if (availableSizes.length > 0 && !selectedSize) {
-      alert('Por favor, selecione um tamanho');
-      return;
+      validationError = 'Por favor, selecione um tamanho';
+      setTimeout(() => validationError = '', 4000); // Remove após 4 segundos
+      return false;
     }
     
     addItem(
@@ -352,11 +303,15 @@
     // Feedback visual melhorado
     showAddedToCart = true;
     setTimeout(() => showAddedToCart = false, 3000);
+    
+    return true;
   }
   
   function handleBuyNow() {
-    handleAddToCart();
-    goto('/cart');
+    const success = handleAddToCart();
+    if (success) {
+      goto('/cart');
+    }
   }
   
   function calculateInstallment(price: number) {
@@ -741,15 +696,19 @@
           <!-- Opções de Variação -->
           {#if availableColors.length > 0}
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Cor</label>
-              <div class="flex gap-2 flex-wrap">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Cor {#if validationError.includes('cor')}<span class="text-red-600">*</span>{/if}
+              </label>
+              <div class="flex gap-2 flex-wrap {validationError.includes('cor') ? 'animate-pulse' : ''}">
                 {#each availableColors as color}
                   {@const isAvailable = isColorAvailableForSize(color)}
                   <button
                     onclick={() => isAvailable && selectColor(color)}
                     disabled={!isAvailable}
                     class="px-4 py-2 border-2 rounded-lg transition-all
-                           {selectedColor === color ? 'border-[#00BFB3] bg-[#00BFB3]/10' : 'border-gray-200 hover:border-gray-300'}
+                           {selectedColor === color ? 'border-[#00BFB3] bg-[#00BFB3]/10' : 
+                           validationError.includes('cor') ? 'border-red-300 hover:border-red-400' : 
+                           'border-gray-200 hover:border-gray-300'}
                            {!isAvailable ? 'opacity-50 cursor-not-allowed line-through' : ''}"
                   >
                     {color}
@@ -761,15 +720,19 @@
           
           {#if availableSizes.length > 0}
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tamanho</label>
-              <div class="flex gap-2 flex-wrap">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Tamanho {#if validationError.includes('tamanho')}<span class="text-red-600">*</span>{/if}
+              </label>
+              <div class="flex gap-2 flex-wrap {validationError.includes('tamanho') ? 'animate-pulse' : ''}">
                 {#each availableSizes as size}
                   {@const isAvailable = isSizeAvailableForColor(size)}
                   <button
                     onclick={() => isAvailable && selectSize(size)}
                     disabled={!isAvailable}
                     class="w-12 h-12 border-2 rounded-lg transition-all font-medium
-                           {selectedSize === size ? 'border-[#00BFB3] bg-[#00BFB3]/10' : 'border-gray-200 hover:border-gray-300'}
+                           {selectedSize === size ? 'border-[#00BFB3] bg-[#00BFB3]/10' : 
+                           validationError.includes('tamanho') ? 'border-red-300 hover:border-red-400' : 
+                           'border-gray-200 hover:border-gray-300'}
                            {!isAvailable ? 'opacity-50 cursor-not-allowed line-through' : ''}"
                   >
                     {size}
@@ -784,7 +747,7 @@
             <div class="bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm">
               <p class="text-gray-700 flex items-center">
                 <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 Esta combinação de cor e tamanho não está disponível. Por favor, selecione outra opção.
               </p>
@@ -823,6 +786,18 @@
               </span>
             </div>
           </div>
+          
+          <!-- Mensagem de Validação -->
+          {#if validationError}
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm animate-pulse" transition:fade>
+              <p class="text-red-700 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <strong>{validationError}</strong>
+              </p>
+            </div>
+          {/if}
           
           <!-- Botões de Ação -->
           <div class="space-y-3">
@@ -1072,43 +1047,23 @@
                 </div>
               </div>
               
-              <!-- Lista de avaliações (mock) -->
+              <!-- Lista de avaliações -->
               <div class="border-t pt-6">
                 <h4 class="font-semibold mb-4">Avaliações dos clientes</h4>
-                <div class="space-y-4">
-                  <div class="border-b pb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <div class="flex">
-                        {#each Array(5) as _, i}
-                          <svg class="w-4 h-4 text-[#00BFB3]" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                        {/each}
-                      </div>
-                      <span class="text-sm font-medium">João S.</span>
-                      <span class="text-sm text-gray-500">• Compra verificada</span>
+                {#if product.reviews_count && product.reviews_count > 0}
+                  <div class="space-y-4">
+                    <!-- Aqui você carregaria avaliações reais via API -->
+                    <div class="text-center py-8 text-gray-500">
+                      <p>Sistema de avaliações em desenvolvimento</p>
+                      <p class="text-sm">Em breve você poderá ver avaliações detalhadas dos clientes</p>
                     </div>
-                    <p class="text-sm text-gray-700">
-                      Produto excelente! Chegou antes do prazo e muito bem embalado. Recomendo!
-                    </p>
                   </div>
-                  <div class="border-b pb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <div class="flex">
-                        {#each Array(5) as _, i}
-                          <svg class="w-4 h-4 {i < 4 ? 'text-[#00BFB3]' : 'text-gray-300'}" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                        {/each}
-                      </div>
-                      <span class="text-sm font-medium">Maria L.</span>
-                      <span class="text-sm text-gray-500">• Compra verificada</span>
-                    </div>
-                    <p class="text-sm text-gray-700">
-                      Bom produto, mas achei o preço um pouco alto. No geral, estou satisfeita.
-                    </p>
+                {:else}
+                  <div class="text-center py-8 text-gray-500">
+                    <p>Ainda não há avaliações para este produto</p>
+                    <p class="text-sm">Seja o primeiro a avaliar!</p>
                   </div>
-                </div>
+                {/if}
               </div>
             </div>
           {/if}
@@ -1130,54 +1085,21 @@
           </button>
         </div>
         
-        <!-- Lista de Perguntas (Mock) -->
+        <!-- Lista de Perguntas -->
         <div class="space-y-4">
-          <div class="border-b pb-4">
-            <div class="flex items-start gap-3">
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-medium text-gray-900">Este produto tem garantia?</p>
-                <p class="text-xs text-gray-500 mt-1">Perguntado há 2 dias</p>
-                
-                <div class="mt-3 ml-11 p-3 bg-[#00BFB3]/5 rounded-lg border border-[#00BFB3]/20">
-                  <p class="text-sm text-gray-700">
-                    <span class="font-medium text-gray-900">Vendedor:</span> Sim, todos os nossos produtos possuem garantia de 1 ano contra defeitos de fabricação.
-                  </p>
-                  <p class="text-xs text-gray-500 mt-1">Respondido há 1 dia</p>
-                </div>
-              </div>
+          {#if product.questions_count && product.questions_count > 0}
+            <!-- Aqui você carregaria perguntas reais via API -->
+            <div class="text-center py-8 text-gray-500">
+              <p>Sistema de perguntas em desenvolvimento</p>
+              <p class="text-sm">Em breve você poderá ver perguntas e respostas sobre o produto</p>
             </div>
-          </div>
-          
-          <div class="border-b pb-4">
-            <div class="flex items-start gap-3">
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-medium text-gray-900">Qual o prazo de entrega para o CEP 01310-100?</p>
-                <p class="text-xs text-gray-500 mt-1">Perguntado há 5 dias</p>
-                
-                <div class="mt-3 ml-11 p-3 bg-[#00BFB3]/5 rounded-lg border border-[#00BFB3]/20">
-                  <p class="text-sm text-gray-700">
-                    <span class="font-medium text-gray-900">Vendedor:</span> Para este CEP o prazo é de 3 a 5 dias úteis via Sedex.
-                  </p>
-                  <p class="text-xs text-gray-500 mt-1">Respondido há 4 dias</p>
-                </div>
-              </div>
+          {:else}
+            <div class="text-center py-8 text-gray-500">
+              <p>Ainda não há perguntas sobre este produto</p>
+              <p class="text-sm">Seja o primeiro a perguntar!</p>
             </div>
-          </div>
+          {/if}
         </div>
-        
-        <button class="mt-4 text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium">
-          Ver todas as perguntas ({product.questions_count || 15})
-        </button>
       </div>
       
       <!-- Produtos Frequentemente Comprados Juntos -->

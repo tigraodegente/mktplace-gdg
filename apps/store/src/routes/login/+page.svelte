@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { auth } from '$lib/stores/auth';
+  import { auth } from '$lib/stores/authStore';
   
   let email = $state('');
   let password = $state('');

@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { isAuthenticated, user } from '$lib/stores/auth';
+  import { isAuthenticated, user } from '$lib/stores/authStore';
   
   let orderNumber = '';
   let loading = true;

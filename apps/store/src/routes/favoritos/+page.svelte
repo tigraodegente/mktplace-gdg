@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { wishlistStore, isWishlistEmpty } from '$lib/stores/wishlistStore';
 	import ProductCard from '$lib/components/product/ProductCard.svelte';
-	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { advancedCartStore } from '$lib/stores/cartStore';
 	import { toastStore } from '$lib/stores/toastStore';
 	
 	// Função para adicionar todos os itens ao carrinho
@@ -9,7 +9,7 @@
 		const itemCount = $wishlistStore.length;
 		
 		$wishlistStore.forEach(item => {
-			advancedCartStore.addItem(
+			cartStore.addItem(
 				item,
 				item.seller_id || 'seller-1',
 				item.seller_name || 'Loja Exemplo',

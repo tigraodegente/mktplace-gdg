@@ -167,14 +167,14 @@ function createAuthStore() {
 }
 
 // Store principal
-export const auth = createAuthStore();
+export const authStore = createAuthStore();
 
 // Derived stores para facilitar o acesso
-export const user = derived(auth, $auth => $auth.user);
-export const isAuthenticated = derived(auth, $auth => !!$auth.user);
-export const isLoading = derived(auth, $auth => $auth.isLoading);
-export const authError = derived(auth, $auth => $auth.error);
+export const user = derived(authStore, $auth => $auth.user);
+export const isAuthenticated = derived(authStore, $auth => !!$auth.user);
+export const isLoading = derived(authStore, $auth => $auth.isLoading);
+export const authError = derived(authStore, $auth => $auth.error);
 
-// Alias para compatibilidade com código existente
-export const authStore = auth;
+// Aliases para compatibilidade com código existente
+export const auth = authStore;
 export const currentUser = user; 

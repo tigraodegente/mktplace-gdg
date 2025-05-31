@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatCurrency } from '@mktplace/utils';
-	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { cartStore } from '$lib/stores/cartStore';
 	import { wishlistStore } from '$lib/stores/wishlistStore';
 	import { toastStore } from '$lib/stores/toastStore';
 	import Rating from '$lib/components/ui/Rating.svelte';
@@ -103,7 +103,7 @@
 		isAddingToCart = true;
 		
 		try {
-			advancedCartStore.addItem(
+			cartStore.addItem(
 				product,
 				product.seller_id,
 				product.seller_name || 'Loja',

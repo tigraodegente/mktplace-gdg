@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { isAuthenticated, user } from '$lib/stores/auth';
+  import { isAuthenticated, user } from '$lib/stores/authStore';
   import { AuthService, type LoginCredentials, type RegisterData } from '$lib/services/auth.service';
   
   const dispatch = createEventDispatcher();

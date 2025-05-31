@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import { isAuthenticated, user } from '$lib/stores/auth';
+  import { isAuthenticated, user } from '$lib/stores/authStore';
   import AddressManager from '$lib/components/address/AddressManager.svelte';
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   

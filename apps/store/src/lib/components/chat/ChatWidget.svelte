@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { isAuthenticated } from '$lib/stores/auth';
+  import { isAuthenticated } from '$lib/stores/authStore';
 
   // Estados do widget
   let isOpen = $state(false);

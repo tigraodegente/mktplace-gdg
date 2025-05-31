@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { isAuthenticated, user } from '$lib/stores/auth';
+import { isAuthenticated, user } from '$lib/stores/authStore';
 
 export interface SavedAddress {
 	id: string;

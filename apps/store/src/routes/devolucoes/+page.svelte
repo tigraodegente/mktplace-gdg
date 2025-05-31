@@ -55,17 +55,36 @@
 		}
 		
 		try {
+			// Buscar itens do pedido antes de criar a devolução
+			const orderResponse = await fetch(`/api/orders/${returnForm.order_id}`);
+			if (!orderResponse.ok) {
+				alert('Pedido não encontrado');
+				return;
+			}
+			
+			const orderData = await orderResponse.json();
+			if (!orderData.success) {
+				alert('Erro ao buscar dados do pedido');
+				return;
+			}
+			
+			// Usar itens reais do pedido
+			const items = orderData.data.items.map((item: any) => ({
+				product_id: item.product_id,
+				quantity: item.quantity,
+				price: item.price,
+				product_name: item.product_name
+			}));
+			
 			const response = await fetch('/api/returns', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					...returnForm,
-					items: [{ // Mock item
-						order_item_id: '1',
-						quantity: 1,
-						unit_price: 199.90,
-						product_name: 'Produto Exemplo'
-					}]
+					order_id: returnForm.order_id,
+					reason: returnReasons.find(r => r.id === returnForm.reason_id)?.name || 'Outros',
+					description: returnForm.custom_reason,
+					items: items,
+					refund_type: returnForm.type === 'return' ? 'original_payment' : 'exchange'
 				})
 			});
 			
@@ -76,9 +95,12 @@
 				showNewReturnModal = false;
 				returnForm = { order_id: '', type: 'return', reason_id: '', custom_reason: '', items: [], photos: [] };
 				loadReturns();
+			} else {
+				alert(data.error || 'Erro ao criar solicitação');
 			}
 		} catch (err) {
 			console.error('Erro ao criar devolução:', err);
+			alert('Erro ao processar solicitação');
 		}
 	}
 	

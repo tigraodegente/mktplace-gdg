@@ -1,5 +1,5 @@
 /**
- * Advanced Cart Store - Versão Limpa
+ * Cart Store - Versão Limpa
  * 
  * Gerencia o estado global do carrinho com funcionalidades essenciais:
  * - Agrupamento por vendedor
@@ -18,7 +18,7 @@ import type { CartItem, SellerGroup, Coupon } from '$lib/types/cart';
 // ============================================================================
 
 const STORAGE_KEYS = {
-  CART: 'advancedCart',
+  CART: 'cart',
   COUPON: 'cartCoupon'
 } as const;
 
@@ -173,7 +173,7 @@ function saveToStorage(key: string, value: any): void {
 // STORE CREATION
 // ============================================================================
 
-function createAdvancedCartStore() {
+function createCartStore() {
   // ===== State Stores =====
   const items = writable<CartItem[]>(loadFromStorage(STORAGE_KEYS.CART, []));
   const appliedCoupon = writable<Coupon | null>(loadFromStorage(STORAGE_KEYS.COUPON, null));
@@ -284,11 +284,6 @@ function createAdvancedCartStore() {
     quantity = 1, 
     options?: { color?: string; size?: string }
   ) {
-    console.log('➕ ADICIONANDO ITEM AO CARRINHO');
-    console.log('📦 Produto:', product.name);
-    console.log('💰 Preço:', product.price);
-    console.log('🔢 Quantidade:', quantity);
-    
     items.update(currentItems => {
       const existingIndex = currentItems.findIndex(
         item => 
@@ -300,13 +295,10 @@ function createAdvancedCartStore() {
       
       if (existingIndex >= 0) {
         // Atualizar quantidade do item existente
-        const oldQuantity = currentItems[existingIndex].quantity;
         currentItems[existingIndex].quantity += quantity;
-        console.log(`📈 Quantidade atualizada: ${oldQuantity} → ${currentItems[existingIndex].quantity}`);
         return [...currentItems];
       } else {
         // Adicionar novo item
-        console.log('🆕 Novo item adicionado');
         return [...currentItems, {
           product,
           quantity,
@@ -317,14 +309,6 @@ function createAdvancedCartStore() {
         }];
       }
     });
-    
-    setTimeout(() => {
-      const totals = get(cartTotals);
-      console.log('💰 TOTAIS ATUALIZADOS:');
-      console.log('├─ Subtotal:', totals.cartSubtotal.toFixed(2));
-      console.log('├─ Total:', totals.cartTotal.toFixed(2));
-      console.log('=====================================');
-    }, 100);
   }
   
   // Remover item do carrinho
@@ -375,73 +359,21 @@ function createAdvancedCartStore() {
   
   // Aplicar cupom
   async function applyCoupon(code: string) {
-    console.log('🎫 APLICANDO CUPOM - INÍCIO');
-    console.log('📥 Código informado:', code);
-    
     const currentItems = get(items);
-    console.log('🛒 Itens no carrinho:', currentItems.length);
-    console.log('📦 Detalhes dos itens:', currentItems.map(item => ({
-      produto: item.product.name,
-      preco: item.product.price,
-      quantidade: item.quantity,
-      subtotal: item.product.price * item.quantity,
-      vendedor: item.sellerName
-    })));
-
     const coupon = await validateCoupon(code, currentItems);
     
     if (!coupon) {
-      console.log('❌ CUPOM INVÁLIDO');
       throw new Error('Cupom inválido ou expirado');
     }
 
-    console.log('✅ CUPOM VÁLIDO ENCONTRADO:');
-    console.log('📋 Dados do cupom:', {
-      codigo: coupon.code,
-      nome: coupon.description,
-      tipo: coupon.type,
-      valor: coupon.value,
-      escopo: coupon.scope,
-      desconto_calculado: (coupon as any).discount_amount || 'Calculado dinamicamente'
-    });
-
     // Verificar valor mínimo
     const $totals = get(cartTotals);
-    console.log('💰 CÁLCULOS ANTES DO CUPOM:');
-    console.log('├─ Subtotal do carrinho:', $totals.cartSubtotal.toFixed(2));
-    console.log('├─ Desconto atual:', $totals.totalDiscount.toFixed(2));
-    console.log('├─ Total atual:', $totals.cartTotal.toFixed(2));
     
     if (coupon.minValue && $totals.cartSubtotal < coupon.minValue) {
-      console.log('❌ VALOR MÍNIMO NÃO ATINGIDO');
-      console.log(`├─ Valor mínimo requerido: R$ ${coupon.minValue.toFixed(2)}`);
-      console.log(`└─ Valor atual: R$ ${$totals.cartSubtotal.toFixed(2)}`);
       throw new Error(`Pedido mínimo de R$ ${coupon.minValue.toFixed(2)} para usar este cupom`);
     }
     
-    console.log('✅ APLICANDO CUPOM...');
     appliedCoupon.set(coupon);
-    
-    // Calcular totais após aplicação
-    setTimeout(() => {
-      const newTotals = get(cartTotals);
-      console.log('💰 CÁLCULOS APÓS APLICAÇÃO DO CUPOM:');
-      console.log('├─ Subtotal:', newTotals.cartSubtotal.toFixed(2));
-      console.log('├─ Desconto do cupom:', newTotals.couponDiscount.toFixed(2));
-      console.log('├─ Desconto total:', newTotals.totalDiscount.toFixed(2));
-      console.log('├─ Total final:', newTotals.cartTotal.toFixed(2));
-      console.log('└─ Economia total:', (newTotals.cartSubtotal - newTotals.cartTotal).toFixed(2));
-      
-      const calculoManual = newTotals.cartSubtotal - newTotals.totalDiscount;
-      const diferencaCalculo = Math.abs(calculoManual - newTotals.cartTotal);
-      console.log('├─ Cálculo manual:', calculoManual.toFixed(2));
-      console.log('├─ Total calculado:', newTotals.cartTotal.toFixed(2));
-      console.log('├─ Diferença:', diferencaCalculo.toFixed(2));
-      console.log('└─ Integridade:', diferencaCalculo < 0.01 ? '✅ OK' : '❌ ERRO');
-      
-      console.log('🎫 APLICAÇÃO DE CUPOM - CONCLUÍDA');
-      console.log('=====================================');
-    }, 100);
   }
   
   // Remover cupom
@@ -481,85 +413,6 @@ function createAdvancedCartStore() {
   function totalItems() {
     return get(items).reduce((sum, item) => sum + item.quantity, 0);
   }
-
-  // Função de debug completo
-  function debugReport() {
-    const currentItems = get(items);
-    const currentTotals = get(cartTotals);
-    const currentCoupon = get(appliedCoupon);
-    const currentGroups = get(sellerGroups);
-    
-    console.log('===============================');
-    
-    console.log('🛒 CARRINHO GERAL:');
-    console.log(`├─ Total de itens: ${currentItems.length}`);
-    console.log(`├─ Quantidade total: ${totalItems()}`);
-    console.log(`├─ Vendedores únicos: ${currentGroups.length}`);
-    console.log(`└─ Status: ${currentItems.length > 0 ? 'Ativo' : 'Vazio'}`);
-    
-    console.log('\n📦 DETALHES DOS ITENS:');
-    currentItems.forEach((item, index) => {
-      const subtotal = item.product.price * item.quantity;
-      console.log(`${index + 1}. ${item.product.name}`);
-      console.log(`   ├─ Preço unitário: R$ ${item.product.price.toFixed(2)}`);
-      console.log(`   ├─ Quantidade: ${item.quantity}`);
-      console.log(`   ├─ Subtotal: R$ ${subtotal.toFixed(2)}`);
-      console.log(`   └─ Vendedor: ${item.sellerName}`);
-    });
-    
-    if (currentCoupon) {
-      console.log('\n🎫 CUPOM APLICADO:');
-      console.log(`├─ Código: ${currentCoupon.code}`);
-      console.log(`├─ Descrição: ${currentCoupon.description}`);
-      console.log(`├─ Tipo: ${currentCoupon.type}`);
-      console.log(`├─ Valor: ${currentCoupon.value}`);
-      console.log(`└─ Escopo: ${currentCoupon.scope}`);
-    }
-    
-    console.log('\n💰 CÁLCULOS FINANCEIROS:');
-    console.log(`├─ Subtotal: R$ ${currentTotals.cartSubtotal.toFixed(2)}`);
-    console.log(`├─ Desconto cupom: -R$ ${currentTotals.couponDiscount.toFixed(2)}`);
-    console.log(`├─ Desconto total: -R$ ${currentTotals.totalDiscount.toFixed(2)}`);
-    console.log(`├─ Total final: R$ ${currentTotals.cartTotal.toFixed(2)}`);
-    console.log(`└─ Economia: R$ ${(currentTotals.cartSubtotal - currentTotals.cartTotal).toFixed(2)}`);
-    
-    console.log('\n🏪 AGRUPAMENTO POR VENDEDOR:');
-    currentGroups.forEach((group, index) => {
-      console.log(`${index + 1}. ${group.sellerName}`);
-      console.log(`   ├─ Itens: ${group.items.length}`);
-      console.log(`   ├─ Subtotal: R$ ${group.subtotal.toFixed(2)}`);
-      console.log(`   ├─ Desconto: -R$ ${group.discount.toFixed(2)}`);
-      console.log(`   └─ Total: R$ ${group.total.toFixed(2)}`);
-    });
-    
-    // Verificação de integridade
-    const manualSubtotal = currentItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const manualTotal = manualSubtotal - currentTotals.totalDiscount;
-    const subtotalDiff = Math.abs(manualSubtotal - currentTotals.cartSubtotal);
-    const totalDiff = Math.abs(manualTotal - currentTotals.cartTotal);
-    
-    console.log(`├─ Subtotal calculado: R$ ${manualSubtotal.toFixed(2)}`);
-    console.log(`├─ Subtotal do store: R$ ${currentTotals.cartSubtotal.toFixed(2)}`);
-    console.log(`├─ Diferença subtotal: R$ ${subtotalDiff.toFixed(2)} ${subtotalDiff < 0.01 ? '✅' : '❌'}`);
-    console.log(`├─ Total calculado: R$ ${manualTotal.toFixed(2)}`);
-    console.log(`├─ Total do store: R$ ${currentTotals.cartTotal.toFixed(2)}`);
-    console.log(`├─ Diferença total: R$ ${totalDiff.toFixed(2)} ${totalDiff < 0.01 ? '✅' : '❌'}`);
-    console.log(`└─ Status geral: ${(subtotalDiff < 0.01 && totalDiff < 0.01) ? '✅ ÍNTEGRO' : '❌ ERRO DETECTADO'}`);
-    
-    console.log('===============================');
-    
-    return {
-      items: currentItems,
-      totals: currentTotals,
-      coupon: currentCoupon,
-      groups: currentGroups,
-      integrity: {
-        subtotalDiff,
-        totalDiff,
-        isValid: subtotalDiff < 0.01 && totalDiff < 0.01
-      }
-    };
-  }
   
   return {
     // Stores
@@ -575,31 +428,15 @@ function createAdvancedCartStore() {
     applyCoupon,
     removeCoupon,
     clearCart,
-    totalItems,
-    debugReport
+    totalItems
   };
 }
 
 // ============================================================================
-// EXPORT E DEBUG GLOBAL
+// EXPORT
 // ============================================================================
 
-export const advancedCartStore = createAdvancedCartStore();
+export const cartStore = createCartStore();
 
-// Tornar debug acessível globalmente para facilitar testes (apenas em dev)
-if (typeof window !== 'undefined' && !(window as any).cartDebug) {
-  (window as any).cartDebug = {
-    store: advancedCartStore,
-    report: advancedCartStore.debugReport,
-    log: (message: string) => console.log(`🛒 ${message}`),
-    clear: () => {
-      console.clear();
-      console.log('🛒 Console limpo - CartDebug ativo');
-    }
-  };
-  
-  console.log('🛒 CartDebug ativo! Use:');
-  console.log('  → window.cartDebug.report() - Relatório completo');
-  console.log('  → window.cartDebug.store - Acesso ao store');
-  console.log('  → window.cartDebug.clear() - Limpar console');
-}
+// Alias para compatibilidade com código existente
+export const advancedCartStore = cartStore; 

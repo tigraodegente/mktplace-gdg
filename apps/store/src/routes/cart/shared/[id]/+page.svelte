@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { advancedCartStore } from '$lib/stores/cartStore';
 	import { decompressCartData } from '$lib/services/cartLinkService';
 	import { scale, fade } from 'svelte/transition';
 	import { elasticOut } from 'svelte/easing';
@@ -40,7 +40,7 @@
 				
 				if (product) {
 					// Adicionar ao carrinho
-					await advancedCartStore.addItem(
+					await cartStore.addItem(
 						product,
 						product.seller_id || 'default',
 						product.seller_name || 'Vendedor',
@@ -69,50 +69,25 @@
 		}
 	});
 	
-	// Simular busca de produto (em produção seria uma chamada real à API)
+	// Buscar produto real via API
 	async function fetchProduct(productId: string) {
-		// Simular delay de rede
-		await new Promise(resolve => setTimeout(resolve, 300));
-		
-		// Produtos mockados para demonstração
-		const mockProducts = {
-			'prod-1': {
-				id: 'prod-1',
-				name: 'Notebook Gamer RGB',
-				slug: 'notebook-gamer-rgb',
-				price: 4999.90,
-				original_price: 5999.90,
-				discount: 17,
-				image: 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400',
-				images: ['https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400'],
-				category_id: 'cat-1',
-				seller_id: 'seller-1',
-				seller_name: 'TechStore',
-				weight: 2.5,
-				is_black_friday: true,
-				has_fast_delivery: true,
-				stock: 10
-			},
-			'prod-2': {
-				id: 'prod-2',
-				name: 'Mouse Gamer Wireless',
-				slug: 'mouse-gamer-wireless',
-				price: 299.90,
-				original_price: 399.90,
-				discount: 25,
-				image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400',
-				images: ['https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400'],
-				category_id: 'cat-1',
-				seller_id: 'seller-1',
-				seller_name: 'TechStore',
-				weight: 0.2,
-				is_black_friday: true,
-				has_fast_delivery: true,
-				stock: 50
+		try {
+			// Buscar produto via API
+			const response = await fetch(`/api/products/${productId}`);
+			if (!response.ok) {
+				throw new Error('Produto não encontrado');
 			}
-		};
-		
-		return mockProducts[productId as keyof typeof mockProducts] || null;
+			
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.error || 'Erro ao buscar produto');
+			}
+			
+			return result.data;
+		} catch (error) {
+			console.error(`Erro ao buscar produto ${productId}:`, error);
+			return null;
+		}
 	}
 </script>
 

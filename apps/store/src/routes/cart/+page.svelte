@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { advancedCartStore } from '$lib/stores/advancedCartStore';
-  import { cartStore } from '$lib/stores/cart';
-  import { isAuthenticated, user } from '$lib/stores/auth';
+  import { cartStore } from '$lib/stores/cartStore';
+  import { isAuthenticated, user } from '$lib/stores/authStore';
   import { AuthService } from '$lib/services/auth.service';
   import CartItem from '$lib/components/cart/CartItem.svelte';
   import SellerGroupSummary from '$lib/components/cart/SellerGroupSummary.svelte';
@@ -32,7 +31,7 @@
     applyCoupon,
     removeCoupon,
     clearCart
-  } = advancedCartStore;
+  } = cartStore;
   
   // Estado local para CEP
   const zipCode = writable<string>('');
@@ -443,7 +442,7 @@
 
       // 5. Limpar carrinho e redirecionar
       clearCart();
-      advancedCartStore.clearCart();
+      cartStore.clearCart();
       
       // Redirecionar para página de sucesso
       await goto(`/pedido/sucesso?order=${orderResult.data.order.orderNumber}`, { 

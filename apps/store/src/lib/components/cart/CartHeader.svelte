@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { advancedCartStore } from '$lib/stores/cartStore';
 	
 	interface CartHeaderProps {
 		itemCount: number;
@@ -14,7 +14,7 @@
 	
 	function handleClearCart() {
 		if (confirm('Tem certeza que deseja remover todos os produtos do carrinho?')) {
-			advancedCartStore.clearCart();
+			cartStore.clearCart();
 		}
 	}
 </script>

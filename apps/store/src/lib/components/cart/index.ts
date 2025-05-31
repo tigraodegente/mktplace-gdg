@@ -5,9 +5,6 @@
  * para facilitar importação em outros lugares
  */
 
-// Componente principal
-export { default as CartPreview } from './CartPreview.svelte';
-
 // Componentes modulares
 export { default as CartHeader } from './CartHeader.svelte';
 export { default as CartItem } from './CartItem.svelte';
@@ -23,21 +20,26 @@ export { default as ShippingModeSelector } from './ShippingModeSelector.svelte';
 export { default as MoneyValue } from './MoneyValue.svelte';
 export { default as StaticMoney } from './StaticMoney.svelte';
 export { default as PlainMoney } from './PlainMoney.svelte';
+export { default as SellerShippingOptions } from './SellerShippingOptions.svelte';
+export { default as OrderSummary } from './OrderSummary.svelte';
+export { default as MiniCart } from './MiniCart.svelte';
 
-// Store
-export { advancedCartStore } from '$lib/stores/advancedCartStore';
+// Services
+export { ShippingCartService } from '$lib/services/shippingCartService';
+export type { 
+  SellerShippingQuote, 
+  ShippingCalculationRequest,
+  ShippingItem,
+  AdvancedShippingOption 
+} from '$lib/services/shippingCartService';
 
-// Tipos
+// Store - atualizado para o novo nome
+export { cartStore, advancedCartStore } from '$lib/stores/cartStore';
+
+// Tipos básicos
 export type {
   CartItem as CartItemType,
   SellerGroup as SellerGroupType,
-  ShippingOption,
-  ShippingMode,
   Coupon,
-  CartState,
-  CartTotals,
-  ProductShipping
+  CartTotals
 } from '$lib/types/cart';
-
-// Constantes e utilitários
-export * from './constants'; 

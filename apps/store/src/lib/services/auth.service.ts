@@ -1,4 +1,4 @@
-import { auth } from '$lib/stores/auth';
+import { auth } from '$lib/stores/authStore';
 
 export interface LoginCredentials {
   email: string;

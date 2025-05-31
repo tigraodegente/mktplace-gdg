@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isAuthenticated, user } from '$lib/stores/auth';
+	import { isAuthenticated, user } from '$lib/stores/authStore';
 	import AddressManager from '$lib/components/address/AddressManager.svelte';
 	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
 	import { fade, slide } from 'svelte/transition';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { user, isAuthenticated } from '$lib/stores/auth';
+	import { user, isAuthenticated } from '$lib/stores/authStore';
 	import { goto } from '$app/navigation';
 	import SearchBox from '../search/SearchBox.svelte';
 	import DesktopCategoryMenu from '../navigation/DesktopCategoryMenu.svelte';

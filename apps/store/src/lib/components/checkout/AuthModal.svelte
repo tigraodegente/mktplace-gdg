@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
-  import { isAuthenticated, user } from '$lib/stores/auth';
+  import { isAuthenticated, user } from '$lib/stores/authStore';
   import { AuthService, type LoginCredentials, type RegisterData } from '$lib/services/auth.service';
   
   interface Props {
@@ -110,21 +110,10 @@
       closeModal();
     }
   }
-
-  // Debug: Log quando isOpen muda
-  $effect(() => {
-    console.log('🔐 AuthModal isOpen:', isOpen);
-    if (isOpen) {
-      console.log('✅ Modal deve estar visível agora');
-    } else {
-      console.log('❌ Modal deve estar oculto agora');
-    }
-  });
   
   // Se já está autenticado, fechar modal automaticamente
   $effect(() => {
     if ($isAuthenticated && isOpen) {
-      console.log('✅ AuthModal: Usuário já autenticado, fechando modal...');
       dispatch('login', { user: $user });
       closeModal();
     }
@@ -142,7 +131,7 @@
     <!-- Modal -->
     <div 
       class="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-      on:click|stopPropagation
+      onclick={(event) => event.stopPropagation()}
     >
       <!-- Header -->
       <div class="flex items-center justify-between p-6 border-b">
@@ -238,7 +227,7 @@
           
         {:else if mode === 'login'}
           <!-- Formulário de Login -->
-          <form on:submit|preventDefault={handleLogin} class="space-y-4">
+          <form onsubmit={(e) => { e.preventDefault(); handleLogin(); }} class="space-y-4">
             <div>
               <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
                 E-mail
@@ -311,7 +300,7 @@
           
         {:else if mode === 'register'}
           <!-- Formulário de Registro -->
-          <form on:submit|preventDefault={handleRegister} class="space-y-4">
+          <form onsubmit={(e) => { e.preventDefault(); handleRegister(); }} class="space-y-4">
             <div>
               <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
                 Nome completo

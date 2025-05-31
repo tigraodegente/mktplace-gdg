@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
-	import { isAuthenticated, user } from '$lib/stores/auth';
-	import { authStore } from '$lib/stores/auth';
+	import { isAuthenticated, user } from '$lib/stores/authStore';
+	import { authStore } from '$lib/stores/authStore';
 	import { toastStore } from '$lib/stores/toastStore';
 	import { categoryService, type Category } from '$lib/services/categoryService';
 	

@@ -4,13 +4,13 @@
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { auth, user, isAuthenticated } from '$lib/stores/auth';
+	import { auth, user, isAuthenticated } from '$lib/stores/authStore';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import SearchBox from '$lib/components/search/SearchBox.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
-	import { advancedCartStore } from '$lib/stores/advancedCartStore';
+	import { cartStore } from '$lib/stores/cartStore';
 	import { wishlistCount } from '$lib/stores/wishlistStore';
-	import { unreadCount } from '$lib/stores/notificationStore';
+	import { notificationStore } from '$lib/stores/notificationStore';
 	import Header from '$lib/components/layout/Header.svelte';
 	import MobileHeader from '$lib/components/layout/MobileHeader.svelte';
 	import DesktopCategoryMenu from '$lib/components/navigation/DesktopCategoryMenu.svelte';
@@ -19,6 +19,8 @@
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import { frontendCache } from '$lib/cache/frontend-cache';
 	import ChatWidget from '$lib/components/chat/ChatWidget.svelte';
+	import { toastStore } from '$lib/stores/toastStore';
+	import { unreadCount } from '$lib/stores/notificationStore';
 
 	// Constants
 	const CAROUSEL_INTERVAL_MS = 4000;
@@ -67,7 +69,7 @@
 	let touchEndX = 0;
 	
 	// Stores
-	const { sellerGroups } = advancedCartStore;
+	const { sellerGroups } = cartStore;
 	
 	// Computed
 	let totalItems = $derived(

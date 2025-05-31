@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { auth } from '$lib/stores/auth';
+  import { auth } from '$lib/stores/authStore';
   
   let name = $state('');
   let email = $state('');

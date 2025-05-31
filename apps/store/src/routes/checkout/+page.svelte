@@ -4,9 +4,12 @@
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   import AddressManager from '$lib/components/address/AddressManager.svelte';
   import OrderSummary from '$lib/components/cart/OrderSummary.svelte';
-  import { cartStore } from '$lib/stores/cart';
-  import { isAuthenticated, user } from '$lib/stores/auth';
+  import { advancedCartStore } from '$lib/stores/cartStore';
+  import { isAuthenticated, user } from '$lib/stores/authStore';
   import type { CartItem, Address } from '$lib/types/checkout';
+
+  // Desestruturar o advancedCartStore
+  const { sellerGroups, cartTotals, clearCart } = cartStore;
 
   // Estado do checkout
   let loading = false;
@@ -79,13 +82,22 @@
 
   onMount(async () => {
     // Verificar se há itens no carrinho
-    const cart = $cartStore;
-    if (!cart.items || cart.items.length === 0) {
+    const groups = $sellerGroups;
+    if (!groups || groups.length === 0) {
       await goto('/cart');
       return;
     }
     
-    cartItems = cart.items;
+    // Converter items dos grupos para format compatível
+    cartItems = groups.flatMap(group => 
+      group.items.map(item => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        image: item.product.images?.[0] || '/placeholder.jpg'
+      }))
+    );
     
     // Verificar se o usuário está autenticado e carregar endereços
     if ($isAuthenticated) {
@@ -349,7 +361,7 @@
       };
       
       // Limpar dados e redirecionar para confirmação
-      cartStore.clear();
+      clearCart();
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('checkoutData');
         sessionStorage.setItem('orderResult', JSON.stringify(orderResult));

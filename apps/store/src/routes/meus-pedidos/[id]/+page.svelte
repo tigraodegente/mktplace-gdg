@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { isAuthenticated } from '$lib/stores/auth';
+  import { isAuthenticated } from '$lib/stores/authStore';
   
   interface OrderItem {
     id: string;
