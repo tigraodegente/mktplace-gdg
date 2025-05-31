@@ -189,7 +189,6 @@
 
 <section 
 	class="relative w-full overflow-hidden {className}"
-	role="region"
 	aria-label="Banners promocionais"
 	aria-live="polite"
 	onmouseenter={pauseCarousel}

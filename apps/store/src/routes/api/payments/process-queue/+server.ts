@@ -258,19 +258,92 @@ export const POST: RequestHandler = async ({ platform }) => {
   }
 };
 
-// Simular processamento de pagamento (aqui seria a integração real com gateways)
+// Processamento real de pagamento baseado no gateway
 async function processPayment(item: any): Promise<boolean> {
-  // Simular falha em 30% dos casos para testar retry
-  const shouldFail = Math.random() < 0.3;
-  
-  if (shouldFail) {
-    console.log(`💥 Simulando falha no pagamento ${item.payment_id}`);
+  try {
+    const { method, external_id, payment_data } = item;
+    const gateway = process.env.PAYMENT_GATEWAY || 'pagseguro';
+    
+    console.log(`🔄 Processando pagamento ${item.payment_id} via ${gateway}`);
+    
+    // Verificar status atual no gateway
+    let gatewayStatus;
+    
+    if (gateway === 'pagseguro' && process.env.PAGSEGURO_TOKEN) {
+      gatewayStatus = await checkPagSeguroStatus(external_id);
+    } else if (process.env.NODE_ENV === 'development') {
+      // Em desenvolvimento, simular verificação baseada em dados reais
+      gatewayStatus = await simulateGatewayCheck(item);
+    } else {
+      throw new Error(`Gateway ${gateway} não configurado`);
+    }
+    
+    return gatewayStatus === 'paid' || gatewayStatus === 'approved';
+    
+  } catch (error) {
+    console.error(`Erro ao processar pagamento ${item.payment_id}:`, error);
     return false;
   }
+}
 
-  // Simular tempo de processamento
-  await new Promise(resolve => setTimeout(resolve, 1000));
+// Verificar status no PagSeguro
+async function checkPagSeguroStatus(externalId: string): Promise<string> {
+  try {
+    const apiUrl = process.env.PAGSEGURO_API_URL || 'https://ws.pagseguro.uol.com.br/v4';
+    const token = process.env.PAGSEGURO_TOKEN;
+    
+    const response = await fetch(`${apiUrl}/orders/${externalId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`PagSeguro API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const charge = data.charges?.[0];
+    
+    // Mapear status do PagSeguro
+    const statusMap: Record<string, string> = {
+      'PAID': 'paid',
+      'AUTHORIZED': 'approved', 
+      'WAITING': 'pending',
+      'CANCELLED': 'failed',
+      'DECLINED': 'failed'
+    };
+    
+    return statusMap[charge?.status] || 'pending';
+    
+  } catch (error) {
+    console.warn('Falha ao verificar PagSeguro:', error);
+    throw error;
+  }
+}
+
+// Simulação para desenvolvimento (mais realista)
+async function simulateGatewayCheck(item: any): Promise<string> {
+  // Simular tempo de verificação
+  await new Promise(resolve => setTimeout(resolve, 500));
   
-  console.log(`✅ Simulando sucesso no pagamento ${item.payment_id}`);
-  return true;
+  const { method } = item;
+  
+  // PIX: 90% de aprovação instantânea
+  if (method === 'pix') {
+    return Math.random() > 0.1 ? 'paid' : 'pending';
+  }
+  
+  // Cartão: 85% de aprovação
+  if (method === 'credit_card' || method === 'debit_card') {
+    return Math.random() > 0.15 ? 'paid' : 'failed';
+  }
+  
+  // Boleto: sempre pendente (precisa ser pago)
+  if (method === 'boleto') {
+    return Math.random() > 0.5 ? 'paid' : 'pending';
+  }
+  
+  return 'pending';
 } 

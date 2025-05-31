@@ -65,25 +65,15 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 		
 		// Buscar todos os dados em paralelo para melhor performance
 		const [featuredProducts, categoriesData, statsData] = await Promise.all([
-			// Produtos em destaque - query otimizada
+			// Produtos em destaque - query corrigida
 			withDatabase(platform, async (db) => {
 				const products = await db.query`
 					WITH product_images AS (
 						SELECT 
 							pi.product_id,
-							array_agg(pi.url ORDER BY pi.position) as images,
-							pi.url as primary_image
+							array_agg(pi.url ORDER BY pi.position) as images
 						FROM product_images pi
-						WHERE pi.position = 1 OR pi.position IS NULL
-						GROUP BY pi.product_id, pi.url
-					),
-					active_campaigns AS (
-						SELECT DISTINCT product_id
-						FROM coupons c
-						WHERE c.is_active = true 
-						AND (c.expires_at IS NULL OR c.expires_at > NOW())
-						AND c.type IN ('percentage', 'fixed')
-						AND c.value >= 20 -- Desconto mínimo de 20% ou R$20 para ser considerado Black Friday
+						GROUP BY pi.product_id
 					)
 					SELECT 
 						p.id,
@@ -102,27 +92,22 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 						p.featured,
 						p.created_at,
 						p.updated_at,
-						p.delivery_days,
-						p.has_free_shipping,
 						COALESCE(pi.images, ARRAY[]::text[]) as images,
 						c.name as category_name,
 						c.slug as category_slug,
 						b.name as brand_name,
 						s.company_name as seller_name,
-						s.state as seller_state,
-						-- Lógica para Black Friday
+						-- Lógica simplificada para Black Friday (baseada apenas em desconto)
 						CASE 
-							WHEN ac.product_id IS NOT NULL THEN true -- Produto em campanha ativa
 							WHEN p.original_price > 0 AND p.price < p.original_price 
 								AND ((p.original_price - p.price) / p.original_price) >= 0.3 THEN true -- Desconto >= 30%
 							WHEN 'black-friday' = ANY(p.tags) THEN true -- Tag específica
 							ELSE false
 						END as is_black_friday,
-						-- Lógica para entrega rápida
+						-- Lógica simplificada para entrega rápida (baseada apenas em tags ou padrões)
 						CASE 
-							WHEN p.delivery_days <= 2 THEN true -- Entrega em até 2 dias
-							WHEN p.has_free_shipping = true AND p.delivery_days <= 5 THEN true -- Frete grátis em até 5 dias
-							WHEN s.state IN ('SP', 'RJ', 'MG') AND p.delivery_days <= 3 THEN true -- Estados principais com entrega rápida
+							WHEN 'entrega-rapida' = ANY(p.tags) THEN true
+							WHEN 'frete-gratis' = ANY(p.tags) THEN true
 							ELSE false
 						END as has_fast_delivery
 					FROM products p
@@ -130,7 +115,6 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					LEFT JOIN categories c ON c.id = p.category_id
 					LEFT JOIN brands b ON b.id = p.brand_id
 					LEFT JOIN sellers s ON s.id = p.seller_id
-					LEFT JOIN active_campaigns ac ON ac.product_id = p.id
 					WHERE 
 						p.is_active = true 
 						AND p.featured = true 

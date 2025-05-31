@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 interface DatabaseUser {
@@ -15,22 +16,26 @@ interface DatabaseUser {
   customer_data?: any;
 }
 
-function verifyPassword(password: string, hash: string): boolean {
-  // Se o hash começa com $2b$, é bcrypt
-  if (hash.startsWith('$2b$')) {
-    // Para bcrypt, usar uma implementação simples
-    // Como não temos bcrypt instalado, vamos usar uma comparação temporária
-    // Em produção, deveria usar bcrypt.compare()
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  try {
+    // Se o hash começa com $2b$, é bcrypt
+    if (hash.startsWith('$2b$')) {
+      return await bcrypt.compare(password, hash);
+    }
     
-    // Hash bcrypt padrão para "password" - para teste
-    const testBcryptHash = '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
-    return hash === testBcryptHash && password === 'password';
+    // Formato legado salt:hash (para compatibilidade)
+    const [salt, storedHash] = hash.split(':');
+    if (!salt || !storedHash) {
+      console.warn('Formato de hash inválido detectado');
+      return false;
+    }
+    
+    const newHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return newHash === storedHash;
+  } catch (error) {
+    console.error('Erro na verificação de senha:', error);
+    return false;
   }
-  
-  // Formato antigo salt:hash
-  const [salt, storedHash] = hash.split(':');
-  const newHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return newHash === storedHash;
 }
 
 function mapDbUserToAuthUser(dbUser: DatabaseUser) {
@@ -112,7 +117,7 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
     }
     
     // Verificar senha
-    if (!verifyPassword(password, dbUser.password_hash)) {
+    if (!await verifyPassword(password, dbUser.password_hash)) {
       return json({
         success: false,
         error: 'Email ou senha inválidos'

@@ -36,7 +36,7 @@
 	
 	// Estados locais
 	let isHovered = false;
-	let removingItemId: string | null = null;
+	let removingItemId = $state<string | null>(null);
 	let showSuccessAnimation = false;
 	let autoHideTimeout: NodeJS.Timeout | null = null;
 	
@@ -151,6 +151,7 @@
 		class="absolute top-full right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
 		transition:scale={{ duration: 300, start: 0.92, easing: elasticOut }}
 		role="dialog"
+		tabindex="-1"
 		aria-label="Prévia do carrinho"
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
@@ -268,7 +269,15 @@
 						<!-- Product Image com hover effect -->
 						<div 
 							class="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer relative group"
+							role="button"
+							tabindex="0"
 							onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									handleItemClick((item.product as any).slug || item.product.id);
+								}
+							}}
 						>
 							<img 
 								src={(item.product.images && item.product.images[0]) || '/api/placeholder/64/64'} 
@@ -283,7 +292,15 @@
 						<div class="flex-1 min-w-0">
 							<h4 
 								class="text-sm font-semibold text-gray-900 truncate cursor-pointer hover:text-[#00BFB3] transition-colors"
+								role="button"
+								tabindex="0"
 								onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										handleItemClick((item.product as any).slug || item.product.id);
+									}
+								}}
 							>
 								{item.product.name}
 							</h4>
@@ -308,6 +325,7 @@
 											onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity - 1, { color: item.selectedColor, size: item.selectedSize })}
 											class="p-1 hover:bg-gray-50 transition-colors disabled:opacity-50"
 											disabled={item.quantity <= 1}
+											aria-label="Diminuir quantidade"
 										>
 											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
@@ -319,6 +337,7 @@
 										<button
 											onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity + 1, { color: item.selectedColor, size: item.selectedSize })}
 											class="p-1 hover:bg-gray-50 transition-colors"
+											aria-label="Aumentar quantidade"
 										>
 											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -342,6 +361,7 @@
 									onclick={() => handleRemoveItem(item.product.id, item.sellerId, { color: item.selectedColor, size: item.selectedSize })}
 									class="mt-1 p-1 text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
 									title="Remover item"
+									aria-label="Remover item do carrinho"
 								>
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -442,7 +462,7 @@
 		background: linear-gradient(to bottom, #9ca3af, #6b7280);
 	}
 	
-	/* Animação para success state */
+	/* Animação para success state - removido seletor não usado */
 	@keyframes bounce-in {
 		0% {
 			transform: scale(0.3);
@@ -455,9 +475,5 @@
 			transform: scale(1);
 			opacity: 1;
 		}
-	}
-	
-	.success-animation {
-		animation: bounce-in 0.6s ease-out;
 	}
 </style> 

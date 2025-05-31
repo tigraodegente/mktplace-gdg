@@ -69,15 +69,38 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         VALUES (${user.id}, ${resetToken}, ${expiresAt})
       `;
       
-      // TODO: Em produção, enviar email aqui
-      console.log(`🔑 Token de reset para ${email}: ${resetToken}`);
-      console.log(`🔗 Link: http://localhost:5173/reset-password?token=${resetToken}`);
+      // Implementar envio de email real em produção
+      const baseUrl = process.env.APP_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+      
+      // Adicionar email à fila
+      await db.execute`
+        INSERT INTO email_queue (
+          to_email, to_name, subject, template, template_data
+        ) VALUES (
+          ${user.email}, 
+          ${user.name}, 
+          'Recuperação de senha - Marketplace GDG',
+          'password_reset',
+          ${JSON.stringify({
+            user_name: user.name,
+            reset_url: resetUrl,
+            expires_in: '1 hora'
+          })}
+        )
+      `;
+      
+      // Log apenas em desenvolvimento
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔑 Token de reset para ${email}: ${resetToken}`);
+        console.log(`🔗 Link: ${resetUrl}`);
+      }
       
       return {
         success: true,
         message: 'Se o email existir, você receberá as instruções de recuperação',
         // Em desenvolvimento, retornar o token para facilitar testes
-        ...(process.env.NODE_ENV === 'development' && { resetToken })
+        ...(process.env.NODE_ENV === 'development' && { resetToken, resetUrl })
       };
     });
     

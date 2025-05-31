@@ -10,8 +10,12 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import type { Product } from '@mktplace/shared-types';
 import type { CartItem, SellerGroup, Coupon } from '$lib/types/cart';
+import { user } from './authStore';
+import { nanoid } from 'nanoid';
+
+// Tipo temporário para Product (usar interface existente)
+type Product = any;
 
 // ============================================================================
 // CONSTANTS
@@ -19,8 +23,28 @@ import type { CartItem, SellerGroup, Coupon } from '$lib/types/cart';
 
 const STORAGE_KEYS = {
   CART: 'cart',
-  COUPON: 'cartCoupon'
+  COUPON: 'cartCoupon',
+  SESSION: 'cartSessionId'
 } as const;
+
+// ============================================================================
+// SESSION MANAGEMENT
+// ============================================================================
+
+function getOrCreateSessionId(): string {
+  let sessionId = '';
+  
+  if (typeof window !== 'undefined') {
+    sessionId = localStorage.getItem(STORAGE_KEYS.SESSION) || '';
+    
+    if (!sessionId) {
+      sessionId = nanoid(32);
+      localStorage.setItem(STORAGE_KEYS.SESSION, sessionId);
+    }
+  }
+  
+  return sessionId;
+}
 
 // ============================================================================
 // CUPOM SERVICES (Integrado com API)
@@ -37,6 +61,10 @@ async function validateCoupon(code: string, items: CartItem[]): Promise<Coupon |
       price: item.product.price
     }));
 
+    // Obter user_id do authStore e session_id do localStorage
+    const currentUser = get(user);
+    const sessionId = getOrCreateSessionId();
+
     const response = await fetch('/api/coupons/validate', {
       method: 'POST',
       headers: {
@@ -45,9 +73,9 @@ async function validateCoupon(code: string, items: CartItem[]): Promise<Coupon |
       body: JSON.stringify({
         code: code.toUpperCase(),
         items: cartItems,
-        user_id: undefined, // TODO: Pegar do auth store
-        session_id: undefined, // TODO: Gerar session ID se não logado
-        shipping_cost: 0 // TODO: Calcular custo do frete se já conhecido
+        user_id: currentUser?.id,
+        session_id: sessionId,
+        shipping_cost: 0 // Será calculado pelo sistema de frete real
       })
     });
 
@@ -70,7 +98,7 @@ async function validateCoupon(code: string, items: CartItem[]): Promise<Coupon |
         value: result.coupon.value,
         scope: result.coupon.scope === 'global' ? 'cart' : result.coupon.scope,
         description: result.coupon.description || result.coupon.name,
-        minValue: 0, // TODO: Vem da API
+        minValue: result.coupon.min_order_amount || 0,
         ...(result.coupon.discount_amount && { discount_amount: result.coupon.discount_amount }),
         ...(result.coupon.applied_to && { applied_to: result.coupon.applied_to })
       };
@@ -95,6 +123,10 @@ async function getAutomaticCoupons(items: CartItem[]): Promise<Coupon[]> {
       price: item.product.price
     }));
 
+    // Obter user_id do authStore e session_id do localStorage
+    const currentUser = get(user);
+    const sessionId = getOrCreateSessionId();
+
     const response = await fetch('/api/coupons/automatic', {
       method: 'POST',
       headers: {
@@ -102,9 +134,9 @@ async function getAutomaticCoupons(items: CartItem[]): Promise<Coupon[]> {
       },
       body: JSON.stringify({
         items: cartItems,
-        user_id: undefined, // TODO: Pegar do auth store
-        session_id: undefined, // TODO: Gerar session ID se não logado
-        shipping_cost: 0 // TODO: Calcular custo do frete se já conhecido
+        user_id: currentUser?.id,
+        session_id: sessionId,
+        shipping_cost: 0 // Será calculado pelo sistema de frete real
       })
     });
 
@@ -117,7 +149,7 @@ async function getAutomaticCoupons(items: CartItem[]): Promise<Coupon[]> {
         value: coupon.value,
         scope: coupon.scope === 'global' ? 'cart' : coupon.scope,
         description: coupon.description || coupon.name,
-        minValue: 0,
+        minValue: coupon.min_order_amount || 0,
         discount_amount: coupon.discount_amount,
         applied_to: coupon.applied_to,
         is_automatic: true

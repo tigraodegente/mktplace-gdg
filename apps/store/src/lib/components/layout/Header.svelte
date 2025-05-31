@@ -23,6 +23,8 @@
 	let userMenuOpen = $state(false);
 	let miniCartVisible = $state(false);
 	let cartHoverTimeout: NodeJS.Timeout | null = null;
+	let showDropdown = $state(false);
+	let showSubcategories = $state<string | null>(null);
 	
 	function toggleUserMenu() {
 		userMenuOpen = !userMenuOpen;
@@ -117,8 +119,17 @@
 							</button>
 							
 							{#if userMenuOpen}
-								<div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg overflow-hidden z-50" role="menu">
-									<a href="/minha-conta" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors" role="menuitem">
+								<div 
+									class="absolute top-full left-0 w-48 bg-white shadow-lg rounded-lg py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+									role="menu"
+									onmouseenter={() => showDropdown = true}
+									onmouseleave={() => showDropdown = false}
+								>
+									<a 
+										href="/minha-conta"
+										class="px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors text-sm"
+										role="menuitem"
+									>
 										Minha Conta
 									</a>
 									<a

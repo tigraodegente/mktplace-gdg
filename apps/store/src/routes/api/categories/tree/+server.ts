@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders }) => {
 						c.description,
 						c.parent_id,
 						c.is_active,
-						c.sort_order,
+						c.position,
 						c.created_at,
 						c.updated_at,
 						0 as level,
@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders }) => {
 						c.description,
 						c.parent_id,
 						c.is_active,
-						c.sort_order,
+						c.position,
 						c.created_at,
 						c.updated_at,
 						ct.level + 1,
@@ -75,7 +75,7 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders }) => {
 					cs.max_price
 				FROM category_tree ct
 				LEFT JOIN category_stats cs ON cs.category_id = ct.id
-				ORDER BY ct.level, ct.sort_order NULLS LAST, ct.name
+				ORDER BY ct.level, ct.position NULLS LAST, ct.name
 				LIMIT ${limit}
 			`;
 			
@@ -92,7 +92,7 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders }) => {
 					description: cat.description,
 					parent_id: cat.parent_id,
 					level: cat.level,
-					sort_order: cat.sort_order,
+					sort_order: cat.position,
 					productCount: parseInt(cat.product_count) || 0,
 					availableCount: parseInt(cat.available_count) || 0,
 					featuredCount: parseInt(cat.featured_count) || 0,
@@ -139,7 +139,7 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders }) => {
 							p.featured,
 							pi.url as image
 						FROM products p
-						LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.position = 1
+						LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.position = 0
 						WHERE 
 							p.category_id = ANY(${categoryIds})
 							AND p.is_active = true 

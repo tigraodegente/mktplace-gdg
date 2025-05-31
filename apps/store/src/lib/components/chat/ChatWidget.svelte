@@ -231,6 +231,7 @@
     <div class="bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 h-96 flex flex-col overflow-hidden transform transition-all duration-300 ease-out scale-100">
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] p-4 text-white relative cursor-move" 
+           role="banner"
            onmousedown={startDrag}>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -249,13 +250,15 @@
           </div>
           <div class="flex items-center gap-1">
             <button onclick={() => isMinimized = true} 
-                    class="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                    class="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                    aria-label="Minimizar chat">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html getIconSVG('minimize')}
               </svg>
             </button>
             <button onclick={closeWidget} 
-                    class="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                    class="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                    aria-label="Fechar chat">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html getIconSVG('close')}
               </svg>
@@ -343,7 +346,8 @@
                  class="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent">
           <button onclick={sendMessage}
                   disabled={!newMessage.trim()}
-                  class="w-8 h-8 bg-[#00BFB3] text-white rounded-full flex items-center justify-center hover:bg-[#00A89D] transition-colors disabled:bg-gray-300">
+                  class="w-8 h-8 bg-[#00BFB3] text-white rounded-full flex items-center justify-center hover:bg-[#00A89D] transition-colors disabled:bg-gray-300"
+                  aria-label="Enviar mensagem">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {@html getIconSVG('send')}
             </svg>
@@ -361,7 +365,15 @@
   {:else if isMinimized}
     <!-- Minimized State -->
     <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 cursor-pointer hover:shadow-xl transition-all"
-         onclick={openWidget}>
+         role="button"
+         tabindex="0"
+         onclick={openWidget}
+         onkeydown={(e) => {
+           if (e.key === 'Enter' || e.key === ' ') {
+             e.preventDefault();
+             openWidget();
+           }
+         }}>
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-full flex items-center justify-center text-white">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -385,7 +397,8 @@
   {:else}
     <!-- Floating Button -->
     <button onclick={openWidget}
-            class="group relative w-14 h-14 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out flex items-center justify-center">
+            class="group relative w-14 h-14 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out flex items-center justify-center"
+            aria-label="Abrir chat de suporte">
       <!-- Pulse animation -->
       <div class="absolute inset-0 bg-[#00BFB3] rounded-full animate-ping opacity-25"></div>
       

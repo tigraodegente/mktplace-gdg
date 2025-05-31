@@ -286,14 +286,7 @@
 		justify-content: center;
 	}
 	
-	/* SVGs responsivos */
-	.benefits-section__icon svg {
-		width: 100%;
-		height: 100%;
-		max-width: 78px;
-		max-height: 78px;
-	}
-	
+	/* SVGs responsivos - removido seletor não usado */
 	@media (min-width: 1024px) {
 		.benefits-section__icon {
 			width: 70px; /* Tamanho intermediário para desktop */

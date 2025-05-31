@@ -81,8 +81,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
       const coupon = couponResult[0];
 
-      // 2. Validar período de validade (temporariamente desabilitado para teste)
-      /*
+      // 2. Validar período de validade
       const now = new Date();
       if (coupon.starts_at) {
         const startsAt = new Date(coupon.starts_at);
@@ -109,7 +108,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           };
         }
       }
-      */
 
       // 3. Validar limite de usos total
       if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
