@@ -92,43 +92,37 @@
 		
 		<!-- Service Worker Registration -->
 		<script>
-			if ('serviceWorker' in navigator) {
+			// DESABILITADO EM DESENVOLVIMENTO para evitar loop infinito
+			if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
 				window.addEventListener('load', async () => {
 					try {
-						// Primeiro, desregistrar SW antigo se existir
-						const registrations = await navigator.serviceWorker.getRegistrations();
-						for (let registration of registrations) {
-							await registration.unregister();
-							console.log('🗑️ Service Worker antigo removido');
-						}
-						
-						// Registrar novo SW
 						const registration = await navigator.serviceWorker.register('/sw.js', {
 							scope: '/',
-							updateViaCache: 'none'
+							updateViaCache: 'imports' // Permite cache do SW em produção
 						});
 						
 						console.log('🎉 Service Worker registrado:', registration.scope);
 						
-						// Verificar atualizações
+						// Verificar atualizações apenas a cada 24h em produção
+						let lastUpdateCheck = localStorage.getItem('sw-last-update-check');
+						const now = Date.now();
+						const oneDay = 24 * 60 * 60 * 1000;
+						
+						if (!lastUpdateCheck || (now - parseInt(lastUpdateCheck)) > oneDay) {
+							registration.update();
+							localStorage.setItem('sw-last-update-check', now.toString());
+						}
+						
+						// Listen para atualizações com menos agressividade
 						registration.addEventListener('updatefound', () => {
 							const newWorker = registration.installing;
 							if (newWorker) {
 								newWorker.addEventListener('statechange', () => {
 									if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-										// Nova versão disponível
-										if (confirm('Nova versão disponível! Recarregar para atualizar?')) {
-											window.location.reload();
-										}
+										// Mostrar notificação discreta em vez de confirm()
+										showUpdateNotification();
 									}
 								});
-							}
-						});
-						
-						// Listen para mensagens do SW
-						navigator.serviceWorker.addEventListener('message', event => {
-							if (event.data && event.data.type === 'CACHE_UPDATED') {
-								console.log('Cache atualizado pelo Service Worker');
 							}
 						});
 						
@@ -136,6 +130,36 @@
 						console.warn('Service Worker não pôde ser registrado:', error);
 					}
 				});
+			} else if (window.location.hostname === 'localhost') {
+				console.log('🚫 Service Worker desabilitado em localhost para evitar problemas');
+			}
+			
+			// Notificação discreta para atualizações
+			function showUpdateNotification() {
+				const notification = document.createElement('div');
+				notification.innerHTML = `
+					<div style="position: fixed; top: 20px; right: 20px; background: #00BFB3; color: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; font-family: system-ui;">
+						<div style="margin-bottom: 8px; font-weight: 600;">Nova versão disponível</div>
+						<button onclick="updateApp()" style="background: white; color: #00BFB3; border: none; padding: 6px 12px; border-radius: 4px; margin-right: 8px; cursor: pointer;">Atualizar</button>
+						<button onclick="dismissUpdate()" style="background: transparent; color: white; border: 1px solid white; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Depois</button>
+					</div>
+				`;
+				document.body.appendChild(notification);
+				
+				// Auto-remover após 10 segundos
+				setTimeout(() => {
+					if (notification.parentNode) {
+						notification.remove();
+					}
+				}, 10000);
+			}
+			
+			function updateApp() {
+				window.location.reload();
+			}
+			
+			function dismissUpdate() {
+				document.querySelector('[onclick="dismissUpdate()"]')?.closest('div')?.remove();
 			}
 		</script>
 		

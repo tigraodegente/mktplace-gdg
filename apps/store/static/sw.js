@@ -1,5 +1,5 @@
-// Service Worker Marketplace GDG - Versão Otimizada
-const CACHE_VERSION = 'gdg-marketplace-v2-20250531';
+// Service Worker Marketplace GDG - Versão Estável
+const CACHE_VERSION = 'gdg-marketplace-v1-stable';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 const API_CACHE = `api-${CACHE_VERSION}`;
@@ -31,10 +31,12 @@ self.addEventListener('install', (event) => {
     Promise.all([
       // Cache estático crítico
       caches.open(STATIC_CACHE).then(cache => {
-        return cache.addAll(STATIC_ASSETS);
+        return cache.addAll(STATIC_ASSETS).catch(() => {
+          console.warn('Alguns assets não puderam ser cached na instalação');
+        });
       }),
       
-      // Pre-cache APIs importantes
+      // Pre-cache APIs importantes (sem forçar erro)
       caches.open(API_CACHE).then(cache => {
         return Promise.allSettled(
           API_ENDPOINTS.map(url => 
@@ -49,8 +51,8 @@ self.addEventListener('install', (event) => {
     ])
   );
   
-  // Ativar imediatamente
-  self.skipWaiting();
+  // NÃO ativar imediatamente - aguardar que usuário feche aba
+  // self.skipWaiting(); // REMOVIDO para evitar loop
 });
 
 // ===========================================
@@ -74,9 +76,9 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-      console.log('✅ Service Worker ativado com nova versão');
-      // Forçar todos os clientes a usar a nova versão
-      return self.clients.claim();
+      console.log('✅ Service Worker ativado');
+      // NÃO forçar claim - deixar ocorrer naturalmente
+      // return self.clients.claim(); // REMOVIDO para evitar reload forçado
     })
   );
 });
