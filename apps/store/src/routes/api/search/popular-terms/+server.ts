@@ -15,6 +15,8 @@ export const GET: RequestHandler = async ({ platform }) => {
   const db = getDatabase(platform)
   
   try {
+    console.log('🔍 Buscando termos populares...')
+    
     // Buscar os 10 termos mais populares
     const popularTerms = await db.query<PopularTerm>`
       SELECT term, search_count as count
@@ -24,8 +26,12 @@ export const GET: RequestHandler = async ({ platform }) => {
       LIMIT 10
     `
     
+    console.log(`📊 Encontrados ${popularTerms.length} termos populares`)
+    
     // Se não houver termos suficientes, buscar dos produtos mais populares
     if (popularTerms.length < 5) {
+      console.log('📦 Buscando termos dos produtos...')
+      
       const productTerms = await db.query<ProductTerm>`
         SELECT DISTINCT LOWER(p.name) as term
         FROM products p
@@ -41,15 +47,20 @@ export const GET: RequestHandler = async ({ platform }) => {
           popularTerms.push({ term: pt.term, count: 0 })
         }
       }
+      
+      console.log(`📦 Total após combinar: ${popularTerms.length} termos`)
     }
+    
+    const result = popularTerms.map((t: PopularTerm) => t.term)
+    console.log('✅ Termos populares retornados:', result)
     
     return json({
       success: true,
-      data: popularTerms.map((t: PopularTerm) => t.term)
+      data: result
     })
     
   } catch (error) {
-    console.error('Erro ao buscar termos populares:', error)
+    console.error('❌ Erro ao buscar termos populares:', error)
     
     // Fallback para termos padrão em caso de erro
     return json({
@@ -63,7 +74,5 @@ export const GET: RequestHandler = async ({ platform }) => {
         'playstation'
       ]
     })
-  } finally {
-    await db.close()
   }
 } 
