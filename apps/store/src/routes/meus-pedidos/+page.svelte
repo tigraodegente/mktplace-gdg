@@ -173,7 +173,7 @@
           <select 
             id="status-filter"
             bind:value={selectedStatus}
-            on:change={handleStatusChange}
+            onchange={handleStatusChange}
             class="w-full sm:w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
             {#each statusOptions as option}

@@ -1,257 +1,208 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db';
+import { withDatabase } from '$lib/db';
 
-// Mock data como fallback
-const mockNotifications = [
-  {
-    id: '1',
-    type: 'order_status',
-    title: 'Pedido Confirmado',
-    content: 'Seu pedido MP1748645252590OLW foi confirmado! Total: R$ 499,70',
-    data: { order_id: 'MP1748645252590OLW', total_amount: 499.70 },
-    is_read: false,
-    sent_at: new Date().toISOString(),
-    read_at: null,
-    expires_at: null
-  },
-  {
-    id: '2',
-    type: 'promotion',
-    title: 'Promoção Especial!',
-    content: 'Desconto de 20% em toda a loja até domingo! Use o cupom: SAVE20',
-    data: { coupon_code: 'SAVE20', discount: 0.20 },
-    is_read: false,
-    sent_at: new Date(Date.now() - 3600000).toISOString(),
-    read_at: null,
-    expires_at: new Date(Date.now() + 86400000 * 2).toISOString()
-  },
-  {
-    id: '3',
-    type: 'order_status',
-    title: 'Produto Enviado',
-    content: 'Seu pedido MP1748643319033AHP foi enviado! Código: BR123456789',
-    data: { order_id: 'MP1748643319033AHP', tracking_code: 'BR123456789' },
-    is_read: true,
-    sent_at: new Date(Date.now() - 7200000).toISOString(),
-    read_at: new Date(Date.now() - 3600000).toISOString(),
-    expires_at: null
-  },
-  {
-    id: '4',
-    type: 'support',
-    title: 'Resposta do Suporte',
-    content: 'Sua solicitação SP001 foi respondida. Clique para ver a resposta.',
-    data: { ticket_id: 'SP001' },
-    is_read: false,
-    sent_at: new Date(Date.now() - 10800000).toISOString(),
-    read_at: null,
-    expires_at: null
-  },
-  {
-    id: '5',
-    type: 'price_drop',
-    title: 'Preço Reduzido!',
-    content: 'O produto "Camiseta Polo Azul" da sua lista de desejos está com 30% de desconto!',
-    data: { product_id: 'prod-123', old_price: 199.90, new_price: 139.93 },
-    is_read: false,
-    sent_at: new Date(Date.now() - 14400000).toISOString(),
-    read_at: null,
-    expires_at: new Date(Date.now() + 86400000).toISOString()
-  }
-];
+export const GET: RequestHandler = async ({ platform, url, setHeaders }) => {
+	// Headers de cache otimizados para notificações
+	setHeaders({
+		'cache-control': 'private, max-age=60', // 1 minuto para dados pessoais
+		'vary': 'Cookie, Authorization'
+	});
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
-  try {
-    // Verificar autenticação via cookie
-    const sessionToken = cookies.get('session_token');
-    if (!sessionToken) {
-      return error(401, 'Usuário não autenticado');
-    }
+	try {
+		// Verificar autenticação
+		const userId = await getUserFromRequest(platform, url);
+		if (!userId) {
+			return json({
+				success: false,
+				error: { message: 'Usuário não autenticado' }
+			}, { status: 401 });
+		}
 
-    const db = getDatabase();
-    let userId: string | null = null;
+		const page = parseInt(url.searchParams.get('page') || '1');
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
+		const unreadOnly = url.searchParams.get('unread') === 'true';
+		const type = url.searchParams.get('type');
+		const offset = (page - 1) * limit;
 
-    // Tentar obter usuário do banco
-    try {
-      const sessionResult: any = await db.query`
-        SELECT user_id FROM sessions 
-        WHERE token = ${sessionToken} AND expires_at > NOW()
-      `;
+		const result = await withDatabase(platform, async (db) => {
+			// Construir query dinamicamente baseada nos filtros
+			let query = `
+				SELECT 
+					id,
+					type,
+					title,
+					message,
+					data,
+					read_at,
+					created_at,
+					updated_at
+				FROM notifications
+				WHERE user_id = $1
+			`;
+			let params: any[] = [userId];
+			let paramIndex = 2;
 
-      if (sessionResult && Array.isArray(sessionResult) && sessionResult.length > 0) {
-        userId = sessionResult[0].user_id;
-      }
-    } catch (sessionError) {
-      console.log('Erro na autenticação, usando mock user_id');
-    }
-    
-    // Parâmetros de query
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '20');
-    const type = url.searchParams.get('type');
-    const unread_only = url.searchParams.get('unread_only') === 'true';
-    
-    const offset = (page - 1) * limit;
+			if (unreadOnly) {
+				query += ` AND read_at IS NULL`;
+			}
 
-    let notifications = [];
-    let total = 0;
+			if (type) {
+				query += ` AND type = $${paramIndex}`;
+				params.push(type);
+				paramIndex++;
+			}
 
-    // Tentar buscar dados reais do banco
-    if (userId) {
-      try {
-        // Query simplificada para notificações
-        const notificationsResult: any = await db.query`
-          SELECT 
-            id,
-            type,
-            title,
-            content,
-            data,
-            is_read,
-            sent_at,
-            read_at,
-            expires_at
-          FROM notifications
-          WHERE user_id = ${userId}
-          ${type && type !== 'all' ? db.query`AND type = ${type}` : db.query``}
-          ${unread_only ? db.query`AND is_read = false` : db.query``}
-          AND (expires_at IS NULL OR expires_at > NOW())
-          ORDER BY sent_at DESC 
-          LIMIT ${limit} OFFSET ${offset}
-        `;
-        
-        if (notificationsResult && Array.isArray(notificationsResult)) {
-          notifications = notificationsResult.map((row: any) => ({
-            ...row,
-            data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-          }));
+			query += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
-          // Contar total
-          const countResult: any = await db.query`
-            SELECT COUNT(*) as total
-            FROM notifications
-            WHERE user_id = ${userId}
-            ${type && type !== 'all' ? db.query`AND type = ${type}` : db.query``}
-            ${unread_only ? db.query`AND is_read = false` : db.query``}
-            AND (expires_at IS NULL OR expires_at > NOW())
-          `;
+			// Buscar notificações
+			const notifications = await db.query(query, params);
 
-          if (countResult && Array.isArray(countResult) && countResult.length > 0) {
-            total = parseInt(countResult[0].total);
-          }
+			// Contar total
+			let countQuery = `SELECT COUNT(*) as total FROM notifications WHERE user_id = $1`;
+			let countParams = [userId];
+			let countIndex = 2;
 
-        }
-      } catch (dbError) {
-        console.log('Erro no banco, usando dados mock:', dbError);
-        notifications = [];
-      }
-    }
+			if (unreadOnly) {
+				countQuery += ` AND read_at IS NULL`;
+			}
 
-    // Fallback para mock se não conseguiu dados reais
-    if (notifications.length === 0) {
-      
-      let filteredNotifications = [...mockNotifications];
-      
-      if (type && type !== 'all') {
-        filteredNotifications = filteredNotifications.filter(n => n.type === type);
-      }
-      
-      if (unread_only) {
-        filteredNotifications = filteredNotifications.filter(n => !n.is_read);
-      }
-      
-      total = filteredNotifications.length;
-      notifications = filteredNotifications.slice(offset, offset + limit);
-    }
+			if (type) {
+				countQuery += ` AND type = $${countIndex}`;
+				countParams.push(type);
+			}
 
-    return json({
-      success: true,
-      data: {
-        notifications,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
+			const totalResult = await db.query(countQuery, countParams);
+			const total = parseInt(totalResult[0]?.total || '0');
 
-  } catch (err) {
-    console.error('Erro ao buscar notificações:', err);
-    return error(500, 'Erro interno do servidor');
-  }
+			// Formatar notificações
+			const formattedNotifications = notifications.map((notif: any) => ({
+				id: notif.id,
+				type: notif.type,
+				title: notif.title,
+				message: notif.message,
+				data: notif.data ? JSON.parse(notif.data) : null,
+				read: !!notif.read_at,
+				createdAt: notif.created_at,
+				readAt: notif.read_at
+			}));
+
+			return {
+				notifications: formattedNotifications,
+				pagination: {
+					page,
+					limit,
+					total,
+					totalPages: Math.ceil(total / limit),
+					hasNext: offset + limit < total,
+					hasPrev: page > 1
+				}
+			};
+		});
+
+		console.log(`✅ Notificações carregadas: ${result.notifications.length} para usuário ${userId}`);
+
+		return json({
+			success: true,
+			data: result
+		});
+
+	} catch (error) {
+		console.error('❌ Erro ao buscar notificações:', error);
+		return json({
+			success: false,
+			error: { 
+				message: 'Erro interno do servidor',
+				details: error instanceof Error ? error.message : 'Erro desconhecido'
+			}
+		}, { status: 500 });
+	}
 };
 
-export const PATCH: RequestHandler = async ({ request, cookies }) => {
-  try {
-    // Verificar autenticação via cookie
-    const sessionToken = cookies.get('session_token');
-    if (!sessionToken) {
-      return error(401, 'Usuário não autenticado');
-    }
+export const POST: RequestHandler = async ({ platform, url, request }) => {
+	try {
+		// Verificar autenticação
+		const userId = await getUserFromRequest(platform, url);
+		if (!userId) {
+			return json({
+				success: false,
+				error: { message: 'Usuário não autenticado' }
+			}, { status: 401 });
+		}
 
-    const { notification_ids, action } = await request.json();
+		const { action, notificationIds } = await request.json();
 
-    if (!notification_ids || !Array.isArray(notification_ids)) {
-      return error(400, 'IDs de notificação inválidos');
-    }
+		const result = await withDatabase(platform, async (db) => {
+			if (action === 'markAsRead') {
+				if (notificationIds && Array.isArray(notificationIds)) {
+					// Marcar notificações específicas como lidas
+					await db.query`
+						UPDATE notifications 
+						SET read_at = NOW(), updated_at = NOW()
+						WHERE id = ANY(${notificationIds}) AND user_id = ${userId}
+					`;
+				} else {
+					// Marcar todas como lidas
+					await db.query`
+						UPDATE notifications 
+						SET read_at = NOW(), updated_at = NOW()
+						WHERE user_id = ${userId} AND read_at IS NULL
+					`;
+				}
 
-    const db = getDatabase();
-    let userId: string | null = null;
+				return { updated: true };
+			}
 
-    // Tentar obter usuário do banco
-    try {
-      const sessionResult: any = await db.query`
-        SELECT user_id FROM sessions 
-        WHERE token = ${sessionToken} AND expires_at > NOW()
-      `;
+			if (action === 'delete') {
+				if (notificationIds && Array.isArray(notificationIds)) {
+					await db.query`
+						DELETE FROM notifications 
+						WHERE id = ANY(${notificationIds}) AND user_id = ${userId}
+					`;
+				}
 
-      if (sessionResult && Array.isArray(sessionResult) && sessionResult.length > 0) {
-        userId = sessionResult[0].user_id;
-      }
-    } catch (sessionError) {
-      console.log('Erro na autenticação, simulando sucesso');
-    }
+				return { deleted: true };
+			}
 
-    if (userId) {
-      try {
-        if (action === 'mark_as_read') {
-          // Marcar como lidas no banco
-          await db.query`
-            UPDATE notifications 
-            SET is_read = true, read_at = NOW()
-            WHERE id = ANY(${notification_ids}) AND user_id = ${userId} AND is_read = false
-          `;
-          
-          console.log('✅ Notificações marcadas como lidas no banco');
+			throw new Error('Ação não suportada');
+		});
 
-        } else if (action === 'delete') {
-          // Deletar notificações no banco
-          await db.query`
-            DELETE FROM notifications 
-            WHERE id = ANY(${notification_ids}) AND user_id = ${userId}
-          `;
-          
-          console.log('✅ Notificações removidas do banco');
-        }
-      } catch (dbError) {
-        console.log('Erro no banco, simulando sucesso:', dbError);
-      }
-    }
+		console.log(`✅ Ação '${action}' executada nas notificações do usuário ${userId}`);
 
-    const message = action === 'mark_as_read' 
-      ? 'Notificações marcadas como lidas' 
-      : 'Notificações removidas';
+		return json({
+			success: true,
+			data: result
+		});
 
-    return json({
-      success: true,
-      message
-    });
+	} catch (error) {
+		console.error('❌ Erro ao processar notificações:', error);
+		return json({
+			success: false,
+			error: { 
+				message: 'Erro ao processar notificações',
+				details: error instanceof Error ? error.message : 'Erro desconhecido'
+			}
+		}, { status: 500 });
+	}
+};
 
-  } catch (err) {
-    console.error('Erro ao atualizar notificações:', err);
-    return error(500, 'Erro interno do servidor');
-  }
-}; 
+// Função auxiliar para extrair usuário da requisição
+async function getUserFromRequest(platform: any, url: URL): Promise<string | null> {
+	try {
+		// Verificar com API de autenticação interna
+		const authResponse = await fetch(`${url.origin}/api/auth/me`, {
+			headers: {
+				'Cookie': url.searchParams.get('cookie') || ''
+			}
+		});
+
+		if (authResponse.ok) {
+			const authData = await authResponse.json();
+			return authData.success ? authData.data?.user?.id : null;
+		}
+
+		return null;
+	} catch {
+		return null;
+	}
+} 

@@ -31,12 +31,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
     console.log('🔐 create-order: Verificando autenticação...');
     const authResult = await requireAuth(cookies, platform);
     
-      success: authResult.success,
-      hasUser: !!authResult.user,
-      userId: authResult.user?.id,
-      error: authResult.error?.message
-    });
-    
     if (!authResult.success) {
       console.log('❌ create-order: Autenticação falhou:', authResult.error);
       return json({ success: false, error: authResult.error }, { status: 401 });

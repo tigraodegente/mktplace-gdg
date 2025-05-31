@@ -19,7 +19,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Variáveis de Cores - IGUAIS À STORE */
+/* Variáveis de Cores - EXATAS DA STORE */
 :root {
   /* Cores Principais */
   --primary-color: #00BFB3;
@@ -31,7 +31,7 @@ body {
   --black800: #312627;
   --white: #FFFFFF;
   
-  /* Tons de Cyan */
+  /* Tons de Cyan - EXATOS DA STORE */
   --cyan50: #E0F7F6;
   --cyan100: #B3F0ED;
   --cyan200: #80E8E3;
@@ -324,10 +324,27 @@ body {
 .btn-lg { padding: 0.75rem 1.5rem; font-size: var(--text-lg); }
 
 /* Cards */
-.card { background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow: hidden; }
-.card-header { padding: 1.5rem; border-bottom: 1px solid var(--gray200); }
-.card-body { padding: 1.5rem; }
-.card-footer { padding: 1.5rem; border-top: 1px solid var(--gray200); }
+.card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  border: 1px solid var(--gray100);
+}
+.card-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--gray200);
+  background-color: white;
+}
+.card-body {
+  padding: 1.5rem;
+  background-color: white;
+}
+.card-footer {
+  padding: 1.5rem;
+  border-top: 1px solid var(--gray200);
+  background-color: var(--gray50);
+}
 
 /* Formulários */
 .input {
@@ -367,13 +384,13 @@ select:focus { outline: none; border-color: var(--cyan500); box-shadow: 0 0 0 3p
 
 /* Badges */
 .badge {
-  display: inline-flex; align-items: center; padding: 0.125rem 0.625rem;
+  display: inline-flex; align-items: center; padding: 0.25rem 0.75rem;
   border-radius: 9999px; font-size: var(--text-xs); font-weight: var(--font-medium);
 }
 .badge-success { background-color: #dcfce7; color: var(--green600); }
 .badge-warning { background-color: #fef3c7; color: var(--yellow600); }
 .badge-danger { background-color: #fee2e2; color: var(--red600); }
-.badge-info { background-color: #dbeafe; color: var(--blue600); }
+.badge-info { background-color: var(--cyan50); color: var(--cyan700); }
 
 /* Navegação */
 .nav-link {
@@ -381,8 +398,16 @@ select:focus { outline: none; border-color: var(--cyan500); box-shadow: 0 0 0 3p
   font-weight: var(--font-medium); border-radius: 0.5rem; transition: all 0.15s ease-in-out;
   text-decoration: none; color: var(--gray700);
 }
-.nav-link:hover { background-color: var(--gray100); }
-.nav-link.active { background-color: var(--cyan50); color: var(--cyan700); border-right: 2px solid var(--cyan500); }
+.nav-link:hover { 
+  background-color: var(--gray100); 
+  color: var(--gray700);
+}
+.nav-link.active { 
+  background-color: var(--cyan50) !important; 
+  color: var(--cyan700) !important; 
+  border-right: 2px solid var(--cyan500) !important; 
+  font-weight: var(--font-semibold) !important;
+}
 
 /* Transições */
 .transition-fast { transition: all 0.15s ease-in-out; }
@@ -420,6 +445,61 @@ select:focus { outline: none; border-color: var(--cyan500); box-shadow: 0 0 0 3p
 .bg-red-400 { background-color: var(--red400); }
 .bg-red-500 { background-color: var(--red500); }
 
+/* === HEADERS E LAYOUT TURQUESA === */
+/* Header dos painéis com cor exata da Store */
+header {
+  background-color: var(--cyan500) !important;
+  background: var(--cyan500) !important;
+  color: white !important;
+}
+
+/* Texto branco no header */
+header h1, header span, header p, header button {
+  color: white !important;
+}
+
+/* Logo e elementos do header */
+header img {
+  filter: brightness(0) invert(1) !important;
+}
+
+/* Sidebar com fundo branco limpo */
+aside {
+  background-color: white !important;
+  border-right: 1px solid var(--gray200) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fundo geral dos painéis */
+.min-h-screen {
+  background-color: var(--gray50) !important;
+}
+
+/* Main content com fundo cinza claro */
+main {
+  background-color: var(--gray50) !important;
+}
+
+/* === BOTÕES COM CORES DA STORE === */
+.btn-primary { 
+  background-color: var(--cyan500) !important; 
+  color: white !important; 
+  border-color: var(--cyan500) !important;
+}
+.btn-primary:hover { 
+  background-color: var(--cyan600) !important; 
+  border-color: var(--cyan600) !important;
+}
+
+/* Botão secundário */
+.btn-secondary { 
+  background-color: var(--gray100) !important; 
+  color: var(--gray700) !important; 
+}
+.btn-secondary:hover { 
+  background-color: var(--gray200) !important; 
+}
+
 /* Utilitários */
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -455,4 +535,16 @@ select:focus { outline: none; border-color: var(--cyan500); box-shadow: 0 0 0 3p
   .container { padding-left: 1rem; padding-right: 1rem; }
   .card-body { padding: 1rem; }
   .btn { padding: 0.5rem 0.75rem; font-size: var(--text-xs); }
-} 
+}
+
+/* === CORES ADICIONAIS PARA ÍCONES === */
+.text-purple-600 { color: #7c3aed; }
+.text-yellow-600 { color: #ca8a04; }
+.bg-purple-100 { background-color: #e9d5ff; }
+.bg-purple-200 { background-color: #ddd6fe; }
+
+.bg-blue-200 { background-color: #bfdbfe; }
+.bg-green-200 { background-color: #bbf7d0; }
+.bg-yellow-200 { background-color: #fef08a; }
+.bg-gray-200 { background-color: var(--gray200); }
+.bg-cyan-200 { background-color: var(--cyan200); } 

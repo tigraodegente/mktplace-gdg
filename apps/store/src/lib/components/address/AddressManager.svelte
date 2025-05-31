@@ -456,7 +456,7 @@
 								<input
 									type="radio"
 									checked={selectedAddressId === address.id}
-									on:change={() => selectAddress(address)}
+									onchange={() => selectAddress(address)}
 									class="w-4 h-4 text-[#00BFB3] border-gray-300 focus:ring-[#00BFB3]"
 								/>
 							</div>
@@ -527,7 +527,7 @@
 					</p>
 				</div>
 				
-				<form on:submit|preventDefault={saveAddress} class="space-y-4">
+				<form onsubmit={saveAddress} class="space-y-4">
 					<!-- Nome -->
 					<div>
 						<label for="name" class="block text-sm font-medium text-gray-700 mb-1">
@@ -573,7 +573,7 @@
 								id="zipCode"
 								type="text"
 								value={formData.zipCode}
-								on:input={handleCepInput}
+								oninput={handleCepInput}
 								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
 								class:border-red-300={formErrors.zipCode}
 								placeholder="00000-000"

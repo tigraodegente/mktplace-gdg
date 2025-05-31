@@ -90,7 +90,7 @@
         <input
           type="checkbox"
           checked={isSelected}
-          on:change={() => toggleValue(facet.value)}
+          onchange={() => toggleValue(facet.value)}
           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
         
@@ -100,7 +100,7 @@
               class="w-4 h-4 rounded-full border border-gray-300"
               style="background-color: {colorCode}"
               title={facet.value}
-            />
+            ></span>
           {/if}
           
           <span class="text-sm text-gray-700">

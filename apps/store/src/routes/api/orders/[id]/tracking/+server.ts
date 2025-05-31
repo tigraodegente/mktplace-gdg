@@ -1,345 +1,348 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db';
+import { withDatabase } from '$lib/db';
 
-// Mock data como fallback
-const mockTrackingData = {
-  order: {
-    id: 'order-123',
-    order_number: 'MP1748645252590OLW',
-    status: 'shipped',
-    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    total_amount: 499.70,
-    customer: {
-      name: 'João Silva',
-      email: 'joao@email.com'
-    }
-  },
-  tracking: [
-    {
-      id: '1',
-      status: 'confirmado',
-      description: 'Pedido confirmado e pagamento aprovado',
-      location: 'São Paulo, SP',
-      tracking_data: {},
-      created_at: new Date(Date.now() - 86400000 * 3).toISOString()
-    },
-    {
-      id: '2',
-      status: 'preparando',
-      description: 'Produto em separação no estoque',
-      location: 'Centro de Distribuição - São Paulo, SP',
-      tracking_data: {},
-      created_at: new Date(Date.now() - 86400000 * 2).toISOString()
-    },
-    {
-      id: '3',
-      status: 'enviado',
-      description: 'Produto despachado para transportadora',
-      location: 'Centro de Distribuição - São Paulo, SP',
-      tracking_data: { tracking_code: 'BR123456789SP' },
-      created_at: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-      id: '4',
-      status: 'em_transito',
-      description: 'Produto em trânsito para o destino',
-      location: 'Centro de Triagem - Rio de Janeiro, RJ',
-      tracking_data: {},
-      created_at: new Date(Date.now() - 43200000).toISOString()
-    }
-  ],
-  items: [
-    {
-      id: '1',
-      product_name: 'Camiseta Polo Azul',
-      image: '/api/placeholder/100/100',
-      quantity: 2,
-      price: 199.90
-    },
-    {
-      id: '2',
-      product_name: 'Bermuda Jeans',
-      image: '/api/placeholder/100/100',
-      quantity: 1,
-      price: 99.90
-    }
-  ],
-  delivery: {
-    estimated_delivery: new Date(Date.now() + 86400000 * 2).toISOString(),
-    tracking_code: 'BR123456789SP',
-    carrier: 'Correios',
-    delivered_at: null
-  },
-  status_flow: [
-    { key: 'pending', label: 'Pedido Recebido', completed: true, current: false },
-    { key: 'confirmed', label: 'Pagamento Confirmado', completed: true, current: false },
-    { key: 'preparing', label: 'Preparando Produto', completed: true, current: false },
-    { key: 'shipped', label: 'Enviado', completed: true, current: false },
-    { key: 'in_transit', label: 'Em Trânsito', completed: false, current: true },
-    { key: 'out_for_delivery', label: 'Saiu para Entrega', completed: false, current: false },
-    { key: 'delivered', label: 'Entregue', completed: false, current: false }
-  ]
+export const GET: RequestHandler = async ({ platform, params, url, setHeaders }) => {
+	// Headers de cache otimizados para rastreamento
+	setHeaders({
+		'cache-control': 'private, max-age=300', // 5 minutos para dados pessoais
+		'vary': 'Cookie, Authorization'
+	});
+
+	try {
+		const orderId = params.id;
+		if (!orderId) {
+			return json({
+				success: false,
+				error: { message: 'ID do pedido é obrigatório' }
+			}, { status: 400 });
+		}
+
+		// Verificar autenticação e autorização
+		const userId = await getUserFromRequest(platform, url);
+		if (!userId) {
+			return json({
+				success: false,
+				error: { message: 'Usuário não autenticado' }
+			}, { status: 401 });
+		}
+
+		const result = await withDatabase(platform, async (db) => {
+			// Verificar se o pedido pertence ao usuário
+			const orderCheck = await db.query(`
+				SELECT id, order_number, status, tracking_code
+				FROM orders 
+				WHERE id = $1 AND user_id = $2
+			`, [orderId, userId]);
+
+			if (!orderCheck || orderCheck.length === 0) {
+				throw new Error('Pedido não encontrado ou não autorizado');
+			}
+
+			const order = orderCheck[0];
+
+			// Buscar eventos de rastreamento do banco
+			const trackingEvents = await db.query(`
+				SELECT 
+					id,
+					event_type,
+					status,
+					description,
+					location,
+					date_time,
+					created_at
+				FROM order_tracking_events
+				WHERE order_id = $1
+				ORDER BY date_time DESC, created_at DESC
+			`, [orderId]);
+
+			// Se tem código de rastreamento, buscar atualizações dos Correios
+			let externalTracking = null;
+			if (order.tracking_code) {
+				try {
+					externalTracking = await fetchCorreiosTracking(order.tracking_code);
+				} catch (trackingError) {
+					console.warn(`Falha ao buscar rastreamento externo para ${order.tracking_code}:`, trackingError);
+				}
+			}
+
+			// Combinar eventos do banco com dados externos
+			const allEvents = [
+				...trackingEvents.map((event: any) => ({
+					id: event.id,
+					type: event.event_type,
+					status: event.status,
+					description: event.description,
+					location: event.location,
+					dateTime: event.date_time,
+					source: 'internal'
+				})),
+				...(externalTracking?.events || []).map((event: any, index: number) => ({
+					id: `ext-${index}`,
+					type: 'correios',
+					status: event.status,
+					description: event.description,
+					location: event.location,
+					dateTime: event.dateTime,
+					source: 'correios'
+				}))
+			].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+
+			// Determinar status atual
+			const currentStatus = determineCurrentStatus(allEvents, order.status);
+
+			return {
+				order: {
+					id: order.id,
+					orderNumber: order.order_number,
+					status: order.status,
+					trackingCode: order.tracking_code,
+					currentStatus
+				},
+				tracking: {
+					events: allEvents,
+					lastUpdate: allEvents[0]?.dateTime || order.created_at,
+					estimatedDelivery: calculateEstimatedDelivery(allEvents, order),
+					canTrackExternal: !!order.tracking_code
+				}
+			};
+		});
+
+		console.log(`✅ Rastreamento carregado para pedido ${orderId}`);
+
+		return json({
+			success: true,
+			data: result
+		});
+
+	} catch (error) {
+		console.error('❌ Erro ao buscar rastreamento:', error);
+		return json({
+			success: false,
+			error: { 
+				message: 'Erro ao buscar dados de rastreamento',
+				details: error instanceof Error ? error.message : 'Erro desconhecido'
+			}
+		}, { status: 500 });
+	}
 };
 
-export const GET: RequestHandler = async ({ params, cookies }) => {
-  try {
-    const { id } = params;
-    
-    // Verificar autenticação
-    const sessionToken = cookies.get('session_token');
-    if (!sessionToken) {
-      return error(401, 'Usuário não autenticado');
-    }
+export const POST: RequestHandler = async ({ platform, params, request, url }) => {
+	try {
+		const orderId = params.id;
+		if (!orderId) {
+			return json({
+				success: false,
+				error: { message: 'ID do pedido é obrigatório' }
+			}, { status: 400 });
+		}
 
-    const db = getDatabase();
-    let userId: string | null = null;
+		// Verificar se é uma requisição administrativa (webhook ou admin)
+		const isAdminRequest = await verifyAdminAccess(platform, url, request);
+		if (!isAdminRequest) {
+			return json({
+				success: false,
+				error: { message: 'Acesso não autorizado' }
+			}, { status: 403 });
+		}
 
-    // Tentar obter usuário do banco
-    try {
-      const sessionResult: any = await db.query`
-        SELECT user_id FROM sessions 
-        WHERE token = ${sessionToken} AND expires_at > NOW()
-      `;
+		const { eventType, status, description, location, trackingCode } = await request.json();
 
-      if (sessionResult && Array.isArray(sessionResult) && sessionResult.length > 0) {
-        userId = sessionResult[0].user_id;
-      }
-    } catch (sessionError) {
-      console.log('Erro na autenticação, usando dados mock');
-    }
+		const result = await withDatabase(platform, async (db) => {
+			// Inserir novo evento de rastreamento
+			const newEvent = await db.query(`
+				INSERT INTO order_tracking_events (
+					order_id, event_type, status, description, location, date_time
+				) VALUES ($1, $2, $3, $4, $5, NOW())
+				RETURNING *
+			`, [orderId, eventType, status, description, location]);
 
-    let trackingData = null;
+			// Atualizar código de rastreamento se fornecido
+			if (trackingCode) {
+				await db.query(`
+					UPDATE orders 
+					SET tracking_code = $1, updated_at = NOW()
+					WHERE id = $2
+				`, [trackingCode, orderId]);
+			}
 
-    // Tentar buscar dados reais do banco
-    if (userId) {
-      try {
-        // Buscar pedido
-        const orderResult: any = await db.query`
-          SELECT 
-            o.*,
-            u.name as customer_name, 
-            u.email as customer_email
-          FROM orders o
-          JOIN users u ON o.user_id = u.id
-          WHERE o.id = ${id} AND o.user_id = ${userId}
-        `;
+			// Atualizar status do pedido se necessário
+			if (shouldUpdateOrderStatus(status)) {
+				await db.query(`
+					UPDATE orders 
+					SET status = $1, updated_at = NOW()
+					WHERE id = $2
+				`, [status, orderId]);
+			}
 
-        if (orderResult && Array.isArray(orderResult) && orderResult.length > 0) {
-          const order = orderResult[0];
+			return { event: newEvent[0] };
+		});
 
-          // Buscar histórico de rastreamento
-          const trackingResult: any = await db.query`
-            SELECT 
-              id,
-              status,
-              description,
-              location,
-              tracking_data,
-              created_at,
-              created_by
-            FROM order_tracking
-            WHERE order_id = ${id}
-            ORDER BY created_at ASC
-          `;
+		console.log(`✅ Evento de rastreamento adicionado para pedido ${orderId}`);
 
-          // Buscar itens do pedido
-          const itemsResult: any = await db.query`
-            SELECT 
-              oi.*,
-              p.name as product_name,
-              p.image
-            FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ${id}
-          `;
+		return json({
+			success: true,
+			data: result
+		});
 
-          // Calcular status flow
-          const statusFlow = getStatusFlow(order.status);
-
-          trackingData = {
-            order: {
-              id: order.id,
-              order_number: order.order_number,
-              status: order.status,
-              created_at: order.created_at,
-              total_amount: parseFloat(order.total || order.subtotal),
-              customer: {
-                name: order.customer_name,
-                email: order.customer_email
-              }
-            },
-            tracking: trackingResult || [],
-            items: (itemsResult || []).map((item: any) => ({
-              id: item.id,
-              product_name: item.product_name,
-              image: item.image || '/api/placeholder/100/100',
-              quantity: item.quantity,
-              price: parseFloat(item.price)
-            })),
-            delivery: {
-              estimated_delivery: order.estimated_delivery,
-              tracking_code: order.tracking_code,
-              carrier: order.carrier,
-              delivered_at: order.delivered_at
-            },
-            status_flow: statusFlow
-          };
-
-        }
-      } catch (dbError) {
-        console.log('Erro no banco, usando dados mock:', dbError);
-      }
-    }
-
-    // Fallback para mock se não conseguiu dados reais
-    if (!trackingData) {
-      trackingData = {
-        ...mockTrackingData,
-        order: {
-          ...mockTrackingData.order,
-          id,
-          order_number: id
-        }
-      };
-    }
-
-    return json({
-      success: true,
-      data: trackingData
-    });
-
-  } catch (err) {
-    console.error('Erro ao buscar rastreamento:', err);
-    return error(500, 'Erro interno do servidor');
-  }
+	} catch (error) {
+		console.error('❌ Erro ao atualizar rastreamento:', error);
+		return json({
+			success: false,
+			error: { 
+				message: 'Erro ao atualizar rastreamento',
+				details: error instanceof Error ? error.message : 'Erro desconhecido'
+			}
+		}, { status: 500 });
+	}
 };
 
-export const POST: RequestHandler = async ({ params, request, cookies }) => {
-  try {
-    const { id } = params;
-    const { status, description, location, tracking_data } = await request.json();
+// Função para buscar dados dos Correios
+async function fetchCorreiosTracking(trackingCode: string) {
+	try {
+		// Implementação real da API dos Correios
+		const response = await fetch(`https://api.correios.com.br/sro/v1/objetos/${trackingCode}`, {
+			headers: {
+				'Accept': 'application/json',
+				'User-Agent': 'MarketplaceGDG/1.0'
+			}
+		});
 
-    // Verificar autenticação
-    const sessionToken = cookies.get('session_token');
-    if (!sessionToken) {
-      return error(401, 'Usuário não autenticado');
-    }
+		if (!response.ok) {
+			throw new Error(`Correios API error: ${response.status}`);
+		}
 
-    const db = getDatabase();
-    let userId: string | null = null;
+		const data = await response.json();
+		
+		return {
+			trackingCode,
+			events: data.objetos?.[0]?.eventos?.map((evento: any) => ({
+				status: evento.status,
+				description: evento.descricao,
+				location: `${evento.unidade?.nome}, ${evento.unidade?.endereco?.cidade}-${evento.unidade?.endereco?.uf}`,
+				dateTime: new Date(`${evento.dtHrCriado}T${evento.dtHrCriado}`).toISOString()
+			})) || []
+		};
+	} catch (error) {
+		console.warn('Falha ao consultar Correios:', error);
+		// Fallback para simulação em desenvolvimento
+		if (process.env.NODE_ENV === 'development') {
+			return generateMockCorreiosData(trackingCode);
+		}
+		throw error;
+	}
+}
 
-    // Tentar obter usuário do banco
-    try {
-      const sessionResult: any = await db.query`
-        SELECT user_id, role FROM users u
-        JOIN sessions s ON s.user_id = u.id
-        WHERE s.token = ${sessionToken} AND s.expires_at > NOW()
-      `;
+// Dados simulados dos Correios para desenvolvimento
+function generateMockCorreiosData(trackingCode: string) {
+	const now = new Date();
+	return {
+		trackingCode,
+		events: [
+			{
+				status: 'OBJETO_ENTREGUE',
+				description: 'Objeto entregue ao destinatário',
+				location: 'São Paulo-SP',
+				dateTime: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+			},
+			{
+				status: 'OBJETO_SAIU_PARA_ENTREGA',
+				description: 'Objeto saiu para entrega ao destinatário',
+				location: 'São Paulo-SP',
+				dateTime: new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString()
+			},
+			{
+				status: 'OBJETO_EM_TRANSITO',
+				description: 'Objeto em trânsito - por favor aguarde',
+				location: 'São Paulo-SP',
+				dateTime: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString()
+			}
+		]
+	};
+}
 
-      if (sessionResult && Array.isArray(sessionResult) && sessionResult.length > 0) {
-        userId = sessionResult[0].user_id;
-        
-        // Verificar se é admin ou seller
-        const userRole = sessionResult[0].role;
-        if (userRole !== 'admin' && userRole !== 'seller') {
-          return error(403, 'Sem permissão para atualizar rastreamento');
-        }
-      }
-    } catch (sessionError) {
-      console.log('Erro na autenticação');
-    }
+// Determinar status atual baseado nos eventos
+function determineCurrentStatus(events: any[], orderStatus: string) {
+	if (events.length === 0) return orderStatus;
 
-    let newTrackingEvent = null;
+	const latestEvent = events[0];
+	const statusMap: Record<string, string> = {
+		'OBJETO_ENTREGUE': 'delivered',
+		'OBJETO_SAIU_PARA_ENTREGA': 'out_for_delivery',
+		'OBJETO_EM_TRANSITO': 'shipped',
+		'OBJETO_POSTADO': 'shipped'
+	};
 
-    if (userId) {
-      try {
-        // Inserir novo status de rastreamento
-        const trackingResult: any = await db.query`
-          INSERT INTO order_tracking (
-            order_id, status, description, location, tracking_data, created_by
-          ) VALUES (
-            ${id}, ${status}, ${description}, ${location || null}, 
-            ${JSON.stringify(tracking_data || {})}, ${userId}
-          )
-          RETURNING *
-        `;
+	return statusMap[latestEvent.status] || orderStatus;
+}
 
-        if (trackingResult && Array.isArray(trackingResult) && trackingResult.length > 0) {
-          newTrackingEvent = trackingResult[0];
+// Calcular entrega estimada
+function calculateEstimatedDelivery(events: any[], order: any) {
+	// Buscar evento de postagem
+	const postedEvent = events.find(e => 
+		e.status === 'OBJETO_POSTADO' || e.type === 'shipped'
+	);
 
-          // Atualizar status do pedido se necessário
-          if (status) {
-            await db.query`
-              UPDATE orders 
-              SET status = ${status}, updated_at = NOW()
-              WHERE id = ${id}
-            `;
-          }
+	if (!postedEvent) return null;
 
-          // Se for entrega, marcar como entregue
-          if (status === 'delivered') {
-            await db.query`
-              UPDATE orders 
-              SET delivered_at = NOW()
-              WHERE id = ${id}
-            `;
-          }
+	// Estimar 7 dias úteis a partir da postagem
+	const postedDate = new Date(postedEvent.dateTime);
+	const estimatedDate = new Date(postedDate);
+	estimatedDate.setDate(estimatedDate.getDate() + 7);
 
-          console.log('✅ Status de rastreamento atualizado no banco');
-        }
-      } catch (dbError) {
-        console.log('Erro no banco, simulando sucesso:', dbError);
-      }
-    }
+	return estimatedDate.toISOString();
+}
 
-    // Fallback para demonstração
-    if (!newTrackingEvent) {
-      newTrackingEvent = {
-        id: Date.now().toString(),
-        status,
-        description,
-        location: location || null,
-        tracking_data: tracking_data || {},
-        created_at: new Date().toISOString()
-      };
-    }
+// Verificar se deve atualizar status do pedido
+function shouldUpdateOrderStatus(trackingStatus: string): boolean {
+	const statusesToUpdate = [
+		'OBJETO_ENTREGUE',
+		'OBJETO_SAIU_PARA_ENTREGA',
+		'OBJETO_EM_TRANSITO'
+	];
+	
+	return statusesToUpdate.includes(trackingStatus);
+}
 
-    return json({
-      success: true,
-      data: newTrackingEvent,
-      message: 'Status de rastreamento atualizado'
-    });
+// Funções auxiliares
+async function getUserFromRequest(platform: any, url: URL): Promise<string | null> {
+	try {
+		const authResponse = await fetch(`${url.origin}/api/auth/me`, {
+			headers: {
+				'Cookie': url.searchParams.get('cookie') || ''
+			}
+		});
 
-  } catch (err) {
-    console.error('Erro ao atualizar rastreamento:', err);
-    return error(500, 'Erro interno do servidor');
-  }
-};
+		if (authResponse.ok) {
+			const authData = await authResponse.json();
+			return authData.success ? authData.data?.user?.id : null;
+		}
+		return null;
+	} catch {
+		return null;
+	}
+}
 
-// Função auxiliar para definir fluxo de status
-function getStatusFlow(currentStatus: string) {
-  const allStatuses = [
-    { key: 'pending', label: 'Pedido Recebido', completed: false },
-    { key: 'confirmed', label: 'Pagamento Confirmado', completed: false },
-    { key: 'preparing', label: 'Preparando Produto', completed: false },
-    { key: 'shipped', label: 'Enviado', completed: false },
-    { key: 'in_transit', label: 'Em Trânsito', completed: false },
-    { key: 'out_for_delivery', label: 'Saiu para Entrega', completed: false },
-    { key: 'delivered', label: 'Entregue', completed: false }
-  ];
+async function verifyAdminAccess(platform: any, url: URL, request: Request): Promise<boolean> {
+	try {
+		// Verificar header de webhook dos Correios
+		const webhookKey = request.headers.get('x-webhook-key');
+		if (webhookKey === process.env.CORREIOS_WEBHOOK_KEY) {
+			return true;
+		}
 
-  let foundCurrent = false;
-  return allStatuses.map(statusItem => {
-    if (statusItem.key === currentStatus) {
-      foundCurrent = true;
-      return { ...statusItem, completed: true, current: true };
-    }
-    
-    if (!foundCurrent) {
-      return { ...statusItem, completed: true };
-    }
-    
-    return statusItem;
-  });
+		// Verificar se é admin autenticado
+		const authResponse = await fetch(`${url.origin}/api/auth/me`, {
+			headers: request.headers
+		});
+
+		if (authResponse.ok) {
+			const authData = await authResponse.json();
+			return authData.success && authData.data?.user?.role === 'admin';
+		}
+
+		return false;
+	} catch {
+		return false;
+	}
 } 

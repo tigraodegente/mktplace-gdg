@@ -17,7 +17,6 @@ interface Product {
 	seller_id: string;
 	seller_name?: string;
 	sku?: string;
-	pieces?: number;
 	rating?: number;
 	reviews_count?: number;
 	sold_count?: number;
@@ -87,7 +86,6 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 						p.original_price,
 						p.quantity as stock,
 						p.sku,
-						p.pieces,
 						p.sales_count,
 						p.rating_average,
 						p.rating_count,
@@ -133,7 +131,6 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					stock: product.stock,
 					sku: product.sku,
 					tags: product.tags || [],
-					pieces: product.pieces,
 					rating: product.rating_average ? Number(product.rating_average) : undefined,
 					reviews_count: product.rating_count,
 					sold_count: product.sales_count,

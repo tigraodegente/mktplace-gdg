@@ -355,11 +355,6 @@
     // Visual feedback de processamento
     scrollToWizardTop(50);
     
-      isAuthenticatedStore: $isAuthenticated,
-      checkoutDataUser: !!checkoutData.user,
-      isGuest: checkoutData.isGuest
-    });
-    
     // 🔍 VERIFICAÇÃO UNIFICADA DE AUTENTICAÇÃO usando AuthService
     try {
       // 1. Verificar store local
@@ -512,13 +507,8 @@
     
     const checkSession = async () => {
       try {
-        const response = await fetch('/api/test-auth', { credentials: 'include' });
+        const response = await fetch('/api/auth/check', { credentials: 'include' });
         const data = await response.json();
-        
-          authenticated: data.authenticated,
-          isAuthenticatedStore: $isAuthenticated,
-          user: data.user?.email || 'none'
-        });
         
         // Se o backend diz que não está autenticado, mas o store diz que sim
         if (!data.authenticated && $isAuthenticated) {
@@ -568,7 +558,7 @@
     // Só limpar se AMBOS estiverem autenticados (frontend E backend)
     if ($isAuthenticated && sessionExpiredWarning) {
       // Verificar novamente com o backend antes de limpar
-      fetch('/api/test-auth', { credentials: 'include' })
+      fetch('/api/auth/check', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
           if (data.authenticated) {
@@ -583,51 +573,6 @@
         });
     }
   });
-  
-  // Função para diagnóstico de sessão
-  async function debugSession() {
-    try {
-      const response = await fetch('/api/test-auth', { credentials: 'include' });
-      const data = await response.json();
-      
-      const status = data.authenticated ? 'ATIVA ✅' : 'EXPIRADA ❌';
-      const userBackend = data.user?.email || 'Nenhum';
-      const storeStatus = get(isAuthenticated) ? 'Autenticado ✅' : 'Não autenticado ❌';
-      const userStore = get(user)?.email || 'Nenhum';
-      
-      const message = `🔍 DIAGNÓSTICO DE SESSÃO:\n\n📡 Backend: ${status}\n👤 User Backend: ${userBackend}\n💾 Store: ${storeStatus}\n👤 User Store: ${userStore}\n\n${!data.authenticated && get(isAuthenticated) ? '⚠️ INCONSISTÊNCIA DETECTADA!' : '✅ Estados consistentes'}`;
-      
-      console.log('📋 Diagnóstico:', message);
-      alert(message);
-    } catch (error) {
-      console.error('❌ Erro verificação:', error);
-      alert('❌ Erro ao verificar sessão: ' + error);
-    }
-  }
-  
-  async function forceLogout() {
-    console.log('🔐 Forçando logout completo...');
-    try {
-      const response = await fetch('/api/auth/force-logout', {
-        method: 'POST',
-        credentials: 'include'
-      });
-      const data = await response.json();
-      console.log('🔐 Resultado logout:', data);
-      
-      console.log('🔄 Recarregando página...');
-      window.location.reload();
-    } catch (error) {
-      console.error('❌ Erro logout forçado:', error);
-      alert('❌ Erro no logout: ' + error);
-    }
-  }
-  
-  function clearSessionAlerts() {
-    sessionExpiredWarning = false;
-    console.log('🧹 Alertas limpos manualmente');
-    console.log('✅ Alertas de sessão limpos');
-  }
 </script>
 
 <svelte:head>
@@ -686,57 +631,6 @@
           <div>
             <h3 class="font-medium text-blue-800">Processando seu pedido...</h3>
             <p class="text-sm text-blue-700">Por favor, aguarde. Não feche esta página.</p>
-          </div>
-        </div>
-      </div>
-    {/if}
-    
-    <!-- Debug de Sessão (apenas em desenvolvimento) -->
-    {#if !processingOrder}
-      <div class="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-medium text-gray-700">🔧 Debug de Sessão</h3>
-            <div class="text-xs text-gray-600 space-y-1">
-              <p>Store: {$isAuthenticated ? '✅ Autenticado' : '❌ Não autenticado'} {$user ? `(${$user.name})` : ''}</p>
-              <p>Checkout: {checkoutData.user ? '✅ User definido' : '❌ Sem user'} | Guest: {checkoutData.isGuest ? '⚠️ Sim' : '✅ Não'}</p>
-              <p>Alerta: {sessionExpiredWarning ? '🚨 Ativo' : '✅ Limpo'}</p>
-              {#if $user}
-                <p class="text-[#00BFB3]">👤 Logado como: {$user.email}</p>
-              {/if}
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-1">
-            <button
-              onclick={debugSession}
-              class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-            >
-              Verificar
-            </button>
-            
-            <button
-              onclick={forceLogout}
-              class="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
-            >
-              Reset
-            </button>
-            
-            <button
-              onclick={() => {
-                console.log('🚪 Redirecionando para login...');
-                window.location.href = '/login?redirect=/cart';
-              }}
-              class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
-            >
-              Login
-            </button>
-            
-            <button
-              onclick={clearSessionAlerts}
-              class="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
-            >
-              Limpar
-            </button>
           </div>
         </div>
       </div>
