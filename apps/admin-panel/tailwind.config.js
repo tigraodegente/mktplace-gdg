@@ -2,7 +2,6 @@
 export default {
 	content: [
 		'./src/**/*.{html,js,svelte,ts}',
-		'./src/**/*.svelte',
 		'../../packages/ui/src/**/*.{html,js,svelte,ts}'
 	],
 	
