@@ -2,13 +2,27 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	
-	// Simulação de usuário vendedor logado
-	let user = {
+	// Dados específicos do Seller Panel
+	const title = 'Seller Panel';
+	const titleIcon = '🏪';
+	const userInfo = {
 		name: 'João da Silva',
-		email: 'joao@techstore.com',
-		role: 'seller',
-		store: 'Tech Store'
+		subtitle: 'Tech Store',
+		initials: 'JS',
+		role: 'seller'
 	};
+	
+	// Menu específico do Seller
+	const menuItems = [
+		{ path: '/', icon: '📊', label: 'Dashboard' },
+		{ path: '/produtos', icon: '📦', label: 'Meus Produtos' },
+		{ path: '/pedidos', icon: '🛒', label: 'Pedidos' },
+		{ path: '/financeiro', icon: '💰', label: 'Financeiro' },
+		{ path: '/avaliacoes', icon: '⭐', label: 'Avaliações' },
+		{ separator: true },
+		{ path: '/estoque', icon: '📈', label: 'Estoque' },
+		{ path: '/configuracoes', icon: '⚙️', label: 'Configurações' }
+	];
 	
 	let currentPath = '';
 	
@@ -21,6 +35,7 @@
 	}
 </script>
 
+<!-- Layout Centralizado -->
 <div class="min-h-screen bg-gray-50">
 	<!-- Header -->
 	<header class="bg-white shadow-sm border-b border-gray-200">
@@ -30,7 +45,7 @@
 				<div class="flex items-center">
 					<div class="flex-shrink-0">
 						<h1 class="text-xl font-bold text-gray-900">
-							<span class="text-cyan-500">🏪 Seller Panel</span>
+							<span class="text-cyan-500">{titleIcon} {title}</span>
 							<span class="text-gray-400 text-sm ml-2">| Marketplace GDG</span>
 						</h1>
 					</div>
@@ -51,12 +66,12 @@
 					<!-- User Profile -->
 					<div class="flex items-center space-x-3">
 						<div class="text-right">
-							<p class="text-sm font-medium text-gray-900">{user.name}</p>
-							<p class="text-xs text-gray-500">{user.store}</p>
+							<p class="text-sm font-medium text-gray-900">{userInfo.name}</p>
+							<p class="text-xs text-gray-500">{userInfo.subtitle}</p>
 						</div>
 						<div class="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center">
 							<span class="text-white font-semibold text-sm">
-								{user.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+								{userInfo.initials}
 							</span>
 						</div>
 					</div>
@@ -70,78 +85,22 @@
 		<aside class="w-64 bg-white shadow-sm min-h-screen border-r border-gray-200">
 			<nav class="p-4">
 				<div class="space-y-1">
-					<!-- Dashboard -->
-					<a 
-						href="/" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">📊</span>
-						Dashboard
-					</a>
-					
-					<!-- Produtos -->
-					<a 
-						href="/produtos" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/produtos') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">📦</span>
-						Meus Produtos
-					</a>
-					
-					<!-- Pedidos -->
-					<a 
-						href="/pedidos" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/pedidos') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">🛒</span>
-						Pedidos
-					</a>
-					
-					<!-- Financeiro -->
-					<a 
-						href="/financeiro" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/financeiro') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">💰</span>
-						Financeiro
-					</a>
-					
-					<!-- Avaliações -->
-					<a 
-						href="/avaliacoes" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/avaliacoes') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">⭐</span>
-						Avaliações
-					</a>
-					
-					<!-- Separador -->
-					<div class="border-t border-gray-200 my-4"></div>
-					
-					<!-- Estoque -->
-					<a 
-						href="/estoque" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/estoque') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">📈</span>
-						Estoque
-					</a>
-					
-					<!-- Configurações -->
-					<a 
-						href="/configuracoes" 
-						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-							{isActiveRoute('/configuracoes') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
-					>
-						<span class="mr-3 text-lg">⚙️</span>
-						Configurações
-					</a>
+					{#each menuItems as item}
+						{#if item.separator}
+							<!-- Separador -->
+							<div class="border-t border-gray-200 my-4"></div>
+						{:else}
+							<!-- Item de Menu -->
+							<a 
+								href={item.path}
+								class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+									{isActiveRoute(item.path || '') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+							>
+								<span class="mr-3 text-lg">{item.icon}</span>
+								{item.label}
+							</a>
+						{/if}
+					{/each}
 				</div>
 				
 				<!-- Footer da Sidebar -->

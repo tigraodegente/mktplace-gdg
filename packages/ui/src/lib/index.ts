@@ -17,4 +17,9 @@ export { default as UnifiedLogin } from './components/auth/UnifiedLogin.svelte';
 export { default as AdminHeader } from './components/layout/AdminHeader.svelte';
 
 // Auth service
-export { createAuthStore, authService } from './services/auth'; 
+export { createAuthStore, authService } from './services/auth';
+
+// Exporta componentes de layout centralizados
+export { default as Layout } from './components/layout/Layout.svelte';
+export { default as Header } from './components/layout/Header.svelte';
+export { default as Navigation } from './components/layout/Navigation.svelte'; 
