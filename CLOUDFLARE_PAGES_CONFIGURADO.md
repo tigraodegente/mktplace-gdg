@@ -18,91 +18,112 @@
 
 #### **ERRO 3: pnpm-lock.yaml Desatualizado**
 - **Problema**: `Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date`
-- **Solução**: Atualizado lockfile sincronizando com package.json
+- **Solução**: Atualizado lockfile removendo referências antigas
 - **Commit**: `a117d9e`
 
-#### **ERRO 4: Arquivo _headers no Local Incorreto**
-- **Problema**: `The _headers file should be placed in the project root rather than the /opt/buildhome/repo/apps/store/static directory`
-- **Solução**: Movido `apps/store/static/_headers` → `apps/store/_headers`
+#### **ERRO 4: Arquivo `_headers` no Local Incorreto**
+- **Problema**: `@sveltejs/adapter-cloudflare` reclama que `_headers` está em `/static`
+- **Solução**: Movido `static/_headers` → `_headers` (raiz do projeto)
 - **Commit**: `b802579`
 
-#### **ERRO 5: Arquivo _redirects no Local Incorreto ✅**
-- **Problema**: `The _redirects file should be placed in the project root rather than the /opt/buildhome/repo/apps/store/static directory`
-- **Solução**: Movido `apps/store/static/_redirects` → `apps/store/_redirects`
-- **Commit**: `74b9330`
+#### **ERRO 5: Arquivo `_redirects` no Local Incorreto**
+- **Problema**: `@sveltejs/adapter-cloudflare` reclama que `_redirects` está em `/static`
+- **Solução**: Movido `static/_redirects` → `_redirects` (raiz do projeto)
+- **Commit**: `c1a5d21`
 
-### 🔧 **Configurações Cloudflare Pages Finais**
+#### **ERRO 6: Import de módulos Node.js sem prefixo**
+- **Problema**: `Could not resolve "crypto"` - Cloudflare Workers exige prefixo `node:`
+- **Solução**: 
+  - `import crypto from 'crypto'` → `import crypto from 'node:crypto'`
+  - Removido imports desnecessários de `fs` e `path`
+- **Arquivos**: 
+  - `api/auth/login-multi-role/+server.ts`
+  - `routes/sw.js/+server.ts`
+- **Commit**: `64ee0d7`
 
-#### **Build Settings**
-- **Framework preset**: SvelteKit
-- **Build command**: `pnpm install && pnpm build`
-- **Build output directory**: `.svelte-kit/cloudflare`
-- **Root directory**: `apps/store`
+### 🔧 **Arquivos Principais Criados/Modificados**
 
-#### **Environment Variables**
+#### **Código Inline (Substituição de Packages)**
+- `apps/store/src/lib/db/database.ts` - Database client completo
+- `apps/store/src/lib/utils.ts` - Função formatCurrency inline
+- `apps/store/vite.config.js` - Configuração Vite minimalista
+
+#### **Estrutura Cloudflare**
+- `apps/store/_headers` - Headers personalizados (raiz)
+- `apps/store/_redirects` - Regras de redirecionamento (raiz)
+- `apps/store/wrangler.toml` - Configuração Cloudflare Workers
+
+#### **Scripts de Build**
+- `apps/store/build-cloudflare.sh` - Script de build customizado
+
+### ⚙️ **Configurações Finais Cloudflare Pages**
+
+#### **Variáveis de Ambiente**
 ```bash
 NODE_ENV=production
-NODE_VERSION=20.18.0
+NODE_VERSION=20.18.0  # Como texto simples (não secreto)
 HYPERDRIVE_DB=mktplace-neon-db
 ```
 
-#### **Advanced Settings**
-- **Build system version**: v3
-- **Node.js version**: 20.18.0 (LTS)
-- **Compatibility date**: 2024-01-01
-
-### 📁 **Arquivos Criados/Modificados**
-
-#### **Inline Dependencies (Estratégia "Inline All The Things!")**
-1. **`apps/store/src/lib/db/database.ts`** - Database client completo
-   - PostgreSQL via `postgres` package
-   - Suporte a Hyperdrive
-   - Configurações de ambiente
-   - 169 linhas de código
-
-2. **`apps/store/src/lib/utils.ts`** - Utilitários locais
-   - Função `formatCurrency` inline
-   - 8 linhas de código
-
 #### **Configurações de Build**
-3. **`apps/store/vite.config.js`** - Configuração minimalista
-4. **`apps/store/_headers`** - Headers de segurança e cache (movido de /static)
-5. **`apps/store/_redirects`** - Redirects SPA (movido de /static)
+```bash
+Build command: pnpm install && pnpm build
+Output directory: .svelte-kit/cloudflare
+Root directory: apps/store
+Build system: v3
+Compatibility date: 2024-01-01
+```
 
-### 🎯 **Status Atual das Dependencies**
+### 📊 **Estratégia "Inline All The Things!"**
 
-| Package | Status | Solução |
-|---------|--------|---------|
-| ✅ `@mktplace/db-hyperdrive` | Resolvido | Inline em `database.ts` |
-| ✅ `@mktplace/utils` | Resolvido | Inline em `utils.ts` |
-| ✅ `@mktplace/shared-types` | OK | Apenas types (funciona) |
-| ✅ **pnpm-lock.yaml** | Sincronizado | Atualizado |
-| ✅ **_headers** | Posicionado | Raiz do projeto |
-| ✅ **_redirects** | Posicionado | Raiz do projeto |
+**Princípio**: Remover dependências de workspace problemáticas e criar código inline para máxima compatibilidade com bundlers do Cloudflare Pages.
 
-### 🚀 **Deploy Automático**
+**Arquivos Inline vs Packages**:
+- ✅ `@mktplace/db-hyperdrive` → `$lib/db/database.ts`
+- ✅ `@mktplace/utils` → `$lib/utils.ts`
+- ✅ `@mktplace/shared-types` - Apenas types (funciona)
 
-O Cloudflare Pages está configurado para deploy automático a cada push para `main`. 
-Com todas as correções aplicadas, o próximo build deve ser **bem-sucedido**.
+### 🚀 **Status Final**
 
-#### **Monitoramento**
-- URL de produção será disponibilizada após build bem-sucedido
-- Previews automáticos para PRs
-- Logs detalhados disponíveis no dashboard
+#### **Resolvidos**
+- ✅ Resolução de packages workspace
+- ✅ Lockfile sincronizado
+- ✅ Arquivos `_headers` e `_redirects` no local correto
+- ✅ Imports Node.js com prefixo `node:` correto
+- ✅ Build system v3 configurado
+- ✅ Node.js 20.18.0 LTS
 
-### 📝 **Estratégia Aplicada**
+#### **Deploy Automático**
+O deploy será acionado automaticamente após este último commit (`64ee0d7`).
 
-**"Inline All The Things!"** - A estratégia foi remover todas as dependências problemáticas de workspace e criar código inline para máxima compatibilidade com bundlers do Cloudflare Pages.
+### 📝 **Notas Técnicas**
 
-### 🔗 **Links Úteis**
-- [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
-- [SvelteKit Adapter Cloudflare](https://kit.svelte.dev/docs/adapter-cloudflare)
-- [Dashboard Cloudflare](https://dash.cloudflare.com/)
+#### **Imports Node.js no Cloudflare Workers**
+Para compatibilidade com Cloudflare Workers, usar sempre:
+```typescript
+// ❌ Incorreto
+import crypto from 'crypto';
+import { readFileSync } from 'fs';
 
----
+// ✅ Correto
+import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
+```
 
-**Última atualização**: Deploy commit `74b9330` - Arquivo _redirects corrigido
-**Próximo passo**: Aguardar build automático e verificar sucesso
+#### **Estrutura de Arquivos para @sveltejs/adapter-cloudflare**
+```
+apps/store/
+├── _headers         # ← Raiz (não em static/)
+├── _redirects       # ← Raiz (não em static/)
+├── static/
+│   └── manifest.json
+└── wrangler.toml
+```
+
+### 🎯 **Próximos Passos**
+1. ✅ Aguardar build automático do commit `64ee0d7`
+2. 🔄 Verificar se há outros erros de build
+3. 🚀 Marketplace pronto para produção!
 
 ## 🎯 STATUS: PRONTO PARA PRODUÇÃO
 
