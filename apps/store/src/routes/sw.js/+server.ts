@@ -1,5 +1,3 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import type { RequestHandler } from './$types';
 
 // Service Worker básico e estável para desenvolvimento
