@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [[hyperdrive]]
 binding = "HYPERDRIVE_DB"
 id = "14a8dd340a754f9c9afd52c5c81fd3d3"
-localConnectionString = "postgresql://postgres:password@localhost:5432/mktplace_dev"
+localConnectionString = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
 
 # Environment variables
 [vars]

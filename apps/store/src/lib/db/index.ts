@@ -22,56 +22,57 @@ async function ensureConnection(db: Database): Promise<void> {
 }
 
 export function getDatabase(platform?: App.Platform) {
-  // 🔧 FORÇA USO DO NEON DEVELOP EM DESENVOLVIMENTO
-  if (dev || !(platform as any)?.env?.HYPERDRIVE_DB) {
-    if (!devDatabase) {
-      // SEMPRE usar Neon Develop se DATABASE_URL estiver definida
-      const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
-      
-      console.log('🔌 Conectando ao banco:', dbUrl.includes('neon.tech') ? 'NEON DEVELOP' : 'LOCAL')
-      
-      // Detectar provider pela URL
-      const isNeon = dbUrl.includes('neon.tech')
-      const provider = isNeon ? 'neon' : 'postgres'
-      
-      devDatabase = new Database({
-        provider: provider,
-        connectionString: dbUrl,
-        options: {
-          postgres: {
-            max: 20, // Aumentar pool de conexões
-            idleTimeout: 0, // Desabilitar timeout de idle
-            connectTimeout: 30, // Aumentar timeout de conexão
-            ssl: isNeon ? 'require' : false // SSL para Neon, sem SSL para local
-          }
-        }
-      })
-      
-      // Log de confirmação
-      console.log(`✅ Banco configurado: ${provider.toUpperCase()} - ${isNeon ? 'NEON DEVELOP' : 'LOCAL'}`)
-      
-      // Verificar conexão periodicamente em desenvolvimento
-      if (dev && !connectionCheckInterval) {
-        connectionCheckInterval = setInterval(async () => {
-          if (devDatabase) {
-            try {
-              await devDatabase.query`SELECT 1`
-            } catch (error) {
-              console.log('⚠️ Conexão perdida, será reconectada na próxima requisição')
-              devDatabase = null;
-            }
-          }
-        }, 30000); // Verificar a cada 30 segundos
-      }
-    }
-    return devDatabase;
+  // EM PRODUÇÃO: Sempre usar Hyperdrive se disponível
+  if (!dev && (platform as any)?.env?.HYPERDRIVE_DB) {
+    console.log('🚀 Usando Hyperdrive em produção')
+    return new Database({
+      provider: 'hyperdrive',
+      connectionString: (platform as any)?.env?.HYPERDRIVE_DB?.connectionString
+    })
   }
   
-  // Em produção (Cloudflare), usa Hyperdrive
-  return new Database({
-    provider: 'hyperdrive',
-    connectionString: (platform as any)?.env?.HYPERDRIVE_DB?.connectionString
-  })
+  // EM DESENVOLVIMENTO OU FALLBACK: Usar Neon direto
+  if (!devDatabase) {
+    // SEMPRE usar Neon se DATABASE_URL estiver definida
+    const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
+    
+    console.log('🔌 Conectando ao banco:', dbUrl.includes('neon.tech') ? 'NEON DIRETO' : 'LOCAL')
+    
+    // Detectar provider pela URL
+    const isNeon = dbUrl.includes('neon.tech')
+    const provider = isNeon ? 'neon' : 'postgres'
+    
+    devDatabase = new Database({
+      provider: provider,
+      connectionString: dbUrl,
+      options: {
+        postgres: {
+          max: dev ? 20 : 1, // Mais conexões em dev, menos em produção
+          idleTimeout: 0, // Desabilitar timeout de idle
+          connectTimeout: 30, // Aumentar timeout de conexão
+          ssl: isNeon ? 'require' : false // SSL para Neon, sem SSL para local
+        }
+      }
+    })
+    
+    // Log de confirmação
+    console.log(`✅ Banco configurado: ${provider.toUpperCase()} - ${isNeon ? 'NEON DIRETO' : 'LOCAL'}`)
+    
+    // Verificar conexão periodicamente apenas em desenvolvimento
+    if (dev && !connectionCheckInterval) {
+      connectionCheckInterval = setInterval(async () => {
+        if (devDatabase) {
+          try {
+            await devDatabase.query`SELECT 1`
+          } catch (error) {
+            console.log('⚠️ Conexão perdida, será reconectada na próxima requisição')
+            devDatabase = null;
+          }
+        }
+      }, 30000); // Verificar a cada 30 segundos
+    }
+  }
+  return devDatabase;
 }
 
 // Helper para usar em server-side com retry automático
@@ -81,8 +82,8 @@ export async function withDatabase<T>(
 ): Promise<T> {
   const db = getDatabase(platform)
   
-  // Em desenvolvimento, verifica a conexão antes de usar
-  if (dev || !(platform as any)?.env?.HYPERDRIVE_DB) {
+  // Apenas em desenvolvimento verifica a conexão antes de usar
+  if (dev) {
     await ensureConnection(db);
   }
   
@@ -98,7 +99,9 @@ export async function withDatabase<T>(
       // Se for erro de conexão, tenta reconectar
       if (error.code === 'CONNECTION_ENDED' || error.code === 'ECONNREFUSED') {
         console.log(`⚠️ Erro de conexão, tentando reconectar... (${retries} tentativas restantes)`)
-        devDatabase = null;
+        if (dev) {
+          devDatabase = null;
+        }
         retries--;
         
         // Aguarda um pouco antes de tentar novamente
