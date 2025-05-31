@@ -245,9 +245,6 @@ importers:
       '@mktplace/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-      '@mktplace/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
       nanoid:
         specifier: ^5.1.5
         version: 5.1.5
