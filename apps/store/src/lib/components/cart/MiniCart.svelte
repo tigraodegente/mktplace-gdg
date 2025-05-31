@@ -267,17 +267,9 @@
 						transition:slide={{ duration: 300 }}
 					>
 						<!-- Product Image com hover effect -->
-						<div 
-							class="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer relative group"
-							role="button"
-							tabindex="0"
+						<button 
+							class="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer relative group block"
 							onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									handleItemClick((item.product as any).slug || item.product.id);
-								}
-							}}
 						>
 							<img 
 								src={(item.product.images && item.product.images[0]) || '/api/placeholder/64/64'} 
@@ -286,24 +278,16 @@
 								loading="lazy"
 							/>
 							<div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 rounded-xl"></div>
-						</div>
+						</button>
 						
 						<!-- Product Info -->
 						<div class="flex-1 min-w-0">
-							<h4 
-								class="text-sm font-semibold text-gray-900 truncate cursor-pointer hover:text-[#00BFB3] transition-colors"
-								role="button"
-								tabindex="0"
+							<button 
+								class="text-sm font-semibold text-gray-900 truncate cursor-pointer hover:text-[#00BFB3] transition-colors w-full text-left"
 								onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										handleItemClick((item.product as any).slug || item.product.id);
-									}
-								}}
 							>
 								{item.product.name}
-							</h4>
+							</button>
 							<div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
 								{#if item.selectedColor}
 									<span class="px-2 py-0.5 bg-gray-50 rounded-full">

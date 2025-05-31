@@ -37,6 +37,7 @@
   
   let showUserMenu = $state(false);
   let showNotifications = $state(false);
+  let logoLoadError = $state(false);
   
   function handleRoleSwitch() {
     // Implementar troca de role
@@ -46,19 +47,32 @@
   function handleLogout() {
     window.location.href = '/logout';
   }
+  
+  function handleLogoError() {
+    logoLoadError = true;
+  }
 </script>
 
 <!-- Header Principal -->
 <header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16">
       
       <!-- Logo e Breadcrumbs -->
       <div class="flex items-center space-x-4">
         <!-- Logo -->
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-xl flex items-center justify-center shadow-lg">
-            <IconSystem name={config.logoIcon} size="md" color="text-white" />
+          <div class="logo-container">
+            {#if !logoLoadError}
+              <img 
+                src="/logo.png" 
+                alt="Marketplace GDG" 
+                class="w-8 h-8 object-contain"
+                onerror={handleLogoError}
+              />
+            {:else}
+              <IconSystem name={config.logoIcon} size="md" color="text-white" />
+            {/if}
           </div>
           <div class="hidden sm:block">
             <h1 class="text-xl font-bold text-gray-900">{config.title}</h1>
@@ -74,12 +88,12 @@
               {#if breadcrumb.href}
                 <a 
                   href={breadcrumb.href}
-                  class="text-gray-500 hover:text-[#00BFB3] transition-colors"
+                  class="text-gray-500 hover:text-cyan-500 transition-colors"
                 >
                   {breadcrumb.label}
                 </a>
               {:else}
-                <span class="text-[#00BFB3] font-medium">{breadcrumb.label}</span>
+                <span class="text-cyan-500 font-medium">{breadcrumb.label}</span>
               {/if}
               
               {#if index < breadcrumbs.length - 1}
@@ -94,10 +108,7 @@
       <div class="flex items-center space-x-4">
         
         <!-- Search Button -->
-        <button 
-          class="p-2 text-gray-400 hover:text-[#00BFB3] hover:bg-gray-50 rounded-lg transition-all duration-200"
-          aria-label="Buscar"
-        >
+        <button class="header-icon-btn" aria-label="Buscar">
           <IconSystem name="search" size="md" />
         </button>
         
@@ -105,7 +116,7 @@
         <div class="relative">
           <button 
             onclick={() => showNotifications = !showNotifications}
-            class="p-2 text-gray-400 hover:text-[#00BFB3] hover:bg-gray-50 rounded-lg transition-all duration-200 relative"
+            class="header-icon-btn relative"
             aria-label="Notificações"
           >
             <IconSystem name="notifications" size="md" />
@@ -118,7 +129,7 @@
           
           <!-- Dropdown Notificações -->
           {#if showNotifications}
-            <div class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div class="dropdown w-80">
               <div class="px-4 py-3 border-b border-gray-100">
                 <h3 class="text-sm font-semibold text-gray-900">Notificações</h3>
               </div>
@@ -136,7 +147,7 @@
               {/if}
               
               <div class="border-t border-gray-100 px-4 py-3">
-                <button class="text-[#00BFB3] text-sm font-medium hover:text-[#00A89D] transition-colors">
+                <button class="text-cyan-500 text-sm font-medium hover:text-cyan-600 transition-colors">
                   Ver todas as notificações
                 </button>
               </div>
@@ -148,10 +159,10 @@
         <div class="relative">
           <button 
             onclick={() => showUserMenu = !showUserMenu}
-            class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
+            class="flex items-center space-x-3 p-2 rounded-lg hover:bg-cyan-50 transition-all duration-200"
           >
             <!-- Avatar -->
-            <div class="w-8 h-8 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-full flex items-center justify-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-full flex items-center justify-center">
               <IconSystem name="user" size="sm" color="text-white" />
             </div>
             
@@ -161,16 +172,16 @@
               <p class="text-xs text-gray-500">{userRole}</p>
             </div>
             
-            <IconSystem name="arrow_down" size="sm" color="text-gray-400" />
+            <IconSystem name="arrow_down" size="sm" color="text-cyan-500" />
           </button>
           
           <!-- Dropdown Menu -->
           {#if showUserMenu}
-            <div class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div class="dropdown">
               <!-- User Info -->
               <div class="px-4 py-3 border-b border-gray-100">
                 <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-full flex items-center justify-center">
+                  <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-full flex items-center justify-center">
                     <IconSystem name="user" size="md" color="text-white" />
                   </div>
                   <div>
@@ -184,15 +195,15 @@
               <div class="py-1">
                 <button 
                   onclick={handleRoleSwitch}
-                  class="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  class="dropdown-item"
                 >
-                  <IconSystem name="switch" size="sm" color="text-[#00BFB3]" />
+                  <IconSystem name="switch" size="sm" color="text-cyan-500" />
                   <span>Trocar Role</span>
                 </button>
                 
                 <a 
                   href="/perfil"
-                  class="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  class="dropdown-item"
                 >
                   <IconSystem name="user" size="sm" color="text-gray-400" />
                   <span>Meu Perfil</span>
@@ -200,7 +211,7 @@
                 
                 <a 
                   href="/configuracoes"
-                  class="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  class="dropdown-item"
                 >
                   <IconSystem name="settings" size="sm" color="text-gray-400" />
                   <span>Configurações</span>

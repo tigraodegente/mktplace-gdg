@@ -44,5 +44,11 @@
 		"typescript-eslint": "^8.20.0",
 		"vite": "^6.2.6",
 		"vitest": "^3.0.0"
+	},
+	"dependencies": {
+		"@mktplace/ui": "workspace:*",
+		"@mktplace/db-hyperdrive": "workspace:*",
+		"@mktplace/shared-types": "workspace:*",
+		"@mktplace/utils": "workspace:*"
 	}
 }

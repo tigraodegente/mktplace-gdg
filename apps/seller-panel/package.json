@@ -17,6 +17,7 @@
 		"test:e2e": "playwright test"
 	},
 	"dependencies": {
+		"@mktplace/ui": "workspace:*",
 		"@mktplace/db-hyperdrive": "workspace:*",
 		"@mktplace/shared-types": "workspace:*",
 		"@mktplace/utils": "workspace:*"

@@ -6,58 +6,277 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		
+		<!-- PWA Meta Tags -->
+		<meta name="theme-color" content="#00BFB3" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="Marketplace GDG" />
+		<link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+		<link rel="manifest" href="/manifest.json" />
+		
 		<!-- OpenSearch -->
 		<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Buscar produtos no Marketplace GDG" />
 		
-		<!-- Google Fonts -->
+		<!-- Google Fonts Preload -->
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+		<link rel="preload" href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+		<noscript>
+			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap">
+		</noscript>
 		
-		<!-- Preconnect para recursos externos -->
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		
-		<!-- DNS Prefetch para domínios que serão usados -->
+		<!-- DNS Prefetch para recursos externos -->
 		<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-		<link rel="dns-prefetch" href="https://api.seu-dominio.com">
+		<link rel="dns-prefetch" href="https://www.googletagmanager.com">
+		<link rel="dns-prefetch" href="https://www.google-analytics.com">
 		
-		<!-- Preload do CSS crítico (será injetado pelo SvelteKit) -->
+		<!-- Preload CSS crítico -->
 		%sveltekit.head%
 		
-		<!-- Early hints para recursos críticos -->
+		<!-- Critical CSS inlined (será feito pelo build) -->
+		<style>
+			/* Critical CSS for layout stability */
+			.loading-skeleton {
+				background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+				background-size: 200% 100%;
+				animation: loading 1.5s infinite;
+			}
+			@keyframes loading {
+				0% { background-position: 200% 0; }
+				100% { background-position: -200% 0; }
+			}
+		</style>
+		
+		<!-- Performance Optimizations -->
 		<script>
-			// Detectar conexão lenta e ajustar comportamento
+			// Detectar conexão lenta e dispositivo
 			if ('connection' in navigator) {
 				const connection = navigator.connection;
 				if (connection.effectiveType === '3g' || connection.effectiveType === '2g') {
 					document.documentElement.classList.add('slow-connection');
+					// Reduzir qualidade de imagens em conexões lentas
+					document.documentElement.style.setProperty('--image-quality', '0.7');
+				}
+				
+				// Detectar data saver mode
+				if (connection.saveData) {
+					document.documentElement.classList.add('save-data');
 				}
 			}
 			
-			// Prefetch de imagens visíveis no viewport
+			// Detectar modo escuro do sistema
+			if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+				document.documentElement.classList.add('dark-mode-preferred');
+			}
+			
+			// Intersection Observer para lazy loading
 			if ('IntersectionObserver' in window) {
-				window.imagePrefetchObserver = new IntersectionObserver((entries) => {
+				window.lazyImageObserver = new IntersectionObserver((entries) => {
 					entries.forEach(entry => {
 						if (entry.isIntersecting) {
 							const img = entry.target;
 							const src = img.getAttribute('data-src');
 							if (src && !img.src) {
-								const link = document.createElement('link');
-								link.rel = 'prefetch';
-								link.href = src;
-								document.head.appendChild(link);
+								img.src = src;
+								img.removeAttribute('data-src');
+								window.lazyImageObserver.unobserve(img);
 							}
 						}
 					});
-				}, { rootMargin: '50px' });
+				}, { 
+					rootMargin: '50px',
+					threshold: 0.1 
+				});
 			}
+			
+			// Prefetch crítico
+			const criticalPrefetch = [
+				'/api/categories/tree',
+				'/api/products/featured?limit=8'
+			];
+			
+			if ('requestIdleCallback' in window) {
+				requestIdleCallback(() => {
+					criticalPrefetch.forEach(url => {
+						const link = document.createElement('link');
+						link.rel = 'prefetch';
+						link.href = url;
+						document.head.appendChild(link);
+					});
+				});
+			}
+		</script>
+		
+		<!-- Service Worker Registration -->
+		<script>
+			if ('serviceWorker' in navigator) {
+				window.addEventListener('load', async () => {
+					try {
+						const registration = await navigator.serviceWorker.register('/sw.js', {
+							scope: '/',
+							updateViaCache: 'none'
+						});
+						
+						console.log('🎉 Service Worker registrado:', registration.scope);
+						
+						// Verificar atualizações
+						registration.addEventListener('updatefound', () => {
+							const newWorker = registration.installing;
+							if (newWorker) {
+								newWorker.addEventListener('statechange', () => {
+									if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+										// Nova versão disponível
+										if (confirm('Nova versão disponível! Recarregar para atualizar?')) {
+											window.location.reload();
+										}
+									}
+								});
+							}
+						});
+						
+						// Listen para mensagens do SW
+						navigator.serviceWorker.addEventListener('message', event => {
+							if (event.data && event.data.type === 'CACHE_UPDATED') {
+								console.log('Cache atualizado pelo Service Worker');
+							}
+						});
+						
+					} catch (error) {
+						console.warn('Service Worker não pôde ser registrado:', error);
+					}
+				});
+			}
+		</script>
+		
+		<!-- Google Analytics 4 (Critical) -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+			gtag('config', 'GA_MEASUREMENT_ID', {
+				page_title: document.title,
+				page_location: window.location.href,
+				send_page_view: true,
+				anonymize_ip: true,
+				cookie_flags: 'SameSite=None;Secure'
+			});
+		</script>
+		
+		<!-- Web Vitals Reporting -->
+		<script>
+			// Core Web Vitals tracking
+			function sendToGA(metric) {
+				gtag('event', metric.name, {
+					event_category: 'Web Vitals',
+					event_label: metric.id,
+					value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
+					non_interaction: true,
+				});
+			}
+			
+			// Load web-vitals library e track métricas
+			import('https://unpkg.com/web-vitals@3?module').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+				getCLS(sendToGA);
+				getFID(sendToGA);
+				getFCP(sendToGA);
+				getLCP(sendToGA);
+				getTTFB(sendToGA);
+			}).catch(e => console.warn('Web Vitals não pôde ser carregado:', e));
 		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover" class="bg-white">
+		<!-- App Shell -->
 		<div style="display: contents">%sveltekit.body%</div>
+		
 		<!-- Chat Widget Container -->
 		<div id="chat-widget-root"></div>
+		
+		<!-- Install PWA Prompt -->
+		<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #00BFB3; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999;">
+			<span>Instalar app na tela inicial?</span>
+			<button onclick="installPWA()" style="margin-left: 12px; background: white; color: #00BFB3; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600;">Instalar</button>
+			<button onclick="dismissInstallPrompt()" style="margin-left: 8px; background: transparent; color: white; border: 1px solid white; padding: 4px 12px; border-radius: 4px;">Depois</button>
+		</div>
+		
+		<!-- PWA Install Script -->
+		<script>
+			let deferredPrompt;
+			
+			window.addEventListener('beforeinstallprompt', (e) => {
+				// Prevenir prompt automático
+				e.preventDefault();
+				deferredPrompt = e;
+				
+				// Mostrar prompt customizado após 30 segundos se o usuário está engajado
+				setTimeout(() => {
+					if (document.hasFocus() && !localStorage.getItem('pwa-prompt-dismissed')) {
+						document.getElementById('install-prompt').style.display = 'block';
+					}
+				}, 30000);
+			});
+			
+			async function installPWA() {
+				if (deferredPrompt) {
+					deferredPrompt.prompt();
+					const { outcome } = await deferredPrompt.userChoice;
+					
+					if (outcome === 'accepted') {
+						gtag('event', 'pwa_install', {
+							event_category: 'PWA',
+							event_label: 'user_accepted'
+						});
+					}
+					
+					deferredPrompt = null;
+					document.getElementById('install-prompt').style.display = 'none';
+				}
+			}
+			
+			function dismissInstallPrompt() {
+				document.getElementById('install-prompt').style.display = 'none';
+				localStorage.setItem('pwa-prompt-dismissed', Date.now());
+				
+				gtag('event', 'pwa_prompt_dismissed', {
+					event_category: 'PWA',
+					event_label: 'user_dismissed'
+				});
+			}
+			
+			// Track PWA install
+			window.addEventListener('appinstalled', () => {
+				gtag('event', 'pwa_installed', {
+					event_category: 'PWA',
+					event_label: 'app_installed'
+				});
+			});
+		</script>
+		
+		<!-- Error Tracking (Development) -->
+		<script>
+			window.addEventListener('error', (e) => {
+				console.error('Global Error:', e.error);
+				
+				// Send to analytics in production
+				if (typeof gtag !== 'undefined') {
+					gtag('event', 'exception', {
+						description: e.error?.message || 'Unknown error',
+						fatal: false
+					});
+				}
+			});
+			
+			window.addEventListener('unhandledrejection', (e) => {
+				console.error('Unhandled Promise Rejection:', e.reason);
+				
+				if (typeof gtag !== 'undefined') {
+					gtag('event', 'exception', {
+						description: e.reason?.message || 'Promise rejection',
+						fatal: false
+					});
+				}
+			});
+		</script>
 	</body>
 </html>
 <!-- Deploy automático funcionando -->

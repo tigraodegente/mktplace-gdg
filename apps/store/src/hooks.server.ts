@@ -42,29 +42,77 @@ export const handle: Handle = async ({ event, resolve }) => {
   
   // APIs - cache específico por endpoint
   else if (pathname.startsWith('/api/')) {
-    if (pathname.includes('/products/featured') || pathname.includes('/categories')) {
-      // APIs de dados estáveis - cache longo
-      response.headers.set('cache-control', 'public, max-age=1800, stale-while-revalidate=900');
-    } else if (pathname.includes('/products') || pathname.includes('/search')) {
-      // APIs de produtos - cache médio
+    if (pathname.includes('/products') || pathname.includes('/categories')) {
       response.headers.set('cache-control', 'public, max-age=300, stale-while-revalidate=60');
-    } else if (pathname.includes('/auth') || pathname.includes('/orders')) {
-      // APIs sensíveis - sem cache
-      response.headers.set('cache-control', 'private, max-age=0, must-revalidate');
     } else {
-      // APIs gerais - cache curto
-      response.headers.set('cache-control', 'public, max-age=120, stale-while-revalidate=60');
+      response.headers.set('cache-control', 'private, max-age=0, must-revalidate');
     }
-    response.headers.set('vary', 'Accept-Encoding, Origin, Authorization');
+    response.headers.set('vary', 'Accept-Encoding, Origin');
   }
 
-  // Headers de segurança
-  response.headers.set('x-frame-options', 'SAMEORIGIN');
-  response.headers.set('x-content-type-options', 'nosniff');
-  response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
-  response.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
-  response.headers.set('x-xss-protection', '1; mode=block');
+  // ========================================
+  // HEADERS DE SEGURANÇA COMPLETOS
+  // ========================================
   
+  // Content Security Policy (CSP) - Proteção contra XSS
+  const cspDirectives = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https: *.imgur.com *.cloudinary.com *.unsplash.com",
+    "connect-src 'self' https://www.google-analytics.com https://api.marketplace-gdg.com https://vitals.vercel-analytics.com",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+    "block-all-mixed-content"
+  ].join('; ');
+  
+  response.headers.set('content-security-policy', cspDirectives);
+  
+  // Strict Transport Security (HTTPS forçado)
+  response.headers.set('strict-transport-security', 'max-age=63072000; includeSubDomains; preload');
+  
+  // Prevenção de clickjacking
+  response.headers.set('x-frame-options', 'SAMEORIGIN');
+  
+  // Prevenção de MIME-type sniffing
+  response.headers.set('x-content-type-options', 'nosniff');
+  
+  // Política de referrer
+  response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  
+  // Política de permissões (Feature Policy)
+  const permissionsPolicy = [
+    'camera=()',
+    'microphone=()',
+    'geolocation=(self)',
+    'payment=(self)',
+    'usb=()',
+    'magnetometer=()',
+    'gyroscope=()',
+    'speaker=(self)',
+    'vibrate=(self)',
+    'fullscreen=(self)',
+    'sync-xhr=()'
+  ].join(', ');
+  
+  response.headers.set('permissions-policy', permissionsPolicy);
+  
+  // Cross-Origin Embedder Policy
+  response.headers.set('cross-origin-embedder-policy', 'require-corp');
+  
+  // Cross-Origin Opener Policy
+  response.headers.set('cross-origin-opener-policy', 'same-origin');
+  
+  // Cross-Origin Resource Policy
+  response.headers.set('cross-origin-resource-policy', 'same-origin');
+  
+  // Prevenção de XSS (backup para CSP)
+  response.headers.set('x-xss-protection', '1; mode=block');
+
   // Performance hints
   response.headers.set('accept-ch', 'DPR, Viewport-Width, Width');
   response.headers.set('critical-ch', 'DPR');

@@ -364,16 +364,8 @@
 
   {:else if isMinimized}
     <!-- Minimized State -->
-    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 cursor-pointer hover:shadow-xl transition-all"
-         role="button"
-         tabindex="0"
-         onclick={openWidget}
-         onkeydown={(e) => {
-           if (e.key === 'Enter' || e.key === ' ') {
-             e.preventDefault();
-             openWidget();
-           }
-         }}>
+    <button class="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 cursor-pointer hover:shadow-xl transition-all w-full text-left"
+         onclick={openWidget}>
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-full flex items-center justify-center text-white">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,7 +384,7 @@
           </div>
         {/if}
       </div>
-    </div>
+    </button>
 
   {:else}
     <!-- Floating Button -->

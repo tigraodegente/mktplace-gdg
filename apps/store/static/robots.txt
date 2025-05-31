@@ -1,27 +1,51 @@
 User-agent: *
 Allow: /
 
-# Diretórios importantes
+# Diretórios importantes para SEO
 Allow: /produto/
 Allow: /categoria/
+Allow: /categorias/
 Allow: /busca
+Allow: /blog/
 
-# Bloquear páginas privadas
+# Bloquear páginas privadas e administrativas
 Disallow: /admin/
+Disallow: /seller/
 Disallow: /api/
 Disallow: /cart/shared/
 Disallow: /_app/
+Disallow: /.well-known/
+Disallow: /teste-*
 
-# Bloquear parâmetros de sessão
+# Bloquear parâmetros de sessão e autenticação
 Disallow: /*?session=
 Disallow: /*?token=
+Disallow: /*?auth=
+Disallow: /*?debug=
 
-# Sitemap
-Sitemap: https://marketplace-gdg.com/sitemap.xml
+# Permitir crawlers de redes sociais
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
 
 # Crawl-delay para bots agressivos
 User-agent: AhrefsBot
 Crawl-delay: 10
 
 User-agent: SemrushBot
-Crawl-delay: 10 
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Crawl-delay: 10
+
+# Sitemaps
+Sitemap: https://marketplace-gdg.com/sitemap.xml
+Sitemap: https://marketplace-gdg.com/image-sitemap.xml
+
+# Host preferido (canonicalização)
+Host: https://marketplace-gdg.com 

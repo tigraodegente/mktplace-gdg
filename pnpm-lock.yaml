@@ -44,6 +44,19 @@ importers:
         version: 5.8.3
 
   apps/admin-panel:
+    dependencies:
+      '@mktplace/db-hyperdrive':
+        specifier: workspace:*
+        version: link:../../packages/db-hyperdrive
+      '@mktplace/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
+      '@mktplace/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@mktplace/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
     devDependencies:
       '@eslint/compat':
         specifier: ^1.2.5
@@ -135,6 +148,9 @@ importers:
       '@mktplace/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@mktplace/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@mktplace/utils':
         specifier: workspace:*
         version: link:../../packages/utils

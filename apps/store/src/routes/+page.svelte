@@ -6,8 +6,29 @@
   import OfferCountdown from '$lib/components/layout/OfferCountdown.svelte';
   import BenefitsSection from '$lib/components/layout/BenefitsSection.svelte';
   import ProductGridSkeleton from '$lib/components/ui/ProductGridSkeleton.svelte';
+  import SchemaMarkup from '$lib/components/SEO/SchemaMarkup.svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
+  import '../app.css';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { auth, user, isAuthenticated } from '$lib/stores/authStore';
+  import Footer from '$lib/components/layout/Footer.svelte';
+  import SearchBox from '$lib/components/search/SearchBox.svelte';
+  import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
+  import { cartStore } from '$lib/stores/cartStore';
+  import { wishlistCount } from '$lib/stores/wishlistStore';
+  import { notificationStore } from '$lib/stores/notificationStore';
+  import Header from '$lib/components/layout/Header.svelte';
+  import MobileHeader from '$lib/components/layout/MobileHeader.svelte';
+  import DesktopCategoryMenu from '$lib/components/navigation/DesktopCategoryMenu.svelte';
+  import MobileCategoryMenu from '$lib/components/navigation/MobileCategoryMenu.svelte';
+  import BannerCarousel from '$lib/components/layout/BannerCarousel.svelte';
+  import Toast from '$lib/components/ui/Toast.svelte';
+  import { frontendCache } from '$lib/cache/frontend-cache';
+  import ChatWidget from '$lib/components/chat/ChatWidget.svelte';
+  import { toastStore } from '$lib/stores/toastStore';
+  import { unreadCount } from '$lib/stores/notificationStore';
   
   let { data }: { data: PageData } = $props();
   
@@ -92,7 +113,28 @@
 <svelte:head>
   <title>Grão de Gente - Marketplace | Sua loja online completa</title>
   <meta name="description" content="Encontre os melhores produtos com os melhores preços no Marketplace Grão de Gente" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://marketplace-gdg.com/" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Grão de Gente - Marketplace | Sua loja online completa" />
+  <meta property="og:description" content="Encontre os melhores produtos com os melhores preços no Marketplace Grão de Gente" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://marketplace-gdg.com/" />
+  <meta property="og:image" content="https://marketplace-gdg.com/og-image.jpg" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:site_name" content="Marketplace GDG" />
 </svelte:head>
+
+<!-- Schema.org Markup para Homepage -->
+<SchemaMarkup 
+  includeWebsite={true}
+  includeOrganization={true}
+  includeEcommerce={true}
+  breadcrumbs={[
+    { name: 'Início', url: 'https://marketplace-gdg.com/' }
+  ]}
+/>
 
 <!-- Contador de Ofertas -->
 <OfferCountdown 
