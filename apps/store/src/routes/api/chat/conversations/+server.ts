@@ -1,174 +1,106 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db';
+import { withDatabase } from '$lib/db';
+import { requireAuth } from '$lib/utils/auth';
 
-// Mock data para fallback
-const mockConversations = [
-  {
-    id: 'conv-1',
-    type: 'support',
-    title: 'Suporte - Dúvida sobre produto',
-    participants: ['user-1', 'support-1'],
-    status: 'active',
-    last_message: {
-      content: 'Obrigado pelo contato! Como posso ajudar?',
-      sender_name: 'Ana - Suporte',
-      created_at: new Date().toISOString()
-    },
-    unread_count: 2,
-    created_at: new Date(Date.now() - 3600000).toISOString()
-  },
-  {
-    id: 'conv-2',
-    type: 'seller',
-    title: 'Chat com Vendedor - Loja Exemplo',
-    participants: ['user-1', 'seller-1'],
-    status: 'active',
-    last_message: {
-      content: 'Temos esse produto em estoque! Quando você precisa?',
-      sender_name: 'João - Vendedor',
-      created_at: new Date(Date.now() - 7200000).toISOString()
-    },
-    unread_count: 0,
-    created_at: new Date(Date.now() - 86400000).toISOString()
-  },
-  {
-    id: 'conv-3',
-    type: 'order',
-    title: 'Pedido MP1748645252590OLW',
-    participants: ['user-1', 'seller-1'],
-    order_id: 'MP1748645252590OLW',
-    status: 'active',
-    last_message: {
-      content: 'Seu produto foi enviado! Código de rastreamento: BR123456789',
-      sender_name: 'Sistema',
-      created_at: new Date(Date.now() - 14400000).toISOString()
-    },
-    unread_count: 1,
-    created_at: new Date(Date.now() - 172800000).toISOString()
-  }
-];
-
-export const GET: RequestHandler = async ({ url, cookies }) => {
+export const GET: RequestHandler = async ({ url, cookies, platform }) => {
   try {
-    // Verificar autenticação
-    const sessionToken = cookies.get('session_token');
-    if (!sessionToken) {
+    // Verificar autenticação usando helper padrão
+    const authResult = await requireAuth(cookies, platform);
+    if (!authResult.success) {
       return error(401, 'Usuário não autenticado');
     }
 
-    const db = getDatabase();
-    let userId: string | null = null;
-
-    // Tentar obter usuário do banco
-    try {
-      const sessionResult: any = await db.query`
-        SELECT user_id FROM sessions 
-        WHERE token = ${sessionToken} AND expires_at > NOW()
-      `;
-
-      if (sessionResult && Array.isArray(sessionResult) && sessionResult.length > 0) {
-        userId = sessionResult[0].user_id;
-      }
-    } catch (sessionError) {
-      console.log('Erro na autenticação, usando dados mock');
-    }
-
+    const userId = authResult.user!.id;
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '20');
     const type = url.searchParams.get('type');
     const status = url.searchParams.get('status') || 'active';
 
-    let conversations = [];
-    let total = 0;
+    const result = await withDatabase(platform, async (db) => {
+      // Construir query com filtros
+      let whereConditions = [`$1 = ANY(c.participants)`, `c.status = $2`];
+      let params = [userId, status];
+      let paramIndex = 3;
 
-    // Tentar buscar dados reais do banco
-    if (userId) {
-      try {
-        const conversationsResult: any = await db.query`
-          SELECT 
-            c.*,
-            (
-              SELECT json_build_object(
-                'content', m.content,
-                'sender_name', u.name,
-                'created_at', m.created_at
-              )
-              FROM chat_messages m
-              JOIN users u ON m.sender_id = u.id
-              WHERE m.conversation_id = c.id
-              ORDER BY m.created_at DESC
-              LIMIT 1
-            ) as last_message,
-            (
-              SELECT COUNT(*)
-              FROM chat_messages m
-              LEFT JOIN chat_message_reads r ON m.id = r.message_id AND r.user_id = ${userId}
-              WHERE m.conversation_id = c.id 
-              AND m.sender_id != ${userId}
-              AND r.id IS NULL
-            ) as unread_count
-          FROM chat_conversations c
-          WHERE ${userId} = ANY(c.participants)
-          ${type ? db.query`AND c.type = ${type}` : db.query``}
-          AND c.status = ${status}
-          ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
-          LIMIT ${limit} OFFSET ${(page - 1) * limit}
-        `;
-
-        if (conversationsResult && Array.isArray(conversationsResult)) {
-          conversations = conversationsResult;
-
-          // Contar total
-          const countResult: any = await db.query`
-            SELECT COUNT(*) as total
-            FROM chat_conversations c
-            WHERE ${userId} = ANY(c.participants)
-            ${type ? db.query`AND c.type = ${type}` : db.query``}
-            AND c.status = ${status}
-          `;
-
-          if (countResult && Array.isArray(countResult) && countResult.length > 0) {
-            total = parseInt(countResult[0].total);
-          }
-
-          console.log(`✅ Conversas reais carregadas: ${conversations.length}`);
-        }
-      } catch (dbError) {
-        console.log('Erro no banco, usando dados mock:', dbError);
-        conversations = [];
-      }
-    }
-
-    // Fallback para mock se não conseguiu dados reais
-    if (conversations.length === 0) {
-      
-      let filteredConversations = [...mockConversations];
-      
       if (type) {
-        filteredConversations = filteredConversations.filter(c => c.type === type);
+        whereConditions.push(`c.type = $${paramIndex}`);
+        params.push(type);
+        paramIndex++;
       }
-      
-      if (status !== 'active') {
-        filteredConversations = filteredConversations.filter(c => c.status === status);
-      }
-      
-      total = filteredConversations.length;
-      const offset = (page - 1) * limit;
-      conversations = filteredConversations.slice(offset, offset + limit);
-    }
 
-    return json({
-      success: true,
-      data: {
-        conversations,
+      const whereClause = whereConditions.join(' AND ');
+
+      // Buscar conversas com última mensagem
+      const conversationsQuery = `
+        SELECT 
+          c.id,
+          c.type,
+          c.title,
+          c.participants,
+          c.order_id,
+          c.seller_id,
+          c.status,
+          c.created_at,
+          c.last_message_at,
+          (
+            SELECT json_build_object(
+              'content', m.content,
+              'sender_name', u.name,
+              'created_at', m.created_at
+            )
+            FROM chat_messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.conversation_id = c.id
+            ORDER BY m.created_at DESC
+            LIMIT 1
+          ) as last_message,
+          (
+            SELECT COUNT(*)
+            FROM chat_messages m
+            LEFT JOIN chat_message_reads r ON m.id = r.message_id AND r.user_id = $1
+            WHERE m.conversation_id = c.id 
+            AND m.sender_id != $1
+            AND r.id IS NULL
+          ) as unread_count
+        FROM chat_conversations c
+        WHERE ${whereClause}
+        ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+
+      params.push(limit.toString(), ((page - 1) * limit).toString());
+
+      // Buscar total
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM chat_conversations c
+        WHERE ${whereClause}
+      `;
+
+      const [conversations, countResult] = await Promise.all([
+        db.client.unsafe(conversationsQuery, params),
+        db.client.unsafe(countQuery, params.slice(0, -2)) // Remove limit e offset
+      ]);
+
+      const total = parseInt(countResult[0]?.total || '0');
+
+      return {
+        conversations: conversations || [],
         pagination: {
           page,
           limit,
           total,
           pages: Math.ceil(total / limit)
         }
-      }
+      };
+    });
+
+    console.log(`✅ Conversas carregadas: ${result.conversations.length} para usuário ${userId}`);
+
+    return json({
+      success: true,
+      data: result
     });
 
   } catch (err) {
@@ -177,97 +109,77 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   }
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies, platform }) => {
   try {
     // Verificar autenticação
-    const sessionToken = cookies.get('session_token');
-    if (!sessionToken) {
+    const authResult = await requireAuth(cookies, platform);
+    if (!authResult.success) {
       return error(401, 'Usuário não autenticado');
     }
 
+    const userId = authResult.user!.id;
     const { type, title, participants, order_id, seller_id } = await request.json();
 
     if (!type || !participants || participants.length === 0) {
       return error(400, 'Dados incompletos para criar conversa');
     }
 
-    const db = getDatabase();
-    let userId: string | null = null;
-
-    // Tentar obter usuário do banco
-    try {
-      const sessionResult: any = await db.query`
-        SELECT user_id FROM sessions 
-        WHERE token = ${sessionToken} AND expires_at > NOW()
+    const result = await withDatabase(platform, async (db) => {
+      // Verificar se já existe uma conversa similar
+      let existingQuery = `
+        SELECT id FROM chat_conversations
+        WHERE type = $1
+        AND $2 = ANY(participants)
+        AND status = 'active'
       `;
+      let existingParams = [type, userId];
+      let paramIndex = 3;
 
-      if (sessionResult && Array.isArray(sessionResult) && sessionResult.length > 0) {
-        userId = sessionResult[0].user_id;
+      if (order_id) {
+        existingQuery += ` AND order_id = $${paramIndex}`;
+        existingParams.push(order_id);
+        paramIndex++;
       }
-    } catch (sessionError) {
-      console.log('Erro na autenticação');
-    }
 
-    let newConversation = null;
-
-    if (userId) {
-      try {
-        // Verificar se já existe uma conversa similar
-        const existingResult: any = await db.query`
-          SELECT id FROM chat_conversations
-          WHERE type = ${type}
-          AND ${userId} = ANY(participants)
-          ${order_id ? db.query`AND order_id = ${order_id}` : db.query``}
-          ${seller_id ? db.query`AND seller_id = ${seller_id}` : db.query``}
-          AND status = 'active'
-          LIMIT 1
-        `;
-
-        if (existingResult && Array.isArray(existingResult) && existingResult.length > 0) {
-          return json({
-            success: true,
-            data: { conversation_id: existingResult[0].id },
-            message: 'Conversa já existe'
-          });
-        }
-
-        // Criar nova conversa
-        const conversationResult: any = await db.query`
-          INSERT INTO chat_conversations (
-            type, title, participants, order_id, seller_id, created_by
-          ) VALUES (
-            ${type}, ${title}, ${participants}, ${order_id}, ${seller_id}, ${userId}
-          )
-          RETURNING *
-        `;
-
-        if (conversationResult && Array.isArray(conversationResult) && conversationResult.length > 0) {
-          newConversation = conversationResult[0];
-          console.log('✅ Nova conversa criada no banco');
-        }
-      } catch (dbError) {
-        console.log('Erro no banco, simulando sucesso:', dbError);
+      if (seller_id) {
+        existingQuery += ` AND seller_id = $${paramIndex}`;
+        existingParams.push(seller_id);
+        paramIndex++;
       }
-    }
 
-    // Fallback para demonstração
-    if (!newConversation) {
-      newConversation = {
-        id: `conv-${Date.now()}`,
-        type,
-        title: title || `Conversa ${type}`,
-        participants,
-        order_id,
-        seller_id,
-        status: 'active',
-        created_at: new Date().toISOString()
-      };
-    }
+      existingQuery += ' LIMIT 1';
+
+      const existing = await db.client.unsafe(existingQuery, existingParams);
+
+      if (existing && existing.length > 0) {
+        return {
+          conversation_id: existing[0].id,
+          message: 'Conversa já existe'
+        };
+      }
+
+      // Criar nova conversa
+      const newConversation = await db.client.unsafe(`
+        INSERT INTO chat_conversations (
+          type, title, participants, order_id, seller_id, created_by, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'active')
+        RETURNING *
+      `, [type, title || `Conversa ${type}`, participants, order_id, seller_id, userId]);
+
+      if (newConversation && newConversation.length > 0) {
+        console.log('✅ Nova conversa criada no banco');
+        return {
+          conversation: newConversation[0],
+          message: 'Conversa criada com sucesso'
+        };
+      }
+
+      throw new Error('Falha ao criar conversa');
+    });
 
     return json({
       success: true,
-      data: newConversation,
-      message: 'Conversa criada com sucesso'
+      data: result
     });
 
   } catch (err) {
