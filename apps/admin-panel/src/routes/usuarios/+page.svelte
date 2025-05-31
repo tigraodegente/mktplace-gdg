@@ -107,7 +107,7 @@
         <li class="flex items-center">
           <svg class="w-4 h-4 text-gray-400 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
+    </svg>
           <span class="text-gray-900 font-medium">Usuários</span>
         </li>
       </ol>
@@ -135,20 +135,20 @@
         >
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-          </svg>
+        </svg>
           Novo Usuário
         </button>
       </div>
     </div>
   </div>
-</div>
-
+  </div>
+  
 <div class="space-y-8">
   <!-- Stats Cards Melhorados -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div class="flex items-center justify-between mb-4">
-        <div>
+      <div>
           <p class="text-sm font-medium text-gray-600 mb-2">Total de Usuários</p>
           <p class="text-3xl font-bold text-gray-900">1,234</p>
         </div>
@@ -165,11 +165,11 @@
         <span class="text-green-600 font-semibold">+12%</span>
         <span class="text-gray-500 ml-1">vs. mês anterior</span>
       </div>
-    </div>
-
+  </div>
+  
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div class="flex items-center justify-between mb-4">
-        <div>
+      <div>
           <p class="text-sm font-medium text-gray-600 mb-2">Usuários Ativos</p>
           <p class="text-3xl font-bold text-gray-900">1,089</p>
         </div>
@@ -186,11 +186,11 @@
         <span class="text-green-600 font-semibold">+5%</span>
         <span class="text-gray-500 ml-1">vs. mês anterior</span>
       </div>
-    </div>
-
+  </div>
+  
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div class="flex items-center justify-between mb-4">
-        <div>
+      <div>
           <p class="text-sm font-medium text-gray-600 mb-2">Vendedores</p>
           <p class="text-3xl font-bold text-gray-900">89</p>
         </div>
@@ -214,12 +214,12 @@
         <div>
           <p class="text-sm font-medium text-purple-100 mb-2">Novos Hoje</p>
           <p class="text-3xl font-bold text-white">23</p>
-        </div>
+  </div>
         <div class="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-xl flex items-center justify-center">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
           </svg>
-        </div>
+  </div>
       </div>
       <div class="flex items-center text-sm">
         <svg class="w-4 h-4 text-green-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,10 +236,10 @@
     <!-- Table Header -->
     <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/30">
       <div class="flex items-center justify-between">
-        <div>
+      <div>
           <h3 class="text-xl font-semibold text-gray-900">Lista de Usuários</h3>
           <p class="text-sm text-gray-600 mt-1">Todos os usuários cadastrados na plataforma</p>
-        </div>
+      </div>
       </div>
     </div>
 
@@ -277,9 +277,9 @@
             <option value="Ativo">Ativo</option>
             <option value="Inativo">Inativo</option>
           </select>
-        </div>
-      </div>
-    </div>
+  </div>
+</div>
+  </div>
 
     <!-- Table -->
     <div class="overflow-x-auto">
@@ -362,7 +362,7 @@
           <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors">
             Próximo
           </button>
-        </div>
+  </div>
       </div>
     </div>
   </div>

@@ -1,231 +1,354 @@
 <script lang="ts">
+  // Interface para tipagem
+  interface Product {
+    id: number;
+    name: string;
+    category: string;
+    price: number;
+    stock: number;
+    status: string;
+    seller: string;
+    created: string;
+    image: string;
+  }
+
   // Mock data - seria substituído por dados reais da API
-  const products = [
+  const products: Product[] = [
     { 
       id: 1, 
-      name: 'Smartphone Galaxy A54', 
+      name: 'Smartphone Galaxy S24', 
       category: 'Eletrônicos', 
-      price: 'R$ 1.899,00', 
-      stock: 45, 
-      status: 'Ativo',
-      image: '/placeholder.jpg',
-      seller: 'TechStore GDG'
+      price: 2999.99, 
+      stock: 25, 
+      status: 'Ativo', 
+      seller: 'TechStore',
+      created: '2024-01-15',
+      image: 'https://via.placeholder.com/150'
     },
     { 
       id: 2, 
-      name: 'Tênis Nike Air Max', 
-      category: 'Calçados', 
-      price: 'R$ 449,90', 
+      name: 'Notebook Dell Inspiron', 
+      category: 'Informática', 
+      price: 3599.99, 
       stock: 12, 
-      status: 'Ativo',
-      image: '/placeholder.jpg',
-      seller: 'SportsWorld'
+      status: 'Ativo', 
+      seller: 'ComputerWorld',
+      created: '2024-01-10',
+      image: 'https://via.placeholder.com/150'
     },
     { 
       id: 3, 
-      name: 'Livro Clean Code', 
-      category: 'Livros', 
-      price: 'R$ 89,90', 
+      name: 'Headphone Sony WH-1000XM5', 
+      category: 'Áudio', 
+      price: 1299.99, 
       stock: 0, 
-      status: 'Inativo',
-      image: '/placeholder.jpg',
-      seller: 'BookCenter'
+      status: 'Inativo', 
+      seller: 'AudioPro',
+      created: '2024-01-05',
+      image: 'https://via.placeholder.com/150'
     },
   ];
+
+  let searchTerm = '';
+  let selectedCategory = '';
+  let selectedStatus = '';
+
+  // Filtros reativos
+  $: filteredProducts = products.filter(product => {
+    return (
+      (searchTerm === '' || product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       product.seller.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (selectedCategory === '' || product.category === selectedCategory) &&
+      (selectedStatus === '' || product.status === selectedStatus)
+    );
+  });
+
+  function getStatusBadgeClass(status: string): string {
+    return status === 'Ativo' 
+      ? 'bg-green-100 text-green-800 border-green-200' 
+      : 'bg-red-100 text-red-800 border-red-200';
+  }
+
+  function formatPrice(price: number): string {
+    return price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  }
+
+  function handleEditProduct(product: Product): void {
+    console.log('Editar', product);
+  }
+
+  function handleDeleteProduct(product: Product): void {
+    console.log('Excluir', product);
+  }
+
+  function handleCreateProduct(): void {
+    console.log('Criar novo produto');
+  }
+
+  function handleExport(): void {
+    console.log('Exportar dados');
+  }
 </script>
 
-<div class="page-header">
-  <div>
-    <h1 class="page-title">Produtos</h1>
-    <p class="page-subtitle">Gerencie todos os produtos da plataforma</p>
-  </div>
-  <div class="flex space-x-3">
-    <button class="btn btn-secondary">
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
-      Exportar
-    </button>
-    <button class="btn btn-primary">
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-      </svg>
-      Novo Produto
-    </button>
-  </div>
-</div>
+<svelte:head>
+  <title>Produtos - Admin Panel</title>
+</svelte:head>
 
-<!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <div class="stat-value">2,543</div>
-        <div class="stat-label">Total Produtos</div>
-      </div>
-      <div class="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
-        <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-        </svg>
-      </div>
-    </div>
-    <div class="stat-change positive">+18% este mês</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <div class="stat-value">2,234</div>
-        <div class="stat-label">Ativos</div>
-      </div>
-      <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-    </div>
-    <div class="stat-change positive">+12% este mês</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <div class="stat-value">309</div>
-        <div class="stat-label">Sem Estoque</div>
-      </div>
-      <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.73-.833-2.5 0L5.314 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-        </svg>
-      </div>
-    </div>
-    <div class="stat-change negative">+45 hoje</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <div class="stat-value">R$ 45.2K</div>
-        <div class="stat-label">Valor Total</div>
-      </div>
-      <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
-        </svg>
-      </div>
-    </div>
-    <div class="stat-change positive">+8% este mês</div>
-  </div>
-</div>
-
-<!-- Filtros -->
-<div class="card mb-6">
-  <div class="card-header">
-    <h3 class="text-lg font-semibold text-gray-900">Filtros</h3>
-  </div>
-  <div class="card-body">
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-      <div>
-        <label class="label">Buscar</label>
-        <input type="text" placeholder="Nome do produto" class="input">
-      </div>
-      <div>
-        <label class="label">Categoria</label>
-        <select class="input">
-          <option>Todas</option>
-          <option>Eletrônicos</option>
-          <option>Calçados</option>
-          <option>Livros</option>
-        </select>
-      </div>
-      <div>
-        <label class="label">Status</label>
-        <select class="input">
-          <option>Todos</option>
-          <option>Ativo</option>
-          <option>Inativo</option>
-        </select>
-      </div>
-      <div>
-        <label class="label">Vendedor</label>
-        <select class="input">
-          <option>Todos</option>
-          <option>TechStore GDG</option>
-          <option>SportsWorld</option>
-        </select>
-      </div>
-      <div class="flex items-end">
-        <button class="btn btn-primary mr-2">Filtrar</button>
-        <button class="btn btn-secondary">Limpar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Grid de Produtos -->
-<div class="card">
-  <div class="card-header">
-    <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold text-gray-900">Lista de Produtos</h3>
-      <div class="flex space-x-2">
-        <button class="btn btn-sm btn-secondary">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+<!-- Page Header Melhorado -->
+<div class="bg-white border-b border-gray-200 px-8 py-6 mb-8">
+  <div class="max-w-7xl mx-auto">
+    <!-- Breadcrumbs -->
+    <nav class="flex mb-4" aria-label="Breadcrumb">
+      <ol class="flex items-center space-x-2 text-sm">
+        <li>
+          <a href="/" class="text-gray-500 hover:text-primary-600 transition-colors">Dashboard</a>
+        </li>
+        <li class="flex items-center">
+          <svg class="w-4 h-4 text-gray-400 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
+          <span class="text-gray-900 font-medium">Produtos</span>
+        </li>
+      </ol>
+    </nav>
+
+    <!-- Title & Actions -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestão de Produtos</h1>
+        <p class="text-lg text-gray-600">Modere e gerencie todos os produtos do marketplace</p>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button 
+          on:click={handleExport}
+          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Exportar
         </button>
-        <button class="btn btn-sm btn-secondary">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+        <button 
+          on:click={handleCreateProduct}
+          class="inline-flex items-center px-4 py-2 bg-primary-500 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 shadow-sm"
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
+          Novo Produto
         </button>
       </div>
     </div>
   </div>
-  <div class="card-body p-0">
+</div>
+  
+<div class="space-y-8">
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-sm font-medium text-gray-600 mb-2">Total de Produtos</p>
+          <p class="text-3xl font-bold text-gray-900">2,543</p>
+        </div>
+        <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-center text-sm">
+        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+        </svg>
+        <span class="text-green-600 font-semibold">+18%</span>
+        <span class="text-gray-500 ml-1">vs. mês anterior</span>
+      </div>
+    </div>
+  
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-sm font-medium text-gray-600 mb-2">Produtos Ativos</p>
+          <p class="text-3xl font-bold text-gray-900">2,456</p>
+        </div>
+        <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-center text-sm">
+        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+        </svg>
+        <span class="text-green-600 font-semibold">+8%</span>
+        <span class="text-gray-500 ml-1">vs. mês anterior</span>
+      </div>
+    </div>
+  
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-sm font-medium text-gray-600 mb-2">Pendentes</p>
+          <p class="text-3xl font-bold text-gray-900">87</p>
+        </div>
+        <div class="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-center text-sm">
+        <svg class="w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+        </svg>
+        <span class="text-yellow-600 font-semibold">Aguardando</span>
+        <span class="text-gray-500 ml-1">moderação</span>
+      </div>
+    </div>
+
+    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-white">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-sm font-medium text-blue-100 mb-2">Valor Total</p>
+          <p class="text-3xl font-bold text-white">R$ 8.7M</p>
+        </div>
+        <div class="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-center text-sm">
+        <svg class="w-4 h-4 text-green-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+        </svg>
+        <span class="text-green-200 font-semibold">+24%</span>
+        <span class="text-blue-100 ml-1">em valor</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <!-- Table Header -->
+    <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/30">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900">Lista de Produtos</h3>
+          <p class="text-sm text-gray-600 mt-1">Todos os produtos cadastrados no marketplace</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="px-6 py-4 bg-gray-50/50 border-b border-gray-100">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1">
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input 
+              type="text" 
+              bind:value={searchTerm}
+              placeholder="Buscar produtos..."
+              class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all duration-200"
+            />
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <select 
+            bind:value={selectedCategory}
+            class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all duration-200 min-w-[150px]"
+          >
+            <option value="">Todas as Categorias</option>
+            <option value="Eletrônicos">Eletrônicos</option>
+            <option value="Informática">Informática</option>
+            <option value="Áudio">Áudio</option>
+          </select>
+          <select 
+            bind:value={selectedStatus}
+            class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all duration-200 min-w-[150px]"
+          >
+            <option value="">Todos os Status</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
     <div class="overflow-x-auto">
-      <table class="table">
-        <thead>
+      <table class="w-full">
+        <thead class="bg-gray-50/50">
           <tr>
-            <th>Produto</th>
-            <th>Categoria</th>
-            <th>Preço</th>
-            <th>Estoque</th>
-            <th>Vendedor</th>
-            <th>Status</th>
-            <th>Ações</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Produto</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Categoria</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estoque</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Vendedor</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200">
-          {#each products as product}
-            <tr>
-              <td>
-                <div class="flex items-center space-x-4">
-                  <img src={product.image} alt={product.name} class="w-12 h-12 rounded-lg object-cover bg-gray-100">
+        <tbody class="divide-y divide-gray-100">
+          {#each filteredProducts as product}
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center space-x-3">
+                  <img src={product.image} alt={product.name} class="w-12 h-12 rounded-lg object-cover">
                   <div>
                     <div class="font-medium text-gray-900">{product.name}</div>
-                    <div class="text-sm text-gray-500">ID: {product.id}</div>
+                    <div class="text-sm text-gray-500">#{product.id}</div>
                   </div>
                 </div>
               </td>
-              <td>
-                <span class="badge badge-info">{product.category}</span>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {product.category}
               </td>
-              <td class="font-medium text-gray-900">{product.price}</td>
-              <td>
-                <span class="badge {product.stock > 0 ? 'badge-success' : 'badge-danger'}">
-                  {product.stock > 0 ? `${product.stock} unidades` : 'Sem estoque'}
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                {formatPrice(product.price)}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                <span class="px-2 py-1 text-xs rounded-full {product.stock > 10 ? 'bg-green-100 text-green-800' : product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
+                  {product.stock} un.
                 </span>
               </td>
-              <td class="text-gray-600">{product.seller}</td>
-              <td>
-                <span class="badge {product.status === 'Ativo' ? 'badge-success' : 'badge-danger'}">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-3 py-1 text-xs font-medium rounded-full border {getStatusBadgeClass(product.status)}">
                   {product.status}
                 </span>
               </td>
-              <td>
-                <div class="flex items-center space-x-2">
-                  <button class="btn btn-sm btn-secondary">Editar</button>
-                  <button class="btn btn-sm btn-danger">Excluir</button>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {product.seller}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                <div class="flex items-center justify-end gap-2">
+                  <button 
+                    on:click={() => handleEditProduct(product)}
+                    class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+                  >
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Editar
+                  </button>
+                  <button 
+                    on:click={() => handleDeleteProduct(product)}
+                    class="inline-flex items-center px-3 py-1 border border-red-300 rounded-lg text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
+                  >
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Excluir
+                  </button>
                 </div>
               </td>
             </tr>
@@ -233,13 +356,24 @@
         </tbody>
       </table>
     </div>
-  </div>
-  <div class="card-footer">
-    <div class="flex items-center justify-between">
-      <span class="text-sm text-gray-600">Mostrando 1-3 de 2,543 produtos</span>
-      <div class="flex space-x-2">
-        <button class="btn btn-sm btn-secondary">Anterior</button>
-        <button class="btn btn-sm btn-primary">Próximo</button>
+
+    <!-- Table Footer -->
+    <div class="px-6 py-4 bg-gray-50/30 border-t border-gray-100">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-600">
+          Mostrando {filteredProducts.length} de {products.length} produtos
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+            Anterior
+          </button>
+          <button class="px-3 py-1 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors">
+            1
+          </button>
+          <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+            Próximo
+          </button>
+        </div>
       </div>
     </div>
   </div>
