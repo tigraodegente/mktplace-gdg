@@ -1,4 +1,4 @@
-import { Database } from '@mktplace/db-hyperdrive'
+import { Database } from './database.js'
 import { dev } from '$app/environment'
 import { env } from '$env/dynamic/private'
 

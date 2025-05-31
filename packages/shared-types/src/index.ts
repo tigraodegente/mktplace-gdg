@@ -47,4 +47,7 @@ export interface PaginationParams {
 export interface FilterParams {
   search?: string;
   [key: string]: any;
-} 
+}
+
+// Integrations
+export * from './integrations'; 

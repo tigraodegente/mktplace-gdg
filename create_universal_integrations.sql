@@ -650,8 +650,10 @@ INSERT INTO integration_providers (
 )
 ON CONFLICT (name) DO NOTHING;
 
+COMMIT;
+
 -- =====================================================
--- 11. VIEWS PARA FACILITAR CONSULTAS
+-- 11. VIEWS PARA FACILITAR CONSULTAS (CRIADAS SEPARADAMENTE)
 -- =====================================================
 
 -- View para status atual dos providers
@@ -664,7 +666,7 @@ SELECT
     ip.is_active,
     ip.priority,
     ip.success_rate,
-    ip.avg_response_time_ms,
+    ip.avg_response_time,
     ip.last_success_at,
     ip.last_failure_at,
     
@@ -715,8 +717,6 @@ FROM integration_logs
 WHERE created_at >= NOW() - INTERVAL '7 days'
 GROUP BY DATE_TRUNC('hour', created_at), provider_id, level, event_type
 ORDER BY hour DESC;
-
-COMMIT;
 
 -- =====================================================
 -- RELATÓRIO DE IMPLEMENTAÇÃO
