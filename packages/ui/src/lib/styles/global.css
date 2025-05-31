@@ -427,13 +427,20 @@ select:focus { outline: none; border-color: var(--cyan500); box-shadow: 0 0 0 3p
   display: inline-block !important;
 }
 
-/* Garantir que ícones tenham tamanho correto */
+/* Garantir que ícones tenham tamanho correto e renderização de emoji */
 .menu-icon {
   margin-right: 0.75rem !important;
   font-size: 1.125rem !important;
   display: inline-block !important;
   width: auto !important;
   height: auto !important;
+  /* Forçar renderização de emojis */
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Emoji", Arial, sans-serif !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  text-rendering: auto !important;
+  -webkit-font-smoothing: auto !important;
+  -moz-osx-font-smoothing: auto !important;
 }
 
 /* Mobile */

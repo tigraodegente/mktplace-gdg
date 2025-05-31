@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import Icon from '../lib/Icon.svelte';
 	import { onMount } from 'svelte';
 	
 	// Dados específicos do Admin Panel
@@ -14,13 +15,13 @@
 	
 	// Menu específico do Admin - CENTRALIZADO
 	const menuItems = [
-		{ path: '/', icon: '📊', label: 'Dashboard' },
-		{ path: '/produtos', icon: '📦', label: 'Produtos' },
-		{ path: '/pedidos', icon: '🛒', label: 'Pedidos' },
-		{ path: '/usuarios', icon: '👥', label: 'Usuários' },
+		{ path: '/', icon: 'dashboard', label: 'Dashboard' },
+		{ path: '/produtos', icon: 'products', label: 'Produtos' },
+		{ path: '/pedidos', icon: 'orders', label: 'Pedidos' },
+		{ path: '/usuarios', icon: 'users', label: 'Usuários' },
 		{ separator: true },
-		{ path: '/relatorios', icon: '📈', label: 'Relatórios' },
-		{ path: '/configuracoes', icon: '⚙️', label: 'Configurações' }
+		{ path: '/relatorios', icon: 'reports', label: 'Relatórios' },
+		{ path: '/configuracoes', icon: 'settings', label: 'Configurações' }
 	];
 	
 	let currentPath = '';
@@ -91,7 +92,9 @@
 								href={item.path}
 								class="nav-link {isActiveRoute(item.path || '') ? 'active' : ''}"
 							>
-								<span class="menu-icon">{item.icon}</span>
+								{#if item.icon}
+									<Icon name={item.icon} size="md" />
+								{/if}
 								{item.label}
 							</a>
 						{/if}

@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getDatabase } from '$lib/db';
+import { withDatabase } from '$lib/db';
 
 // Interface local do produto para a página principal
 interface Product {
@@ -31,16 +32,71 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 	console.log('🏠 Carregando dados da página principal...');
 	
 	try {
-		// Buscar produtos em destaque do banco
-		const featuredResponse = await fetch('/api/products/featured?limit=8');
+		// Buscar produtos em destaque diretamente do banco (não via fetch)
 		let featuredProducts: Product[] = [];
 		
-		if (featuredResponse.ok) {
-			const featuredData = await featuredResponse.json();
-			if (featuredData.success && featuredData.data) {
-				featuredProducts = featuredData.data;
-				console.log(`✅ ${featuredProducts.length} produtos em destaque carregados do banco`);
-			}
+		try {
+			const productsFromDb = await withDatabase(platform, async (db) => {
+				const products = await db.query`
+					WITH product_images AS (
+						SELECT 
+							pi.product_id,
+							array_agg(pi.url ORDER BY pi.position) as images
+						FROM product_images pi
+						GROUP BY pi.product_id
+					)
+					SELECT 
+						p.*,
+						COALESCE(pi.images, ARRAY[]::text[]) as images,
+						c.name as category_name,
+						b.name as brand_name,
+						s.company_name as seller_name
+					FROM products p
+					LEFT JOIN product_images pi ON pi.product_id = p.id
+					LEFT JOIN categories c ON c.id = p.category_id
+					LEFT JOIN brands b ON b.id = p.brand_id
+					LEFT JOIN sellers s ON s.id = p.seller_id
+					WHERE 
+						p.is_active = true 
+						AND p.featured = true 
+						AND p.quantity > 0
+					ORDER BY p.sales_count DESC
+					LIMIT 8
+				`;
+				
+				return products.map((product: any) => ({
+					id: product.id,
+					name: product.name,
+					slug: product.slug,
+					description: product.description,
+					price: Number(product.price),
+					original_price: product.original_price ? Number(product.original_price) : undefined,
+					discount: product.original_price && product.price < product.original_price
+						? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+						: undefined,
+					images: product.images || [],
+					image: product.images?.[0] || '/api/placeholder/300/400?text=Produto&bg=f0f0f0&color=333',
+					category_id: product.category_id,
+					seller_id: product.seller_id,
+					is_active: product.is_active,
+					stock: product.quantity,
+					stock_alert_threshold: product.stock_alert_threshold,
+					sku: product.sku,
+					tags: product.tags || [],
+					pieces: product.pieces,
+					is_featured: true,
+					is_black_friday: false,
+					has_fast_delivery: true,
+					created_at: product.created_at,
+					updated_at: product.updated_at
+				}));
+			});
+			
+			featuredProducts = productsFromDb;
+			console.log(`✅ ${featuredProducts.length} produtos em destaque carregados do banco`);
+			
+		} catch (error) {
+			console.error('❌ Erro ao carregar produtos do banco:', error);
 		}
 		
 		// Fallback para dados mock se não conseguir do banco
@@ -94,54 +150,6 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 					has_fast_delivery: true,
 					created_at: new Date(),
 					updated_at: new Date()
-				},
-				{
-					id: '3',
-					name: 'Organizador de Brinquedos MDF',
-					slug: 'organizador-brinquedos-mdf',
-					description: 'Organizador colorido para brinquedos',
-					price: 189.99,
-					original_price: 249.99,
-					discount: 24,
-					images: ['/api/placeholder/300/400?text=Organizador&bg=FFE5F5&color=333'],
-					image: '/api/placeholder/300/400?text=Organizador&bg=FFE5F5&color=333',
-					category_id: 'organization',
-					seller_id: 'seller1',
-					is_active: true,
-					stock: 2,
-					stock_alert_threshold: 5,
-					sku: 'ORG-MDF-003',
-					tags: ['MDF'],
-					pieces: 1,
-					is_featured: true,
-					is_black_friday: true,
-					has_fast_delivery: false,
-					created_at: new Date(),
-					updated_at: new Date()
-				},
-				{
-					id: '4',
-					name: 'Tapete Infantil Educativo ABC',
-					slug: 'tapete-infantil-educativo-abc',
-					description: 'Tapete educativo com letras e números',
-					price: 129.99,
-					original_price: 169.99,
-					discount: 24,
-					images: ['/api/placeholder/300/400?text=Tapete&bg=E5FFE5&color=333'],
-					image: '/api/placeholder/300/400?text=Tapete&bg=E5FFE5&color=333',
-					category_id: 'kids',
-					seller_id: 'seller3',
-					is_active: true,
-					stock: 5,
-					stock_alert_threshold: 10,
-					sku: 'TAP-ABC-004',
-					tags: ['EVA'],
-					pieces: 26,
-					is_featured: true,
-					is_black_friday: false,
-					has_fast_delivery: true,
-					created_at: new Date(),
-					updated_at: new Date()
 				}
 			];
 		}
@@ -157,7 +165,7 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 				categories = categoriesData.data.slice(0, 6).map((cat: any) => ({
 					name: cat.name,
 					icon: getCategoryIcon(cat.slug || cat.name),
-					count: cat.product_count || 0,
+					count: cat.productCount || 0, // Usar productCount ao invés de product_count
 					slug: cat.slug,
 					id: cat.id
 				}));
@@ -169,12 +177,12 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 		if (categories.length === 0) {
 			console.log('⚠️ Usando dados mock para categorias');
 			categories = [
-				{ name: 'Bebê', icon: '👶', count: 234 },
-				{ name: 'Infantil', icon: '🧸', count: 567 },
-				{ name: 'Quarto', icon: '🛏️', count: 189 },
-				{ name: 'Banheiro', icon: '🛁', count: 123 },
-				{ name: 'Organização', icon: '📦', count: 89 },
-				{ name: 'Decoração', icon: '🎨', count: 156 }
+				{ name: 'Bebê', icon: '👶', count: 234, slug: 'bebe', id: 'bebe-categoria-001' },
+				{ name: 'Infantil', icon: '🧸', count: 567, slug: 'infantil', id: 'infantil-categoria-002' },
+				{ name: 'Quarto', icon: '🛏️', count: 189, slug: 'quarto', id: 'quarto-categoria-003' },
+				{ name: 'Banheiro', icon: '🛁', count: 123, slug: 'banheiro', id: 'banheiro-categoria-004' },
+				{ name: 'Organização', icon: '📦', count: 89, slug: 'organizacao', id: 'organizacao-categoria-004' },
+				{ name: 'Decoração', icon: '🎨', count: 156, slug: 'decoracao', id: 'decoracao-categoria-006' }
 			];
 		}
 		
@@ -217,8 +225,8 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 			categories,
 			stats,
 			dataSource: {
-				products: featuredProducts.length > 4 ? 'database' : 'mock',
-				categories: categories.length > 6 ? 'database' : 'mock'
+				products: featuredProducts.length > 2 ? 'database' : 'mock', // Só marca como database se temos produtos reais
+				categories: categories.length > 0 ? 'database' : 'mock'
 			}
 		};
 		
@@ -254,8 +262,8 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 				}
 			],
 			categories: [
-				{ name: 'Bebê', icon: '👶', count: 234 },
-				{ name: 'Infantil', icon: '🧸', count: 567 }
+				{ name: 'Bebê', icon: '👶', count: 234, slug: 'bebe', id: 'bebe-categoria-001' },
+				{ name: 'Infantil', icon: '🧸', count: 567, slug: 'infantil', id: 'infantil-categoria-002' }
 			],
 			stats: {
 				totalProducts: 1,

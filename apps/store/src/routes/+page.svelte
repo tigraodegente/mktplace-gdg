@@ -5,17 +5,24 @@
   import HomeBanner from '$lib/components/layout/HomeBanner.svelte';
   import OfferCountdown from '$lib/components/layout/OfferCountdown.svelte';
   import BenefitsSection from '$lib/components/layout/BenefitsSection.svelte';
-  import type { Product } from '@mktplace/shared-types';
+  import ProductGridSkeleton from '$lib/components/ui/ProductGridSkeleton.svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
   
   let { data }: { data: PageData } = $props();
   
-  const { featuredProducts, categories } = data;
-  
-  let featuredProductsState = $state<Product[]>([]);
-  let isLoading = $state(true);
+  // Estados reativo baseado nos dados do servidor
+  let featuredProducts = $state(data.featuredProducts || []);
+  let categories = $state(data.categories || []);
+  let isLoading = $state(false);
   let error = $state<string | null>(null);
+  
+  // Log para debug
+  console.log('📊 Dados carregados do servidor:', {
+    produtos: featuredProducts.length,
+    categorias: categories.length,
+    dataSource: data.dataSource
+  });
   
   // Dados dos slides do banner
   const bannerSlides = [
@@ -54,21 +61,38 @@
   // Configuração do countdown - 6 horas a partir de agora para demonstração
   const offerEndTime = new Date(Date.now() + 6 * 60 * 60 * 1000);
   
-  onMount(async () => {
+  // Função para recarregar produtos se necessário
+  async function reloadProducts() {
+    if (featuredProducts.length > 0) return; // Já temos produtos
+    
+    isLoading = true;
+    error = null;
+    
     try {
-      const response = await fetch('/api/products/featured');
+      console.log('🔄 Recarregando produtos em destaque...');
+      const response = await fetch('/api/products/featured?limit=8');
       const result = await response.json();
       
-      if (result.success) {
-        featuredProductsState = result.data.products;
+      if (result.success && result.data?.products) {
+        featuredProducts = result.data.products;
+        console.log(`✅ ${featuredProducts.length} produtos recarregados`);
       } else {
         error = result.error?.message || 'Erro ao carregar produtos';
+        console.error('❌ Erro na resposta da API:', result);
       }
     } catch (err) {
-      console.error('Erro ao buscar produtos:', err);
+      console.error('❌ Erro ao buscar produtos:', err);
       error = 'Erro ao conectar com o servidor';
     } finally {
       isLoading = false;
+    }
+  }
+  
+  onMount(() => {
+    // Só recarrega se não temos produtos do servidor
+    if (featuredProducts.length === 0) {
+      console.log('⚠️ Nenhum produto carregado do servidor, tentando reload...');
+      reloadProducts();
     }
   });
 </script>
@@ -77,6 +101,41 @@
   <title>Grão de Gente - Marketplace | Sua loja online completa</title>
   <meta name="description" content="Encontre os melhores produtos com os melhores preços no Marketplace Grão de Gente" />
 </svelte:head>
+
+{#if data.dataSource && typeof window !== 'undefined' && window.location.hostname === 'localhost'}
+  <!-- Developer Info - mostrar apenas em desenvolvimento -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-sm mx-8">
+    <div class="flex items-center gap-2 mb-2">
+      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="font-medium text-blue-900">Status da Integração</span>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-blue-700">Produtos:</span>
+        {#if data.dataSource.products === 'database'}
+          <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">✅ Banco de Dados</span>
+        {:else}
+          <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">⚠️ Mock</span>
+        {/if}
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-blue-700">Categorias:</span>
+        {#if data.dataSource.categories === 'database'}
+          <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">✅ Banco de Dados</span>
+        {:else}
+          <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">⚠️ Mock</span>
+        {/if}
+      </div>
+    </div>
+    {#if data.stats}
+      <div class="mt-2 text-xs text-blue-600">
+        Estatísticas: {data.stats.totalProducts} produtos • {data.stats.totalCategories} categorias • {data.stats.totalSellers} vendedores
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <!-- Contador de Ofertas -->
 <OfferCountdown 
@@ -104,13 +163,13 @@
     <h2 class="text-3xl font-bold text-center mb-12 text-[var(--text-color)]">Explore por Categoria</h2>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
       {#each categories as category}
-        <button class="card hover:shadow-lg transition text-center group">
+        <a href="/categorias/{category.slug || ''}" class="card hover:shadow-lg transition text-center group block">
           <div class="card-body">
             <div class="text-4xl mb-3 group-hover:scale-110 transition">{category.icon}</div>
             <h3 class="font-semibold text-[var(--text-color)]">{category.name}</h3>
             <p class="text-sm text-[var(--gray300)] mt-1">{category.count} produtos</p>
           </div>
-        </button>
+        </a>
       {/each}
     </div>
   </div>
@@ -127,29 +186,30 @@
     </div>
     
     {#if isLoading}
-      <div class="flex items-center justify-center h-64">
-        <div class="text-center">
-          <div class="w-12 h-12 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p class="text-gray-600">Carregando produtos...</p>
-        </div>
-      </div>
+      <ProductGridSkeleton itemCount={8} columns={4} />
     {:else if error}
       <div class="bg-white border border-red-200 rounded-lg p-6 text-center">
         <p class="text-red-600">{error}</p>
         <button 
-          onclick={() => location.reload()} 
+          onclick={reloadProducts} 
           class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           Tentar Novamente
         </button>
       </div>
-    {:else if featuredProductsState.length === 0}
+    {:else if featuredProducts.length === 0}
       <div class="bg-white border border-gray-200 rounded-lg p-12 text-center">
-        <p class="text-gray-600">Nenhum produto em destaque no momento</p>
+        <p class="text-gray-600 mb-4">Nenhum produto em destaque no momento</p>
+        <button 
+          onclick={reloadProducts} 
+          class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
+        >
+          Recarregar Produtos
+        </button>
       </div>
     {:else}
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {#each featuredProductsState as product}
+        {#each featuredProducts as product}
           <ProductCard {product} />
         {/each}
       </div>
@@ -183,43 +243,6 @@
     </form>
   </div>
 </section>
-
-{#if data.dataSource}
-	<!-- Developer Info - mostrar apenas em desenvolvimento -->
-	{#if typeof window !== 'undefined' && window.location.hostname === 'localhost'}
-		<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-sm">
-			<div class="flex items-center gap-2 mb-2">
-				<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-				</svg>
-				<span class="font-medium text-blue-900">Status da Integração</span>
-			</div>
-			<div class="grid grid-cols-2 gap-3">
-				<div class="flex items-center gap-2">
-					<span class="text-blue-700">Produtos:</span>
-					{#if data.dataSource.products === 'database'}
-						<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">✅ Banco de Dados</span>
-					{:else}
-						<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">⚠️ Mock</span>
-					{/if}
-				</div>
-				<div class="flex items-center gap-2">
-					<span class="text-blue-700">Categorias:</span>
-					{#if data.dataSource.categories === 'database'}
-						<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">✅ Banco de Dados</span>
-					{:else}
-						<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">⚠️ Mock</span>
-					{/if}
-				</div>
-			</div>
-			{#if data.stats}
-				<div class="mt-2 text-xs text-blue-600">
-					Estatísticas: {data.stats.totalProducts} produtos • {data.stats.totalCategories} categorias • {data.stats.totalSellers} vendedores
-				</div>
-			{/if}
-		</div>
-	{/if}
-{/if}
 
 <style>
   /* Garantindo que toda a página tenha fundo branco */
