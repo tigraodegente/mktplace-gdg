@@ -49,25 +49,33 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
               json_build_object(
                 'id', oi.id,
                 'product_id', oi.product_id,
-                'product_name', oi.product_name,
-                'product_image', oi.product_image,
+                'product_name', p.name,
+                'product_image', COALESCE(
+                  (SELECT pi.url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1),
+                  '/api/placeholder/300/300'
+                ),
                 'quantity', oi.quantity,
                 'price', oi.price,
                 'total', oi.total
               ) ORDER BY oi.created_at
             ) as items
           FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
           GROUP BY oi.order_id
         )
         SELECT 
           o.id,
           o.order_number,
           o.status,
-          o.total_amount,
+          o.total as total_amount,
           o.shipping_cost,
           o.discount_amount,
           o.payment_method,
-          o.shipping_address,
+          CASE 
+            WHEN o.metadata->>'shipping_address' IS NOT NULL 
+            THEN o.metadata->'shipping_address'
+            ELSE o.shipping_address
+          END as shipping_address,
           o.notes,
           o.created_at,
           o.updated_at,

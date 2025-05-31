@@ -26,11 +26,15 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
           o.id,
           o.order_number,
           o.status,
-          o.total_amount,
+          o.total as total_amount,
           o.shipping_cost,
           o.discount_amount,
           o.payment_method,
-          o.shipping_address,
+          CASE 
+            WHEN o.metadata->>'shipping_address' IS NOT NULL 
+            THEN o.metadata->'shipping_address'
+            ELSE o.shipping_address
+          END as shipping_address,
           o.notes,
           o.created_at,
           o.updated_at,
@@ -48,18 +52,22 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
       
       const order = orders[0];
       
-      // Buscar itens do pedido
+      // Buscar itens do pedido com informações do produto
       const itemsQuery = `
         SELECT 
           oi.id,
           oi.product_id,
-          oi.product_name,
-          oi.product_image,
+          p.name as product_name,
+          COALESCE(
+            (SELECT pi.url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1),
+            '/api/placeholder/300/300'
+          ) as product_image,
           oi.quantity,
           oi.price,
           oi.total,
           oi.created_at
         FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
         WHERE oi.order_id = $1
         ORDER BY oi.created_at
       `;

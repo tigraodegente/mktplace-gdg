@@ -1,58 +1,63 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { withDatabase } from '$lib/db';
 
-export const GET = async ({ platform }: { platform?: any }) => {
+export const GET: RequestHandler = async ({ platform, url }) => {
   try {
-    const debugInfo: any = {
-      timestamp: new Date().toISOString(),
-      databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...',
-      platform: !!platform,
-      env: !!(platform as any)?.env
-    };
+    const tableName = url.searchParams.get('table') || 'orders';
     
     const result = await withDatabase(platform, async (db) => {
-      // Test basic connection
-      const connectionTest = await db.query`SELECT 1 as test`;
-      debugInfo.connectionTest = connectionTest[0]?.test === 1 ? 'OK' : 'FAILED';
-      
-      // Count categories
-      const categoryCount = await db.query`SELECT COUNT(*) as total FROM categories`;
-      debugInfo.totalCategories = categoryCount[0]?.total;
-      
-      // Get all categories
-      const allCategories = await db.query`
-        SELECT id, name, slug, is_active, created_at 
-        FROM categories 
-        ORDER BY created_at DESC
+      // Listar todas as tabelas
+      const tables = await db.query`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        ORDER BY table_name
       `;
-      debugInfo.categories = allCategories.map((cat: any) => ({
-        name: cat.name,
-        slug: cat.slug,
-        active: cat.is_active,
-        created: cat.created_at
-      }));
       
-      // Count products
-      const productCount = await db.query`SELECT COUNT(*) as total FROM products`;
-      debugInfo.totalProducts = productCount[0]?.total;
+      // Se a tabela especifica existe, mostrar sua estrutura
+      let tableStructure = null;
+      const tableExists = tables.some(t => t.table_name === tableName);
       
-      return debugInfo;
+      if (tableExists) {
+        tableStructure = await db.query`
+          SELECT column_name, data_type, is_nullable, column_default
+          FROM information_schema.columns 
+          WHERE table_name = ${tableName} AND table_schema = 'public'
+          ORDER BY ordinal_position
+        `;
+      }
+      
+      // Buscar um registro de exemplo se for orders
+      let sampleRecord = null;
+      if (tableName === 'orders' && tableExists) {
+        try {
+          const records = await db.query`SELECT * FROM orders LIMIT 1`;
+          sampleRecord = records[0] || null;
+        } catch (e: any) {
+          sampleRecord = { error: e.message };
+        }
+      }
+      
+      return {
+        database: 'Local PostgreSQL',
+        allTables: tables.map(t => t.table_name),
+        requestedTable: tableName,
+        tableExists,
+        tableStructure,
+        sampleRecord
+      };
     });
     
     return json({
       success: true,
-      debug: result
+      data: result
     });
     
-  } catch (error) {
-    console.error('[Debug DB] Error:', error);
-    
+  } catch (error: any) {
+    console.error('❌ Erro ao debugar banco:', error);
     return json({
       success: false,
-      error: {
-        message: error instanceof Error ? error.message : 'Erro desconhecido',
-        stack: error instanceof Error ? error.stack : undefined
-      }
+      error: error.message
     }, { status: 500 });
   }
 }; 

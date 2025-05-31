@@ -1,31 +1,23 @@
-// Tipos de usuário
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'customer' | 'seller' | 'admin';
-  created_at: Date;
-  updated_at: Date;
-}
+// Auth types (sistema unificado)
+export type { 
+  AuthUser, 
+  UserRole, 
+  AuthLoginRequest, 
+  AuthLoginResponse, 
+  AuthSession, 
+  RoleSwitchRequest, 
+  AuthContext,
+  AdminPermission,
+  VendorData,
+  AdminData,
+  CustomerData
+} from './auth/index';
 
-// Tipos de pedido
-export interface Order {
-  id: string;
-  user_id: string;
-  total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  items: OrderItem[];
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface OrderItem {
-  id: string;
-  order_id: string;
-  product_id: string;
-  quantity: number;
-  price: number;
-}
+// Tipos básicos existentes (manter compatibilidade)
+export * from './user';
+export * from './product';
+export * from './cart';
+export * from './address';
 
 // Tipos de resposta da API
 export interface ApiResponse<T = any> {
@@ -55,16 +47,4 @@ export interface PaginationParams {
 export interface FilterParams {
   search?: string;
   [key: string]: any;
-}
-
-// Exportar todos os tipos
-export * from './user';
-export * from './product';
-export * from './cart';
-export * from './address';
-// export * from './models/user';
-// export * from './models/order';
-// export * from './models/category';
-// export * from './models/seller';
-// export * from './api/responses';
-// export * from './api/requests'; 
+} 
