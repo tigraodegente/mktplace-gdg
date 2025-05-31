@@ -1,5 +1,5 @@
 // Service Worker Marketplace GDG - Versão Otimizada
-const CACHE_VERSION = 'v1.2.0';
+const CACHE_VERSION = 'gdg-marketplace-v2-20250531';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 const API_CACHE = `api-${CACHE_VERSION}`;
@@ -57,28 +57,27 @@ self.addEventListener('install', (event) => {
 // ATIVAÇÃO DO SERVICE WORKER
 // ===========================================
 self.addEventListener('activate', (event) => {
-  console.log('🔄 SW: Ativando service worker...');
+  console.log('🔄 Service Worker ativando...');
   
   event.waitUntil(
-    Promise.all([
-      // Limpar caches antigos
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== STATIC_CACHE && 
-                cacheName !== DYNAMIC_CACHE && 
-                cacheName !== API_CACHE && 
-                cacheName !== IMAGE_CACHE) {
-              console.log('🗑️ SW: Removendo cache antigo:', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      }),
-      
-      // Tomar controle de todas as abas
-      self.clients.claim()
-    ])
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== STATIC_CACHE && 
+              cacheName !== DYNAMIC_CACHE && 
+              cacheName !== API_CACHE && 
+              cacheName !== IMAGE_CACHE &&
+              cacheName.startsWith('gdg-marketplace-')) {
+            console.log('🗑️ Removendo cache antigo:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      console.log('✅ Service Worker ativado com nova versão');
+      // Forçar todos os clientes a usar a nova versão
+      return self.clients.claim();
+    })
   );
 });
 

@@ -95,6 +95,14 @@
 			if ('serviceWorker' in navigator) {
 				window.addEventListener('load', async () => {
 					try {
+						// Primeiro, desregistrar SW antigo se existir
+						const registrations = await navigator.serviceWorker.getRegistrations();
+						for (let registration of registrations) {
+							await registration.unregister();
+							console.log('🗑️ Service Worker antigo removido');
+						}
+						
+						// Registrar novo SW
 						const registration = await navigator.serviceWorker.register('/sw.js', {
 							scope: '/',
 							updateViaCache: 'none'
