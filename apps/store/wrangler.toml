@@ -16,18 +16,14 @@ NODE_ENV = "production"
 # KV Namespaces para cache
 [[kv_namespaces]]
 binding = "CACHE_KV"
-id = "780e9e83f99b45f4a6ac7a44f6ee8f4b" # Será criado automaticamente em dev
-preview_id = "f7678a2cec1d438a9bb518f1c820d114" # Para ambientes de preview
+id = "780e9e83f99b45f4a6ac7a44f6ee8f4b"
+preview_id = "f7678a2cec1d438a9bb518f1c820d114"
 
 # D1 Database (se você quiser usar no futuro)
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "marketplace-db"
 # database_id = "YOUR_D1_DATABASE_ID"
-
-# Configurações de build
-[build]
-command = "npm run build"
 
 # Variáveis de ambiente (exemplo)
 # PUBLIC_API_URL = "https://api.marketplace-gdg.com"
