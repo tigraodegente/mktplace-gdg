@@ -1,0 +1,126 @@
+===========================================
+ESTATÍSTICAS DO BANCO - 20250531_171028
+===========================================
+
+🗄️ BANCO: mktplace_dev
+📊 HOST: :
+👤 USUÁRIO: 
+
+📈 ESTATÍSTICAS POR TABELA:
+----------------------------------------
+
+🔍 TABELAS PRINCIPAIS:
+----------------------------------------
+  users: 15 registros
+  products: 54 registros
+  categories: 19 registros
+  orders: 12 registros
+  chat_conversations: 3 registros
+
+💾 TAMANHO DO BANCO:
+----------------------------------------
+ tamanho_total 
+---------------
+ 45 MB
+(1 row)
+
+
+📋 TABELAS CRIADAS:
+----------------------------------------
+          tablename          
+-----------------------------
+ ab_test_assignments
+ ab_test_events
+ ab_test_variants
+ ab_tests
+ abandoned_carts
+ addresses
+ audit_logs
+ banners
+ brands
+ campaign_analytics
+ campaign_recipients
+ cart_items
+ carts
+ categories
+ chat_conversations
+ chat_message_reads
+ chat_messages
+ chat_presence
+ chat_settings
+ consent_records
+ coupon_categories
+ coupon_conditions
+ coupon_products
+ coupon_usage
+ coupons
+ data_processing_activities
+ email_queue
+ facet_cache
+ faq
+ faqs
+ gdpr_requests
+ kb_articles
+ maintenance_log
+ marketing_campaigns
+ notification_settings
+ notification_templates
+ notifications
+ order_items
+ order_status_history
+ order_tracking
+ orders
+ pages
+ password_resets
+ payment_methods
+ payment_queue
+ payment_transactions
+ payments
+ pending_refreshes
+ popular_searches
+ product_analytics
+ product_categories
+ product_coupons
+ product_images
+ product_option_values
+ product_options
+ product_price_history
+ product_rankings
+ product_variants
+ products
+ query_cache
+ return_items
+ return_reasons
+ returns
+ reviews
+ search_history
+ search_index
+ search_suggestions
+ seller_shipping_configs
+ sellers
+ sessions
+ shipping_base_rates
+ shipping_calculated_options
+ shipping_carriers
+ shipping_modalities
+ shipping_modality_configs
+ shipping_quotes
+ shipping_rates
+ shipping_zones
+ stock_movements
+ stock_reservation_items
+ stock_reservations
+ store_credits
+ support_categories
+ support_messages
+ support_tickets
+ system_settings
+ tracking_consents
+ user_sessions_multi_role
+ users
+ users_backup_roles
+ variant_option_values
+ webhook_events
+ wishlists
+(93 rows)
+
