@@ -419,6 +419,23 @@ select:focus { outline: none; border-color: var(--cyan500); box-shadow: 0 0 0 3p
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;
 }
 
+/* === ÍCONES E NAVEGAÇÃO - SUPER ESPECÍFICO === */
+/* Estilos específicos para ícones dos menus */
+.nav-link span.mr-3 {
+  margin-right: 0.75rem !important;
+  font-size: 1.125rem !important;
+  display: inline-block !important;
+}
+
+/* Garantir que ícones tenham tamanho correto */
+.menu-icon {
+  margin-right: 0.75rem !important;
+  font-size: 1.125rem !important;
+  display: inline-block !important;
+  width: auto !important;
+  height: auto !important;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .container { padding-left: 1rem; padding-right: 1rem; }

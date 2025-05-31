@@ -12,7 +12,7 @@
 		role: 'seller'
 	};
 	
-	// Menu específico do Seller
+	// Menu específico do Seller - CENTRALIZADO
 	const menuItems = [
 		{ path: '/', icon: '📊', label: 'Dashboard' },
 		{ path: '/produtos', icon: '📦', label: 'Meus Produtos' },
@@ -35,9 +35,9 @@
 	}
 </script>
 
-<!-- Layout Centralizado -->
+<!-- Layout usando CSS Global Centralizado -->
 <div class="min-h-screen bg-gray-50">
-	<!-- Header -->
+	<!-- Header usando estilos globais -->
 	<header class="bg-white shadow-sm border-b border-gray-200">
 		<div class="max-w-[1440px] mx-auto px-8">
 			<div class="flex items-center justify-between h-16">
@@ -59,7 +59,6 @@
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
 						</svg>
-						<!-- Badge de notificação -->
 						<span class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
 					</button>
 					
@@ -81,22 +80,19 @@
 	</header>
 	
 	<div class="flex">
-		<!-- Sidebar -->
+		<!-- Sidebar usando navegação centralizada -->
 		<aside class="w-64 bg-white shadow-sm min-h-screen border-r border-gray-200">
 			<nav class="p-4">
 				<div class="space-y-1">
 					{#each menuItems as item}
 						{#if item.separator}
-							<!-- Separador -->
 							<div class="border-t border-gray-200 my-4"></div>
 						{:else}
-							<!-- Item de Menu -->
 							<a 
 								href={item.path}
-								class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-									{isActiveRoute(item.path || '') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+								class="nav-link {isActiveRoute(item.path || '') ? 'active' : ''}"
 							>
-								<span class="mr-3 text-lg">{item.icon}</span>
+								<span class="menu-icon">{item.icon}</span>
 								{item.label}
 							</a>
 						{/if}
@@ -105,13 +101,13 @@
 				
 				<!-- Footer da Sidebar -->
 				<div class="mt-8 pt-4 border-t border-gray-200">
-					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-						<span class="mr-3 text-lg">🔄</span>
+					<button class="nav-link w-full">
+						<span class="menu-icon">🔄</span>
 						Trocar Role
 					</button>
 					
 					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1">
-						<span class="mr-3 text-lg">🚪</span>
+						<span class="menu-icon">🚪</span>
 						Sair
 					</button>
 				</div>

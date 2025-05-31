@@ -27,7 +27,7 @@
 			<nav class="p-4">
 				<div class="space-y-1">
 					<a href="/teste-visual" class="nav-link active">
-						<span class="mr-3 text-lg">🎨</span>
+						<span class="menu-icon">🎨</span>
 						Teste Visual
 					</a>
 				</div>
@@ -39,7 +39,10 @@
 			<div class="max-w-[1440px] mx-auto space-y-6">
 				<div class="flex items-center justify-between">
 					<div>
-						<h1 class="text-3xl font-bold text-gray-900">🎨 Teste Visual de Estilos</h1>
+						<h1 class="text-3xl font-bold text-gray-900 mb-8">
+							<span class="menu-icon">��</span>
+							Teste Visual - Seller Panel
+						</h1>
 						<p class="text-gray-600">Verificando se os estilos estão unificados e idênticos ao Admin Panel</p>
 					</div>
 					<div class="flex space-x-3">

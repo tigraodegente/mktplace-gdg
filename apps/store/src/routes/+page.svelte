@@ -184,6 +184,43 @@
   </div>
 </section>
 
+{#if data.dataSource}
+	<!-- Developer Info - mostrar apenas em desenvolvimento -->
+	{#if typeof window !== 'undefined' && window.location.hostname === 'localhost'}
+		<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-sm">
+			<div class="flex items-center gap-2 mb-2">
+				<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+				<span class="font-medium text-blue-900">Status da Integração</span>
+			</div>
+			<div class="grid grid-cols-2 gap-3">
+				<div class="flex items-center gap-2">
+					<span class="text-blue-700">Produtos:</span>
+					{#if data.dataSource.products === 'database'}
+						<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">✅ Banco de Dados</span>
+					{:else}
+						<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">⚠️ Mock</span>
+					{/if}
+				</div>
+				<div class="flex items-center gap-2">
+					<span class="text-blue-700">Categorias:</span>
+					{#if data.dataSource.categories === 'database'}
+						<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">✅ Banco de Dados</span>
+					{:else}
+						<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">⚠️ Mock</span>
+					{/if}
+				</div>
+			</div>
+			{#if data.stats}
+				<div class="mt-2 text-xs text-blue-600">
+					Estatísticas: {data.stats.totalProducts} produtos • {data.stats.totalCategories} categorias • {data.stats.totalSellers} vendedores
+				</div>
+			{/if}
+		</div>
+	{/if}
+{/if}
+
 <style>
   /* Garantindo que toda a página tenha fundo branco */
   :global(body) {
