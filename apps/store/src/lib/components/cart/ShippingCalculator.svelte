@@ -2,7 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { ShippingCartService, type SellerShippingQuote } from '$lib/services/shippingCartService';
 	import type { CartItem } from '$lib/types/cart';
-	import { formatCurrency } from '@mktplace/utils';
+	import { formatCurrency } from '$lib/utils';
 	import { fade, scale, slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { CART_CONSTANTS } from './constants';

@@ -60,8 +60,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https: *.imgur.com *.cloudinary.com *.unsplash.com",
-    "connect-src 'self' https://www.google-analytics.com https://api.marketplace-gdg.com https://vitals.vercel-analytics.com",
+    "img-src 'self' data: blob: https: *.imgur.com *.cloudinary.com *.unsplash.com *.amazonaws.com gdg-images.s3.sa-east-1.amazonaws.com",
+    "connect-src 'self' https://www.google-analytics.com https://api.marketplace-gdg.com https://vitals.vercel-analytics.com *.amazonaws.com",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -93,16 +93,14 @@ export const handle: Handle = async ({ event, resolve }) => {
     'usb=()',
     'magnetometer=()',
     'gyroscope=()',
-    'speaker=(self)',
-    'vibrate=(self)',
     'fullscreen=(self)',
     'sync-xhr=()'
   ].join(', ');
   
   response.headers.set('permissions-policy', permissionsPolicy);
   
-  // Cross-Origin Embedder Policy
-  response.headers.set('cross-origin-embedder-policy', 'require-corp');
+  // Cross-Origin Embedder Policy (relaxado para permitir S3)
+  response.headers.set('cross-origin-embedder-policy', 'unsafe-none');
   
   // Cross-Origin Opener Policy
   response.headers.set('cross-origin-opener-policy', 'same-origin');
@@ -117,11 +115,9 @@ export const handle: Handle = async ({ event, resolve }) => {
   response.headers.set('accept-ch', 'DPR, Viewport-Width, Width');
   response.headers.set('critical-ch', 'DPR');
   
-  // Preload hints para recursos críticos
+  // Preconnect apenas para recursos críticos
   if (contentType.includes('text/html')) {
     response.headers.set('link', [
-      '</api/categories/tree>; rel=preload; as=fetch; crossorigin',
-      '</api/products/featured>; rel=preload; as=fetch; crossorigin',
       '<https://fonts.googleapis.com>; rel=preconnect',
       '<https://fonts.gstatic.com>; rel=preconnect; crossorigin'
     ].join(', '));

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatCurrency } from '@mktplace/utils';
+	import { formatCurrency } from '$lib/utils';
 	import type { CartItem } from '$lib/types/cart';
 	import { scale, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';

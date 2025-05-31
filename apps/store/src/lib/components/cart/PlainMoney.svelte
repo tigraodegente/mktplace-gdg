@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatCurrency } from '@mktplace/utils';
+	import { formatCurrency } from '$lib/utils';
 	
 	interface Props {
 		value: number;

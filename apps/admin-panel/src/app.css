@@ -3,40 +3,66 @@
 @tailwind utilities;
 
 /* CSS Básico - Apenas o essencial */
-@layer components {
-  .nav-link {
-    @apply flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-cyan-600 rounded transition-colors duration-200;
-  }
-  
-  .nav-link.active {
-    @apply bg-cyan-500 text-white;
-  }
-  
-  .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg font-medium transition-all duration-200;
-  }
-  
-  .btn-primary {
-    @apply bg-cyan-500 text-white hover:bg-cyan-600;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
-  }
-  
-  .stat-card {
-    @apply bg-white rounded-xl p-6 shadow-sm border border-gray-200;
-  }
-  
-  .stat-value {
-    @apply text-3xl font-bold text-gray-900;
-  }
-  
-  .stat-label {
-    @apply text-sm font-medium text-gray-600;
-  }
-  
-  .action-card {
-    @apply p-4 border border-gray-200 rounded-lg hover:border-cyan-500 hover:bg-cyan-50 transition-all duration-200 group cursor-pointer;
-  }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: #00BFB3;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #00A89D;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb;
+}
+
+.stat-card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.stat-value {
+  font-size: 30px;
+  font-weight: bold;
+  color: #111827;
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.action-card {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.action-card:hover {
+  border-color: #00BFB3;
+  background-color: #ecfeff;
 } 

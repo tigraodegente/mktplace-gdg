@@ -1,6 +1,6 @@
 <!-- Deploy seletivo configurado e funcionando! -->
 <script lang="ts">
-  import { formatCurrency } from '@mktplace/utils';
+  import { formatCurrency } from '$lib/utils';
   import ProductCard from '$lib/components/product/ProductCard.svelte';
   import HomeBanner from '$lib/components/layout/HomeBanner.svelte';
   import OfferCountdown from '$lib/components/layout/OfferCountdown.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
-  import { formatCurrency } from '@mktplace/utils';
+  import { formatCurrency } from '$lib/utils';
   import { cartStore } from '$lib/stores/cartStore';
   import { goto } from '$app/navigation';
   import type { Product } from '@mktplace/shared-types';

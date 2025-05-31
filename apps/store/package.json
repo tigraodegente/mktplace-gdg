@@ -58,7 +58,6 @@
   },
   "dependencies": {
     "@mktplace/shared-types": "workspace:*",
-    "@mktplace/utils": "workspace:*",
     "nanoid": "^5.1.5",
     "postgres": "^3.4.5"
   }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatCurrency } from '@mktplace/utils';
+	import { formatCurrency } from '$lib/utils';
 	import { cartStore } from '$lib/stores/cartStore';
 	import { wishlistStore } from '$lib/stores/wishlistStore';
 	import { toastStore } from '$lib/stores/toastStore';

@@ -17,16 +17,16 @@
 	<meta name="description" content="Painel Administrativo do Marketplace" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 flex flex-col">
+<div style="min-height: 100vh; background-color: #f9fafb; display: flex; flex-direction: column;">
 	<!-- Header Simples -->
-	<header class="bg-white border-b border-gray-200 h-16 flex items-center px-6">
-		<h1 class="text-xl font-bold text-cyan-500">Admin Panel</h1>
+	<header style="background-color: white; border-bottom: 1px solid #e5e7eb; height: 64px; display: flex; align-items: center; padding: 0 24px;">
+		<h1 style="font-size: 20px; font-weight: bold; color: #00BFB3;">Admin Panel</h1>
 	</header>
 	
-	<div class="flex flex-1">
+	<div style="display: flex; flex: 1;">
 		<!-- Sidebar -->
-		<aside class="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto">
-			<nav class="flex-1 px-4 py-6 space-y-2">
+		<aside style="width: 256px; background-color: white; border-right: 1px solid #e5e7eb; height: 100%; overflow-y: auto;">
+			<nav style="flex: 1; padding: 24px 16px; display: flex; flex-direction: column; gap: 8px;">
 				<a href="/" class="nav-link {currentPath === '/' ? 'active' : ''}">
 					Dashboard
 				</a>
@@ -49,10 +49,32 @@
 		</aside>
 		
 		<!-- Main Content -->
-		<main class="flex-1 overflow-auto">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		<main style="flex: 1; overflow: auto;">
+			<div style="max-width: 1280px; margin: 0 auto; padding: 32px 16px;">
 				<slot />
 			</div>
 		</main>
 	</div>
 </div>
+
+<style>
+	.nav-link {
+		display: flex;
+		align-items: center;
+		padding: 8px 16px;
+		color: #374151;
+		text-decoration: none;
+		border-radius: 4px;
+		transition: all 0.2s;
+	}
+	
+	.nav-link:hover {
+		background-color: #f3f4f6;
+		color: #00BFB3;
+	}
+	
+	.nav-link.active {
+		background-color: #00BFB3;
+		color: white;
+	}
+</style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatCurrency } from '@mktplace/utils';
+  import { formatCurrency } from '$lib/utils';
   import type { SellerGroup } from '$lib/types/cart';
   import BenefitBadge from './BenefitBadge.svelte';
   import { fade } from 'svelte/transition';

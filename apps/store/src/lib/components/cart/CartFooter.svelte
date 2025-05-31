@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatCurrency } from '@mktplace/utils';
+	import { formatCurrency } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import StaticMoney from './StaticMoney.svelte';
 	
