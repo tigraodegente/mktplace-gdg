@@ -4,6 +4,10 @@ import { env } from '$env/dynamic/private'
 
 // Singleton para desenvolvimento com pool de conexões
 let devDatabase: Database | null = null;
+
+// NOVO: Singleton para Hyperdrive em produção
+let hyperdriveDatabase: Database | null = null;
+
 let connectionCheckInterval: NodeJS.Timeout | null = null;
 
 // Função para verificar e reconectar se necessário
@@ -15,6 +19,7 @@ async function ensureConnection(db: Database): Promise<void> {
     console.log('🔄 Reconectando ao banco de dados...')
     // Se falhar, recria a conexão
     devDatabase = null;
+    hyperdriveDatabase = null;
     const newDb = getDatabase();
     // Testa novamente
     await newDb.query`SELECT 1`
@@ -22,13 +27,23 @@ async function ensureConnection(db: Database): Promise<void> {
 }
 
 export function getDatabase(platform?: App.Platform) {
-  // EM PRODUÇÃO: Sempre usar Hyperdrive se disponível
+  // EM PRODUÇÃO: Sempre usar Hyperdrive se disponível (SINGLETON)
   if (!dev && (platform as any)?.env?.HYPERDRIVE_DB) {
-    console.log('🚀 Usando Hyperdrive em produção')
-    return new Database({
-      provider: 'hyperdrive',
-      connectionString: (platform as any)?.env?.HYPERDRIVE_DB?.connectionString
-    })
+    if (!hyperdriveDatabase) {
+      console.log('🚀 Criando conexão Hyperdrive (singleton)')
+      hyperdriveDatabase = new Database({
+        provider: 'hyperdrive',
+        connectionString: (platform as any)?.env?.HYPERDRIVE_DB?.connectionString,
+        options: {
+          postgres: {
+            max: 1, // Hyperdrive já gerencia o pool
+            idleTimeout: 0,
+            connectTimeout: 30
+          }
+        }
+      })
+    }
+    return hyperdriveDatabase;
   }
   
   // EM DESENVOLVIMENTO OU FALLBACK: Usar Neon direto
@@ -101,6 +116,8 @@ export async function withDatabase<T>(
         console.log(`⚠️ Erro de conexão, tentando reconectar... (${retries} tentativas restantes)`)
         if (dev) {
           devDatabase = null;
+        } else {
+          hyperdriveDatabase = null; // Reset singleton em produção também
         }
         retries--;
         
@@ -125,6 +142,9 @@ if (typeof process !== 'undefined') {
     }
     if (devDatabase) {
       devDatabase.close().catch(() => {});
+    }
+    if (hyperdriveDatabase) {
+      hyperdriveDatabase.close().catch(() => {});
     }
   });
 } 
