@@ -120,7 +120,7 @@
 								{#if category.subcategories.length > 0}
 									<button
 										onclick={() => toggleCategory(category.id)}
-										class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+										class="p-2 hover:bg-gray-50 rounded-lg transition-colors"
 										aria-label="Expandir subcategorias"
 									>
 										<svg 

@@ -283,7 +283,7 @@
     <div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white p-4 flex items-center justify-between shadow-lg sticky top-0 z-10">
       <div class="flex items-center gap-4">
         <button
-          on:click={() => goto('/chat')}
+          onclick={() => goto('/chat')}
           class="p-2 hover:bg-white/20 rounded-lg transition-colors"
           aria-label="Voltar para conversas"
         >
@@ -353,7 +353,7 @@
             <h3 class="text-lg font-medium text-red-600 mb-2">Ops! Algo deu errado</h3>
             <p class="text-red-600 mb-4">{error}</p>
             <button
-              on:click={loadMessages}
+              onclick={loadMessages}
               class="px-6 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium"
             >
               Tentar novamente
@@ -375,7 +375,7 @@
             <div class="space-y-2">
               {#each quickReplies.slice(0, 3) as reply}
                 <button
-                  on:click={() => sendQuickReply(reply)}
+                  onclick={() => sendQuickReply(reply)}
                   class="w-full p-3 text-sm bg-[#00BFB3]/5 hover:bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-lg transition-colors text-left"
                 >
                   {reply}
@@ -426,7 +426,7 @@
                     <p class="text-sm leading-relaxed break-words">{message.content}</p>
                     
                     {#if message.metadata?.order_id}
-                      <div class="mt-3 p-2 rounded-lg {message.is_own_message ? 'bg-black/20' : 'bg-gray-100'} text-xs">
+                      <div class="mt-3 p-2 rounded-lg {message.is_own_message ? 'bg-black/20' : 'bg-gray-50'} text-xs">
                         <div class="flex items-center gap-2">
                           <span>📦</span>
                           <span>Pedido: <strong>{message.metadata.order_id}</strong></span>
@@ -488,8 +488,8 @@
         <div class="flex gap-2 overflow-x-auto pb-2">
           {#each quickReplies as reply}
             <button
-              on:click={() => sendQuickReply(reply)}
-              class="flex-shrink-0 px-3 py-2 text-xs bg-gray-100 hover:bg-[#00BFB3] hover:text-white rounded-full transition-colors border border-gray-200"
+              onclick={() => sendQuickReply(reply)}
+              class="flex-shrink-0 px-3 py-2 text-xs bg-gray-50 hover:bg-[#00BFB3] hover:text-white rounded-full transition-colors border border-gray-200"
             >
               {reply}
             </button>
@@ -511,7 +511,7 @@
         <div class="flex-1 relative">
           <textarea
             bind:value={newMessage}
-            on:keydown={handleKeyDown}
+            onkeydown={handleKeyDown}
             placeholder="Digite sua mensagem..."
             rows="1"
             class="w-full px-4 py-3 border border-gray-300 rounded-2xl resize-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all max-h-32"
@@ -527,7 +527,7 @@
         </div>
         
         <button
-          on:click={sendMessage}
+          onclick={sendMessage}
           disabled={!newMessage.trim() || sending}
           class="w-12 h-12 bg-[#00BFB3] text-white rounded-full hover:bg-[#00A89D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 shadow-lg hover:shadow-xl"
         >

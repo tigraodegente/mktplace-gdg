@@ -86,7 +86,7 @@
 	};
 </script>
 
-<svelte:window on:keydown={handleKeyDown} on:click={handleClickOutside} />
+<svelte:window onkeydown={handleKeyDown} onclick={handleClickOutside} />
 
 <div class="w-full h-full px-8">
 	<div class="h-full flex items-center">

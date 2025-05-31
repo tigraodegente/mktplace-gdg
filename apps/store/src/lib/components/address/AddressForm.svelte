@@ -368,7 +368,7 @@
 			id="isDefault"
 			type="checkbox"
 			bind:checked={formData.isDefault}
-			class="w-4 h-4 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
+			class="w-4 h-4 text-[#00BFB3] bg-gray-50 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
 		/>
 		<label for="isDefault" class="ml-2 text-sm text-gray-700">
 			Marcar como endereço padrão

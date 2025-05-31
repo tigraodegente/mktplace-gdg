@@ -197,7 +197,7 @@
 								class="w-full flex items-center justify-between px-3 py-2 text-left rounded-lg transition-colors
 									{currentFilter === filter.key 
 										? 'bg-[#00BFB3] text-white' 
-										: 'text-gray-700 hover:bg-gray-100'}"
+										: 'text-gray-700 hover:bg-gray-50'}"
 							>
 								<span>{filter.label}</span>
 								{#if filter.count > 0}
@@ -246,7 +246,7 @@
 						<div class="flex gap-2">
 							<button
 								onclick={selectAll}
-								class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+								class="px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
 								disabled={notifications.length === 0}
 							>
 								Selecionar todas

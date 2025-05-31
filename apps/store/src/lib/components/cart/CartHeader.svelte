@@ -23,14 +23,14 @@
 	<div class="flex items-center gap-2 sm:gap-4">
 		<h2 class="text-lg sm:text-xl font-bold text-gray-900">Meu Carrinho</h2>
 		<div class="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
-			<span class="flex items-center gap-1 sm:gap-1.5 bg-gray-100 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
+			<span class="flex items-center gap-1 sm:gap-1.5 bg-gray-50 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
 				<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
 				</svg>
 				<span class="font-medium">{itemCount}</span>
 			</span>
 			{#if sellerCount > 0}
-				<span class="hidden sm:flex items-center gap-1.5 bg-gray-100 px-3 py-1 rounded-full">
+				<span class="hidden sm:flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
 					<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
 					</svg>
@@ -57,7 +57,7 @@
 		{#if onShare && itemCount > 0}
 			<button 
 				onclick={onShare}
-				class="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
+				class="p-2 hover:bg-gray-50 rounded-lg transition-colors group"
 				aria-label="Compartilhar carrinho"
 			>
 				<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@
 		
 		<button 
 			onclick={onClose}
-			class="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
+			class="p-2 hover:bg-gray-50 rounded-lg transition-colors group"
 			aria-label="Fechar carrinho"
 		>
 			<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">

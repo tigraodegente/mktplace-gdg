@@ -72,11 +72,11 @@
         <div class="bg-white border border-green-300 rounded-lg p-4">
           <p class="text-sm text-gray-700 mb-2">Código PIX (Copiar e Colar):</p>
           <div class="flex items-center space-x-2">
-            <code class="flex-1 text-xs bg-gray-100 p-2 rounded border font-mono break-all">
+            <code class="flex-1 text-xs bg-gray-50 p-2 rounded border font-mono break-all">
               {paymentData.copyPaste || paymentData.qrCode || 'Código PIX será gerado em instantes...'}
             </code>
             <button
-              on:click={() => copyToClipboard(paymentData.copyPaste || paymentData.qrCode)}
+              onclick={() => copyToClipboard(paymentData.copyPaste || paymentData.qrCode)}
               class="px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700"
             >
               Copiar
@@ -135,20 +135,20 @@
         <!-- Código de Barras simulado -->
         <div class="bg-white border border-yellow-300 rounded-lg p-4 mb-4">
           <p class="text-sm text-gray-700 mb-2">Código de Barras:</p>
-          <code class="text-xs font-mono bg-gray-100 p-2 rounded block">
+          <code class="text-xs font-mono bg-gray-50 p-2 rounded block">
             {paymentData.barcodeNumber || '03399876543210987654321098765432109876543210'}
           </code>
         </div>
         
         <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 justify-center">
           <button
-            on:click={downloadBoleto}
+            onclick={downloadBoleto}
             class="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
           >
             📄 Baixar Boleto PDF
           </button>
           <button
-            on:click={() => copyToClipboard(paymentData.digitableLine || paymentData.barcodeNumber)}
+            onclick={() => copyToClipboard(paymentData.digitableLine || paymentData.barcodeNumber)}
             class="px-6 py-2 border border-yellow-600 text-yellow-700 rounded-lg hover:bg-yellow-50"
           >
             📋 Copiar Código
@@ -220,7 +220,7 @@
     <!-- Botões de Ação -->
     <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center">
       <button
-        on:click={() => window.print()}
+        onclick={() => window.print()}
         class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
       >
         🖨️ Imprimir Confirmação
@@ -234,7 +234,7 @@
       </a>
       
       <button
-        on:click={onNewOrder}
+        onclick={onNewOrder}
         class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
       >
         🛒 Fazer Novo Pedido
@@ -242,7 +242,7 @@
     </div>
     
     <!-- Suporte -->
-    <div class="mt-8 p-4 bg-gray-100 rounded-lg">
+    <div class="mt-8 p-4 bg-gray-50 rounded-lg">
       <p class="text-sm text-gray-600">
         <strong>Precisa de ajuda?</strong><br>
         Entre em contato conosco pelo WhatsApp: (11) 99999-9999<br>

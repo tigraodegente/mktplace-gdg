@@ -80,7 +80,7 @@
     {#if !showCouponInput}
       <button
         class="text-blue-600 hover:text-blue-800 text-sm font-medium"
-        on:click={() => showCouponInput = true}
+        onclick={() => showCouponInput = true}
       >
         + Adicionar cupom de desconto
       </button>
@@ -100,7 +100,7 @@
           {/if}
         </div>
         <button
-          on:click={applyCoupon}
+          onclick={applyCoupon}
           disabled={loading || !couponCode.trim()}
           class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -111,7 +111,7 @@
           {/if}
         </button>
         <button
-          on:click={() => { showCouponInput = false; couponCode = ''; couponError = ''; }}
+          onclick={() => { showCouponInput = false; couponCode = ''; couponError = ''; }}
           class="px-3 py-2 text-gray-400 hover:text-gray-600"
           disabled={loading}
         >
@@ -174,7 +174,7 @@
     </a>
     
     <button
-      on:click={handleContinue}
+      onclick={handleContinue}
       disabled={loading || items.length === 0 || (validation && !validation.isValid)}
       class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
     >

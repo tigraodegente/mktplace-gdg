@@ -104,12 +104,12 @@
 				<!-- Footer da Sidebar -->
 				<div class="mt-8 pt-4 border-t border-gray-200">
 					<button class="nav-link w-full">
-						<span class="menu-icon">🔄</span>
+						<Icon name="switch" size="md" />
 						Trocar Role
 					</button>
 					
 					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1">
-						<span class="menu-icon">🚪</span>
+						<Icon name="logout" size="md" fallbackColor="text-red-600" />
 						Sair
 					</button>
 				</div>

@@ -342,7 +342,7 @@
 				<div class="ml-3">
 					<p class="text-sm text-red-800">{error}</p>
 				</div>
-				<button class="ml-auto text-red-400 hover:text-red-600" on:click={() => error = null}>
+				<button class="ml-auto text-red-400 hover:text-red-600" onclick={() => error = null}>
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 						<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
 					</svg>
@@ -364,7 +364,7 @@
 			</div>
 			
 			<button
-				on:click={() => showForm = true}
+				onclick={() => showForm = true}
 				class="flex items-center gap-2 px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -393,7 +393,7 @@
 					transition:fade
 				>
 					<div class="flex items-start justify-between">
-						<div class="flex-1" class:cursor-pointer={mode === 'select'} on:click={() => mode === 'select' && selectAddress(address)}>
+						<div class="flex-1" class:cursor-pointer={mode === 'select'} onclick={() => mode === 'select' && selectAddress(address)}>
 							<!-- Label e Badge Padrão -->
 							<div class="flex items-center gap-2 mb-2">
 								<span class="text-lg">{getAddressLabel(address)}</span>
@@ -421,7 +421,7 @@
 							<div class="flex items-center gap-2 ml-4">
 								{#if !address.isDefault}
 									<button
-										on:click={() => setDefaultAddress(address.id!)}
+										onclick={() => setDefaultAddress(address.id!)}
 										class="p-2 text-gray-400 hover:text-[#00BFB3] rounded-lg hover:bg-gray-50"
 										title="Definir como padrão"
 									>
@@ -432,7 +432,7 @@
 								{/if}
 								
 								<button
-									on:click={() => editAddress(address)}
+									onclick={() => editAddress(address)}
 									class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-50"
 									title="Editar"
 								>
@@ -442,7 +442,7 @@
 								</button>
 								
 								<button
-									on:click={() => deleteAddress(address.id!)}
+									onclick={() => deleteAddress(address.id!)}
 									class="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-50"
 									title="Excluir"
 								>
@@ -475,7 +475,7 @@
 					<p class="text-gray-600 mb-4">Adicione seu primeiro endereço de {addressType === 'shipping' ? 'entrega' : 'cobrança'}</p>
 					{#if mode === 'manage'}
 						<button
-							on:click={() => showForm = true}
+							onclick={() => showForm = true}
 							class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
 						>
 							Adicionar Endereço
@@ -513,7 +513,7 @@
 {#if showForm}
 	<div class="fixed inset-0 z-50 overflow-y-auto" transition:fade>
 		<div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-			<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" on:click={resetForm}></div>
+			<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick={resetForm}></div>
 			
 			<span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 			
@@ -721,7 +721,7 @@
 					<div class="flex justify-end space-x-3 pt-4">
 						<button
 							type="button"
-							on:click={resetForm}
+							onclick={resetForm}
 							class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
 						>
 							Cancelar

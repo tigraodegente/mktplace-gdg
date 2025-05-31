@@ -1,5 +1,12 @@
 /* ===== ESTILOS UNIFICADOS DO MARKETPLACE GDG ===== */
 /* Este arquivo replica EXATAMENTE os estilos da Store para Admin e Seller Panels */
+/* 🔍 DEBUG: Se você vê este comentário no DevTools, o CSS está carregando! */
+
+/* === DEBUG MARKER === */
+.css-debug-marker {
+  /* Esta classe existe apenas para confirmar que o CSS global foi carregado */
+  content: "CSS Global Carregado com Sucesso";
+}
 
 /* Reset e Base */
 body {

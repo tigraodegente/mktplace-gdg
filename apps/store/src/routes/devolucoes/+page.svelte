@@ -91,8 +91,8 @@
 			case 'received': return 'bg-purple-100 text-purple-800';
 			case 'processed': return 'bg-indigo-100 text-indigo-800';
 			case 'refunded': return 'bg-green-100 text-green-800';
-			case 'completed': return 'bg-gray-100 text-gray-800';
-			default: return 'bg-gray-100 text-gray-800';
+			case 'completed': return 'bg-gray-50 text-gray-800';
+			default: return 'bg-gray-50 text-gray-800';
 		}
 	}
 	
@@ -218,7 +218,7 @@
 							<div class="flex items-start justify-between">
 								<div class="flex-1">
 									<div class="flex items-center gap-3 mb-3">
-										<span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+										<span class="font-mono text-sm bg-gray-50 px-2 py-1 rounded">
 											{returnItem.return_number}
 										</span>
 										<span class="px-2 py-1 text-xs font-medium rounded-full {getStatusColor(returnItem.status)}">

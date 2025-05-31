@@ -175,7 +175,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 // ===== FUNÇÕES AUXILIARES =====
 
 async function validateAndReserveStock(db: any, items: OrderCreateRequest['items']) {
-  console.log('🔍 Validando estoque...');
   
   for (const item of items) {
     // Buscar produto para validação de estoque

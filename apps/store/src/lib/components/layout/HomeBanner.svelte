@@ -185,7 +185,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeyDown} />
+<svelte:window onkeydown={handleKeyDown} />
 
 <section 
 	class="relative w-full overflow-hidden {className}"

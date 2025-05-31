@@ -19,8 +19,6 @@ const CACHE_MAX_AGE = 300; // 5 minutes
 const STALE_WHILE_REVALIDATE = 60; // 1 minute
 
 export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
-  console.log('[Categories API] 🔍 Request received');
-  console.log('[Categories API] 🔍 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
   
   let debugInfo: any = {
     databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...',
@@ -47,7 +45,6 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       // Debug: First check total categories
       const totalCount = await db.query`SELECT COUNT(*) as total FROM categories`;
       debugInfo.totalCategoriesInTable = totalCount[0]?.total;
-      console.log('[Categories API] 📊 Total categories in table:', totalCount[0]?.total);
       
       // Debug: Check all categories without filter
       const allCats = await db.query`SELECT id, name, slug, is_active FROM categories ORDER BY name`;

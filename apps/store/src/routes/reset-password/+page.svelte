@@ -200,7 +200,7 @@
 							required
 							bind:value={newPassword}
 							disabled={isLoading}
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent disabled:bg-gray-100"
+							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent disabled:bg-gray-50"
 							placeholder="Mínimo 6 caracteres"
 						/>
 						
@@ -236,7 +236,7 @@
 							required
 							bind:value={confirmPassword}
 							disabled={isLoading}
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent disabled:bg-gray-100"
+							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent disabled:bg-gray-50"
 							placeholder="Digite a senha novamente"
 						/>
 						

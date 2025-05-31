@@ -39,7 +39,7 @@
                      : 'bg-gray-300 text-gray-600'
                  }
                  {isStepClickable(step) ? 'cursor-pointer hover:scale-105' : 'cursor-not-allowed'}"
-          on:click={() => isStepClickable(step) && onStepClick(step)}
+          onclick={() => isStepClickable(step) && onStepClick(step)}
           disabled={!isStepClickable(step)}
         >
           {#if isStepCompleted(step)}

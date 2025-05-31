@@ -279,6 +279,6 @@
 
 <style>
   code {
-    @apply bg-gray-100 px-1 py-0.5 rounded text-sm;
+    @apply bg-gray-50 px-1 py-0.5 rounded text-sm;
   }
 </style> 

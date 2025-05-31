@@ -235,7 +235,6 @@ class SearchService {
       
       console.log('📦 Resposta da API:', result);
       console.log('✅ Success:', result.success);
-      console.log('📊 Total de produtos:', result.data?.products?.length);
       
       if (!result.success) {
         throw new Error(result.error?.message || 'Erro desconhecido');

@@ -142,7 +142,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
     // Fallback para mock se não conseguiu dados reais
     if (conversations.length === 0) {
-      console.log('📊 Usando dados mock para conversas');
       
       let filteredConversations = [...mockConversations];
       

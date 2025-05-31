@@ -64,7 +64,7 @@
 		
 		<div class="flex flex-wrap gap-2">
 			{#each filters as filter}
-				<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm">
+				<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full text-sm">
 					<svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={getFilterIcon(filter.type)} />
 					</svg>

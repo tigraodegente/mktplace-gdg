@@ -231,7 +231,7 @@
     <div class="bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 h-96 flex flex-col overflow-hidden transform transition-all duration-300 ease-out scale-100">
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] p-4 text-white relative cursor-move" 
-           on:mousedown={startDrag}>
+           onmousedown={startDrag}>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
@@ -248,13 +248,13 @@
             </div>
           </div>
           <div class="flex items-center gap-1">
-            <button on:click={() => isMinimized = true} 
+            <button onclick={() => isMinimized = true} 
                     class="p-1 hover:bg-white/20 rounded-lg transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html getIconSVG('minimize')}
               </svg>
             </button>
-            <button on:click={closeWidget} 
+            <button onclick={closeWidget} 
                     class="p-1 hover:bg-white/20 rounded-lg transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html getIconSVG('close')}
@@ -319,7 +319,7 @@
           <div class="text-xs text-gray-600 mb-2">Respostas rápidas:</div>
           <div class="grid grid-cols-2 gap-2">
             {#each quickActions as action}
-              <button on:click={() => handleQuickAction(action)}
+              <button onclick={() => handleQuickAction(action)}
                       class="p-2 text-xs bg-gray-50 hover:bg-[#00BFB3] hover:text-white rounded-lg transition-colors text-left">
                 <div class="flex items-center gap-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,10 +338,10 @@
         <div class="flex gap-2">
           <input type="text" 
                  bind:value={newMessage}
-                 on:keydown={handleKeyDown}
+                 onkeydown={handleKeyDown}
                  placeholder="Digite sua mensagem..."
                  class="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent">
-          <button on:click={sendMessage}
+          <button onclick={sendMessage}
                   disabled={!newMessage.trim()}
                   class="w-8 h-8 bg-[#00BFB3] text-white rounded-full flex items-center justify-center hover:bg-[#00A89D] transition-colors disabled:bg-gray-300">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,7 +350,7 @@
           </button>
         </div>
         <div class="mt-2 text-center">
-          <button on:click={openFullChat} 
+          <button onclick={openFullChat} 
                   class="text-xs text-[#00BFB3] hover:text-[#00A89D] font-medium">
             Abrir chat completo →
           </button>
@@ -361,7 +361,7 @@
   {:else if isMinimized}
     <!-- Minimized State -->
     <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 cursor-pointer hover:shadow-xl transition-all"
-         on:click={openWidget}>
+         onclick={openWidget}>
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-full flex items-center justify-center text-white">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,7 +384,7 @@
 
   {:else}
     <!-- Floating Button -->
-    <button on:click={openWidget}
+    <button onclick={openWidget}
             class="group relative w-14 h-14 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out flex items-center justify-center">
       <!-- Pulse animation -->
       <div class="absolute inset-0 bg-[#00BFB3] rounded-full animate-ping opacity-25"></div>

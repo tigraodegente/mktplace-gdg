@@ -105,7 +105,7 @@
 				{#each options as option}
 					<button
 						onclick={() => handleSelect(option)}
-						class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors {option.value === value ? 'bg-gray-50 text-[#00BFB3]' : ''}"
+						class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors {option.value === value ? 'bg-gray-50 text-[#00BFB3]' : ''}"
 						role="menuitem"
 					>
 						<svg class="w-4 h-4 {option.value === value ? 'text-[#00BFB3]' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">

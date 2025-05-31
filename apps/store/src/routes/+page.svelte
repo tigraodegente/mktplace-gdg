@@ -17,13 +17,6 @@
   let isLoading = $state(false);
   let error = $state<string | null>(null);
   
-  // Log para debug
-  console.log('📊 Dados carregados do servidor:', {
-    produtos: featuredProducts.length,
-    categorias: categories.length,
-    dataSource: data.dataSource
-  });
-  
   // Dados dos slides do banner
   const bannerSlides = [
     {
@@ -75,7 +68,6 @@
       
       if (result.success && result.data?.products) {
         featuredProducts = result.data.products;
-        console.log(`✅ ${featuredProducts.length} produtos recarregados`);
       } else {
         error = result.error?.message || 'Erro ao carregar produtos';
         console.error('❌ Erro na resposta da API:', result);

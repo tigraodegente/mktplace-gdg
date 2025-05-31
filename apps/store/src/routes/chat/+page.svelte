@@ -183,11 +183,11 @@
         <div class="flex flex-wrap gap-3">
           {#each chatTypes as type}
             <button
-              on:click={() => selectedType = type.value}
+              onclick={() => selectedType = type.value}
               class="px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-3 hover:shadow-md {
                 selectedType === type.value 
                   ? 'bg-[#00BFB3] text-white shadow-lg transform scale-105' 
-                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-50 border border-gray-200'
               }"
             >
               <div class="w-5 h-5 {selectedType === type.value ? 'text-white' : 'text-gray-500'}">
@@ -203,7 +203,7 @@
         <!-- Ações -->
         <div class="flex gap-3">
           <button
-            on:click={loadConversations}
+            onclick={loadConversations}
             class="p-3 text-gray-500 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10 rounded-xl transition-colors border border-gray-200"
             aria-label="Atualizar conversas"
           >
@@ -213,7 +213,7 @@
           </button>
           
           <button
-            on:click={createSupportChat}
+            onclick={createSupportChat}
             class="bg-[#00BFB3] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#00A89D] transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +238,7 @@
           />
           {#if searchQuery}
             <button
-              on:click={() => searchQuery = ''}
+              onclick={() => searchQuery = ''}
               class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +271,7 @@
           <h3 class="text-lg font-medium text-red-600 mb-2">Ops! Algo deu errado</h3>
           <p class="text-red-600 mb-6">{error}</p>
           <button
-            on:click={loadConversations}
+            onclick={loadConversations}
             class="px-6 py-3 bg-[#00BFB3] text-white rounded-xl hover:bg-[#00A89D] transition-colors font-medium"
           >
             Tentar novamente
@@ -295,7 +295,7 @@
           {#if !searchQuery}
             <div class="space-y-4">
               <button
-                on:click={createSupportChat}
+                onclick={createSupportChat}
                 class="bg-[#00BFB3] text-white px-8 py-4 rounded-xl font-medium hover:bg-[#00A89D] transition-all duration-200 flex items-center gap-3 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,7 +324,7 @@
           {#each filteredConversations as conversation}
             {@const avatar = getTypeAvatar(conversation.type)}
             <button
-              on:click={() => openConversation(conversation.id)}
+              onclick={() => openConversation(conversation.id)}
               class="w-full p-6 text-left hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:bg-gray-50 group"
             >
               <div class="flex items-start gap-4">

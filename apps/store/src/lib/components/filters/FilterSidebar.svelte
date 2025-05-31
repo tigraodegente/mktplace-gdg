@@ -310,7 +310,7 @@
 			{#if showCloseButton && onClose}
 				<button 
 					onclick={onClose}
-					class="p-1 hover:bg-gray-100 rounded-lg transition-fast"
+					class="p-1 hover:bg-gray-50 rounded-lg transition-fast"
 					aria-label="Ocultar filtros"
 					title="Ocultar filtros"
 				>
@@ -330,7 +330,7 @@
 					<div class="h-5 bg-gray-200 rounded skeleton-loading w-24"></div>
 					<div class="space-y-2">
 						{#each Array(4) as _}
-							<div class="h-4 bg-gray-100 rounded skeleton-loading"></div>
+							<div class="h-4 bg-gray-50 rounded skeleton-loading"></div>
 						{/each}
 					</div>
 				</div>

@@ -267,7 +267,7 @@
 					>
 						<!-- Product Image com hover effect -->
 						<div 
-							class="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer relative group"
+							class="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer relative group"
 							onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
 						>
 							<img 
@@ -289,12 +289,12 @@
 							</h4>
 							<div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
 								{#if item.selectedColor}
-									<span class="px-2 py-0.5 bg-gray-100 rounded-full">
+									<span class="px-2 py-0.5 bg-gray-50 rounded-full">
 										{item.selectedColor}
 									</span>
 								{/if}
 								{#if item.selectedSize}
-									<span class="px-2 py-0.5 bg-gray-100 rounded-full">
+									<span class="px-2 py-0.5 bg-gray-50 rounded-full">
 										{item.selectedSize}
 									</span>
 								{/if}
@@ -306,7 +306,7 @@
 									<div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
 										<button
 											onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity - 1, { color: item.selectedColor, size: item.selectedSize })}
-											class="p-1 hover:bg-gray-100 transition-colors disabled:opacity-50"
+											class="p-1 hover:bg-gray-50 transition-colors disabled:opacity-50"
 											disabled={item.quantity <= 1}
 										>
 											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,7 +318,7 @@
 										</span>
 										<button
 											onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity + 1, { color: item.selectedColor, size: item.selectedSize })}
-											class="p-1 hover:bg-gray-100 transition-colors"
+											class="p-1 hover:bg-gray-50 transition-colors"
 										>
 											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

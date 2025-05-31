@@ -64,7 +64,7 @@
     <h3 class="text-sm font-medium text-gray-900">{optionName}</h3>
     {#if hasSelection}
       <button
-        on:click={clearAll}
+        onclick={clearAll}
         class="text-xs text-blue-600 hover:text-blue-800"
       >
         Limpar

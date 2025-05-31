@@ -198,7 +198,6 @@ export const GET: RequestHandler = async ({ params, url, cookies }) => {
 
     // Fallback para mock se não conseguiu dados reais
     if (messages.length === 0) {
-      console.log('📊 Usando dados mock para mensagens');
       
       total = mockMessages.length;
       const offset = (page - 1) * limit;

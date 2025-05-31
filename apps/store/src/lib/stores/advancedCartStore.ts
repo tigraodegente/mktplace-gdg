@@ -432,7 +432,6 @@ function createAdvancedCartStore() {
       console.log('├─ Total final:', newTotals.cartTotal.toFixed(2));
       console.log('└─ Economia total:', (newTotals.cartSubtotal - newTotals.cartTotal).toFixed(2));
       
-      console.log('🔍 VERIFICAÇÃO DE INTEGRIDADE:');
       const calculoManual = newTotals.cartSubtotal - newTotals.totalDiscount;
       const diferencaCalculo = Math.abs(calculoManual - newTotals.cartTotal);
       console.log('├─ Cálculo manual:', calculoManual.toFixed(2));
@@ -490,7 +489,6 @@ function createAdvancedCartStore() {
     const currentCoupon = get(appliedCoupon);
     const currentGroups = get(sellerGroups);
     
-    console.log('📊 RELATÓRIO COMPLETO DE DEBUG');
     console.log('===============================');
     
     console.log('🛒 CARRINHO GERAL:');
@@ -540,7 +538,6 @@ function createAdvancedCartStore() {
     const subtotalDiff = Math.abs(manualSubtotal - currentTotals.cartSubtotal);
     const totalDiff = Math.abs(manualTotal - currentTotals.cartTotal);
     
-    console.log('\n🔍 VERIFICAÇÃO DE INTEGRIDADE:');
     console.log(`├─ Subtotal calculado: R$ ${manualSubtotal.toFixed(2)}`);
     console.log(`├─ Subtotal do store: R$ ${currentTotals.cartSubtotal.toFixed(2)}`);
     console.log(`├─ Diferença subtotal: R$ ${subtotalDiff.toFixed(2)} ${subtotalDiff < 0.01 ? '✅' : '❌'}`);
@@ -549,7 +546,6 @@ function createAdvancedCartStore() {
     console.log(`├─ Diferença total: R$ ${totalDiff.toFixed(2)} ${totalDiff < 0.01 ? '✅' : '❌'}`);
     console.log(`└─ Status geral: ${(subtotalDiff < 0.01 && totalDiff < 0.01) ? '✅ ÍNTEGRO' : '❌ ERRO DETECTADO'}`);
     
-    console.log('\n📊 RELATÓRIO COMPLETO - FIM');
     console.log('===============================');
     
     return {

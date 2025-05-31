@@ -2,6 +2,7 @@
 <script lang="ts">
 	// Página inicial do Admin Panel
 	import { onMount } from 'svelte';
+	import Icon from '../lib/Icon.svelte';
 	
 	let currentTime = new Date().toLocaleString('pt-BR');
 	let emojiSupport = false;
@@ -80,7 +81,7 @@
 		<div class="card-header">
 			<h2 class="text-lg font-medium text-gray-900">
 				<span class="menu-icon">🧪</span>
-				Diagnóstico do Sistema
+				Debug CSS e Ícones
 			</h2>
 		</div>
 		<div class="card-body">
@@ -90,59 +91,116 @@
 				<pre class="text-sm text-gray-600 whitespace-pre-wrap">{systemInfo}</pre>
 			</div>
 			
-			<!-- Teste Visual de Emojis -->
-			<div class="grid grid-cols-4 gap-4 text-center mb-6">
-				<div class="p-4 bg-gray-50 rounded-lg">
-					<span class="menu-icon text-3xl">📊</span>
-					<p class="text-sm mt-2">Dashboard</p>
-					<p class="text-xs text-gray-500">Emoji Original</p>
+			<!-- Debug CSS -->
+			<div class="mb-6 p-4 bg-blue-50 rounded-lg">
+				<h3 class="font-medium text-gray-900 mb-3">🔍 Debug CSS - O que está sendo aplicado:</h3>
+				
+				<!-- Teste direto de emoji -->
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-2">1. Emoji direto (sem classes):</h4>
+					<span style="font-size: 1.125rem; margin-right: 0.75rem;">📊</span>
+					<span>← Isso deveria ser um gráfico emoji</span>
 				</div>
-				<div class="p-4 bg-gray-50 rounded-lg">
-					<span class="menu-icon text-3xl">📦</span>
-					<p class="text-sm mt-2">Produtos</p>
-					<p class="text-xs text-gray-500">Emoji Original</p>
+				
+				<!-- Teste com classe menu-icon -->
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-2">2. Emoji com classe .menu-icon:</h4>
+					<span class="menu-icon">📊</span>
+					<span>← Com classe CSS aplicada</span>
 				</div>
-				<div class="p-4 bg-gray-50 rounded-lg">
-					<span class="menu-icon text-3xl">🛒</span>
-					<p class="text-sm mt-2">Pedidos</p>
-					<p class="text-xs text-gray-500">Emoji Original</p>
+				
+				<!-- Teste do componente Icon -->
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-2">3. Componente Icon (dashboard):</h4>
+					<Icon name="dashboard" size="md" />
+					<span>← Componente inteligente</span>
 				</div>
-				<div class="p-4 bg-gray-50 rounded-lg">
-					<span class="menu-icon text-3xl">👥</span>
-					<p class="text-sm mt-2">Usuários</p>
-					<p class="text-xs text-gray-500">Emoji Original</p>
+				
+				<!-- CSS aplicado -->
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-2">4. CSS computado da classe .menu-icon:</h4>
+					<div class="text-xs bg-white p-2 rounded border">
+						<code>
+							margin-right: 0.75rem !important;<br>
+							font-size: 1.125rem !important;<br>
+							font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"...
+						</code>
+					</div>
+				</div>
+				
+				<!-- Debug: CSS carregado? -->
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-2">5. CSS Global está carregando?</h4>
+					<div class="css-debug-marker text-xs bg-white p-2 rounded border">
+						<span class="text-green-600">✅ Se você vê esta caixa, o CSS global foi carregado</span>
+					</div>
+				</div>
+				
+				<!-- Debug: Classes específicas -->
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-2">6. Teste das classes específicas:</h4>
+					<div class="text-xs bg-white p-2 rounded border space-y-1">
+						<div class="flex items-center">
+							<span class="w-4 h-4 bg-cyan-500 rounded mr-2"></span>
+							<span>.bg-cyan-500 funcionando</span>
+						</div>
+						<div class="flex items-center">
+							<span class="w-4 h-4 bg-gray-100 rounded mr-2"></span>
+							<span>.bg-gray-100 funcionando</span>
+						</div>
+						<div>
+							<span class="text-cyan-600">.text-cyan-600 funcionando</span>
+						</div>
+					</div>
 				</div>
 			</div>
 			
-			<!-- Ícones SVG Alternativos -->
-			<div class="grid grid-cols-4 gap-4 text-center mb-6">
-				<div class="p-4 bg-blue-50 rounded-lg">
-					<svg class="w-8 h-8 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-					</svg>
-					<p class="text-sm mt-2">Dashboard</p>
-					<p class="text-xs text-gray-500">Ícone SVG</p>
+			<!-- Teste Visual de Emojis vs SVGs -->
+			<div class="grid grid-cols-2 gap-6 mb-6">
+				<!-- Coluna Emojis -->
+				<div>
+					<h3 class="font-medium text-gray-900 mb-3">🎭 Emojis Originais</h3>
+					<div class="space-y-2">
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<span class="menu-icon">📊</span>
+							<span class="text-sm">Dashboard</span>
+						</div>
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<span class="menu-icon">📦</span>
+							<span class="text-sm">Produtos</span>
+						</div>
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<span class="menu-icon">🛒</span>
+							<span class="text-sm">Pedidos</span>
+						</div>
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<span class="menu-icon">👥</span>
+							<span class="text-sm">Usuários</span>
+						</div>
+					</div>
 				</div>
-				<div class="p-4 bg-green-50 rounded-lg">
-					<svg class="w-8 h-8 mx-auto text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-					</svg>
-					<p class="text-sm mt-2">Produtos</p>
-					<p class="text-xs text-gray-500">Ícone SVG</p>
-				</div>
-				<div class="p-4 bg-purple-50 rounded-lg">
-					<svg class="w-8 h-8 mx-auto text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-					</svg>
-					<p class="text-sm mt-2">Pedidos</p>
-					<p class="text-xs text-gray-500">Ícone SVG</p>
-				</div>
-				<div class="p-4 bg-cyan-50 rounded-lg">
-					<svg class="w-8 h-8 mx-auto text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-					</svg>
-					<p class="text-sm mt-2">Usuários</p>
-					<p class="text-xs text-gray-500">Ícone SVG</p>
+				
+				<!-- Coluna SVGs -->
+				<div>
+					<h3 class="font-medium text-gray-900 mb-3">🖼️ Ícones SVG</h3>
+					<div class="space-y-2">
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<Icon name="dashboard" size="md" />
+							<span class="text-sm ml-3">Dashboard</span>
+						</div>
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<Icon name="products" size="md" />
+							<span class="text-sm ml-3">Produtos</span>
+						</div>
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<Icon name="orders" size="md" />
+							<span class="text-sm ml-3">Pedidos</span>
+						</div>
+						<div class="flex items-center p-2 bg-gray-50 rounded">
+							<Icon name="users" size="md" />
+							<span class="text-sm ml-3">Usuários</span>
+						</div>
+					</div>
 				</div>
 			</div>
 			
@@ -151,17 +209,22 @@
 				{#if emojiSupport}
 					<p class="text-sm text-green-700">
 						<span class="menu-icon">✅</span>
-						<strong>Emojis funcionando!</strong> Seu sistema suporta renderização de emojis coloridos.
+						<strong>Emojis detectados!</strong> Mas podem não estar renderizando corretamente por problemas de CSS.
 					</p>
 				{:else}
 					<p class="text-sm text-red-700">
 						<span>❌</span>
-						<strong>Emojis não suportados.</strong> Vamos usar ícones SVG como alternativa.
-					</p>
-					<p class="text-xs text-red-600 mt-2">
-						Possíveis soluções: Atualize seu navegador, ative fontes de emoji no sistema ou use outro browser.
+						<strong>Emojis não detectados.</strong> Usando ícones SVG como fallback.
 					</p>
 				{/if}
+				
+				<div class="mt-3 text-xs text-gray-600">
+					<strong>Para debugar:</strong><br>
+					1. Clique com botão direito em qualquer ícone acima<br>
+					2. Selecione "Inspecionar elemento"<br>
+					3. Veja que classes CSS estão sendo aplicadas<br>
+					4. Mande screenshot da aba "Styles" no DevTools
+				</div>
 			</div>
 		</div>
 	</div>

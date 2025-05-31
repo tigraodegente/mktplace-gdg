@@ -392,7 +392,7 @@
   <div class="flex justify-between items-center mt-8 pt-6 border-t">
     <button
       type="button"
-      on:click={onBack}
+      onclick={onBack}
       disabled={loading}
       class="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
     >
@@ -400,7 +400,7 @@
     </button>
     
     <button
-      on:click={handleSubmit}
+      onclick={handleSubmit}
       disabled={loading}
       class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
     >

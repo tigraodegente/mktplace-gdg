@@ -267,7 +267,7 @@
 					</span>
 				{/if}
 				{#if item.selectedSize}
-					<span class="bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+					<span class="bg-gray-50 px-2 py-0.5 rounded text-gray-600">
 						Tam: {item.selectedSize}
 					</span>
 				{/if}

@@ -317,7 +317,7 @@
     <div class="flex justify-between items-center pt-6">
       <button
         type="button"
-        on:click={onBack}
+        onclick={onBack}
         disabled={loading}
         class="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >

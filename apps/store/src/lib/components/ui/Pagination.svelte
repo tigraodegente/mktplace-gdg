@@ -98,7 +98,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeyDown} />
+<svelte:window onkeydown={handleKeyDown} />
 
 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 {className}">
 	{#if showInfo && totalItems > 0}

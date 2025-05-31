@@ -186,7 +186,6 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
             status_flow: statusFlow
           };
 
-          console.log(`✅ Dados reais de rastreamento carregados para pedido ${id}`);
         }
       } catch (dbError) {
         console.log('Erro no banco, usando dados mock:', dbError);
@@ -195,7 +194,6 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 
     // Fallback para mock se não conseguiu dados reais
     if (!trackingData) {
-      console.log('📊 Usando dados mock como fallback para rastreamento');
       trackingData = {
         ...mockTrackingData,
         order: {

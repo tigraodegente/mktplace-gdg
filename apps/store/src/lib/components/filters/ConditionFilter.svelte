@@ -57,7 +57,7 @@
 	{#if loading}
 		<div class="space-y-2">
 			{#each Array(3) as _}
-				<div class="h-12 bg-gray-100 rounded animate-pulse"></div>
+				<div class="h-12 bg-gray-50 rounded animate-pulse"></div>
 			{/each}
 		</div>
 	{:else}

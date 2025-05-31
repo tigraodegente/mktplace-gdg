@@ -58,7 +58,6 @@ export class AuthService {
         // Verificar sincronização
         setTimeout(() => {
           auth.subscribe(($auth) => {
-            console.log('🔍 AuthService.login: Store sincronizado:', {
               hasUser: !!$auth.user,
               userName: $auth.user?.name || 'none'
             });
@@ -111,7 +110,6 @@ export class AuthService {
         // Verificar sincronização
         setTimeout(() => {
           auth.subscribe(($auth) => {
-            console.log('🔍 AuthService.register: Store sincronizado:', {
               hasUser: !!$auth.user,
               userName: $auth.user?.name || 'none'
             });

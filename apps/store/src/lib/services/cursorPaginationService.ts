@@ -161,7 +161,6 @@ export class CursorPaginationService {
       ? `/api/products/optimized?${params}`
       : `${this.endpoint}?${params}`;
     
-    console.log(`🔍 CursorPagination: Buscando ${url}`);
     
     const response = await fetch(url, {
       signal: this.abortController.signal

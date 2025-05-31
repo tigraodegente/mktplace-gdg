@@ -251,7 +251,7 @@
 				{#each recentZipCodes as zip}
 					<div
 						onclick={() => useRecentZipCode(zip)}
-						class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 
+						class="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-200 
 							   text-sm text-gray-700 rounded-lg transition-colors group cursor-pointer"
 					>
 						<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

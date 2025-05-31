@@ -131,13 +131,13 @@
   });
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen}
   <!-- Overlay -->
   <div 
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    on:click={closeModal}
+    onclick={closeModal}
   >
     <!-- Modal -->
     <div 
@@ -151,7 +151,7 @@
            mode === 'login' ? 'Entrar na sua conta' : 'Criar sua conta'}
         </h2>
         <button
-          on:click={closeModal}
+          onclick={closeModal}
           class="text-gray-400 hover:text-gray-600 transition-colors"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@
             
             <!-- Botão Continuar como Convidado -->
             <button
-              on:click={continueAsGuest}
+              onclick={continueAsGuest}
               class="w-full mb-4 py-3 px-4 bg-[#00BFB3] text-white font-semibold rounded-lg hover:bg-[#00A89D] transition-colors flex items-center justify-center space-x-2"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +190,7 @@
             
             <!-- Botão Fazer Login -->
             <button
-              on:click={() => mode = 'login'}
+              onclick={() => mode = 'login'}
               class="w-full mb-3 py-3 px-4 border-2 border-[#00BFB3] text-[#00BFB3] font-semibold rounded-lg hover:bg-[#00BFB3] hover:text-white transition-colors flex items-center justify-center space-x-2"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +203,7 @@
             <p class="text-sm text-gray-600">
               Não tem conta? 
               <button 
-                on:click={() => mode = 'register'}
+                onclick={() => mode = 'register'}
                 class="text-[#00BFB3] hover:text-[#00A89D] font-medium"
               >
                 Criar agora
@@ -292,7 +292,7 @@
               <p class="text-sm text-gray-600">
                 <button 
                   type="button"
-                  on:click={() => mode = 'choice'}
+                  onclick={() => mode = 'choice'}
                   class="text-[#00BFB3] hover:text-[#00A89D]"
                 >
                   ← Voltar
@@ -300,7 +300,7 @@
                 <span class="mx-2">•</span>
                 <button 
                   type="button"
-                  on:click={() => mode = 'register'}
+                  onclick={() => mode = 'register'}
                   class="text-[#00BFB3] hover:text-[#00A89D]"
                 >
                   Criar conta
@@ -395,7 +395,7 @@
               <p class="text-sm text-gray-600">
                 <button 
                   type="button"
-                  on:click={() => mode = 'choice'}
+                  onclick={() => mode = 'choice'}
                   class="text-[#00BFB3] hover:text-[#00A89D]"
                 >
                   ← Voltar
@@ -403,7 +403,7 @@
                 <span class="mx-2">•</span>
                 <button 
                   type="button"
-                  on:click={() => mode = 'login'}
+                  onclick={() => mode = 'login'}
                   class="text-[#00BFB3] hover:text-[#00A89D]"
                 >
                   Já tenho conta

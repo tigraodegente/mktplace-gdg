@@ -206,7 +206,7 @@
         <h3 class="text-lg font-medium text-red-800 mb-2">Erro ao carregar pedidos</h3>
         <p class="text-red-600 mb-4">{error}</p>
         <button 
-          on:click={loadOrders}
+          onclick={loadOrders}
           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
         >
           Tentar Novamente
@@ -227,7 +227,7 @@
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           {#if selectedStatus}
             <button 
-              on:click={() => { selectedStatus = ''; handleStatusChange(); }}
+              onclick={() => { selectedStatus = ''; handleStatusChange(); }}
               class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
             >
               Ver Todos os Pedidos
@@ -277,7 +277,7 @@
                         class:text-green-800={order.statusColor === 'green'}
                         class:bg-red-100={order.statusColor === 'red'}
                         class:text-red-800={order.statusColor === 'red'}
-                        class:bg-gray-100={order.statusColor === 'gray'}
+                        class:bg-gray-50={order.statusColor === 'gray'}
                         class:text-gray-800={order.statusColor === 'gray'}>
                     {order.statusLabel}
                   </span>
@@ -322,7 +322,7 @@
                     {/each}
                     
                     {#if order.items.length > 4}
-                      <div class="flex items-center justify-center bg-gray-100 rounded-lg p-2 w-20 h-16">
+                      <div class="flex items-center justify-center bg-gray-50 rounded-lg p-2 w-20 h-16">
                         <span class="text-sm text-gray-600">
                           +{order.items.length - 4}
                         </span>
@@ -369,7 +369,7 @@
       {#if totalPages > 1}
         <div class="flex items-center justify-center space-x-2 mt-8">
           <button 
-            on:click={() => goToPage(currentPage - 1)}
+            onclick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
             class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -379,7 +379,7 @@
           {#each Array.from({ length: totalPages }, (_, i) => i + 1) as pageNum}
             {#if pageNum === currentPage || Math.abs(pageNum - currentPage) <= 2 || pageNum === 1 || pageNum === totalPages}
               <button 
-                on:click={() => goToPage(pageNum)}
+                onclick={() => goToPage(pageNum)}
                 class="px-3 py-2 text-sm font-medium rounded-md transition-colors"
                 class:bg-primary={pageNum === currentPage}
                 class:text-white={pageNum === currentPage}
@@ -397,7 +397,7 @@
           {/each}
           
           <button 
-            on:click={() => goToPage(currentPage + 1)}
+            onclick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages}
             class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >

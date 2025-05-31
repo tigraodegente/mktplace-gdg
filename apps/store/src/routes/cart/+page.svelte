@@ -355,7 +355,6 @@
     // Visual feedback de processamento
     scrollToWizardTop(50);
     
-    console.log('🔍 Iniciando processamento - Estados:', {
       isAuthenticatedStore: $isAuthenticated,
       checkoutDataUser: !!checkoutData.user,
       isGuest: checkoutData.isGuest
@@ -382,10 +381,8 @@
       }
       
       // 3. Verificar com o backend usando AuthService
-      console.log('🔍 Verificando autenticação com AuthService...');
       const authCheck = await AuthService.checkAuth();
       
-      console.log('🔍 Verificação backend via AuthService:', authCheck);
       
       if (!authCheck.success || !authCheck.data?.user) {
         processingOrder = false;
@@ -518,7 +515,6 @@
         const response = await fetch('/api/test-auth', { credentials: 'include' });
         const data = await response.json();
         
-        console.log('🔍 Verificação automática de sessão:', {
           authenticated: data.authenticated,
           isAuthenticatedStore: $isAuthenticated,
           user: data.user?.email || 'none'
@@ -554,7 +550,6 @@
         }
         
       } catch (error) {
-        console.log('🔍 Erro na verificação automática de sessão:', error);
         if ($isAuthenticated) {
           sessionExpiredWarning = true;
         }
@@ -591,11 +586,9 @@
   
   // Função para diagnóstico de sessão
   async function debugSession() {
-    console.log('🔍 Verificação manual de sessão...');
     try {
       const response = await fetch('/api/test-auth', { credentials: 'include' });
       const data = await response.json();
-      console.log('🔍 Resultado verificação:', data);
       
       const status = data.authenticated ? 'ATIVA ✅' : 'EXPIRADA ❌';
       const userBackend = data.user?.email || 'Nenhum';

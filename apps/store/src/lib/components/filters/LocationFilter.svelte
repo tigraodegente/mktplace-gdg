@@ -83,8 +83,8 @@
 	
 	{#if loading}
 		<div class="space-y-3">
-			<div class="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
-			<div class="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
+			<div class="h-10 bg-gray-50 rounded-lg animate-pulse"></div>
+			<div class="h-10 bg-gray-50 rounded-lg animate-pulse"></div>
 		</div>
 	{:else}
 		<!-- Estado -->

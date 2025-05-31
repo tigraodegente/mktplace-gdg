@@ -31,7 +31,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
     console.log('🔐 create-order: Verificando autenticação...');
     const authResult = await requireAuth(cookies, platform);
     
-    console.log('🔍 create-order: Resultado da autenticação:', {
       success: authResult.success,
       hasUser: !!authResult.user,
       userId: authResult.user?.id,

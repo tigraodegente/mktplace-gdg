@@ -141,7 +141,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
             total = parseInt(countResult[0].total);
           }
 
-          console.log(`✅ Dados reais carregados: ${notifications.length} notificações`);
         }
       } catch (dbError) {
         console.log('Erro no banco, usando dados mock:', dbError);
@@ -151,7 +150,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
     // Fallback para mock se não conseguiu dados reais
     if (notifications.length === 0) {
-      console.log('📊 Usando dados mock como fallback');
       
       let filteredNotifications = [...mockNotifications];
       

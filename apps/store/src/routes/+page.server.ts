@@ -1,54 +1,104 @@
 import type { PageServerLoad } from './$types';
-import { getDatabase } from '$lib/db';
 import { withDatabase } from '$lib/db';
 
-// Interface local do produto para a página principal
+// Interface otimizada baseada na estrutura real do banco
 interface Product {
 	id: string;
 	name: string;
 	slug: string;
-	description: string;
+	description?: string;
 	price: number;
 	original_price?: number;
 	discount?: number;
-	images: string[];
-	image: string;
+	image?: string;
+	images?: string[];
 	category_id: string;
+	category_name?: string;
 	seller_id: string;
-	is_active: boolean;
-	stock: number;
-	stock_alert_threshold?: number;
-	sku: string;
-	tags: string[];
+	seller_name?: string;
+	sku?: string;
 	pieces?: number;
-	is_featured?: boolean;
+	rating?: number;
+	reviews_count?: number;
+	sold_count?: number;
 	is_black_friday?: boolean;
 	has_fast_delivery?: boolean;
-	created_at: Date;
-	updated_at: Date;
+	tags?: string[];
+	stock?: number;
+	created_at?: string;
+	updated_at?: string;
 }
 
-export const load: PageServerLoad = async ({ platform, fetch }) => {
+// Cache simples em memória para desenvolvimento
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+function getCached<T>(key: string): T | null {
+	const cached = cache.get(key);
+	if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+		return cached.data;
+	}
+	cache.delete(key);
+	return null;
+}
+
+function setCache<T>(key: string, data: T): void {
+	cache.set(key, { data, timestamp: Date.now() });
+}
+
+export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 	console.log('🏠 Carregando dados da página principal...');
 	
+	// Headers de cache otimizados
+	setHeaders({
+		'cache-control': 'public, max-age=300, s-maxage=600', // 5min client, 10min CDN
+		'vary': 'Accept-Encoding'
+	});
+	
 	try {
-		// Buscar produtos em destaque diretamente do banco (não via fetch)
-		let featuredProducts: Product[] = [];
+		// Usar cache para dados que mudam menos frequentemente
+		const cacheKey = 'homepage-data';
+		const cachedData = getCached<any>(cacheKey);
 		
-		try {
-			const productsFromDb = await withDatabase(platform, async (db) => {
+		if (cachedData) {
+			return cachedData;
+		}
+		
+		// Buscar todos os dados em paralelo para melhor performance
+		const [featuredProducts, categoriesData, statsData] = await Promise.all([
+			// Produtos em destaque - query otimizada
+			withDatabase(platform, async (db) => {
 				const products = await db.query`
 					WITH product_images AS (
 						SELECT 
 							pi.product_id,
-							array_agg(pi.url ORDER BY pi.position) as images
+							array_agg(pi.url ORDER BY pi.position) as images,
+							pi.url as primary_image
 						FROM product_images pi
-						GROUP BY pi.product_id
+						WHERE pi.position = 1 OR pi.position IS NULL
+						GROUP BY pi.product_id, pi.url
 					)
 					SELECT 
-						p.*,
+						p.id,
+						p.name,
+						p.slug,
+						p.description,
+						p.price,
+						p.original_price,
+						p.quantity as stock,
+						p.sku,
+						p.pieces,
+						p.sales_count,
+						p.rating_average,
+						p.rating_count,
+						p.tags,
+						p.is_active,
+						p.featured,
+						p.created_at,
+						p.updated_at,
 						COALESCE(pi.images, ARRAY[]::text[]) as images,
 						c.name as category_name,
+						c.slug as category_slug,
 						b.name as brand_name,
 						s.company_name as seller_name
 					FROM products p
@@ -60,11 +110,11 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 						p.is_active = true 
 						AND p.featured = true 
 						AND p.quantity > 0
-					ORDER BY p.sales_count DESC
+					ORDER BY p.sales_count DESC, p.rating_average DESC NULLS LAST
 					LIMIT 8
 				`;
 				
-				return products.map((product: any) => ({
+				return products.map((product: any): Product => ({
 					id: product.id,
 					name: product.name,
 					slug: product.slug,
@@ -77,208 +127,118 @@ export const load: PageServerLoad = async ({ platform, fetch }) => {
 					images: product.images || [],
 					image: product.images?.[0] || '/api/placeholder/300/400?text=Produto&bg=f0f0f0&color=333',
 					category_id: product.category_id,
+					category_name: product.category_name,
 					seller_id: product.seller_id,
-					is_active: product.is_active,
-					stock: product.quantity,
-					stock_alert_threshold: product.stock_alert_threshold,
+					seller_name: product.seller_name,
+					stock: product.stock,
 					sku: product.sku,
 					tags: product.tags || [],
 					pieces: product.pieces,
-					is_featured: true,
-					is_black_friday: false,
-					has_fast_delivery: true,
-					created_at: product.created_at,
-					updated_at: product.updated_at
+					rating: product.rating_average ? Number(product.rating_average) : undefined,
+					reviews_count: product.rating_count,
+					sold_count: product.sales_count,
+					is_black_friday: false, // Implementar lógica de promoções depois
+					has_fast_delivery: true, // Implementar lógica de entrega depois
+					created_at: product.created_at?.toISOString(),
+					updated_at: product.updated_at?.toISOString()
 				}));
-			});
+			}),
 			
-			featuredProducts = productsFromDb;
-			console.log(`✅ ${featuredProducts.length} produtos em destaque carregados do banco`);
-			
-		} catch (error) {
-			console.error('❌ Erro ao carregar produtos do banco:', error);
-		}
-		
-		// Fallback para dados mock se não conseguir do banco
-		if (featuredProducts.length === 0) {
-			console.log('⚠️ Usando dados mock para produtos em destaque');
-			featuredProducts = [
-				{
-					id: '1',
-					name: 'Kit Berço Completo Ursinhos',
-					slug: 'kit-berco-completo-ursinhos',
-					description: 'Kit completo para berço com tema de ursinhos',
-					price: 299.99,
-					original_price: 399.99,
-					discount: 25,
-					images: ['/api/placeholder/300/400?text=Kit+Berço&bg=FFE5E5&color=333'],
-					image: '/api/placeholder/300/400?text=Kit+Berço&bg=FFE5E5&color=333',
-					category_id: 'baby',
-					seller_id: 'seller1',
-					is_active: true,
-					stock: 3,
-					stock_alert_threshold: 5,
-					sku: 'KB-URS-001',
-					tags: ['100% ALGODÃO'],
-					pieces: 8,
-					is_featured: true,
-					is_black_friday: true,
-					has_fast_delivery: true,
-					created_at: new Date(),
-					updated_at: new Date()
-				},
-				{
-					id: '2',
-					name: 'Jogo de Lençol Infantil Dinossauros',
-					slug: 'jogo-lencol-infantil-dinossauros',
-					description: 'Jogo de lençol com estampa de dinossauros',
-					price: 149.99,
-					original_price: 189.99,
-					discount: 21,
-					images: ['/api/placeholder/300/400?text=Lençol&bg=E5F5FF&color=333'],
-					image: '/api/placeholder/300/400?text=Lençol&bg=E5F5FF&color=333',
-					category_id: 'kids',
-					seller_id: 'seller2',
-					is_active: true,
-					stock: 25,
-					stock_alert_threshold: 10,
-					sku: 'JL-DIN-002',
-					tags: ['MICROFIBRA'],
-					pieces: 3,
-					is_featured: true,
-					is_black_friday: false,
-					has_fast_delivery: true,
-					created_at: new Date(),
-					updated_at: new Date()
-				}
-			];
-		}
-		
-		// Buscar categorias do banco
-		const categoriesResponse = await fetch('/api/categories/tree');
-		let categories: any[] = [];
-		
-		if (categoriesResponse.ok) {
-			const categoriesData = await categoriesResponse.json();
-			if (categoriesData.success && categoriesData.data) {
-				// Mapear para formato esperado pela página principal
-				categories = categoriesData.data.slice(0, 6).map((cat: any) => ({
+			// Categorias - buscar diretamente do banco
+			withDatabase(platform, async (db) => {
+				const categories = await db.query`
+					SELECT 
+						c.id,
+						c.name,
+						c.slug,
+						c.description,
+						COUNT(DISTINCT p.id) as product_count
+					FROM categories c
+					LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true AND p.quantity > 0
+					WHERE c.is_active = true
+					GROUP BY c.id, c.name, c.slug, c.description
+					HAVING COUNT(DISTINCT p.id) > 0
+					ORDER BY COUNT(DISTINCT p.id) DESC
+					LIMIT 6
+				`;
+				
+				return categories.map((cat: any) => ({
+					id: cat.id,
 					name: cat.name,
-					icon: getCategoryIcon(cat.slug || cat.name),
-					count: cat.productCount || 0, // Usar productCount ao invés de product_count
 					slug: cat.slug,
-					id: cat.id
+					icon: getCategoryIcon(cat.slug || cat.name),
+					count: parseInt(cat.product_count) || 0
 				}));
-				console.log(`✅ ${categories.length} categorias carregadas do banco`);
-			}
-		}
+			}),
+			
+			// Estatísticas - query otimizada
+			withDatabase(platform, async (db) => {
+				const stats = await db.queryOne`
+					SELECT 
+						(SELECT COUNT(*) FROM products WHERE is_active = true AND quantity > 0) as total_products,
+						(SELECT COUNT(*) FROM categories WHERE is_active = true) as total_categories,
+						(SELECT COUNT(*) FROM sellers WHERE is_active = true) as total_sellers,
+						(SELECT COUNT(*) FROM products WHERE featured = true AND is_active = true) as featured_products
+				`;
+				
+				return {
+					totalProducts: parseInt(stats?.total_products || '0'),
+					totalCategories: parseInt(stats?.total_categories || '0'),
+					totalSellers: parseInt(stats?.total_sellers || '0'),
+					featuredProducts: parseInt(stats?.featured_products || '0')
+				};
+			})
+		]);
 		
-		// Fallback para categorias mock se não conseguir do banco
-		if (categories.length === 0) {
-			console.log('⚠️ Usando dados mock para categorias');
-			categories = [
-				{ name: 'Bebê', icon: '👶', count: 234, slug: 'bebe', id: 'bebe-categoria-001' },
-				{ name: 'Infantil', icon: '🧸', count: 567, slug: 'infantil', id: 'infantil-categoria-002' },
-				{ name: 'Quarto', icon: '🛏️', count: 189, slug: 'quarto', id: 'quarto-categoria-003' },
-				{ name: 'Banheiro', icon: '🛁', count: 123, slug: 'banheiro', id: 'banheiro-categoria-004' },
-				{ name: 'Organização', icon: '📦', count: 89, slug: 'organizacao', id: 'organizacao-categoria-004' },
-				{ name: 'Decoração', icon: '🎨', count: 156, slug: 'decoracao', id: 'decoracao-categoria-006' }
-			];
-		}
-		
-		// Buscar estatísticas gerais
-		let stats = {
-			totalProducts: featuredProducts.length,
-			totalCategories: categories.length,
-			totalSellers: 0
-		};
-		
-		// Tentar buscar estatísticas reais do banco
-		try {
-			if (platform) {
-				const db = getDatabase(platform);
-				if (db) {
-					const statsResult = await db.query(`
-						SELECT 
-							(SELECT COUNT(*) FROM products WHERE is_active = true) as total_products,
-							(SELECT COUNT(*) FROM categories WHERE is_active = true) as total_categories,
-							(SELECT COUNT(*) FROM sellers WHERE is_active = true) as total_sellers
-					`);
-					
-					if (statsResult && statsResult.length > 0) {
-						stats = {
-							totalProducts: parseInt(statsResult[0].total_products) || 0,
-							totalCategories: parseInt(statsResult[0].total_categories) || 0,
-							totalSellers: parseInt(statsResult[0].total_sellers) || 0
-						};
-						console.log('✅ Estatísticas carregadas do banco:', stats);
-					}
-				}
-			}
-		} catch (error) {
-			console.log('⚠️ Erro ao carregar estatísticas, usando dados calculados');
-		}
-		
-		console.log('🏠 Página principal carregada com sucesso!');
-		return {
+		const result = {
 			featuredProducts,
-			categories,
-			stats,
+			categories: categoriesData,
+			stats: statsData,
 			dataSource: {
-				products: featuredProducts.length > 2 ? 'database' : 'mock', // Só marca como database se temos produtos reais
-				categories: categories.length > 0 ? 'database' : 'mock'
+				products: 'database',
+				categories: 'database',
+				stats: 'database'
+			},
+			meta: {
+				loadTime: Date.now(),
+				cached: false
 			}
 		};
+		
+		// Armazenar no cache
+		setCache(cacheKey, result);
+		
+		console.log(`✅ Página principal carregada: ${featuredProducts.length} produtos, ${categoriesData.length} categorias`);
+		return result;
 		
 	} catch (error) {
-		console.error('❌ Erro ao carregar página principal:', error);
+		console.error('❌ Erro crítico ao carregar página principal:', error);
 		
-		// Fallback completo para dados mock em caso de erro
+		// Em caso de erro, retornar estrutura mínima sem dados mock
 		return {
-			featuredProducts: [
-				{
-					id: '1',
-					name: 'Kit Berço Completo Ursinhos',
-					slug: 'kit-berco-completo-ursinhos',
-					description: 'Kit completo para berço com tema de ursinhos',
-					price: 299.99,
-					original_price: 399.99,
-					discount: 25,
-					images: ['/api/placeholder/300/400?text=Kit+Berço&bg=FFE5E5&color=333'],
-					image: '/api/placeholder/300/400?text=Kit+Berço&bg=FFE5E5&color=333',
-					category_id: 'baby',
-					seller_id: 'seller1',
-					is_active: true,
-					stock: 3,
-					stock_alert_threshold: 5,
-					sku: 'KB-URS-001',
-					tags: ['100% ALGODÃO'],
-					pieces: 8,
-					is_featured: true,
-					is_black_friday: true,
-					has_fast_delivery: true,
-					created_at: new Date(),
-					updated_at: new Date()
-				}
-			],
-			categories: [
-				{ name: 'Bebê', icon: '👶', count: 234, slug: 'bebe', id: 'bebe-categoria-001' },
-				{ name: 'Infantil', icon: '🧸', count: 567, slug: 'infantil', id: 'infantil-categoria-002' }
-			],
+			featuredProducts: [],
+			categories: [],
 			stats: {
-				totalProducts: 1,
-				totalCategories: 2,
-				totalSellers: 1
+				totalProducts: 0,
+				totalCategories: 0,
+				totalSellers: 0,
+				featuredProducts: 0
 			},
 			dataSource: {
-				products: 'mock',
-				categories: 'mock'
+				products: 'error',
+				categories: 'error',
+				stats: 'error'
+			},
+			error: 'Erro ao conectar com o banco de dados',
+			meta: {
+				loadTime: Date.now(),
+				cached: false
 			}
 		};
 	}
 };
 
-// Função auxiliar para mapear ícones de categoria
+// Função auxiliar otimizada para ícones de categoria
 function getCategoryIcon(categorySlug: string): string {
 	const iconMap: Record<string, string> = {
 		'bebe': '👶',
@@ -286,6 +246,7 @@ function getCategoryIcon(categorySlug: string): string {
 		'infantil': '🧸',
 		'kids': '🧸',
 		'children': '🧸',
+		'criancas': '🧸',
 		'quarto': '🛏️',
 		'bedroom': '🛏️',
 		'banheiro': '🛁',
@@ -296,14 +257,20 @@ function getCategoryIcon(categorySlug: string): string {
 		'decoration': '🎨',
 		'roupas': '👕',
 		'clothes': '👕',
+		'vestuario': '👕',
 		'brinquedos': '🎮',
 		'toys': '🎮',
 		'casa': '🏠',
 		'home': '🏠',
 		'cozinha': '🍳',
-		'kitchen': '🍳'
+		'kitchen': '🍳',
+		'higiene': '🧴',
+		'cuidados': '💊',
+		'alimentacao': '🍼',
+		'mobiliario': '🪑',
+		'enxoval': '🧺'
 	};
 	
-	const slug = categorySlug.toLowerCase();
+	const slug = categorySlug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 	return iconMap[slug] || '📦';
 } 

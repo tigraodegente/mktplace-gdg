@@ -168,7 +168,7 @@
                     <p class="font-medium text-gray-900">E-mail de Confirmação</p>
                     <p class="text-sm text-gray-600">Você receberá todos os detalhes nos próximos minutos</p>
                   </div>
-                  <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Em instantes</span>
+                  <span class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">Em instantes</span>
                 </div>
                 
                 <div class="flex items-center space-x-3">
@@ -177,7 +177,7 @@
                     <p class="font-medium text-gray-900">Processamento</p>
                     <p class="text-sm text-gray-600">Preparação e separação dos seus produtos</p>
                   </div>
-                  <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">1-2 dias úteis</span>
+                  <span class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">1-2 dias úteis</span>
                 </div>
                 
                 <div class="flex items-center space-x-3">
@@ -186,7 +186,7 @@
                     <p class="font-medium text-gray-900">Envio</p>
                     <p class="text-sm text-gray-600">Código de rastreamento será enviado por e-mail</p>
                   </div>
-                  <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Em breve</span>
+                  <span class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">Em breve</span>
                 </div>
               </div>
             </div>

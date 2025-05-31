@@ -113,7 +113,7 @@
             
             <!-- QR Code simulado -->
             <div class="bg-white p-6 rounded-lg border-2 border-green-300 mb-4 text-center">
-              <div class="w-48 h-48 bg-gray-100 mx-auto mb-4 rounded-lg flex items-center justify-center">
+              <div class="w-48 h-48 bg-gray-50 mx-auto mb-4 rounded-lg flex items-center justify-center">
                 <span class="text-gray-500">QR Code PIX</span>
               </div>
               <p class="text-sm text-gray-600 mb-4">Escaneie com o app do seu banco</p>
@@ -126,7 +126,7 @@
                     {paymentData.qrCode || '00020126580014br.gov.bcb.pix2536marketplace@exemplo.com.br'}
                   </code>
                   <button
-                    on:click={() => copyToClipboard(paymentData.qrCode || '00020126580014br.gov.bcb.pix2536marketplace@exemplo.com.br')}
+                    onclick={() => copyToClipboard(paymentData.qrCode || '00020126580014br.gov.bcb.pix2536marketplace@exemplo.com.br')}
                     class="px-3 py-2 bg-[#00BFB3] text-white text-xs rounded hover:bg-[#00A89D]"
                   >
                     Copiar
@@ -194,13 +194,13 @@
             
             <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
               <button
-                on:click={() => window.open('#', '_blank')}
+                onclick={() => window.open('#', '_blank')}
                 class="flex-1 py-2 px-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
               >
                 📄 Baixar Boleto PDF
               </button>
               <button
-                on:click={() => copyToClipboard(paymentData.barcodeNumber || '03399876543210987654321098765432109876543210')}
+                onclick={() => copyToClipboard(paymentData.barcodeNumber || '03399876543210987654321098765432109876543210')}
                 class="flex-1 py-2 px-4 border border-orange-600 text-orange-700 rounded-lg hover:bg-orange-50 text-sm font-medium"
               >
                 📋 Copiar Código
@@ -278,7 +278,7 @@
       <div class="text-center space-y-4">
         <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center">
           <button
-            on:click={() => window.print()}
+            onclick={() => window.print()}
             class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
           >
             🖨️ Imprimir Comprovante
@@ -292,7 +292,7 @@
           </a>
           
           <button
-            on:click={handleNewOrder}
+            onclick={handleNewOrder}
             class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] font-medium"
           >
             🛒 Nova Compra

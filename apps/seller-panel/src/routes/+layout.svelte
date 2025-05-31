@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import Icon from '../lib/Icon.svelte';
 	import { onMount } from 'svelte';
 	
 	// Dados específicos do Seller Panel
@@ -14,14 +15,14 @@
 	
 	// Menu específico do Seller - CENTRALIZADO
 	const menuItems = [
-		{ path: '/', icon: '📊', label: 'Dashboard' },
-		{ path: '/produtos', icon: '📦', label: 'Meus Produtos' },
-		{ path: '/pedidos', icon: '🛒', label: 'Pedidos' },
-		{ path: '/financeiro', icon: '💰', label: 'Financeiro' },
-		{ path: '/avaliacoes', icon: '⭐', label: 'Avaliações' },
+		{ path: '/', icon: 'dashboard', label: 'Dashboard' },
+		{ path: '/produtos', icon: 'products', label: 'Meus Produtos' },
+		{ path: '/pedidos', icon: 'orders', label: 'Pedidos' },
+		{ path: '/financeiro', icon: 'financial', label: 'Financeiro' },
+		{ path: '/avaliacoes', icon: 'reviews', label: 'Avaliações' },
 		{ separator: true },
-		{ path: '/estoque', icon: '📈', label: 'Estoque' },
-		{ path: '/configuracoes', icon: '⚙️', label: 'Configurações' }
+		{ path: '/estoque', icon: 'stock', label: 'Estoque' },
+		{ path: '/configuracoes', icon: 'settings', label: 'Configurações' }
 	];
 	
 	let currentPath = '';
@@ -92,7 +93,9 @@
 								href={item.path}
 								class="nav-link {isActiveRoute(item.path || '') ? 'active' : ''}"
 							>
-								<span class="menu-icon">{item.icon}</span>
+								{#if item.icon}
+									<Icon name={item.icon} size="md" />
+								{/if}
 								{item.label}
 							</a>
 						{/if}
@@ -102,12 +105,12 @@
 				<!-- Footer da Sidebar -->
 				<div class="mt-8 pt-4 border-t border-gray-200">
 					<button class="nav-link w-full">
-						<span class="menu-icon">🔄</span>
+						<Icon name="switch" size="md" />
 						Trocar Role
 					</button>
 					
 					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1">
-						<span class="menu-icon">🚪</span>
+						<Icon name="logout" size="md" fallbackColor="text-red-600" />
 						Sair
 					</button>
 				</div>

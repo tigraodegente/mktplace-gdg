@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '../../lib/Icon.svelte';
 	// Teste visual dos estilos unificados
 </script>
 
@@ -27,7 +28,7 @@
 			<nav class="p-4">
 				<div class="space-y-1">
 					<a href="/teste-visual" class="nav-link active">
-						<span class="menu-icon">🎨</span>
+						<Icon name="test" size="md" />
 						Teste Visual
 					</a>
 				</div>

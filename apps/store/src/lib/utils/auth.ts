@@ -21,11 +21,9 @@ export async function requireAuth(cookies: Cookies, platform: any): Promise<Auth
     
     const sessionToken = cookies.get('session_token');
     
-    console.log('🔍 requireAuth: Cookie session_token encontrado:', !!sessionToken);
     
     if (!sessionToken) {
       const oldSessionId = cookies.get('session_id');
-      console.log('🔍 requireAuth: Tentando cookie session_id antigo:', !!oldSessionId);
       
       if (!oldSessionId) {
         console.log('❌ requireAuth: Nenhum cookie de sessão encontrado');
@@ -41,7 +39,6 @@ export async function requireAuth(cookies: Cookies, platform: any): Promise<Auth
     console.log('🔑 requireAuth: Usando token:', actualToken ? `${actualToken.substring(0, 8)}...` : 'undefined');
 
     const result = await withDatabase(platform, async (db) => {
-      console.log('🔍 requireAuth: Consultando banco de dados...');
       
       const session = await db.queryOne`
         SELECT 

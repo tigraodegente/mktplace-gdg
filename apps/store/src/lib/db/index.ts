@@ -29,7 +29,6 @@ export function getDatabase(platform?: App.Platform) {
       const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
       
       console.log('🔌 Conectando ao banco:', dbUrl.includes('neon.tech') ? 'NEON DEVELOP' : 'LOCAL')
-      console.log('🔍 DATABASE_URL encontrada:', !!env.DATABASE_URL ? 'SvelteKit env' : !!process.env.DATABASE_URL ? 'process.env' : 'FALLBACK')
       
       // Detectar provider pela URL
       const isNeon = dbUrl.includes('neon.tech')

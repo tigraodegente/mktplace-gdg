@@ -212,7 +212,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeyDown} />
+<svelte:window onkeydown={handleKeyDown} />
 
 <!-- Banner Promocional Desktop com Carrossel -->
 <div 

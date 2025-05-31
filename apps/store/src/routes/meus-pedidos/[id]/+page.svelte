@@ -267,7 +267,7 @@
                     class:text-green-800={order.statusColor === 'green'}
                     class:bg-red-100={order.statusColor === 'red'}
                     class:text-red-800={order.statusColor === 'red'}
-                    class:bg-gray-100={order.statusColor === 'gray'}
+                    class:bg-gray-50={order.statusColor === 'gray'}
                     class:text-gray-800={order.statusColor === 'gray'}>
                 {order.statusLabel}
               </span>
@@ -416,7 +416,7 @@
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {#each trackingData.status_flow as step}
                       <div class="flex items-center gap-2 p-3 rounded-lg {step.completed ? 'bg-green-50 border border-green-200' : step.current ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center {step.completed ? 'bg-green-100' : step.current ? 'bg-blue-100' : 'bg-gray-100'}">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center {step.completed ? 'bg-green-100' : step.current ? 'bg-blue-100' : 'bg-gray-50'}">
                           {#if step.completed}
                             <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                               <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />

@@ -29,7 +29,7 @@
     primary: 'bg-cyan-500 text-white hover:bg-cyan-600 focus:ring-cyan-500',
     secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
     outline: 'border-2 border-cyan-500 text-cyan-500 hover:bg-cyan-50 focus:ring-cyan-500',
-    ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
+    ghost: 'text-gray-700 hover:bg-gray-50 focus:ring-gray-500',
     danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500'
   };
 

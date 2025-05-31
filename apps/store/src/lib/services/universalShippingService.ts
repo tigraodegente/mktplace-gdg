@@ -178,7 +178,6 @@ export class UniversalShippingService {
     `;
     
     const result = await db.query(query, [sellerId]);
-    console.log(`🔍 Query configs retornou ${result.length} registros`);
     return result;
   }
   
@@ -193,7 +192,6 @@ export class UniversalShippingService {
       return [];
     }
     
-    console.log(`🔍 Buscando zonas para carriers: ${carrierIds.join(', ')}`);
     
     const query = `
       SELECT DISTINCT

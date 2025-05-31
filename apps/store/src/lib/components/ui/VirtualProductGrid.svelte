@@ -197,7 +197,7 @@
 								<a 
 									href="/produto/{item.product.slug}" 
 									class="hover:text-[#00BFB3] transition-colors"
-									on:click={() => dispatch('itemClick', { product: item.product, index: item.index })}
+									onclick={() => dispatch('itemClick', { product: item.product, index: item.index })}
 								>
 									{item.product.name}
 								</a>
@@ -223,7 +223,7 @@
 							<a 
 								href="/produto/{item.product.slug}" 
 								class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors text-center text-sm"
-								on:click={() => dispatch('itemClick', { product: item.product, index: item.index })}
+								onclick={() => dispatch('itemClick', { product: item.product, index: item.index })}
 							>
 								Ver produto
 							</a>
