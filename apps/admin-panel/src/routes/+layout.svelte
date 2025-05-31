@@ -1,7 +1,21 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/stores';
+	
+	// Garantir que page está carregado
+	let currentPath = '/';
+	
+	page.subscribe((p) => {
+		if (p?.url?.pathname) {
+			currentPath = p.url.pathname;
+		}
+	});
 </script>
+
+<svelte:head>
+	<title>Admin Panel - Marketplace GDG</title>
+	<meta name="description" content="Painel Administrativo do Marketplace" />
+</svelte:head>
 
 <div class="min-h-screen bg-gray-50 flex flex-col">
 	<!-- Header Simples -->
@@ -13,22 +27,22 @@
 		<!-- Sidebar -->
 		<aside class="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto">
 			<nav class="flex-1 px-4 py-6 space-y-2">
-				<a href="/" class="nav-link {$page.url.pathname === '/' ? 'active' : ''}">
+				<a href="/" class="nav-link {currentPath === '/' ? 'active' : ''}">
 					Dashboard
 				</a>
-				<a href="/usuarios" class="nav-link {$page.url.pathname === '/usuarios' ? 'active' : ''}">
+				<a href="/usuarios" class="nav-link {currentPath === '/usuarios' ? 'active' : ''}">
 					Usuários
 				</a>
-				<a href="/produtos" class="nav-link {$page.url.pathname === '/produtos' ? 'active' : ''}">
+				<a href="/produtos" class="nav-link {currentPath === '/produtos' ? 'active' : ''}">
 					Produtos
 				</a>
-				<a href="/pedidos" class="nav-link {$page.url.pathname === '/pedidos' ? 'active' : ''}">
+				<a href="/pedidos" class="nav-link {currentPath === '/pedidos' ? 'active' : ''}">
 					Pedidos
 				</a>
-				<a href="/relatorios" class="nav-link {$page.url.pathname === '/relatorios' ? 'active' : ''}">
+				<a href="/relatorios" class="nav-link {currentPath === '/relatorios' ? 'active' : ''}">
 					Relatórios
 				</a>
-				<a href="/configuracoes" class="nav-link {$page.url.pathname === '/configuracoes' ? 'active' : ''}">
+				<a href="/configuracoes" class="nav-link {currentPath === '/configuracoes' ? 'active' : ''}">
 					Configurações
 				</a>
 			</nav>
