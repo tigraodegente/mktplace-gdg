@@ -6,5 +6,15 @@ export default defineConfig({
 	plugins: [
 		sveltekit(),
 		tailwindcss()
-	]
+	],
+	css: {
+		preprocessorOptions: {
+			scss: {
+				additionalData: '@use "src/variables.scss" as *;'
+			}
+		}
+	},
+	optimizeDeps: {
+		include: ['@tailwindcss/forms', '@tailwindcss/typography']
+	}
 }); 
