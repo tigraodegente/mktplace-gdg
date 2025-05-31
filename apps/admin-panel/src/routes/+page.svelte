@@ -1,267 +1,206 @@
 <!-- Deploy seletivo do admin funcionando! -->
 <script lang="ts">
+	// Dashboard do Admin Panel - usando estilos unificados da Store
 	import { onMount } from 'svelte';
 	
-	// Dados mockados para demonstração
+	// Dados simulados
 	let stats = {
-		totalRevenue: 125430.50,
-		totalOrders: 342,
-		totalProducts: 156,
-		totalUsers: 1234,
-		revenueGrowth: 12.5,
-		ordersGrowth: 8.3,
-		productsGrowth: 5.2,
-		usersGrowth: 15.7
+		totalPedidos: 245,
+		vendas: 'R$ 12.450,00',
+		usuarios: 89,
+		produtos: 156
 	};
-
-	let recentOrders = [
-		{ id: '1', customer: 'João Silva', total: 299.90, status: 'processing', date: '2024-01-15' },
-		{ id: '2', customer: 'Maria Santos', total: 450.00, status: 'completed', date: '2024-01-15' },
-		{ id: '3', customer: 'Pedro Oliveira', total: 189.90, status: 'pending', date: '2024-01-14' },
-		{ id: '4', customer: 'Ana Costa', total: 750.00, status: 'completed', date: '2024-01-14' },
-		{ id: '5', customer: 'Carlos Ferreira', total: 320.50, status: 'processing', date: '2024-01-13' }
+	
+	let pedidosRecentes = [
+		{ id: '#1234', cliente: 'João Silva', valor: 'R$ 89,90', status: 'Entregue' },
+		{ id: '#1235', cliente: 'Maria Santos', valor: 'R$ 156,50', status: 'Enviado' },
+		{ id: '#1236', cliente: 'Pedro Costa', valor: 'R$ 203,80', status: 'Processando' },
+		{ id: '#1237', cliente: 'Ana Oliveira', valor: 'R$ 98,70', status: 'Pendente' }
 	];
-
-	let topProducts = [
-		{ name: 'Notebook Dell XPS', sales: 45, revenue: 135000 },
-		{ name: 'iPhone 15 Pro', sales: 38, revenue: 114000 },
-		{ name: 'Samsung Galaxy S24', sales: 32, revenue: 64000 },
-		{ name: 'iPad Air', sales: 28, revenue: 42000 },
-		{ name: 'AirPods Pro', sales: 52, revenue: 26000 }
+	
+	let produtosMaisVendidos = [
+		{ nome: 'Camiseta Básica', vendas: 45, receita: 'R$ 2.250,00' },
+		{ nome: 'Calça Jeans', vendas: 32, receita: 'R$ 3.200,00' },
+		{ nome: 'Tênis Esportivo', vendas: 28, receita: 'R$ 2.800,00' },
+		{ nome: 'Vestido Casual', vendas: 22, receita: 'R$ 1.980,00' }
 	];
-
-	function formatCurrency(value: number): string {
-		return new Intl.NumberFormat('pt-BR', {
-			style: 'currency',
-			currency: 'BRL'
-		}).format(value);
-	}
-
-	function getStatusBadgeClass(status: string): string {
-		switch (status) {
-			case 'completed': return 'badge-success';
-			case 'processing': return 'badge-warning';
-			case 'pending': return 'badge-info';
-			case 'cancelled': return 'badge-danger';
-			default: return 'badge';
-		}
-	}
-
-	function getStatusText(status: string): string {
-		switch (status) {
-			case 'completed': return 'Concluído';
-			case 'processing': return 'Processando';
-			case 'pending': return 'Pendente';
-			case 'cancelled': return 'Cancelado';
-			default: return status;
-		}
-	}
 </script>
 
 <svelte:head>
-  <title>Dashboard - Admin Panel</title>
+	<title>Dashboard - Admin Panel | Marketplace GDG</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="space-y-6">
 	<!-- Header -->
-	<header class="bg-white shadow-sm border-b">
-		<div class="px-4 sm:px-6 lg:px-8">
-			<div class="flex justify-between items-center py-4">
-				<h1 class="text-2xl font-semibold text-gray-900">Dashboard Administrativo</h1>
-				<div class="flex items-center space-x-4">
-					<button class="btn btn-secondary btn-sm">
-						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-						</svg>
-						Atualizar
-					</button>
-					<button class="btn btn-primary btn-sm">
-						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-						</svg>
-						Nova Venda
-					</button>
-				</div>
-			</div>
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+			<p class="text-gray-600">Visão geral do marketplace</p>
 		</div>
-	</header>
+		<button class="btn btn-primary">
+			<span class="mr-2">📊</span>
+			Relatório Completo
+		</button>
+	</div>
 
-	<!-- Main Content -->
-	<main class="px-4 sm:px-6 lg:px-8 py-8">
-		<!-- Stats Grid -->
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-			<!-- Receita Total -->
-			<div class="card">
-				<div class="card-body">
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm font-medium text-gray-600">Receita Total</p>
-							<p class="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.totalRevenue)}</p>
-						</div>
-						<div class="p-3 bg-cyan-100 rounded-full">
-							<svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-							</svg>
+	<!-- Cards de Estatísticas -->
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+		<div class="card">
+			<div class="card-body">
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<div class="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+							<span class="text-cyan-600 text-lg">📦</span>
 						</div>
 					</div>
-					<div class="mt-4 flex items-center text-sm">
-						<span class="text-green-600 font-medium">+{stats.revenueGrowth}%</span>
-						<span class="text-gray-500 ml-2">vs mês anterior</span>
-					</div>
-				</div>
-			</div>
-
-			<!-- Total de Pedidos -->
-			<div class="card">
-				<div class="card-body">
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm font-medium text-gray-600">Total de Pedidos</p>
-							<p class="text-2xl font-bold text-gray-900 mt-1">{stats.totalOrders}</p>
-						</div>
-						<div class="p-3 bg-blue-100 rounded-full">
-							<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-							</svg>
-						</div>
-					</div>
-					<div class="mt-4 flex items-center text-sm">
-						<span class="text-green-600 font-medium">+{stats.ordersGrowth}%</span>
-						<span class="text-gray-500 ml-2">vs mês anterior</span>
-					</div>
-				</div>
-			</div>
-
-			<!-- Total de Produtos -->
-			<div class="card">
-				<div class="card-body">
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm font-medium text-gray-600">Total de Produtos</p>
-							<p class="text-2xl font-bold text-gray-900 mt-1">{stats.totalProducts}</p>
-						</div>
-						<div class="p-3 bg-purple-100 rounded-full">
-							<svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-							</svg>
-						</div>
-					</div>
-					<div class="mt-4 flex items-center text-sm">
-						<span class="text-green-600 font-medium">+{stats.productsGrowth}%</span>
-						<span class="text-gray-500 ml-2">vs mês anterior</span>
-					</div>
-				</div>
-			</div>
-
-			<!-- Total de Usuários -->
-			<div class="card">
-				<div class="card-body">
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm font-medium text-gray-600">Total de Usuários</p>
-							<p class="text-2xl font-bold text-gray-900 mt-1">{stats.totalUsers}</p>
-						</div>
-						<div class="p-3 bg-green-100 rounded-full">
-							<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-							</svg>
-						</div>
-					</div>
-					<div class="mt-4 flex items-center text-sm">
-						<span class="text-green-600 font-medium">+{stats.usersGrowth}%</span>
-						<span class="text-gray-500 ml-2">vs mês anterior</span>
+					<div class="ml-4">
+						<h3 class="text-sm font-medium text-gray-500">Total de Pedidos</h3>
+						<p class="text-2xl font-bold text-gray-900">{stats.totalPedidos}</p>
 					</div>
 				</div>
 			</div>
 		</div>
 
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-			<!-- Pedidos Recentes -->
-			<div class="card">
-				<div class="card-header">
-					<div class="flex justify-between items-center">
-						<h2 class="text-lg font-semibold text-gray-900">Pedidos Recentes</h2>
-						<a href="/pedidos" class="text-sm text-cyan-600 hover:text-cyan-700">Ver todos</a>
+		<div class="card">
+			<div class="card-body">
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+							<span class="text-green-600 text-lg">💰</span>
+						</div>
+					</div>
+					<div class="ml-4">
+						<h3 class="text-sm font-medium text-gray-500">Vendas do Mês</h3>
+						<p class="text-2xl font-bold text-gray-900">{stats.vendas}</p>
 					</div>
 				</div>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-body">
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+							<span class="text-blue-600 text-lg">👥</span>
+						</div>
+					</div>
+					<div class="ml-4">
+						<h3 class="text-sm font-medium text-gray-500">Usuários Ativos</h3>
+						<p class="text-2xl font-bold text-gray-900">{stats.usuarios}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-body">
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+							<span class="text-yellow-600 text-lg">🛍️</span>
+						</div>
+					</div>
+					<div class="ml-4">
+						<h3 class="text-sm font-medium text-gray-500">Produtos</h3>
+						<p class="text-2xl font-bold text-gray-900">{stats.produtos}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Grid de Conteúdo -->
+	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<!-- Pedidos Recentes -->
+		<div class="card">
+			<div class="card-header">
+				<h3 class="text-lg font-medium text-gray-900">Pedidos Recentes</h3>
+			</div>
+			<div class="card-body p-0">
 				<div class="overflow-x-auto">
 					<table class="table">
 						<thead>
 							<tr>
+								<th>Pedido</th>
 								<th>Cliente</th>
-								<th>Total</th>
+								<th>Valor</th>
 								<th>Status</th>
-								<th>Data</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-200">
-							{#each recentOrders as order}
-								<tr class="hover:bg-gray-50">
-									<td class="font-medium">{order.customer}</td>
-									<td>{formatCurrency(order.total)}</td>
+							{#each pedidosRecentes as pedido}
+								<tr class="hover:bg-gray-50 transition-colors">
+									<td class="font-medium text-gray-900">{pedido.id}</td>
+									<td class="text-gray-600">{pedido.cliente}</td>
+									<td class="font-medium text-gray-900">{pedido.valor}</td>
 									<td>
-										<span class="badge {getStatusBadgeClass(order.status)}">
-											{getStatusText(order.status)}
-										</span>
+										{#if pedido.status === 'Entregue'}
+											<span class="badge badge-success">{pedido.status}</span>
+										{:else if pedido.status === 'Enviado'}
+											<span class="badge badge-info">{pedido.status}</span>
+										{:else if pedido.status === 'Processando'}
+											<span class="badge badge-warning">{pedido.status}</span>
+										{:else}
+											<span class="badge badge-danger">{pedido.status}</span>
+										{/if}
 									</td>
-									<td class="text-gray-500">{new Date(order.date).toLocaleDateString('pt-BR')}</td>
 								</tr>
 							{/each}
 						</tbody>
 					</table>
 				</div>
 			</div>
+		</div>
 
-			<!-- Produtos Mais Vendidos -->
-			<div class="card">
-				<div class="card-header">
-					<div class="flex justify-between items-center">
-						<h2 class="text-lg font-semibold text-gray-900">Produtos Mais Vendidos</h2>
-						<a href="/produtos" class="text-sm text-cyan-600 hover:text-cyan-700">Ver todos</a>
-					</div>
-				</div>
-				<div class="card-body">
-					<div class="space-y-4">
-						{#each topProducts as product, index}
-							<div class="flex items-center justify-between">
-								<div class="flex items-center space-x-3">
-									<span class="text-sm font-medium text-gray-500 w-6">#{index + 1}</span>
-									<div>
-										<p class="font-medium text-gray-900">{product.name}</p>
-										<p class="text-sm text-gray-500">{product.sales} vendas</p>
-									</div>
+		<!-- Produtos Mais Vendidos -->
+		<div class="card">
+			<div class="card-header">
+				<h3 class="text-lg font-medium text-gray-900">Produtos Mais Vendidos</h3>
+			</div>
+			<div class="card-body">
+				<div class="space-y-4">
+					{#each produtosMaisVendidos as produto, index}
+						<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+							<div class="flex items-center">
+								<div class="w-8 h-8 bg-cyan-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+									{index + 1}
 								</div>
-								<p class="font-medium text-gray-900">{formatCurrency(product.revenue)}</p>
+								<div class="ml-3">
+									<p class="font-medium text-gray-900">{produto.nome}</p>
+									<p class="text-sm text-gray-500">{produto.vendas} vendas</p>
+								</div>
 							</div>
-						{/each}
-					</div>
+							<div class="text-right">
+								<p class="font-bold text-gray-900">{produto.receita}</p>
+							</div>
+						</div>
+					{/each}
 				</div>
 			</div>
 		</div>
+	</div>
 
-		<!-- Gráficos (placeholder) -->
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-			<div class="card">
-				<div class="card-header">
-					<h2 class="text-lg font-semibold text-gray-900">Vendas por Mês</h2>
-				</div>
-				<div class="card-body">
-					<div class="h-64 flex items-center justify-center text-gray-400">
-						<p>Gráfico de vendas será implementado aqui</p>
-					</div>
-				</div>
-			</div>
-
-			<div class="card">
-				<div class="card-header">
-					<h2 class="text-lg font-semibold text-gray-900">Categorias Mais Vendidas</h2>
-				</div>
-				<div class="card-body">
-					<div class="h-64 flex items-center justify-center text-gray-400">
-						<p>Gráfico de categorias será implementado aqui</p>
-					</div>
-				</div>
+	<!-- Ações Rápidas -->
+	<div class="card">
+		<div class="card-header">
+			<h3 class="text-lg font-medium text-gray-900">Ações Rápidas</h3>
+		</div>
+		<div class="card-body">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<button class="btn btn-outline transition-fast">
+					<span class="mr-2">➕</span>
+					Novo Produto
+				</button>
+				<button class="btn btn-outline transition-fast">
+					<span class="mr-2">👤</span>
+					Gerenciar Usuários
+				</button>
+				<button class="btn btn-outline transition-fast">
+					<span class="mr-2">📈</span>
+					Ver Relatórios
+				</button>
 			</div>
 		</div>
-	</main>
+	</div>
 </div>

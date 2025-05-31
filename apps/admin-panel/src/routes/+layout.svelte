@@ -1,115 +1,158 @@
 <script lang="ts">
 	import '../app.css';
-	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	
-	let sidebarOpen = false;
+	// Simulação de usuário admin logado
+	let user = {
+		name: 'Admin GDG',
+		email: 'admin@marketplace.com',
+		role: 'admin'
+	};
 	
-	const menuItems = [
-		{ href: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-		{ href: '/produtos', label: 'Produtos', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-		{ href: '/pedidos', label: 'Pedidos', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
-		{ href: '/usuarios', label: 'Usuários', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-		{ href: '/vendedores', label: 'Vendedores', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-		{ href: '/categorias', label: 'Categorias', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
-		{ href: '/relatorios', label: 'Relatórios', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-		{ href: '/configuracoes', label: 'Configurações', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' }
-	];
+	let currentPath = '';
+	
+	onMount(() => {
+		currentPath = window.location.pathname;
+	});
+	
+	function isActiveRoute(path: string): boolean {
+		return currentPath === path;
+	}
 </script>
 
-<div class="flex h-screen bg-gray-50">
-	<!-- Sidebar -->
-	<div class="hidden md:flex md:flex-shrink-0">
-		<div class="flex flex-col w-64">
-			<div class="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-gray-900">
-				<div class="flex items-center flex-shrink-0 px-4">
-					<img src="/logo.png" alt="Marketplace GDG" class="h-8 w-auto mr-3" />
-					<h2 class="text-2xl font-bold text-white">Admin Panel</h2>
+<div class="min-h-screen bg-gray-50">
+	<!-- Header -->
+	<header class="bg-white shadow-sm border-b border-gray-200">
+		<div class="max-w-[1440px] mx-auto px-8">
+			<div class="flex items-center justify-between h-16">
+				<!-- Logo e Título -->
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<h1 class="text-xl font-bold text-gray-900">
+							<span class="text-cyan-500">🛠️ Admin Panel</span>
+							<span class="text-gray-400 text-sm ml-2">| Marketplace GDG</span>
+						</h1>
+					</div>
 				</div>
-				<nav class="mt-8 flex-1 px-2 space-y-1">
-					{#each menuItems as item}
-						<a
-							href={item.href}
-							class="group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors
-								{$page.url.pathname === item.href 
-									? 'bg-gray-800 text-white' 
-									: 'text-gray-300 hover:bg-gray-700 hover:text-white'}"
-						>
-							<svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.icon} />
-							</svg>
-							{item.label}
-						</a>
-					{/each}
-				</nav>
+				
+				<!-- User Menu -->
+				<div class="flex items-center space-x-4">
+					<!-- Notificações -->
+					<button class="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg transition-colors">
+						<span class="sr-only">Ver notificações</span>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+						</svg>
+						<!-- Badge de notificação -->
+						<span class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+					</button>
+					
+					<!-- User Profile -->
+					<div class="flex items-center space-x-3">
+						<div class="text-right">
+							<p class="text-sm font-medium text-gray-900">{user.name}</p>
+							<p class="text-xs text-gray-500 capitalize">{user.role}</p>
+						</div>
+						<div class="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center">
+							<span class="text-white font-semibold text-sm">
+								{user.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+							</span>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
-	</div>
-
-	<!-- Mobile sidebar -->
-	{#if sidebarOpen}
-		<div class="md:hidden fixed inset-0 z-40 flex">
-			<div class="fixed inset-0 bg-gray-600 bg-opacity-75" on:click={() => sidebarOpen = false}></div>
-			<div class="relative flex-1 flex flex-col max-w-xs w-full bg-gray-900">
-				<div class="absolute top-0 right-0 -mr-12 pt-2">
-					<button
-						type="button"
-						class="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-						on:click={() => sidebarOpen = false}
+	</header>
+	
+	<div class="flex">
+		<!-- Sidebar -->
+		<aside class="w-64 bg-white shadow-sm min-h-screen border-r border-gray-200">
+			<nav class="p-4">
+				<div class="space-y-1">
+					<!-- Dashboard -->
+					<a 
+						href="/" 
+						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+							{isActiveRoute('/') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
 					>
-						<span class="sr-only">Fechar sidebar</span>
-						<svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-						</svg>
+						<span class="mr-3 text-lg">📊</span>
+						Dashboard
+					</a>
+					
+					<!-- Produtos -->
+					<a 
+						href="/produtos" 
+						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+							{isActiveRoute('/produtos') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+					>
+						<span class="mr-3 text-lg">📦</span>
+						Produtos
+					</a>
+					
+					<!-- Pedidos -->
+					<a 
+						href="/pedidos" 
+						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+							{isActiveRoute('/pedidos') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+					>
+						<span class="mr-3 text-lg">🛒</span>
+						Pedidos
+					</a>
+					
+					<!-- Usuários -->
+					<a 
+						href="/usuarios" 
+						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+							{isActiveRoute('/usuarios') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+					>
+						<span class="mr-3 text-lg">👥</span>
+						Usuários
+					</a>
+					
+					<!-- Separador -->
+					<div class="border-t border-gray-200 my-4"></div>
+					
+					<!-- Relatórios -->
+					<a 
+						href="/relatorios" 
+						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+							{isActiveRoute('/relatorios') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+					>
+						<span class="mr-3 text-lg">📈</span>
+						Relatórios
+					</a>
+					
+					<!-- Configurações -->
+					<a 
+						href="/configuracoes" 
+						class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+							{isActiveRoute('/configuracoes') ? 'bg-cyan-50 text-cyan-700 border-r-2 border-cyan-500' : 'text-gray-700 hover:bg-gray-50'}"
+					>
+						<span class="mr-3 text-lg">⚙️</span>
+						Configurações
+					</a>
+				</div>
+				
+				<!-- Footer da Sidebar -->
+				<div class="mt-8 pt-4 border-t border-gray-200">
+					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+						<span class="mr-3 text-lg">🔄</span>
+						Trocar Role
+					</button>
+					
+					<button class="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1">
+						<span class="mr-3 text-lg">🚪</span>
+						Sair
 					</button>
 				</div>
-				<div class="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-					<div class="flex-shrink-0 flex items-center px-4">
-						<img src="/logo.png" alt="Marketplace GDG" class="h-8 w-auto mr-3" />
-						<h2 class="text-2xl font-bold text-white">Admin Panel</h2>
-					</div>
-					<nav class="mt-8 px-2 space-y-1">
-						{#each menuItems as item}
-							<a
-								href={item.href}
-								class="group flex items-center px-2 py-2 text-base font-medium rounded-md
-									{$page.url.pathname === item.href 
-										? 'bg-gray-800 text-white' 
-										: 'text-gray-300 hover:bg-gray-700 hover:text-white'}"
-								on:click={() => sidebarOpen = false}
-							>
-								<svg class="mr-4 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.icon} />
-								</svg>
-								{item.label}
-							</a>
-						{/each}
-					</nav>
-				</div>
+			</nav>
+		</aside>
+		
+		<!-- Main Content -->
+		<main class="flex-1 p-8 bg-gray-50">
+			<div class="max-w-[1440px] mx-auto">
+				<slot />
 			</div>
-		</div>
-	{/if}
-
-	<!-- Main content -->
-	<div class="flex flex-col flex-1 overflow-hidden">
-		<!-- Top bar -->
-		<div class="md:hidden">
-			<div class="flex items-center justify-between bg-gray-900 p-4">
-				<button
-					type="button"
-					class="text-gray-300 hover:text-white focus:outline-none focus:text-white"
-					on:click={() => sidebarOpen = true}
-				>
-					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-					</svg>
-				</button>
-				<h2 class="text-xl font-bold text-white">Admin Panel</h2>
-			</div>
-		</div>
-
-		<!-- Page content -->
-		<main class="flex-1 overflow-y-auto">
-			<slot />
 		</main>
 	</div>
 </div>

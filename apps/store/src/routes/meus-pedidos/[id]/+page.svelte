@@ -53,6 +53,10 @@
   let error = '';
   let orderId = '';
   
+  // Novo: Estados para rastreamento avançado
+  let trackingData: any = null;
+  let showFullTracking = false;
+  
   onMount(() => {
     // Verificar se está logado
     if (!$isAuthenticated) {
@@ -62,6 +66,7 @@
     
     orderId = $page.params.id;
     loadOrderDetails();
+    loadTracking();
   });
   
   async function loadOrderDetails() {
@@ -134,6 +139,22 @@
       alert('Número do pedido copiado!');
     }
   }
+  
+  // Novo: Função para carregar rastreamento
+  async function loadTracking() {
+    if (!order?.id) return;
+    
+    try {
+      const response = await fetch(`/api/orders/${order.id}/tracking`);
+      const data = await response.json();
+      
+      if (data.success) {
+        trackingData = data.data;
+      }
+    } catch (err) {
+      console.error('Erro ao carregar rastreamento:', err);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -189,7 +210,7 @@
         
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <button 
-            on:click={loadOrderDetails}
+            onclick={loadOrderDetails}
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
           >
             Tentar Novamente
@@ -219,7 +240,7 @@
                     Pedido #{order.orderNumber}
                   </h2>
                   <button 
-                    on:click={copyOrderNumber}
+                    onclick={copyOrderNumber}
                     class="text-gray-400 hover:text-gray-600 transition-colors"
                     title="Copiar número do pedido"
                   >
@@ -257,6 +278,163 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- Status Timeline -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">Status do Pedido</h2>
+          <div class="relative">
+            <div class="flex justify-between">
+              <div class="flex items-center text-[#00BFB3]">
+                <div class="w-8 h-8 bg-[#00BFB3] rounded-full flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <span class="ml-3 text-sm font-medium">Pedido Criado</span>
+              </div>
+              <div class="flex items-center {order.status === 'confirmed' || order.status === 'shipped' || order.status === 'delivered' ? 'text-[#00BFB3]' : 'text-gray-400'}">
+                <div class="w-8 h-8 {order.status === 'confirmed' || order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#00BFB3]' : 'bg-gray-200'} rounded-full flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <span class="ml-3 text-sm font-medium">Confirmado</span>
+              </div>
+              <div class="flex items-center {order.status === 'shipped' || order.status === 'delivered' ? 'text-[#00BFB3]' : 'text-gray-400'}">
+                <div class="w-8 h-8 {order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#00BFB3]' : 'bg-gray-200'} rounded-full flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <span class="ml-3 text-sm font-medium">Enviado</span>
+              </div>
+              <div class="flex items-center {order.status === 'delivered' ? 'text-[#00BFB3]' : 'text-gray-400'}">
+                <div class="w-8 h-8 {order.status === 'delivered' ? 'bg-[#00BFB3]' : 'bg-gray-200'} rounded-full flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <span class="ml-3 text-sm font-medium">Entregue</span>
+              </div>
+            </div>
+            <div class="absolute top-4 left-4 right-4 h-0.5 bg-gray-200 -z-10">
+              <div class="h-full bg-[#00BFB3] transition-all duration-500" style="width: {
+                order.status === 'pending' ? '0%' :
+                order.status === 'confirmed' ? '33%' :
+                order.status === 'shipped' ? '66%' :
+                order.status === 'delivered' ? '100%' : '0%'
+              }"></div>
+            </div>
+          </div>
+          
+          <!-- Rastreamento Avançado -->
+          {#if trackingData}
+            <div class="mt-8">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-900">Rastreamento Detalhado</h3>
+                <button
+                  onclick={() => showFullTracking = !showFullTracking}
+                  class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium"
+                >
+                  {showFullTracking ? 'Ocultar' : 'Ver histórico completo'}
+                </button>
+              </div>
+              
+              {#if trackingData.delivery?.tracking_code}
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <div>
+                      <p class="font-medium text-blue-900">Código de rastreamento</p>
+                      <p class="text-sm text-blue-700 font-mono">{trackingData.delivery.tracking_code}</p>
+                      {#if trackingData.delivery.carrier}
+                        <p class="text-xs text-blue-600">Transportadora: {trackingData.delivery.carrier}</p>
+                      {/if}
+                    </div>
+                  </div>
+                </div>
+              {/if}
+              
+              {#if trackingData.delivery?.estimated_delivery}
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p class="font-medium text-green-900">Previsão de entrega</p>
+                      <p class="text-sm text-green-700">
+                        {new Date(trackingData.delivery.estimated_delivery).toLocaleDateString('pt-BR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              {/if}
+              
+              <!-- Timeline de rastreamento -->
+              {#if showFullTracking && trackingData.tracking?.length > 0}
+                <div class="mt-4">
+                  <h4 class="font-medium text-gray-900 mb-3">Histórico de movimentação</h4>
+                  <div class="space-y-4">
+                    {#each trackingData.tracking as event}
+                      <div class="flex gap-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-[#00BFB3] rounded-full flex items-center justify-center">
+                          <div class="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center justify-between">
+                            <p class="font-medium text-gray-900 capitalize">{event.status}</p>
+                            <p class="text-sm text-gray-500">
+                              {new Date(event.created_at).toLocaleDateString('pt-BR')} às {new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {#if event.description}
+                            <p class="text-sm text-gray-600 mt-1">{event.description}</p>
+                          {/if}
+                          {#if event.location}
+                            <p class="text-xs text-gray-500 mt-1">📍 {event.location}</p>
+                          {/if}
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+              
+              <!-- Status Flow -->
+              {#if trackingData.status_flow}
+                <div class="mt-6">
+                  <h4 class="font-medium text-gray-900 mb-3">Próximas etapas</h4>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {#each trackingData.status_flow as step}
+                      <div class="flex items-center gap-2 p-3 rounded-lg {step.completed ? 'bg-green-50 border border-green-200' : step.current ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center {step.completed ? 'bg-green-100' : step.current ? 'bg-blue-100' : 'bg-gray-100'}">
+                          {#if step.completed}
+                            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                          {:else if step.current}
+                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                          {:else}
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          {/if}
+                        </div>
+                        <span class="text-sm font-medium {step.completed ? 'text-green-700' : step.current ? 'text-blue-700' : 'text-gray-500'}">{step.label}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
         
         <!-- Status History -->

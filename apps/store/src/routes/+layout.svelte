@@ -3,6 +3,7 @@
 	import '../app.css';
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { auth, user, isAuthenticated } from '$lib/stores/auth';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import SearchBox from '$lib/components/search/SearchBox.svelte';
@@ -17,6 +18,7 @@
 	import BannerCarousel from '$lib/components/layout/BannerCarousel.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import { frontendCache } from '$lib/cache/frontend-cache';
+	import ChatWidget from '$lib/components/chat/ChatWidget.svelte';
 
 	// Constants
 	const CAROUSEL_INTERVAL_MS = 4000;
@@ -69,9 +71,14 @@
 	
 	// Computed
 	let totalItems = $derived(
-		$sellerGroups.reduce((sum, group) => 
-			sum + group.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+		$sellerGroups.reduce((sum: number, group: any) => 
+			sum + group.items.reduce((itemSum: number, item: any) => itemSum + item.quantity, 0), 0
 		)
+	);
+
+	// Chat widget visibility
+	let shouldShowWidget = $derived(
+		!(['/login', '/cadastro', '/admin', '/seller'].some(route => $page.url.pathname.startsWith(route)))
 	);
 
 	// Lifecycle
@@ -340,3 +347,8 @@
 
 <!-- Toast Container -->
 <ToastContainer />
+
+<!-- Chat Widget - Aparece em todas as páginas (exceto admin/login) -->
+{#if shouldShowWidget}
+	<ChatWidget />
+{/if}
