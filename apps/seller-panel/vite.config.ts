@@ -7,8 +7,7 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	resolve: {
 		alias: {
-			'@mktplace/shared-types': new URL('../../packages/shared-types/src/index.ts', import.meta.url).pathname,
-			'@mktplace/utils': new URL('../../packages/utils/src/index.ts', import.meta.url).pathname
+			'@mktplace/shared-types': new URL('../../packages/shared-types/src/index.ts', import.meta.url).pathname
 		}
 	},
 	test: {

@@ -19,8 +19,7 @@
 	"dependencies": {
 		"@mktplace/ui": "workspace:*",
 		"@mktplace/db-hyperdrive": "workspace:*",
-		"@mktplace/shared-types": "workspace:*",
-		"@mktplace/utils": "workspace:*"
+		"@mktplace/shared-types": "workspace:*"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
