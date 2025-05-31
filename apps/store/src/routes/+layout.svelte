@@ -341,7 +341,9 @@
 
 <!-- Main Content -->
 <main class="min-h-screen bg-gray-50">
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </main>
 
 <!-- Footer -->

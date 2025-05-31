@@ -30,7 +30,12 @@ export const handle: Handle = async ({ event, resolve }) => {
   
   // HTML - cache inteligente
   else if (contentType.includes('text/html')) {
-    if (pathname === '/' || pathname.startsWith('/produto/')) {
+    if (event.url.hostname === 'localhost') {
+      // Development - sem cache
+      response.headers.set('cache-control', 'no-cache, no-store, must-revalidate');
+      response.headers.set('pragma', 'no-cache');
+      response.headers.set('expires', '0');
+    } else if (pathname === '/' || pathname.startsWith('/produto/')) {
       // Páginas importantes - cache médio
       response.headers.set('cache-control', 'public, max-age=600, stale-while-revalidate=300');
     } else {
