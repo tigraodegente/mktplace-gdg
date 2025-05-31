@@ -6,14 +6,13 @@
  */
 
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import { withDatabase } from '$lib/db';
 
 // ============================================================================
 // GET - LISTAR PROVIDERS
 // ============================================================================
 
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
   try {
     const searchParams = url.searchParams;
     const type = searchParams.get('type');
@@ -53,32 +52,55 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         ? `WHERE ${whereConditions.join(' AND ')}`
         : '';
 
-      // Buscar providers usando view de status
+      // Buscar providers com métricas via LEFT JOIN
       const providers = await db.query(`
         SELECT 
-          id,
-          name,
-          display_name,
-          type,
-          description,
-          is_active,
-          is_sandbox,
-          priority,
-          success_rate,
-          avg_response_time,
-          last_success_at,
-          last_failure_at,
-          requests_24h,
-          success_rate_24h,
-          avg_response_time_24h,
-          pending_retries,
-          processing_items,
-          failed_items,
-          created_at,
-          updated_at
-        FROM integration_providers_status
+          ip.id,
+          ip.name,
+          ip.display_name,
+          ip.type,
+          ip.description,
+          ip.is_active,
+          ip.is_sandbox,
+          ip.priority,
+          ip.success_rate,
+          ip.avg_response_time,
+          ip.last_success_at,
+          ip.last_failure_at,
+          ip.created_at,
+          ip.updated_at,
+          COALESCE(recent_metrics.total_requests_24h, 0) as requests_24h,
+          COALESCE(recent_metrics.success_rate_24h, 0) as success_rate_24h,
+          COALESCE(recent_metrics.avg_response_time_24h, 0) as avg_response_time_24h,
+          COALESCE(queue_status.pending_items, 0) as pending_retries,
+          COALESCE(queue_status.processing_items, 0) as processing_items,
+          COALESCE(queue_status.failed_items, 0) as failed_items
+        FROM integration_providers ip
+        
+        LEFT JOIN (
+          SELECT 
+            provider_id,
+            SUM(total_requests) as total_requests_24h,
+            AVG(success_rate) as success_rate_24h,
+            AVG(avg_response_time_ms) as avg_response_time_24h
+          FROM integration_metrics
+          WHERE period_start >= NOW() - INTERVAL '24 hours'
+          GROUP BY provider_id
+        ) recent_metrics ON ip.id = recent_metrics.provider_id
+        
+        LEFT JOIN (
+          SELECT 
+            provider_id,
+            COUNT(*) FILTER (WHERE status = 'pending') as pending_items,
+            COUNT(*) FILTER (WHERE status = 'processing') as processing_items,
+            COUNT(*) FILTER (WHERE status = 'failed') as failed_items
+          FROM integration_retry_queue
+          WHERE created_at >= NOW() - INTERVAL '24 hours'
+          GROUP BY provider_id
+        ) queue_status ON ip.id = queue_status.provider_id
+        
         ${whereClause}
-        ORDER BY priority ASC, name ASC
+        ORDER BY ip.priority ASC, ip.name ASC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `, [...queryParams, limit, offset]);
 
@@ -150,7 +172,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 // POST - CRIAR/ATUALIZAR PROVIDER
 // ============================================================================
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST = async ({ request, platform }: { request: Request; platform: any }) => {
   try {
     const data = await request.json();
     
