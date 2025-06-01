@@ -213,20 +213,6 @@
 			</div>
 			
 			<a
-				href="/promocoes"
-				onclick={onClose}
-				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-				style="font-family: 'Lato', sans-serif;"
-			>
-				<span class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-[#FF8403]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-					</svg>
-					Promoções
-				</span>
-			</a>
-			
-			<a
 				href="/listas-presentes"
 				onclick={onClose}
 				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
@@ -237,34 +223,6 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.168 18.477 18.582 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
 					</svg>
 					Listas de Presentes
-				</span>
-			</a>
-			
-			<a
-				href="/blog"
-				onclick={onClose}
-				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-				style="font-family: 'Lato', sans-serif;"
-			>
-				<span class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-[#FF8403]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-					</svg>
-					Blog
-				</span>
-			</a>
-			
-			<a
-				href="/novidades"
-				onclick={onClose}
-				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-				style="font-family: 'Lato', sans-serif;"
-			>
-				<span class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-					</svg>
-					Novidades
 				</span>
 			</a>
 		</div>
