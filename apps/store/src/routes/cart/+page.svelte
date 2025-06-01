@@ -15,6 +15,10 @@
   import { goto } from '$app/navigation';
   import { writable } from 'svelte/store';
   import { get } from 'svelte/store';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
+  import { toastStore } from '$lib/stores/toastStore';
   
   // Componentes do Checkout Wizard
   import CheckoutAuth from '$lib/components/checkout/CheckoutAuth.svelte';
@@ -292,7 +296,12 @@
     
     if (!$zipCode) {
       console.log('❌ CEP não informado');
-      alert('Por favor, informe seu CEP para continuar');
+      toastStore.add({
+        type: 'warning',
+        title: 'CEP Obrigatório',
+        message: 'Por favor, informe seu CEP para continuar',
+        duration: 4000
+      });
       return;
     }
     
@@ -303,7 +312,12 @@
     
     if (missingShipping) {
       console.log('❌ Opções de frete não selecionadas');
-      alert('Por favor, selecione uma opção de frete para todos os vendedores');
+      toastStore.add({
+        type: 'warning',
+        title: 'Frete Obrigatório',
+        message: 'Por favor, selecione uma opção de frete para todos os vendedores',
+        duration: 4000
+      });
       return;
     }
     
@@ -362,7 +376,12 @@
       if (!$isAuthenticated || !$user) {
         processingOrder = false;
         console.log('❌ Store indica usuário não autenticado');
-        alert('Você precisa estar logado para finalizar o pedido.');
+        toastStore.add({
+          type: 'error',
+          title: 'Login Necessário',
+          message: 'Você precisa estar logado para finalizar o pedido',
+          duration: 4000
+        });
         window.location.href = '/login?redirect=/cart';
         return;
       }
@@ -371,7 +390,12 @@
       if (!checkoutData.user || checkoutData.isGuest) {
         processingOrder = false;
         console.log('❌ Dados do checkout indicam problema de autenticação');
-        alert('Erro na autenticação. Redirecionando para login...');
+        toastStore.add({
+          type: 'error',
+          title: 'Erro de Autenticação',
+          message: 'Erro na autenticação. Redirecionando para login...',
+          duration: 3000
+        });
         window.location.href = '/login?redirect=/cart';
         return;
       }
@@ -422,7 +446,12 @@
             console.log('❌ Erro ao salvar dados de recuperação:', storageError);
           }
           
-          alert('Sua sessão expirou. Você será redirecionado para login e poderá continuar de onde parou.');
+          toastStore.add({
+            type: 'info',
+            title: 'Sessão Expirada',
+            message: 'Sua sessão expirou. Redirecionando para login...',
+            duration: 3000
+          });
           window.location.href = '/login?redirect=/cart&recovery=true';
           return;
         }
@@ -453,7 +482,12 @@
       console.error('❌ Erro ao processar pedido:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao processar pedido: ${errorMessage}\n\nTente novamente ou entre em contato com o suporte.`);
+      toastStore.add({
+        type: 'error',
+        title: 'Erro ao Processar Pedido',
+        message: `${errorMessage}\n\nTente novamente ou entre em contato com o suporte.`,
+        duration: 6000
+      });
     }
   }
   

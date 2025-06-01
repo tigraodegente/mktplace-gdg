@@ -235,9 +235,14 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               `;
               console.log(`🔍 Debug: Produto encontrado:`, productCheck[0]);
               
+              // Calcular novo estoque fora da query para evitar problemas aritméticos
+              const currentStock = productCheck[0]?.quantity || 0;
+              const newStock = currentStock - item.quantity;
+              console.log(`🔍 Debug: Estoque atual: ${currentStock}, Novo estoque: ${newStock}`);
+              
               await sql`
                 UPDATE products 
-                SET quantity = quantity - ${item.quantity}
+                SET quantity = ${newStock}
                 WHERE id = ${item.productId}
               `;
               
