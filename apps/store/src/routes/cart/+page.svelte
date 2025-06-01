@@ -354,101 +354,38 @@
     // Visual feedback de processamento
     scrollToWizardTop(50);
     
-    // 🔍 VERIFICAÇÃO UNIFICADA DE AUTENTICAÇÃO usando AuthService
     try {
-      // 1. Verificar store local
-      if (!$isAuthenticated) {
+      // ✅ VERIFICAÇÃO SIMPLIFICADA DE AUTENTICAÇÃO
+      console.log('🔍 Verificando autenticação para processamento...');
+      
+      // 1. Verificar store local primeiro
+      if (!$isAuthenticated || !$user) {
         processingOrder = false;
-        console.log('❌ Store não autenticado');
-        alert('Você precisa estar logado para finalizar o pedido. Redirecionando para login...');
+        console.log('❌ Store indica usuário não autenticado');
+        alert('Você precisa estar logado para finalizar o pedido.');
         window.location.href = '/login?redirect=/cart';
         return;
       }
       
       // 2. Verificar dados do checkout
-      if (checkoutData.isGuest || !checkoutData.user) {
+      if (!checkoutData.user || checkoutData.isGuest) {
         processingOrder = false;
-        console.log('❌ Dados de checkout indicam usuário não autenticado');
-        alert('Para finalizar o pedido, é necessário estar logado. Redirecionando para login...');
+        console.log('❌ Dados do checkout indicam problema de autenticação');
+        alert('Erro na autenticação. Redirecionando para login...');
         window.location.href = '/login?redirect=/cart';
         return;
       }
       
-      // 3. Verificar com o backend usando AuthService
-      const authCheck = await AuthService.checkAuth();
+      console.log('✅ Verificações básicas passaram, criando pedido...');
       
-      
-      if (!authCheck.success || !authCheck.data?.user) {
-        processingOrder = false;
-        console.log('❌ AuthService confirma que não está autenticado');
-        
-        // Forçar logout e reload para sincronizar estados
-        try {
-          await AuthService.logout();
-        } catch (logoutError) {
-          console.log('Erro no logout via AuthService:', logoutError);
-        }
-        
-        // CORREÇÃO: Salvar dados do checkout no sessionStorage para preservar contexto
-        try {
-          sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
-            checkoutData,
-            selectedShippingOptions,
-            appliedCoupon: $appliedCoupon,
-            zipCode: $zipCode,
-            currentStep,
-            timestamp: Date.now()
-          }));
-          console.log('💾 Dados do checkout salvos para recuperação');
-        } catch (error) {
-          console.log('❌ Erro ao salvar dados de recuperação:', error);
-        }
-        
-        alert('Sua sessão expirou durante o checkout. Você será redirecionado para login e poderá continuar de onde parou.');
-        // CORREÇÃO: Redirecionar para checkout ao invés de carrinho
-        window.location.href = '/login?redirect=/checkout&recovery=true';
-        return;
-      }
-      
-      console.log('✅ AuthService confirma autenticação válida!');
-      console.log('✅ Todas as verificações de autenticação passaram, processando pedido...');
-      
-    } catch (error) {
-      processingOrder = false;
-      console.error('❌ Erro na verificação de sessão via AuthService:', error);
-      
-      // CORREÇÃO: Salvar dados do checkout mesmo em caso de erro
-      try {
-        sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
-          checkoutData,
-          selectedShippingOptions,
-          appliedCoupon: $appliedCoupon,
-          zipCode: $zipCode,
-          currentStep,
-          timestamp: Date.now()
-        }));
-        console.log('💾 Dados do checkout salvos para recuperação (erro)');
-      } catch (storageError) {
-        console.log('❌ Erro ao salvar dados de recuperação:', storageError);
-      }
-      
-      alert('Erro ao verificar sessão durante checkout. Você será redirecionado para login e poderá continuar de onde parou.');
-      // CORREÇÃO: Redirecionar para checkout ao invés de carrinho
-      window.location.href = '/login?redirect=/checkout&recovery=true';
-      return;
-    }
-    
-    try {
-      console.log('📦 Criando pedido...');
-      
-      // 4. Criar o pedido
+      // 3. Criar o pedido diretamente (sem verificação adicional)
       const cartItems = $sellerGroups.flatMap(group => group.items);
       const createOrderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include',
+        credentials: 'include', // Essencial para cookies de sessão
         body: JSON.stringify({
           items: cartItems.map(item => ({
             productId: item.product.id,
@@ -461,11 +398,40 @@
         })
       });
 
+      console.log('📊 Resposta da API:', createOrderResponse.status, createOrderResponse.statusText);
+
       if (!createOrderResponse.ok) {
-        throw new Error(`HTTP ${createOrderResponse.status}: ${createOrderResponse.statusText}`);
+        const errorText = await createOrderResponse.text();
+        console.log('❌ Erro HTTP:', errorText);
+        
+        // Se for erro 401, problema de autenticação
+        if (createOrderResponse.status === 401) {
+          console.log('🔒 Erro 401 - Sessão realmente expirou');
+          
+          // Salvar contexto para recuperação
+          try {
+            sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
+              checkoutData,
+              selectedShippingOptions,
+              appliedCoupon: $appliedCoupon,
+              zipCode: $zipCode,
+              currentStep,
+              timestamp: Date.now()
+            }));
+          } catch (storageError) {
+            console.log('❌ Erro ao salvar dados de recuperação:', storageError);
+          }
+          
+          alert('Sua sessão expirou. Você será redirecionado para login e poderá continuar de onde parou.');
+          window.location.href = '/login?redirect=/cart&recovery=true';
+          return;
+        }
+        
+        throw new Error(`HTTP ${createOrderResponse.status}: ${errorText}`);
       }
 
       const orderResult = await createOrderResponse.json();
+      console.log('📦 Resultado do pedido:', orderResult);
       
       if (!orderResult.success) {
         throw new Error(orderResult.error?.message || 'Erro ao criar pedido');
@@ -473,7 +439,7 @@
 
       console.log('✅ Pedido criado com sucesso:', orderResult.data.order.orderNumber);
 
-      // 5. Limpar carrinho e redirecionar
+      // 4. Limpar carrinho e redirecionar
       clearCart();
       cartStore.clearCart();
       
@@ -484,10 +450,10 @@
       
     } catch (error) {
       processingOrder = false;
-      console.log('❌ Erro ao processar pedido:', error);
+      console.error('❌ Erro ao processar pedido:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao processar pedido: ${errorMessage}`);
+      alert(`Erro ao processar pedido: ${errorMessage}\n\nTente novamente ou entre em contato com o suporte.`);
     }
   }
   

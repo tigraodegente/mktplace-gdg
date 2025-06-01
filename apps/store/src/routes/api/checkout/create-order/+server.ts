@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 import { requireAuth } from '$lib/utils/auth';
+import ShippingIntegration from '$lib/services/shipping';
 
 interface CreateOrderRequest {
   items: Array<{
@@ -25,7 +26,7 @@ interface CreateOrderRequest {
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
-    console.log('🛒 Create Order - Estratégia híbrida iniciada');
+    console.log('🛒 Create Order - Estratégia híbrida com integração de transportadoras iniciada');
     
     // Verificar autenticação
     console.log('🔐 Verificando autenticação...');
@@ -201,6 +202,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
           console.log('✅ Pedido criado com sucesso!');
 
+          // Retornar dados do pedido e itens para integração
           return {
             order: {
               id: order.id,
@@ -209,7 +211,11 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               status: 'pending',
               paymentStatus: 'pending',
               paymentMethod: orderData.paymentMethod,
-              createdAt: order.created_at
+              createdAt: order.created_at,
+              // Dados para integração
+              user_id: authResult.user!.id,
+              shipping_cost: shippingCost,
+              payment_status: 'pending'
             },
             totals: {
               subtotal,
@@ -223,7 +229,10 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               quantity: item.quantity,
               price: item.unitPrice,
               total: item.totalPrice
-            }))
+            })),
+            // Dados adicionais para integração
+            orderItems: orderItems,
+            shippingAddress: orderData.shippingAddress
           };
         });
       })();
@@ -236,9 +245,49 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       
       console.log(`✅ Pedido criado: ${result.order.orderNumber}`);
       
+      // =====================================================
+      // INTEGRAÇÃO COM TRANSPORTADORAS (ASSÍNCRONA)
+      // =====================================================
+      
+      if (ShippingIntegration.isEnabled()) {
+        console.log(`🚚 Iniciando integração com transportadoras para pedido ${result.order.orderNumber}...`);
+        
+        try {
+          // Enviar para transportadora de forma assíncrona (não bloqueia resposta)
+          ShippingIntegration.sendOrder(
+            result.order.id,
+            result.order,
+            result.orderItems,
+            result.shippingAddress,
+            platform
+          ).then((shippingResult) => {
+            if (shippingResult.success) {
+              console.log(`🚚 ✅ Pedido ${result.order.orderNumber} enviado para transportadora ${shippingResult.provider}`);
+            } else {
+              console.warn(`🚚 ⚠️ Falha na integração para pedido ${result.order.orderNumber}: ${shippingResult.error}`);
+            }
+          }).catch((error) => {
+            console.error(`🚚 ❌ Erro crítico na integração para pedido ${result.order.orderNumber}:`, error);
+          });
+          
+        } catch (error) {
+          console.error(`🚚 ❌ Erro ao iniciar integração:`, error);
+        }
+      } else {
+        console.log(`🚚 ⚠️ Sistema de integração de transportadoras desabilitado`);
+      }
+      
+      // =====================================================
+      // RETORNAR RESPOSTA IMEDIATA (NÃO AGUARDA TRANSPORTADORA)
+      // =====================================================
+      
       return json({
         success: true,
-        data: result,
+        data: {
+          order: result.order,
+          totals: result.totals,
+          items: result.items
+        },
         source: 'database'
       });
       

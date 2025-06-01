@@ -10,8 +10,8 @@
   
   const dispatch = createEventDispatcher();
   
-  // Estados principais
-  let addressMode = $state<'select' | 'new' | 'create'>('new');
+  // Estados principais - SIMPLIFICADOS
+  let addressMode = $state<'form' | 'select'>('form'); // Simplificado: só form ou select
   let selectedAddress = $state<any>(null);
   let showAddressModal = $state(false);
   let userAddresses = $state<any[]>([]);
@@ -40,27 +40,8 @@
   
   // Validação
   let addressErrors = $state<Record<string, string>>({});
-  let showSaveOption = $state(false);
   
-  // Estados brasileiros
-  const states = [
-    { value: 'AC', label: 'Acre' }, { value: 'AL', label: 'Alagoas' },
-    { value: 'AP', label: 'Amapá' }, { value: 'AM', label: 'Amazonas' },
-    { value: 'BA', label: 'Bahia' }, { value: 'CE', label: 'Ceará' },
-    { value: 'DF', label: 'Distrito Federal' }, { value: 'ES', label: 'Espírito Santo' },
-    { value: 'GO', label: 'Goiás' }, { value: 'MA', label: 'Maranhão' },
-    { value: 'MT', label: 'Mato Grosso' }, { value: 'MS', label: 'Mato Grosso do Sul' },
-    { value: 'MG', label: 'Minas Gerais' }, { value: 'PA', label: 'Pará' },
-    { value: 'PB', label: 'Paraíba' }, { value: 'PR', label: 'Paraná' },
-    { value: 'PE', label: 'Pernambuco' }, { value: 'PI', label: 'Piauí' },
-    { value: 'RJ', label: 'Rio de Janeiro' }, { value: 'RN', label: 'Rio Grande do Norte' },
-    { value: 'RS', label: 'Rio Grande do Sul' }, { value: 'RO', label: 'Rondônia' },
-    { value: 'RR', label: 'Roraima' }, { value: 'SC', label: 'Santa Catarina' },
-    { value: 'SP', label: 'São Paulo' }, { value: 'SE', label: 'Sergipe' },
-    { value: 'TO', label: 'Tocantins' }
-  ];
-  
-  // 🎯 FUNÇÃO DE AUTO-SCROLL E FOCO INTELIGENTE
+  // 📱 FUNÇÃO DE AUTO-SCROLL E FOCO INTELIGENTE
   function scrollToFormAndFocus(delay: number = 200) {
     if (typeof window === 'undefined') return;
     
@@ -116,29 +97,50 @@
       }
     }, 100);
   }
+
+  // Estados brasileiros
+  const states = [
+    { value: 'AC', label: 'Acre' }, { value: 'AL', label: 'Alagoas' },
+    { value: 'AP', label: 'Amapá' }, { value: 'AM', label: 'Amazonas' },
+    { value: 'BA', label: 'Bahia' }, { value: 'CE', label: 'Ceará' },
+    { value: 'DF', label: 'Distrito Federal' }, { value: 'ES', label: 'Espírito Santo' },
+    { value: 'GO', label: 'Goiás' }, { value: 'MA', label: 'Maranhão' },
+    { value: 'MT', label: 'Mato Grosso' }, { value: 'MS', label: 'Mato Grosso do Sul' },
+    { value: 'MG', label: 'Minas Gerais' }, { value: 'PA', label: 'Pará' },
+    { value: 'PB', label: 'Paraíba' }, { value: 'PR', label: 'Paraná' },
+    { value: 'PE', label: 'Pernambuco' }, { value: 'PI', label: 'Piauí' },
+    { value: 'RJ', label: 'Rio de Janeiro' }, { value: 'RN', label: 'Rio Grande do Norte' },
+    { value: 'RS', label: 'Rio Grande do Sul' }, { value: 'RO', label: 'Rondônia' },
+    { value: 'RR', label: 'Roraima' }, { value: 'SC', label: 'Santa Catarina' },
+    { value: 'SP', label: 'São Paulo' }, { value: 'SE', label: 'Sergipe' },
+    { value: 'TO', label: 'Tocantins' }
+  ];
   
   onMount(async () => {
+    // Preencher nome se disponível
+    if (currentUser?.name || $user?.name) {
+      addressForm.name = currentUser?.name || $user?.name || '';
+    }
+    
     if (currentUser || $isAuthenticated) {
       console.log('🏠 Usuário autenticado - verificando endereços...');
       await loadUserAddresses();
       
-      // Definir modo inicial baseado nos endereços
+      // NOVA LÓGICA SIMPLIFICADA
       if (userAddresses.length > 0) {
+        // Tem endereços salvos - mostrar seleção
         addressMode = 'select';
+        console.log('✅ Endereços encontrados, modo seleção ativado');
       } else {
-        addressMode = 'create';
-        // Auto-scroll se não tem endereços (primeiro acesso)
+        // Não tem endereços - ir direto para formulário
+        addressMode = 'form';
+        console.log('📝 Nenhum endereço encontrado, modo formulário ativado');
         scrollToFormAndFocus(500);
       }
     } else {
-      addressMode = 'new';
-      // Para convidados, sempre focar no formulário
+      // Usuário convidado - sempre formulário
+      addressMode = 'form';
       scrollToFormAndFocus(300);
-    }
-    
-    // Preencher nome se disponível
-    if (currentUser?.name || $user?.name) {
-      addressForm.name = currentUser?.name || $user?.name || '';
     }
   });
   
@@ -277,6 +279,7 @@
     savingAddress = true;
     
     try {
+      console.log('💾 Salvando endereço...');
       const response = await fetch('/api/addresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -297,6 +300,7 @@
       });
       
       const result = await response.json();
+      console.log('📊 Resultado do salvamento:', result);
       
       if (result.success) {
         console.log('✅ Endereço salvo com sucesso!');
@@ -304,10 +308,12 @@
         return true;
       } else {
         console.error('❌ Erro ao salvar endereço:', result.error);
+        alert(`Erro ao salvar endereço: ${result.error?.message || 'Erro desconhecido'}`);
         return false;
       }
     } catch (error) {
       console.error('❌ Erro ao salvar endereço:', error);
+      alert('Erro ao salvar endereço. Verifique sua conexão e tente novamente.');
       return false;
     } finally {
       savingAddress = false;
@@ -317,7 +323,7 @@
   function selectAddress(address: any) {
     selectedAddress = address;
     
-    // Preencher formulário com dados do endereço
+    // Preencher formulário com dados do endereço selecionado
     addressForm = {
       name: address.name,
       street: address.street,
@@ -331,6 +337,12 @@
     };
     
     console.log('✅ Endereço selecionado:', address.label);
+    
+    // Fechar modal
+    showAddressModal = false;
+    
+    // Voltar para modo formulário para mostrar o endereço selecionado
+    addressMode = 'form';
   }
   
   function clearForm() {
@@ -349,64 +361,65 @@
     selectedAddress = null;
   }
   
-  // 🎯 MELHORADO: Auto-scroll ao iniciar novo endereço
+  // 🎯 Função para alternar para formulário novo
   function startNewAddress() {
-    addressMode = 'new';
     clearForm();
-    showSaveOption = true;
-    
-    // Auto-scroll e foco no formulário
+    addressMode = 'form';
     scrollToFormAndFocus(150);
   }
   
-  // 🎯 MELHORADO: Auto-scroll ao criar endereço
-  function startCreate() {
-    addressMode = 'create';
-    clearForm();
-    showSaveOption = false;
-    
-    // Auto-scroll e foco no formulário
-    scrollToFormAndFocus(150);
-  }
-  
-  function showAddressList() {
+  // 🎯 Função para mostrar endereços salvos
+  function showSavedAddresses() {
     if (userAddresses.length > 0) {
-      addressMode = 'select';
       showAddressModal = true;
     } else {
-      startCreate();
+      // Se não tem endereços, manter no formulário
+      addressMode = 'form';
     }
   }
   
   async function handleNext() {
-    if (addressMode === 'select' && selectedAddress) {
-      // Usar endereço selecionado
-      dispatch('next', { 
-        address: selectedAddress,
-        addressData: {
-          name: selectedAddress.name,
-          street: selectedAddress.street,
-          number: selectedAddress.number,
-          complement: selectedAddress.complement || '',
-          neighborhood: selectedAddress.neighborhood,
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          zipCode: selectedAddress.zipCode
-        }
-      });
-    } else if ((addressMode === 'new' || addressMode === 'create') && validateAndSetErrors()) {
-      // Salvar endereço se necessário
-      if (showSaveOption && (currentUser || $isAuthenticated)) {
-        const saved = await saveNewAddress();
-        if (!saved) return; // Parar se falhou ao salvar
-      }
-      
-      // Usar novo endereço
-      dispatch('next', { 
-        address: null,
-        addressData: { ...addressForm }
-      });
+    // Validar formulário
+    if (!validateAndSetErrors()) {
+      return;
     }
+    
+    // Se usuário autenticado e quer salvar endereço
+    const shouldSaveAddress = (currentUser || $isAuthenticated) && 
+                             !selectedAddress && // Não é endereço já salvo
+                             addressForm.zipCode && // Formulário preenchido
+                             addressForm.street;
+    
+    if (shouldSaveAddress) {
+      console.log('💾 Tentando salvar endereço automaticamente...');
+      const saved = await saveNewAddress();
+      if (!saved) {
+        // Se falhou ao salvar, perguntar se quer continuar
+        const continueAnyway = confirm('Erro ao salvar endereço. Deseja continuar sem salvar?');
+        if (!continueAnyway) {
+          return;
+        }
+      }
+    }
+    
+    // Prosseguir com checkout
+    const addressData = {
+      name: addressForm.name,
+      street: addressForm.street,
+      number: addressForm.number,
+      complement: addressForm.complement || '',
+      neighborhood: addressForm.neighborhood,
+      city: addressForm.city,
+      state: addressForm.state,
+      zipCode: addressForm.zipCode.replace(/\D/g, '')
+    };
+    
+    console.log('➡️ Prosseguindo para pagamento com endereço:', addressData);
+    
+    dispatch('next', { 
+      address: selectedAddress,
+      addressData
+    });
   }
   
   // Calcular progresso do preenchimento
@@ -425,7 +438,7 @@
   {#if (currentUser || $isAuthenticated) && !isGuest}
     <!-- USUÁRIO AUTENTICADO -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4">Endereço de Entrega</h3>
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">📍 Endereço de Entrega</h3>
       
       {#if loadingAddresses}
         <!-- CARREGANDO -->
@@ -435,24 +448,15 @@
         </div>
         
       {:else if userAddresses.length === 0}
-        <!-- SEM ENDEREÇOS CADASTRADOS -->
-        <div class="text-center py-8">
-          <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <h4 class="text-lg font-semibold text-gray-900 mb-2">Você não tem nenhum endereço cadastrado</h4>
-          <p class="text-gray-600 mb-6">Cadastre seu primeiro endereço para acelerar futuras compras!</p>
-          
-          <button
-            onclick={startCreate}
-            class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 mx-auto shadow-md hover:shadow-lg"
-          >
+        <!-- SEM ENDEREÇOS - DIRETO PARA FORMULÁRIO -->
+        <div class="text-center py-4 mb-4">
+          <div class="flex items-center justify-center space-x-2 text-[#00BFB3] mb-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span>📍 Cadastrar Endereço</span>
-          </button>
+            <span class="font-medium">Primeiro endereço</span>
+          </div>
+          <p class="text-sm text-gray-600">Preencha seus dados de entrega e eles serão salvos automaticamente</p>
         </div>
         
       {:else}
@@ -461,9 +465,8 @@
           <div class="flex flex-col sm:flex-row gap-3">
             <!-- BOTÃO: USAR ENDEREÇO SALVO -->
             <button
-              onclick={showAddressList}
-              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 hover:shadow-md
-                     {addressMode === 'select' ? 'border-[#00BFB3] bg-[#00BFB3]/5 shadow-md' : 'border-gray-200'}"
+              onclick={showSavedAddresses}
+              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 hover:shadow-md border-gray-200"
             >
               <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,7 +474,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <div class="text-left">
-                  <p class="font-semibold text-gray-900">🏠 Usar endereço salvo</p>
+                  <p class="font-semibold text-gray-900">🏠 Escolher endereço salvo</p>
                   <p class="text-sm text-gray-600">{userAddresses.length} endereço(s) disponível(eis)</p>
                 </div>
               </div>
@@ -480,8 +483,7 @@
             <!-- BOTÃO: NOVO ENDEREÇO -->
             <button
               onclick={startNewAddress}
-              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 hover:shadow-md
-                     {addressMode === 'new' ? 'border-[#00BFB3] bg-[#00BFB3]/5 shadow-md' : 'border-gray-200'}"
+              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 hover:shadow-md border-gray-200"
             >
               <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,23 +507,23 @@
         <svg class="w-12 h-12 text-[#00BFB3] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Endereço de Entrega</h3>
+        <h3 class="text-lg font-semibold text-[#00A89D] mb-2">📍 Endereço de Entrega</h3>
         <p class="text-[#00BFB3] text-sm">Preencha seus dados de entrega para finalizar a compra.</p>
       </div>
     </div>
   {/if}
   
   <!-- ============================================ -->
-  <!-- ENDEREÇO SELECIONADO -->
+  <!-- ENDEREÇO SELECIONADO (PREVIEW) -->
   <!-- ============================================ -->
   
-  {#if addressMode === 'select' && selectedAddress}
+  {#if selectedAddress}
     <div class="bg-green-50 border border-green-200 rounded-xl p-6">
       <h4 class="font-semibold text-green-800 mb-3 flex items-center">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
-        Endereço Selecionado
+        Endereço Selecionado: {selectedAddress.label || 'Endereço principal'}
       </h4>
       <div class="text-sm text-green-700 space-y-1">
         <p class="font-semibold">{selectedAddress.name}</p>
@@ -534,7 +536,7 @@
       </div>
       <div class="flex gap-3 mt-4">
         <button
-          onclick={() => showAddressModal = true}
+          onclick={showSavedAddresses}
           class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center space-x-1"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -554,298 +556,6 @@
       </div>
     </div>
   {/if}
-  
-  <!-- ============================================ -->
-  <!-- FORMULÁRIO DE ENDEREÇO -->
-  <!-- ============================================ -->
-  
-  {#if addressMode === 'new' || addressMode === 'create'}
-    <div bind:this={formContainer} class="bg-white rounded-xl border border-gray-200 p-6 scroll-mt-4">
-      <div class="flex items-center justify-between mb-6">
-        <h4 class="text-lg font-semibold text-gray-900">
-          {addressMode === 'create' ? '📍 Cadastrar Novo Endereço' : '📍 Informações de Entrega'}
-        </h4>
-        {#if completionPercentage() > 0}
-          <div class="flex items-center space-x-2 text-sm text-gray-600">
-            <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                class="h-full bg-[#00BFB3] transition-all duration-300"
-                style="width: {completionPercentage()}%"
-              ></div>
-            </div>
-            <span>{completionPercentage()}%</span>
-          </div>
-        {/if}
-      </div>
-      
-      <form class="space-y-6" onsubmit={(e) => e.preventDefault()}>
-        <!-- NOME -->
-        <div>
-          <label for="checkout-name" class="block text-sm font-medium text-gray-700 mb-2">
-            Nome completo *
-          </label>
-          <input
-            bind:this={nameInput}
-            id="checkout-name"
-            type="text"
-            bind:value={addressForm.name}
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-            class:border-red-300={addressErrors.name}
-            class:border-[#00BFB3]={addressForm.name && !addressErrors.name}
-            placeholder="Nome de quem receberá o pedido"
-          />
-          {#if addressErrors.name}
-            <p class="text-red-600 text-sm mt-1 flex items-center">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              {addressErrors.name}
-            </p>
-          {:else if addressForm.name}
-            <p class="text-[#00BFB3] text-sm mt-1 flex items-center">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Nome confirmado
-            </p>
-          {/if}
-        </div>
-        
-        <!-- CEP -->
-        <div>
-          <label for="checkout-zipCode" class="block text-sm font-medium text-gray-700 mb-2">
-            CEP *
-          </label>
-          <div class="relative">
-            <input
-              bind:this={cepInput}
-              id="checkout-zipCode"
-              type="text"
-              value={addressForm.zipCode}
-              oninput={handleCepInput}
-              class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-              class:border-red-300={addressErrors.zipCode}
-              class:border-[#00BFB3]={addressForm.zipCode && !addressErrors.zipCode}
-              placeholder="00000-000"
-              maxlength="9"
-            />
-            <div class="absolute right-4 top-1/2 transform -translate-y-1/2">
-              {#if loadingCep}
-                <LoadingSpinner size="small" />
-              {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8 && !addressErrors.zipCode}
-                <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              {/if}
-            </div>
-          </div>
-          {#if addressErrors.zipCode}
-            <p class="text-red-600 text-sm mt-1 flex items-center">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              {addressErrors.zipCode}
-            </p>
-          {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8}
-            <p class="text-[#00BFB3] text-sm mt-1 flex items-center">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              CEP válido - endereço preenchido automaticamente
-            </p>
-          {:else if addressForm.zipCode}
-            <p class="text-gray-500 text-sm mt-1">Digite os 8 dígitos do CEP</p>
-          {/if}
-        </div>
-        
-        <!-- LOGRADOURO E NÚMERO -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="md:col-span-2">
-            <label for="checkout-street" class="block text-sm font-medium text-gray-700 mb-2">
-              Logradouro *
-            </label>
-            <input
-              bind:this={streetInput}
-              id="checkout-street"
-              type="text"
-              bind:value={addressForm.street}
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-              class:border-red-300={addressErrors.street}
-              class:border-[#00BFB3]={addressForm.street && !addressErrors.street}
-              placeholder="Rua, Avenida, Praça..."
-            />
-            {#if addressErrors.street}
-              <p class="text-red-600 text-sm mt-1">{addressErrors.street}</p>
-            {/if}
-          </div>
-          
-          <div>
-            <label for="checkout-number" class="block text-sm font-medium text-gray-700 mb-2">
-              Número *
-            </label>
-            <input
-              id="checkout-number"
-              type="text"
-              bind:value={addressForm.number}
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-              class:border-red-300={addressErrors.number}
-              class:border-[#00BFB3]={addressForm.number && !addressErrors.number}
-              placeholder="123"
-            />
-            {#if addressErrors.number}
-              <p class="text-red-600 text-sm mt-1">{addressErrors.number}</p>
-            {/if}
-          </div>
-        </div>
-        
-        <!-- COMPLEMENTO -->
-        <div>
-          <label for="checkout-complement" class="block text-sm font-medium text-gray-700 mb-2">
-            Complemento
-            <span class="text-gray-400 text-sm">(opcional)</span>
-          </label>
-          <input
-            id="checkout-complement"
-            type="text"
-            bind:value={addressForm.complement}
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-            placeholder="Apto, Bloco, Sala, etc."
-          />
-          <p class="text-gray-500 text-sm mt-1">Ex: Apto 101, Bloco B, Sala 205</p>
-        </div>
-        
-        <!-- BAIRRO -->
-        <div>
-          <label for="checkout-neighborhood" class="block text-sm font-medium text-gray-700 mb-2">
-            Bairro *
-          </label>
-          <input
-            id="checkout-neighborhood"
-            type="text"
-            bind:value={addressForm.neighborhood}
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-            class:border-red-300={addressErrors.neighborhood}
-            class:border-[#00BFB3]={addressForm.neighborhood && !addressErrors.neighborhood}
-            placeholder="Nome do bairro"
-          />
-          {#if addressErrors.neighborhood}
-            <p class="text-red-600 text-sm mt-1">{addressErrors.neighborhood}</p>
-          {/if}
-        </div>
-        
-        <!-- CIDADE E ESTADO -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label for="checkout-city" class="block text-sm font-medium text-gray-700 mb-2">
-              Cidade *
-            </label>
-            <input
-              id="checkout-city"
-              type="text"
-              bind:value={addressForm.city}
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-              class:border-red-300={addressErrors.city}
-              class:border-[#00BFB3]={addressForm.city && !addressErrors.city}
-              placeholder="Nome da cidade"
-            />
-            {#if addressErrors.city}
-              <p class="text-red-600 text-sm mt-1">{addressErrors.city}</p>
-            {/if}
-          </div>
-          
-          <div>
-            <label for="checkout-state" class="block text-sm font-medium text-gray-700 mb-2">
-              Estado *
-            </label>
-            <select
-              id="checkout-state"
-              bind:value={addressForm.state}
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-              class:border-red-300={addressErrors.state}
-              class:border-[#00BFB3]={addressForm.state && !addressErrors.state}
-            >
-              <option value="">Selecione o estado</option>
-              {#each states as state}
-                <option value={state.value}>{state.label}</option>
-              {/each}
-            </select>
-            {#if addressErrors.state}
-              <p class="text-red-600 text-sm mt-1">{addressErrors.state}</p>
-            {/if}
-          </div>
-        </div>
-        
-        <!-- OPÇÃO PARA SALVAR ENDEREÇO (USUÁRIOS AUTENTICADOS) -->
-        {#if (currentUser || $isAuthenticated) && addressMode === 'new' && completionPercentage() >= 70}
-          <div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-4">
-            <div class="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                id="save-address"
-                bind:checked={showSaveOption}
-                class="mt-1 h-4 w-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
-              />
-              <div class="flex-1">
-                <label for="save-address" class="text-sm font-medium text-[#00A89D] cursor-pointer">
-                  💾 Salvar este endereço para futuras compras
-                </label>
-                <p class="text-xs text-[#00BFB3] mt-1">
-                  Acelere seus próximos pedidos salvando este endereço
-                </p>
-                
-                {#if showSaveOption}
-                  <div class="mt-3">
-                    <label for="address-label" class="block text-sm font-medium text-gray-700 mb-1">
-                      Nome do endereço (opcional)
-                    </label>
-                    <input
-                      id="address-label"
-                      type="text"
-                      bind:value={addressForm.label}
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
-                      placeholder="Ex: Casa, Trabalho, Casa da mãe..."
-                    />
-                  </div>
-                {/if}
-              </div>
-            </div>
-          </div>
-        {/if}
-      </form>
-    </div>
-  {/if}
-  
-  <!-- ============================================ -->
-  <!-- BOTÃO DE CONTINUAR -->
-  <!-- ============================================ -->
-  
-  <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <button
-      onclick={handleNext}
-      disabled={
-        (addressMode === 'select' && !selectedAddress) || 
-        ((addressMode === 'new' || addressMode === 'create') && !isFormValid()) ||
-        savingAddress
-      }
-      class="w-full py-4 px-6 bg-[#00BFB3] text-white font-semibold rounded-lg hover:bg-[#00A89D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-    >
-      {#if savingAddress}
-        <LoadingSpinner size="small" />
-        <span>Salvando endereço...</span>
-      {:else}
-        <span>Continuar para Pagamento</span>
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-      {/if}
-    </button>
-    
-    {#if (addressMode === 'new' || addressMode === 'create') && !isFormValid()}
-      <p class="text-gray-500 text-sm text-center mt-2">
-        Preencha todos os campos obrigatórios para continuar
-      </p>
-    {/if}
-  </div>
 </div>
 
 <!-- ============================================ -->
@@ -922,7 +632,7 @@
                 <button
                   onclick={() => {
                     showAddressModal = false;
-                    startCreate();
+                    startNewAddress();
                   }}
                   class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
                 >
@@ -1077,4 +787,272 @@
       </div>
     </div>
   </div>
-{/if} 
+{/if}
+
+<!-- ============================================ -->
+<!-- FORMULÁRIO DE ENDEREÇO -->
+<!-- ============================================ -->
+
+<div bind:this={formContainer} class="bg-white rounded-xl border border-gray-200 p-6 scroll-mt-4">
+  <div class="flex items-center justify-between mb-6">
+    <h4 class="text-lg font-semibold text-gray-900">
+      {selectedAddress ? '✏️ Editar Endereço Selecionado' : '📍 Preencher Endereço de Entrega'}
+    </h4>
+    {#if completionPercentage() > 0}
+      <div class="flex items-center space-x-2 text-sm text-gray-600">
+        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            class="h-full bg-[#00BFB3] transition-all duration-300"
+            style="width: {completionPercentage()}%"
+          ></div>
+        </div>
+        <span>{completionPercentage()}%</span>
+      </div>
+    {/if}
+  </div>
+  
+  <form class="space-y-6" onsubmit={(e) => e.preventDefault()}>
+    <!-- NOME -->
+    <div>
+      <label for="checkout-name" class="block text-sm font-medium text-gray-700 mb-2">
+        Nome completo *
+      </label>
+      <input
+        bind:this={nameInput}
+        id="checkout-name"
+        type="text"
+        bind:value={addressForm.name}
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+        class:border-red-300={addressErrors.name}
+        class:border-[#00BFB3]={addressForm.name && !addressErrors.name}
+        placeholder="Nome de quem receberá o pedido"
+      />
+      {#if addressErrors.name}
+        <p class="text-red-600 text-sm mt-1 flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          {addressErrors.name}
+        </p>
+      {:else if addressForm.name}
+        <p class="text-[#00BFB3] text-sm mt-1 flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Nome confirmado
+        </p>
+      {/if}
+    </div>
+    
+    <!-- CEP -->
+    <div>
+      <label for="checkout-zipCode" class="block text-sm font-medium text-gray-700 mb-2">
+        CEP *
+      </label>
+      <div class="relative">
+        <input
+          bind:this={cepInput}
+          id="checkout-zipCode"
+          type="text"
+          value={addressForm.zipCode}
+          oninput={handleCepInput}
+          class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+          class:border-red-300={addressErrors.zipCode}
+          class:border-[#00BFB3]={addressForm.zipCode && !addressErrors.zipCode}
+          placeholder="00000-000"
+          maxlength="9"
+        />
+        <div class="absolute right-4 top-1/2 transform -translate-y-1/2">
+          {#if loadingCep}
+            <LoadingSpinner size="small" />
+          {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8 && !addressErrors.zipCode}
+            <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          {/if}
+        </div>
+      </div>
+      {#if addressErrors.zipCode}
+        <p class="text-red-600 text-sm mt-1 flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          {addressErrors.zipCode}
+        </p>
+      {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8}
+        <p class="text-[#00BFB3] text-sm mt-1 flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          CEP válido - endereço preenchido automaticamente
+        </p>
+      {:else if addressForm.zipCode}
+        <p class="text-gray-500 text-sm mt-1">Digite os 8 dígitos do CEP</p>
+      {/if}
+    </div>
+    
+    <!-- LOGRADOURO E NÚMERO -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="md:col-span-2">
+        <label for="checkout-street" class="block text-sm font-medium text-gray-700 mb-2">
+          Logradouro *
+        </label>
+        <input
+          bind:this={streetInput}
+          id="checkout-street"
+          type="text"
+          bind:value={addressForm.street}
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+          class:border-red-300={addressErrors.street}
+          class:border-[#00BFB3]={addressForm.street && !addressErrors.street}
+          placeholder="Rua, Avenida, Praça..."
+        />
+        {#if addressErrors.street}
+          <p class="text-red-600 text-sm mt-1">{addressErrors.street}</p>
+        {/if}
+      </div>
+      
+      <div>
+        <label for="checkout-number" class="block text-sm font-medium text-gray-700 mb-2">
+          Número *
+        </label>
+        <input
+          id="checkout-number"
+          type="text"
+          bind:value={addressForm.number}
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+          class:border-red-300={addressErrors.number}
+          class:border-[#00BFB3]={addressForm.number && !addressErrors.number}
+          placeholder="123"
+        />
+        {#if addressErrors.number}
+          <p class="text-red-600 text-sm mt-1">{addressErrors.number}</p>
+        {/if}
+      </div>
+    </div>
+    
+    <!-- COMPLEMENTO -->
+    <div>
+      <label for="checkout-complement" class="block text-sm font-medium text-gray-700 mb-2">
+        Complemento
+        <span class="text-gray-400 text-sm">(opcional)</span>
+      </label>
+      <input
+        id="checkout-complement"
+        type="text"
+        bind:value={addressForm.complement}
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+        placeholder="Apto, Bloco, Sala, etc."
+      />
+      <p class="text-gray-500 text-sm mt-1">Ex: Apto 101, Bloco B, Sala 205</p>
+    </div>
+    
+    <!-- BAIRRO -->
+    <div>
+      <label for="checkout-neighborhood" class="block text-sm font-medium text-gray-700 mb-2">
+        Bairro *
+      </label>
+      <input
+        id="checkout-neighborhood"
+        type="text"
+        bind:value={addressForm.neighborhood}
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+        class:border-red-300={addressErrors.neighborhood}
+        class:border-[#00BFB3]={addressForm.neighborhood && !addressErrors.neighborhood}
+        placeholder="Nome do bairro"
+      />
+      {#if addressErrors.neighborhood}
+        <p class="text-red-600 text-sm mt-1">{addressErrors.neighborhood}</p>
+      {/if}
+    </div>
+    
+    <!-- CIDADE E ESTADO -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label for="checkout-city" class="block text-sm font-medium text-gray-700 mb-2">
+          Cidade *
+        </label>
+        <input
+          id="checkout-city"
+          type="text"
+          bind:value={addressForm.city}
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+          class:border-red-300={addressErrors.city}
+          class:border-[#00BFB3]={addressForm.city && !addressErrors.city}
+          placeholder="Nome da cidade"
+        />
+        {#if addressErrors.city}
+          <p class="text-red-600 text-sm mt-1">{addressErrors.city}</p>
+        {/if}
+      </div>
+      
+      <div>
+        <label for="checkout-state" class="block text-sm font-medium text-gray-700 mb-2">
+          Estado *
+        </label>
+        <select
+          id="checkout-state"
+          bind:value={addressForm.state}
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+          class:border-red-300={addressErrors.state}
+          class:border-[#00BFB3]={addressForm.state && !addressErrors.state}
+        >
+          <option value="">Selecione o estado</option>
+          {#each states as state}
+            <option value={state.value}>{state.label}</option>
+          {/each}
+        </select>
+        {#if addressErrors.state}
+          <p class="text-red-600 text-sm mt-1">{addressErrors.state}</p>
+        {/if}
+      </div>
+    </div>
+    
+    <!-- INFORMAÇÃO SOBRE SALVAMENTO AUTOMÁTICO -->
+    {#if (currentUser || $isAuthenticated) && !selectedAddress && completionPercentage() >= 70}
+      <div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-4">
+        <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-[#00A89D]">
+              💾 Salvamento automático ativado
+            </p>
+            <p class="text-xs text-[#00BFB3] mt-1">
+              Este endereço será salvo automaticamente para acelerar suas próximas compras
+            </p>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </form>
+</div>
+
+<!-- ============================================ -->
+<!-- BOTÃO DE CONTINUAR -->
+<!-- ============================================ -->
+
+<div class="bg-white rounded-xl border border-gray-200 p-6">
+  <button
+    onclick={handleNext}
+    disabled={!isFormValid() || savingAddress}
+    class="w-full py-4 px-6 bg-[#00BFB3] text-white font-semibold rounded-lg hover:bg-[#00A89D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+  >
+    {#if savingAddress}
+      <LoadingSpinner size="small" />
+      <span>Salvando endereço...</span>
+    {:else}
+      <span>Continuar para Pagamento</span>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    {/if}
+  </button>
+  
+  {#if !isFormValid()}
+    <p class="text-gray-500 text-sm text-center mt-2">
+      Preencha todos os campos obrigatórios para continuar
+    </p>
+  {/if}
+</div> 
