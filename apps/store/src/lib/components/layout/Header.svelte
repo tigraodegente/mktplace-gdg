@@ -263,13 +263,6 @@
 		<!-- Navigation Menu -->
 		<nav class="h-[48px]">
 			<DesktopCategoryMenu />
-			<nav class="hidden lg:flex items-center space-x-8">
-				<a href="/categorias" class="text-gray-700 hover:text-primary transition font-medium">Categorias</a>
-				<a href="/blog" class="text-gray-700 hover:text-primary transition font-medium">Blog</a>
-				<a href="/promocoes" class="text-gray-700 hover:text-primary transition font-medium">Promoções</a>
-				<a href="/novidades" class="text-gray-700 hover:text-primary transition font-medium">Novidades</a>
-				<a href="/suporte" class="text-gray-700 hover:text-primary transition font-medium">Suporte</a>
-			</nav>
 		</nav>
 	</div>
 </header> 

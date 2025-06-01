@@ -36,8 +36,19 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         }
         
         if (categories.length > 0) {
-          // Buscar por slug da categoria em vez de ID
-          conditions.push(`EXISTS (SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.slug = ANY($${paramIndex}))`);
+          // Buscar por categoria OU categoria pai (hierarquia)
+          conditions.push(`EXISTS (
+            SELECT 1 FROM categories c 
+            WHERE c.id = p.category_id 
+            AND (
+              c.slug = ANY($${paramIndex}) OR 
+              EXISTS (
+                SELECT 1 FROM categories parent 
+                WHERE parent.id = c.parent_id 
+                AND parent.slug = ANY($${paramIndex})
+              )
+            )
+          )`);
           params.push(categories);
           paramIndex++;
         }
