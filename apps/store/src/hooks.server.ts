@@ -66,7 +66,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https: *.imgur.com *.cloudinary.com *.unsplash.com *.amazonaws.com gdg-images.s3.sa-east-1.amazonaws.com",
-    "connect-src 'self' https://www.google-analytics.com https://api.marketplace-gdg.com https://vitals.vercel-analytics.com *.amazonaws.com",
+    "connect-src 'self' https://www.google-analytics.com https://api.marketplace-gdg.com https://vitals.vercel-analytics.com *.amazonaws.com https://viacep.com.br",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
