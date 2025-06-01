@@ -307,10 +307,14 @@
 		align-items: center;
 		transition: var(--transition-opacity);
 		position: relative;
-		z-index: 110; /* Acima do header quando necessário */
+		z-index: 10; /* Abaixo de ambos os headers: desktop (100) e mobile (20) */
 		/* Mobile: full width sem margin ou border radius */
 		margin: 0;
 		border-radius: 0;
+		/* Garantir que não cause overflow horizontal */
+		max-width: 100%;
+		overflow: hidden;
+		box-sizing: border-box;
 	}
 	
 	/* Mobile e iPad Mini: até 899px - FLUXO NORMAL */
@@ -320,8 +324,11 @@
 			margin: 0;
 			border-radius: 0;
 			box-shadow: none;
-			max-width: none;
-			z-index: 50; /* Z-index normal para mobile */
+			max-width: 100%;
+			z-index: 10; /* Abaixo do header mobile (z-20) */
+			overflow: hidden;
+			/* Garantir que ocupe apenas o espaço necessário */
+			min-height: var(--container-height);
 		}
 	}
 	
@@ -336,7 +343,8 @@
 			margin-left: auto;
 			margin-right: auto;
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-			z-index: 50; /* Z-index normal para tablet */
+			z-index: 10; /* Abaixo do header desktop (z-100) */
+			overflow: hidden;
 		}
 	}
 	
@@ -351,7 +359,8 @@
 			margin-left: auto;
 			margin-right: auto;
 			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-			z-index: 50; /* Z-index normal para desktop */
+			z-index: 10; /* Abaixo do header desktop (z-100) */
+			overflow: hidden;
 		}
 	}
 	
@@ -365,6 +374,10 @@
 		gap: var(--spacing-lg);
 		flex-wrap: nowrap;
 		white-space: nowrap;
+		/* Garantir que o conteúdo não ultrapasse os limites */
+		overflow: hidden;
+		box-sizing: border-box;
+		padding: 0 var(--spacing-sm);
 	}
 	
 	/* =============================================================================
@@ -400,6 +413,9 @@
 		align-items: center;
 		gap: var(--spacing-sm);
 		flex-shrink: 0;
+		/* Garantir que os timers não quebrem o layout */
+		min-width: 0;
+		overflow: visible;
 	}
 	
 	.countdown__unit {
@@ -414,6 +430,9 @@
 		justify-content: center;
 		background: transparent;
 		transition: var(--transition-border);
+		/* Garantir que as unidades não causem problemas */
+		flex-shrink: 0;
+		box-sizing: border-box;
 	}
 	
 	.countdown__number {
@@ -554,6 +573,7 @@
 		
 		.countdown__container {
 			padding: 0 var(--spacing-sm);
+			gap: var(--spacing-sm);
 		}
 		
 		.countdown__timers {
@@ -562,6 +582,11 @@
 		
 		.countdown__separator {
 			margin: 0 1px;
+		}
+		
+		.countdown__text {
+			flex-shrink: 1;
+			min-width: 0;
 		}
 	}
 	
@@ -582,10 +607,15 @@
 		
 		.countdown__container {
 			padding: 0 var(--spacing-xs);
+			gap: var(--spacing-xs);
 		}
 		
 		.countdown__timers {
 			gap: 3px;
+		}
+		
+		.countdown__text {
+			font-size: 11px;
 		}
 	}
 	
@@ -607,6 +637,7 @@
 		
 		.countdown__container {
 			padding: 0 2px;
+			gap: 4px;
 		}
 		
 		.countdown__timers {
@@ -615,6 +646,11 @@
 		
 		.countdown__separator {
 			margin: 0;
+		}
+		
+		.countdown__text {
+			font-size: 10px;
+			letter-spacing: 0;
 		}
 	}
 </style> 

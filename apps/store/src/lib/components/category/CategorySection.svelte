@@ -55,7 +55,7 @@
 	// =============================================================================
 	
 	let tabsContainer: HTMLElement;
-	let gridContainer: HTMLElement;
+	let gridContainer = $state<HTMLElement>();
 	let resizeTimer: NodeJS.Timeout;
 	let intersectionObserver: IntersectionObserver;
 	
