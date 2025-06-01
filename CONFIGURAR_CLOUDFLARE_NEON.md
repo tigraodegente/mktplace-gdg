@@ -1,4 +1,4 @@
-# 🚀 CONFIGURAR CLOUDFLARE PAGES + NEON
+# 🚀 CONFIGURAR CLOUDFLARE PAGES + NEON (TCP DIRETO)
 
 ## 🚨 **PROBLEMA ATUAL**
 A aplicação remota usa dados fallback porque **não consegue conectar no banco**.
@@ -7,62 +7,42 @@ A aplicação remota usa dados fallback porque **não consegue conectar no banco
 {"source":"fallback"}  // ❌ Não está usando banco real
 ```
 
-## ✅ **SOLUÇÃO COMPLETA**
+## ✅ **SOLUÇÃO: TCP DIRETO (SEM HYPERDRIVE)**
 
-### **ETAPA 1: Criar Hyperdrive no Cloudflare**
+> **❌ Hyperdrive NÃO funciona** com PostgreSQL externo como Neon
+> **✅ TCP direto** é a abordagem correta
 
-1. **Acesse**: https://dash.cloudflare.com
-2. **Vá em**: `Hyperdrive` no menu lateral
-3. **Clique**: `Create a Hyperdrive`
-4. **Preencha**:
-   - **Name**: `mktplace-neon-db`
-   - **Description**: `Marketplace GDG - Neon PostgreSQL`
-   - **Connection string**: 
-     ```
-     postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
-     ```
-5. **Clique**: `Create Hyperdrive`
-6. **Copie o ID** do Hyperdrive criado (ex: `a1b2c3d4e5f6...`)
-
-### **ETAPA 2: Configurar Pages Binding**
+### **ETAPA 1: Configurar Variáveis de Ambiente**
 
 1. **Acesse**: https://dash.cloudflare.com
 2. **Vá em**: `Pages` → `mktplace-store`
-3. **Clique em**: `Settings` → `Functions`
-4. **Na seção "Bindings"**, clique `Add binding`
-5. **Configure**:
-   - **Binding name**: `HYPERDRIVE_DB`
-   - **Type**: `Hyperdrive`
-   - **Hyperdrive**: `mktplace-neon-db` (selecione o criado na Etapa 1)
-6. **Clique**: `Save`
-
-### **ETAPA 3: Adicionar Variáveis de Ambiente**
-
-1. **Ainda em Pages** → `Settings` → `Environment variables`
-2. **Production Environment** → `Add variable`
-3. **Adicione**:
+3. **Clique em**: `Settings` → `Environment variables`
+4. **Production Environment** → `Add variable`
+5. **Adicione**:
    ```
    DATABASE_URL = postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
    NODE_ENV = production
    ```
-4. **Clique**: `Save`
+6. **Clique**: `Save`
 
-### **ETAPA 4: Atualizar wrangler.toml (JÁ FEITO ✅)**
+### **ETAPA 2: Verificar wrangler.toml (JÁ CONFIGURADO ✅)**
 
 ```toml
-# O wrangler.toml já foi atualizado com:
-[[hyperdrive]]
-binding = "HYPERDRIVE_DB"
-id = "SEU_HYPERDRIVE_ID_AQUI"  # Substitua pelo ID da Etapa 1
-localConnectionString = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+# ✅ Configuração TCP direto (sem Hyperdrive)
+[limits]
+cpu_ms = 120000  # CPU estendido para TCP
+
+[vars]
+NODE_ENV = "production"
+DATABASE_URL = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
 ```
 
-### **ETAPA 5: Fazer Deploy**
+### **ETAPA 3: Fazer Deploy**
 
 ```bash
 cd apps/store
 git add .
-git commit -m "feat: configurar Hyperdrive para produção"
+git commit -m "fix: usar TCP direto (sem Hyperdrive) para Neon"
 git push origin main
 ```
 
@@ -71,22 +51,22 @@ git push origin main
 
 ## 🧪 **TESTAR A CORREÇÃO**
 
-### **1. Verificar se conectou no banco:**
-```bash
-curl https://mktplace-store.pages.dev/api/debug/hyperdrive
-# Esperado: has_hyperdrive_binding: true
-```
-
-### **2. Testar APIs com dados reais:**
+### **1. Testar APIs com dados reais:**
 ```bash
 curl https://mktplace-store.pages.dev/api/products/featured
 # Esperado: "source":"database" (não mais "fallback")
 ```
 
-### **3. Verificar quantidade de produtos:**
+### **2. Verificar quantidade de produtos:**
 ```bash
 curl -s https://mktplace-store.pages.dev/api/products/featured | jq '.data.products | length'
 # Esperado: 54 produtos (do banco Neon)
+```
+
+### **3. Verificar timeout está OK:**
+```bash
+time curl https://mktplace-store.pages.dev/api/products/search-suggestions
+# Esperado: < 30 segundos (antes era 32+ segundos)
 ```
 
 ## 📊 **RESULTADO ESPERADO**
@@ -113,41 +93,51 @@ curl -s https://mktplace-store.pages.dev/api/products/featured | jq '.data.produ
 
 ### **Se ainda mostrar "fallback":**
 
-1. **Verificar binding no Dashboard:**
-   - Pages → mktplace-store → Settings → Functions → Bindings
-   - **Deve ter**: `HYPERDRIVE_DB` → `mktplace-neon-db`
+1. **Verificar variáveis no Dashboard:**
+   - Pages → mktplace-store → Settings → Environment variables
+   - **Deve ter**: `DATABASE_URL` com connection string do Neon
 
-2. **Verificar Hyperdrive criado:**
-   - Dashboard → Hyperdrive
-   - **Status**: `Active`
-   - **Connection**: `Healthy`
-
-3. **Force redeploy:**
+2. **Force redeploy:**
    ```bash
    # Commit vazio para triggerar rebuild
-   git commit --allow-empty -m "fix: force redeploy with hyperdrive"
+   git commit --allow-empty -m "fix: force redeploy with TCP direto"
    git push origin main
    ```
 
+### **Se der timeout (>30s):**
+
+1. **Verificar CPU limits:**
+   - `wrangler.toml` deve ter `cpu_ms = 120000`
+
+2. **Otimizar queries:**
+   - Verificar se queries estão usando índices
+   - Limitar LIMIT nas consultas grandes
+
 ### **Se der erro de conexão:**
 
-1. **Verificar connection string do Neon:**
-   - Neon Dashboard → Connect
-   - **Copiar exata** a connection string
-
-2. **Testar conexão local:**
+1. **Testar conexão local:**
    ```bash
    psql "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb"
    ```
 
+2. **Verificar status do Neon:**
+   - Neon Dashboard → Status
+   - **Deve estar**: `Active` e `Healthy`
+
 ## 🎯 **RESUMO**
 
-Para a aplicação remota usar o banco Neon:
+Para a aplicação remota usar o banco Neon **SEM Hyperdrive**:
 
-1. ✅ **Hyperdrive criado** no Cloudflare
-2. ✅ **Binding configurado** no Pages (HYPERDRIVE_DB)
-3. ✅ **Variáveis de ambiente** adicionadas
-4. ✅ **wrangler.toml** atualizado
-5. ✅ **Deploy** realizado
+1. ✅ **TCP direto** configurado no wrangler.toml
+2. ✅ **CPU estendido** (120s) para evitar timeout
+3. ✅ **Variáveis de ambiente** no Cloudflare Pages
+4. ✅ **Deploy** realizado
 
-**Após isso, a aplicação remota terá acesso aos 54 produtos, 4.068 zonas de frete e todos os dados do banco Neon!** 🎉 
+**Após isso, a aplicação remota terá acesso aos 54 produtos, 4.068 zonas de frete e todos os dados do banco Neon!** 🎉
+
+## 🔧 **POR QUE NÃO HYPERDRIVE?**
+
+- ❌ **Incompatível** com PostgreSQL externo
+- ❌ **Problemas de timeout** e desconexão 
+- ❌ **Limitações de SSL** com Neon
+- ✅ **TCP direto é mais confiável** para PostgreSQL externo 
