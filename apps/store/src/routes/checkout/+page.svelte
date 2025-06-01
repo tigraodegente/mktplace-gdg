@@ -4,17 +4,20 @@
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   import AddressManager from '$lib/components/address/AddressManager.svelte';
   import OrderSummary from '$lib/components/cart/OrderSummary.svelte';
+  import CheckoutAuth from '$lib/components/checkout/CheckoutAuth.svelte';
+  import CheckoutAddress from '$lib/components/checkout/CheckoutAddress.svelte';
   import { advancedCartStore } from '$lib/stores/cartStore';
   import { isAuthenticated, user } from '$lib/stores/authStore';
   import type { CartItem, Address } from '$lib/types/checkout';
 
   // Desestruturar o advancedCartStore
-  const { sellerGroups, cartTotals, clearCart } = cartStore;
+  const { sellerGroups, cartTotals, clearCart } = advancedCartStore;
 
   // Estado do checkout
   let loading = false;
   let error: string | null = null;
-  let currentStep: 'address' | 'payment' = 'address';
+  let currentStep: 'auth' | 'address' | 'payment' = 'auth';
+  let isGuest = false;
   
   // Dados do carrinho e checkout
   let cartItems: CartItem[] = [];
@@ -90,7 +93,7 @@
     
     // Converter items dos grupos para format compatível
     cartItems = groups.flatMap(group => 
-      group.items.map(item => ({
+      group.items.map((item: any) => ({
         productId: item.product.id,
         productName: item.product.name,
         quantity: item.quantity,
@@ -99,13 +102,15 @@
       }))
     );
     
-    // Verificar se o usuário está autenticado e carregar endereços
+    // Definir step inicial baseado na autenticação
     if ($isAuthenticated) {
+      console.log('✅ Usuário já autenticado, indo para endereços');
+      currentStep = 'address';
       await loadUserAddresses();
-      // Só mostrar opção de endereços salvos se houver endereços
       addressMode = userAddresses.length > 0 ? 'select' : 'new';
     } else {
-      addressMode = 'new';
+      console.log('🔐 Usuário não autenticado, mostrando opções de login');
+      currentStep = 'auth';
     }
     
     // Carregar dados salvos do carrinho
@@ -465,6 +470,39 @@
       console.error('Erro ao salvar endereço:', error);
     }
   }
+
+  // Funções para o fluxo de autenticação
+  async function handleAuthNext(event: CustomEvent) {
+    const { user: authUser, isGuest: guestMode } = event.detail;
+    
+    if (guestMode) {
+      console.log('👤 Usuário escolheu checkout como convidado');
+      isGuest = true;
+      currentStep = 'address';
+      addressMode = 'new';
+    } else if (authUser) {
+      console.log('✅ Login bem-sucedido, carregando endereços...');
+      isGuest = false;
+      currentStep = 'address';
+      await loadUserAddresses();
+      addressMode = userAddresses.length > 0 ? 'select' : 'new';
+    }
+  }
+  
+  // Função para avançar do endereço para pagamento
+  function handleAddressNext(event: CustomEvent) {
+    const { address, addressData } = event.detail;
+    
+    if (address) {
+      selectedAddress = address;
+    }
+    
+    // Copiar dados do endereço para o formulário
+    addressForm = { ...addressData };
+    
+    console.log('📍 Endereço confirmado, indo para pagamento');
+    currentStep = 'payment';
+  }
 </script>
 
 <svelte:head>
@@ -484,22 +522,41 @@
     <!-- Progress indicator -->
     <div class="mb-8">
       <div class="flex items-center justify-center space-x-4">
+        <!-- Step 1: Auth -->
         <div class="flex items-center">
           <div class={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold
-                      ${currentStep === 'address' ? 'bg-[#00BFB3] text-white' : 'bg-green-500 text-white'}`}>
-            {currentStep === 'payment' ? '✓' : '1'}
+                      ${currentStep === 'auth' ? 'bg-[#00BFB3] text-white' : 
+                        currentStep === 'address' || currentStep === 'payment' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+            {currentStep === 'address' || currentStep === 'payment' ? '✓' : '1'}
           </div>
-          <span class={`ml-2 text-sm font-medium ${currentStep === 'address' ? 'text-[#00BFB3]' : 'text-green-600'}`}>
+          <span class={`ml-2 text-sm font-medium ${currentStep === 'auth' ? 'text-[#00BFB3]' : 
+                      currentStep === 'address' || currentStep === 'payment' ? 'text-green-600' : 'text-gray-500'}`}>
+            {$isAuthenticated || isGuest ? 'Autenticado' : 'Login'}
+          </span>
+        </div>
+        
+        <div class={`w-16 h-1 ${currentStep === 'address' || currentStep === 'payment' ? 'bg-[#00BFB3]' : 'bg-gray-300'}`}></div>
+        
+        <!-- Step 2: Address -->
+        <div class="flex items-center">
+          <div class={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold
+                      ${currentStep === 'address' ? 'bg-[#00BFB3] text-white' : 
+                        currentStep === 'payment' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+            {currentStep === 'payment' ? '✓' : '2'}
+          </div>
+          <span class={`ml-2 text-sm font-medium ${currentStep === 'address' ? 'text-[#00BFB3]' : 
+                      currentStep === 'payment' ? 'text-green-600' : 'text-gray-500'}`}>
             Endereço
           </span>
         </div>
         
         <div class={`w-16 h-1 ${currentStep === 'payment' ? 'bg-[#00BFB3]' : 'bg-gray-300'}`}></div>
         
+        <!-- Step 3: Payment -->
         <div class="flex items-center">
           <div class={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold
                       ${currentStep === 'payment' ? 'bg-[#00BFB3] text-white' : 'bg-gray-300 text-gray-600'}`}>
-            2
+            3
           </div>
           <span class={`ml-2 text-sm font-medium ${currentStep === 'payment' ? 'text-[#00BFB3]' : 'text-gray-500'}`}>
             Pagamento
@@ -534,403 +591,22 @@
       <!-- Formulário Principal -->
       <div class="lg:col-span-2">
         
-        {#if currentStep === 'address'}
-          <!-- Formulário de Endereço -->
+        {#if currentStep === 'auth'}
+          <!-- Etapa de Autenticação -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-6">Como você quer continuar?</h2>
+            <CheckoutAuth on:next={handleAuthNext} />
+          </div>
+          
+        {:else if currentStep === 'address'}
+          <!-- Etapa de Endereço -->
           <div class="bg-white rounded-lg shadow-sm p-6">
             <h2 class="text-xl font-bold text-gray-900 mb-6">Endereço de Entrega</h2>
-            
-            {#if $isAuthenticated && userAddresses.length > 0}
-              <!-- Opções para usuário autenticado com endereços -->
-              <div class="mb-6">
-                <div class="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onclick={selectSavedAddress}
-                    class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 
-                           {addressMode === 'select' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
-                  >
-                    <div class="flex items-center space-x-3">
-                      <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <div class="text-left">
-                        <p class="font-medium text-gray-900">Usar endereço salvo</p>
-                        <p class="text-sm text-gray-600">{userAddresses.length} endereço(s) disponível(eis)</p>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onclick={selectNewAddress}
-                    class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50
-                           {addressMode === 'new' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
-                  >
-                    <div class="flex items-center space-x-3">
-                      <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      <div class="text-left">
-                        <p class="font-medium text-gray-900">Novo endereço</p>
-                        <p class="text-sm text-gray-600">Inserir um novo endereço</p>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            {:else if $isAuthenticated && userAddresses.length === 0 && !loadingAddresses}
-              <!-- Usuário autenticado sem endereços -->
-              <div class="mb-6 p-6 bg-white border border-gray-200 rounded-lg">
-                <div class="text-center">
-                  <svg class="w-12 h-12 text-[#00BFB3] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Você ainda não tem endereços cadastrados</h3>
-                  <p class="text-[#00BFB3] text-sm mb-6">Cadastre seus endereços para acelerar futuras compras e ter uma experiência mais rápida!</p>
-                  
-                  <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                      onclick={() => addressMode = 'new'}
-                      class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      <span>Cadastrar meu primeiro endereço</span>
-                    </button>
-                    
-                    <a
-                      href="/enderecos"
-                      class="px-6 py-3 border-2 border-[#00BFB3] text-[#00BFB3] rounded-lg hover:bg-[#00BFB3] hover:text-white transition-colors font-medium flex items-center justify-center space-x-2"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span>Gerenciar endereços</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            {:else if loadingAddresses}
-              <!-- Loading de endereços -->
-              <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <div class="flex items-center space-x-3">
-                  <LoadingSpinner size="small" />
-                  <p class="text-gray-600">Carregando seus endereços...</p>
-                </div>
-              </div>
-            {:else if !$isAuthenticated}
-              <!-- Usuário não autenticado -->
-              <div class="mb-6 p-6 bg-white border border-gray-200 rounded-lg">
-                <div class="text-center">
-                  <svg class="w-12 h-12 text-[#00BFB3] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Endereço de entrega</h3>
-                  <p class="text-[#00BFB3] text-sm mb-6">Preencha seus dados de entrega para finalizar a compra.</p>
-                  
-                  <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <p class="text-sm text-gray-600 mb-3">💡 <strong>Dica:</strong> <a href="/login" class="text-[#00BFB3] hover:text-[#00A89D] font-medium underline">Faça login</a> para salvar seus endereços e acelerar futuras compras!</p>
-                  </div>
-                </div>
-              </div>
-            {/if}
-            
-            {#if addressMode === 'select' && $isAuthenticated}
-              <!-- Seleção de endereços salvos -->
-              {#if selectedAddress}
-                <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h3 class="font-medium text-green-800 mb-2 flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Endereço selecionado:
-                  </h3>
-                  <div class="text-sm text-green-700">
-                    <p class="font-semibold">{selectedAddress.name}</p>
-                    <p>{selectedAddress.street}, {selectedAddress.number}</p>
-                    {#if selectedAddress.complement}
-                      <p>{selectedAddress.complement}</p>
-                    {/if}
-                    <p>{selectedAddress.neighborhood} - {selectedAddress.city}/{selectedAddress.state}</p>
-                    <p>CEP: {selectedAddress.zipCode}</p>
-                  </div>
-                  <div class="flex gap-3 mt-3">
-                    <button
-                      onclick={() => showAddressManager = true}
-                      class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center space-x-1"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                      <span>Alterar endereço</span>
-                    </button>
-                    <button
-                      onclick={selectNewAddress}
-                      class="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      <span>Usar novo endereço</span>
-                    </button>
-                  </div>
-                </div>
-              {:else}
-                <div class="mb-6 p-6 bg-[#00BFB3]/10 border border-[#00BFB3]/30 rounded-lg">
-                  <div class="text-center">
-                    <svg class="w-10 h-10 text-[#00BFB3] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    </svg>
-                    <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Escolha um endereço salvo</h3>
-                    <p class="text-[#00BFB3] text-sm mb-4">Você tem {userAddresses.length} endereço(s) cadastrado(s). Selecione um para acelerar sua entrega:</p>
-                    
-                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                      <button
-                        onclick={() => showAddressManager = true}
-                        class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2"
-                      >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                        <span>Escolher endereço salvo</span>
-                      </button>
-                      
-                      <button
-                        onclick={selectNewAddress}
-                        class="px-6 py-3 border-2 border-[#00BFB3] text-[#00BFB3] rounded-lg hover:bg-[#00BFB3] hover:text-white transition-colors font-medium flex items-center justify-center space-x-2"
-                      >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        <span>Usar novo endereço</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              {/if}
-              
-            {:else}
-              <!-- Formulário manual de endereço -->
-              <div class="space-y-4">
-                <form class="space-y-4">
-                  <!-- Nome -->
-                  <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-                      Nome completo *
-                    </label>
-                    <input
-                      id="name"
-                      type="text"
-                      bind:value={addressForm.name}
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                      class:border-red-300={addressErrors.name}
-                      class:border-[#00BFB3]={addressForm.name && !addressErrors.name}
-                      placeholder="Nome de quem receberá o pedido"
-                    />
-                    {#if addressErrors.name}
-                      <p class="text-red-600 text-xs mt-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                        {addressErrors.name}
-                      </p>
-                    {:else if addressForm.name}
-                      <p class="text-[#00BFB3] text-xs mt-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Nome confirmado
-                      </p>
-                    {/if}
-                  </div>
-                  
-                  <!-- CEP -->
-                  <div>
-                    <label for="zipCode" class="block text-sm font-medium text-gray-700 mb-1">
-                      CEP *
-                    </label>
-                    <div class="relative">
-                      <input
-                        id="zipCode"
-                        type="text"
-                        value={addressForm.zipCode}
-                        oninput={handleCepInput}
-                        class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                        class:border-red-300={addressErrors.zipCode}
-                        class:border-[#00BFB3]={addressForm.zipCode && !addressErrors.zipCode}
-                        placeholder="00000-000"
-                        maxlength="9"
-                      />
-                      <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        {#if loadingCep}
-                          <LoadingSpinner size="small" />
-                        {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8 && !addressErrors.zipCode}
-                          <svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                        {/if}
-                      </div>
-                    </div>
-                    {#if addressErrors.zipCode}
-                      <p class="text-red-600 text-xs mt-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                        {addressErrors.zipCode}
-                      </p>
-                    {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8}
-                      <p class="text-[#00BFB3] text-xs mt-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        CEP válido - endereço preenchido automaticamente
-                      </p>
-                    {:else if addressForm.zipCode}
-                      <p class="text-gray-500 text-xs mt-1">Digite os 8 dígitos do CEP</p>
-                    {/if}
-                  </div>
-                  
-                  <!-- Logradouro e Número -->
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-2">
-                      <label for="street" class="block text-sm font-medium text-gray-700 mb-1">
-                        Logradouro *
-                      </label>
-                      <input
-                        id="street"
-                        type="text"
-                        bind:value={addressForm.street}
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                        class:border-red-300={addressErrors.street}
-                        class:border-[#00BFB3]={addressForm.street && !addressErrors.street}
-                        placeholder="Rua, Avenida, Praça..."
-                      />
-                      {#if addressErrors.street}
-                        <p class="text-red-600 text-xs mt-1">{addressErrors.street}</p>
-                      {/if}
-                    </div>
-                    
-                    <div>
-                      <label for="number" class="block text-sm font-medium text-gray-700 mb-1">
-                        Número *
-                      </label>
-                      <input
-                        id="number"
-                        type="text"
-                        bind:value={addressForm.number}
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                        class:border-red-300={addressErrors.number}
-                        class:border-[#00BFB3]={addressForm.number && !addressErrors.number}
-                        placeholder="123"
-                      />
-                      {#if addressErrors.number}
-                        <p class="text-red-600 text-xs mt-1">{addressErrors.number}</p>
-                      {/if}
-                    </div>
-                  </div>
-                  
-                  <!-- Complemento -->
-                  <div>
-                    <label for="complement" class="block text-sm font-medium text-gray-700 mb-1">
-                      Complemento
-                      <span class="text-gray-400 text-xs">(opcional)</span>
-                    </label>
-                    <input
-                      id="complement"
-                      type="text"
-                      bind:value={addressForm.complement}
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                      placeholder="Apto, Bloco, Sala, etc."
-                    />
-                    <p class="text-gray-500 text-xs mt-1">Ex: Apto 101, Bloco B, Sala 205</p>
-                  </div>
-                  
-                  <!-- Bairro -->
-                  <div>
-                    <label for="neighborhood" class="block text-sm font-medium text-gray-700 mb-1">
-                      Bairro *
-                    </label>
-                    <input
-                      id="neighborhood"
-                      type="text"
-                      bind:value={addressForm.neighborhood}
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                      class:border-red-300={addressErrors.neighborhood}
-                      class:border-[#00BFB3]={addressForm.neighborhood && !addressErrors.neighborhood}
-                      placeholder="Nome do bairro"
-                    />
-                    {#if addressErrors.neighborhood}
-                      <p class="text-red-600 text-xs mt-1">{addressErrors.neighborhood}</p>
-                    {/if}
-                  </div>
-                  
-                  <!-- Cidade e Estado -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label for="city" class="block text-sm font-medium text-gray-700 mb-1">
-                        Cidade *
-                      </label>
-                      <input
-                        id="city"
-                        type="text"
-                        bind:value={addressForm.city}
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                        class:border-red-300={addressErrors.city}
-                        class:border-[#00BFB3]={addressForm.city && !addressErrors.city}
-                        placeholder="Nome da cidade"
-                      />
-                      {#if addressErrors.city}
-                        <p class="text-red-600 text-xs mt-1">{addressErrors.city}</p>
-                      {/if}
-                    </div>
-                    
-                    <div>
-                      <label for="state" class="block text-sm font-medium text-gray-700 mb-1">
-                        Estado *
-                      </label>
-                      <select
-                        id="state"
-                        bind:value={addressForm.state}
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
-                        class:border-red-300={addressErrors.state}
-                        class:border-[#00BFB3]={addressForm.state && !addressErrors.state}
-                      >
-                        <option value="">Selecione o estado</option>
-                        {#each states as state}
-                          <option value={state.value}>{state.label}</option>
-                        {/each}
-                      </select>
-                      {#if addressErrors.state}
-                        <p class="text-red-600 text-xs mt-1">{addressErrors.state}</p>
-                      {/if}
-                    </div>
-                  </div>
-                  
-                  <!-- Progress de preenchimento -->
-                  {#if addressForm.name || addressForm.zipCode || addressForm.street || addressForm.number || addressForm.neighborhood || addressForm.city || addressForm.state}
-                    <!-- Opção para salvar endereço -->
-                    {#if $isAuthenticated && Math.round(([addressForm.name, addressForm.zipCode, addressForm.street, addressForm.number, addressForm.neighborhood, addressForm.city, addressForm.state].filter(Boolean).length / 7) * 100) >= 85}
-                      <div class="mt-6 p-3 bg-[#00BFB3]/10 border border-[#00BFB3]/30 rounded-lg">
-                        <div class="flex items-center justify-between">
-                          <div>
-                            <p class="text-sm font-medium text-[#00A89D]">💾 Salvar este endereço?</p>
-                            <p class="text-xs text-[#00BFB3]">Acelere futuras compras salvando este endereço</p>
-                          </div>
-                          <button
-                            onclick={saveCurrentAddress}
-                            class="px-4 py-2 bg-[#00BFB3] text-white text-sm rounded-lg hover:bg-[#00A89D] transition-colors font-medium"
-                          >
-                            Salvar
-                          </button>
-                        </div>
-                      </div>
-                    {/if}
-                  {/if}
-                </form>
-              </div>
-            {/if}
+            <CheckoutAddress 
+              currentUser={$user} 
+              isGuest={isGuest}
+              on:next={handleAddressNext} 
+            />
           </div>
           
         {:else if currentStep === 'payment'}

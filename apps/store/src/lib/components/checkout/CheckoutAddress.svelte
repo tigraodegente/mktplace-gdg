@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { isAuthenticated, user } from '$lib/stores/authStore';
-  import AddressManager from '$lib/components/address/AddressManager.svelte';
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   
   const { currentUser = null, isGuest = false } = $props<{
@@ -11,13 +10,14 @@
   
   const dispatch = createEventDispatcher();
   
-  // Estados
-  let addressMode = $state<'select' | 'new'>('new');
+  // Estados principais
+  let addressMode = $state<'select' | 'new' | 'create'>('new');
   let selectedAddress = $state<any>(null);
-  let showAddressManager = $state(false);
+  let showAddressModal = $state(false);
   let userAddresses = $state<any[]>([]);
   let loadingAddresses = $state(false);
   let loadingCep = $state(false);
+  let savingAddress = $state(false);
   
   // Formulário de endereço
   let addressForm = $state({
@@ -28,11 +28,13 @@
     neighborhood: '',
     city: '',
     state: '',
-    zipCode: ''
+    zipCode: '',
+    label: ''
   });
   
   // Validação
   let addressErrors = $state<Record<string, string>>({});
+  let showSaveOption = $state(false);
   
   // Estados brasileiros
   const states = [
@@ -53,45 +55,74 @@
   ];
   
   onMount(async () => {
-    // Se está autenticado, carregar endereços
     if (currentUser || $isAuthenticated) {
+      console.log('🏠 Usuário autenticado - verificando endereços...');
       await loadUserAddresses();
-      addressMode = userAddresses.length > 0 ? 'select' : 'new';
+      
+      // Definir modo inicial baseado nos endereços
+      if (userAddresses.length > 0) {
+        addressMode = 'select';
+      } else {
+        addressMode = 'create';
+      }
+    } else {
+      addressMode = 'new';
     }
-  });
-  
-  // 🔄 REATIVO: Carregar endereços quando usuário for autenticado
-  $effect(() => {
-    // Monitora mudanças na autenticação
-    if ((currentUser || $isAuthenticated) && userAddresses.length === 0 && !loadingAddresses) {
-      console.log('🏠 Usuário autenticado detectado - carregando endereços...');
-      loadUserAddresses().then(() => {
-        if (userAddresses.length > 0) {
-          addressMode = 'select';
-        }
-      });
+    
+    // Preencher nome se disponível
+    if (currentUser?.name || $user?.name) {
+      addressForm.name = currentUser?.name || $user?.name || '';
     }
   });
   
   async function loadUserAddresses() {
-    if (!currentUser && !$isAuthenticated) return;
+    if (!currentUser && !$isAuthenticated) {
+      console.log('❌ Usuário não autenticado');
+      return;
+    }
+    
+    if (loadingAddresses) {
+      console.log('🏠 Já carregando endereços...');
+      return;
+    }
     
     loadingAddresses = true;
+    
     try {
+      console.log('🏠 Carregando endereços do usuário...');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch('/api/addresses', {
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.status === 401) {
+        console.log('🔒 Sessão expirada - limpando dados');
+        userAddresses = [];
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         userAddresses = data.data || [];
+        console.log('✅ Endereços carregados:', userAddresses.length);
       } else {
-        console.error('Erro ao carregar endereços:', data.error);
+        console.error('❌ Erro ao carregar endereços:', data.error);
         userAddresses = [];
       }
     } catch (error) {
-      console.error('Erro ao carregar endereços:', error);
+      console.error('❌ Erro na requisição de endereços:', error);
       userAddresses = [];
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⏰ Timeout na requisição de endereços (10s)');
+      }
     } finally {
       loadingAddresses = false;
     }
@@ -135,7 +166,6 @@
     }
   }
   
-  // Função de validação que retorna erros sem modificar estado
   function getValidationErrors(): Record<string, string> {
     const errors: Record<string, string> = {};
     
@@ -152,96 +182,26 @@
     return errors;
   }
   
-  // Derivado para verificar se o formulário é válido
   const isFormValid = $derived(() => {
     const errors = getValidationErrors();
     return Object.keys(errors).length === 0;
   });
   
-  // Função que aplica os erros ao estado (para ser chamada em eventos)
   function validateAndSetErrors(): boolean {
     const errors = getValidationErrors();
     addressErrors = errors;
     return Object.keys(errors).length === 0;
   }
   
-  function handleNext() {
-    if (addressMode === 'select' && selectedAddress) {
-      // Usar endereço selecionado
-      dispatch('next', { 
-        address: selectedAddress,
-        addressData: {
-          name: selectedAddress.name,
-          street: selectedAddress.street,
-          number: selectedAddress.number,
-          complement: selectedAddress.complement || '',
-          neighborhood: selectedAddress.neighborhood,
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          zipCode: selectedAddress.zipCode
-        }
-      });
-    } else if (addressMode === 'new' && validateAndSetErrors()) {
-      // Usar novo endereço
-      dispatch('next', { 
-        address: null,
-        addressData: { ...addressForm }
-      });
-    }
-  }
-  
-  function handleAddressSelected(event: CustomEvent) {
-    const { address } = event.detail;
-    selectedAddress = address;
+  async function saveNewAddress() {
+    if (!validateAndSetErrors()) return false;
     
-    // Preencher formulário com dados do endereço selecionado
-    addressForm = {
-      name: address.name,
-      street: address.street,
-      number: address.number,
-      complement: address.complement || '',
-      neighborhood: address.neighborhood,
-      city: address.city,
-      state: address.state,
-      zipCode: address.zipCode
-    };
-    
-    showAddressManager = false;
-  }
-  
-  function selectNewAddress() {
-    addressMode = 'new';
-    selectedAddress = null;
-    addressForm = {
-      name: currentUser?.name || $user?.name || '',
-      street: '',
-      number: '',
-      complement: '',
-      neighborhood: '',
-      city: '',
-      state: '',
-      zipCode: ''
-    };
-  }
-  
-  function selectSavedAddress() {
-    if (userAddresses.length === 0) {
-      loadUserAddresses().then(() => {
-        if (userAddresses.length > 0) {
-          addressMode = 'select';
-          showAddressManager = true;
-        } else {
-          addressMode = 'new';
-        }
-      });
-    } else {
-      addressMode = 'select';
-      showAddressManager = true;
+    if (!currentUser && !$isAuthenticated) {
+      console.log('❌ Usuário não autenticado - não pode salvar');
+      return false;
     }
-  }
-  
-  async function saveCurrentAddress() {
-    if ((!currentUser && !$isAuthenticated) || !validateAndSetErrors()) return;
+    
+    savingAddress = true;
     
     try {
       const response = await fetch('/api/addresses', {
@@ -257,21 +217,114 @@
           city: addressForm.city,
           state: addressForm.state,
           zipCode: addressForm.zipCode.replace(/\D/g, ''),
-          label: `Endereço ${userAddresses.length + 1}`,
-          type: 'shipping'
+          label: addressForm.label || `Endereço ${userAddresses.length + 1}`,
+          type: 'shipping',
+          isDefault: userAddresses.length === 0 // Primeiro endereço é padrão
         })
       });
       
       const result = await response.json();
       
       if (result.success) {
-        await loadUserAddresses();
         console.log('✅ Endereço salvo com sucesso!');
+        await loadUserAddresses(); // Recarregar lista
+        return true;
       } else {
-        console.error('Erro ao salvar endereço:', result.error);
+        console.error('❌ Erro ao salvar endereço:', result.error);
+        return false;
       }
     } catch (error) {
-      console.error('Erro ao salvar endereço:', error);
+      console.error('❌ Erro ao salvar endereço:', error);
+      return false;
+    } finally {
+      savingAddress = false;
+    }
+  }
+  
+  function selectAddress(address: any) {
+    selectedAddress = address;
+    
+    // Preencher formulário com dados do endereço
+    addressForm = {
+      name: address.name,
+      street: address.street,
+      number: address.number,
+      complement: address.complement || '',
+      neighborhood: address.neighborhood,
+      city: address.city,
+      state: address.state,
+      zipCode: address.zipCode,
+      label: address.label || ''
+    };
+    
+    console.log('✅ Endereço selecionado:', address.label);
+  }
+  
+  function clearForm() {
+    addressForm = {
+      name: currentUser?.name || $user?.name || '',
+      street: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      label: ''
+    };
+    addressErrors = {};
+    selectedAddress = null;
+  }
+  
+  function startNewAddress() {
+    addressMode = 'new';
+    clearForm();
+    showSaveOption = true;
+  }
+  
+  function startCreate() {
+    addressMode = 'create';
+    clearForm();
+    showSaveOption = false;
+  }
+  
+  function showAddressList() {
+    if (userAddresses.length > 0) {
+      addressMode = 'select';
+      showAddressModal = true;
+    } else {
+      startCreate();
+    }
+  }
+  
+  async function handleNext() {
+    if (addressMode === 'select' && selectedAddress) {
+      // Usar endereço selecionado
+      dispatch('next', { 
+        address: selectedAddress,
+        addressData: {
+          name: selectedAddress.name,
+          street: selectedAddress.street,
+          number: selectedAddress.number,
+          complement: selectedAddress.complement || '',
+          neighborhood: selectedAddress.neighborhood,
+          city: selectedAddress.city,
+          state: selectedAddress.state,
+          zipCode: selectedAddress.zipCode
+        }
+      });
+    } else if ((addressMode === 'new' || addressMode === 'create') && validateAndSetErrors()) {
+      // Salvar endereço se necessário
+      if (showSaveOption && (currentUser || $isAuthenticated)) {
+        const saved = await saveNewAddress();
+        if (!saved) return; // Parar se falhou ao salvar
+      }
+      
+      // Usar novo endereço
+      dispatch('next', { 
+        address: null,
+        addressData: { ...addressForm }
+      });
     }
   }
   
@@ -284,177 +337,191 @@
 </script>
 
 <div class="space-y-6">
-  {#if (currentUser || $isAuthenticated) && userAddresses.length > 0}
-    <!-- Opções para usuário autenticado com endereços -->
-    <div class="space-y-4">
-      <div class="flex flex-col sm:flex-row gap-3">
-        <button
-          onclick={selectSavedAddress}
-          class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 
-                 {addressMode === 'select' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
-        >
-          <div class="flex items-center space-x-3">
-            <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <div class="text-left">
-              <p class="font-medium text-gray-900">Usar endereço salvo</p>
-              <p class="text-sm text-gray-600">{userAddresses.length} endereço(s) disponível(eis)</p>
-            </div>
-          </div>
-        </button>
+  <!-- ============================================ -->
+  <!-- SEÇÃO PRINCIPAL - SELEÇÃO DE MODO -->
+  <!-- ============================================ -->
+  
+  {#if (currentUser || $isAuthenticated) && !isGuest}
+    <!-- USUÁRIO AUTENTICADO -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Endereço de Entrega</h3>
+      
+      {#if loadingAddresses}
+        <!-- CARREGANDO -->
+        <div class="text-center py-8">
+          <LoadingSpinner />
+          <p class="text-gray-600 mt-4">Verificando seus endereços...</p>
+        </div>
         
-        <button
-          onclick={selectNewAddress}
-          class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50
-                 {addressMode === 'new' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
-        >
-          <div class="flex items-center space-x-3">
-            <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {:else if userAddresses.length === 0}
+        <!-- SEM ENDEREÇOS CADASTRADOS -->
+        <div class="text-center py-8">
+          <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <h4 class="text-lg font-semibold text-gray-900 mb-2">Você não tem nenhum endereço cadastrado</h4>
+          <p class="text-gray-600 mb-6">Cadastre seu primeiro endereço para acelerar futuras compras!</p>
+          
+          <button
+            onclick={startCreate}
+            class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 mx-auto"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <div class="text-left">
-              <p class="font-medium text-gray-900">Novo endereço</p>
-              <p class="text-sm text-gray-600">Inserir um novo endereço</p>
-            </div>
-          </div>
-        </button>
-      </div>
-    </div>
-  {:else if (currentUser || $isAuthenticated) && userAddresses.length === 0 && !loadingAddresses && addressMode !== 'new'}
-    <!-- Usuário autenticado sem endereços -->
-    <div class="p-6 bg-white border border-gray-200 rounded-lg">
-      <div class="text-center">
-        <svg class="w-12 h-12 text-[#00BFB3] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Primeiro endereço</h3>
-        <p class="text-[#00BFB3] text-sm mb-6">Cadastre seu endereço para acelerar futuras compras!</p>
+            <span>Cadastrar Endereço</span>
+          </button>
+        </div>
         
-        <button
-          onclick={() => addressMode = 'new'}
-          class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 mx-auto"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span>Cadastrar endereço</span>
-        </button>
-      </div>
+      {:else}
+        <!-- COM ENDEREÇOS - OPÇÕES DE SELEÇÃO -->
+        <div class="space-y-4">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <!-- BOTÃO: USAR ENDEREÇO SALVO -->
+            <button
+              onclick={showAddressList}
+              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 
+                     {addressMode === 'select' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
+            >
+              <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <div class="text-left">
+                  <p class="font-semibold text-gray-900">Usar endereço salvo</p>
+                  <p class="text-sm text-gray-600">{userAddresses.length} endereço(s) disponível(eis)</p>
+                </div>
+              </div>
+            </button>
+            
+            <!-- BOTÃO: NOVO ENDEREÇO -->
+            <button
+              onclick={startNewAddress}
+              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50
+                     {addressMode === 'new' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
+            >
+              <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <div class="text-left">
+                  <p class="font-semibold text-gray-900">Novo endereço</p>
+                  <p class="text-sm text-gray-600">Cadastrar um novo endereço</p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
-  {:else if loadingAddresses}
-    <!-- Loading de endereços -->
-    <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-      <div class="flex items-center space-x-3">
-        <LoadingSpinner size="small" />
-        <p class="text-gray-600">Carregando seus endereços...</p>
-      </div>
-    </div>
+    
   {:else if isGuest}
-    <!-- Usuário convidado -->
-    <div class="p-6 bg-white border border-gray-200 rounded-lg">
-      <div class="text-center">
+    <!-- USUÁRIO CONVIDADO -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <div class="text-center mb-6">
         <svg class="w-12 h-12 text-[#00BFB3] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Endereço de entrega</h3>
-        <p class="text-[#00BFB3] text-sm mb-6">Preencha seus dados de entrega para finalizar a compra.</p>
+        <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Endereço de Entrega</h3>
+        <p class="text-[#00BFB3] text-sm">Preencha seus dados de entrega para finalizar a compra.</p>
       </div>
     </div>
   {/if}
   
-  {#if addressMode === 'select' && (currentUser || $isAuthenticated)}
-    <!-- Seleção de endereços salvos -->
-    {#if selectedAddress}
-      <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
-        <h3 class="font-medium text-green-800 mb-2 flex items-center">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          Endereço selecionado:
-        </h3>
-        <div class="text-sm text-green-700">
-          <p class="font-semibold">{selectedAddress.name}</p>
-          <p>{selectedAddress.street}, {selectedAddress.number}</p>
-          {#if selectedAddress.complement}
-            <p>{selectedAddress.complement}</p>
-          {/if}
-          <p>{selectedAddress.neighborhood} - {selectedAddress.city}/{selectedAddress.state}</p>
-          <p>CEP: {selectedAddress.zipCode}</p>
-        </div>
-        <div class="flex gap-3 mt-3">
-          <button
-            onclick={() => showAddressManager = true}
-            class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center space-x-1"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            <span>Alterar endereço</span>
-          </button>
-          <button
-            onclick={selectNewAddress}
-            class="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Usar novo endereço</span>
-          </button>
-        </div>
+  <!-- ============================================ -->
+  <!-- ENDEREÇO SELECIONADO -->
+  <!-- ============================================ -->
+  
+  {#if addressMode === 'select' && selectedAddress}
+    <div class="bg-green-50 border border-green-200 rounded-xl p-6">
+      <h4 class="font-semibold text-green-800 mb-3 flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Endereço Selecionado
+      </h4>
+      <div class="text-sm text-green-700 space-y-1">
+        <p class="font-semibold">{selectedAddress.name}</p>
+        <p>{selectedAddress.street}, {selectedAddress.number}</p>
+        {#if selectedAddress.complement}
+          <p>{selectedAddress.complement}</p>
+        {/if}
+        <p>{selectedAddress.neighborhood} - {selectedAddress.city}/{selectedAddress.state}</p>
+        <p>CEP: {selectedAddress.zipCode}</p>
       </div>
-    {:else}
-      <div class="p-6 bg-[#00BFB3]/10 border border-[#00BFB3]/30 rounded-lg">
-        <div class="text-center">
-          <svg class="w-10 h-10 text-[#00BFB3] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <div class="flex gap-3 mt-4">
+        <button
+          onclick={() => showAddressModal = true}
+          class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center space-x-1"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
-          <h3 class="text-lg font-semibold text-[#00A89D] mb-2">Escolha um endereço</h3>
-          <p class="text-[#00BFB3] text-sm mb-4">Você tem {userAddresses.length} endereço(s) cadastrado(s).</p>
-          
-          <button
-            onclick={() => showAddressManager = true}
-            class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 mx-auto"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            </svg>
-            <span>Escolher endereço</span>
-          </button>
-        </div>
+          <span>Trocar endereço</span>
+        </button>
+        <button
+          onclick={startNewAddress}
+          class="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span>Novo endereço</span>
+        </button>
       </div>
-    {/if}
-    
-  {:else}
-    <!-- Formulário manual de endereço -->
-    <div class="space-y-4">
-      <form class="space-y-4" onsubmit={(e) => e.preventDefault()}>
-        <!-- Nome -->
+    </div>
+  {/if}
+  
+  <!-- ============================================ -->
+  <!-- FORMULÁRIO DE ENDEREÇO -->
+  <!-- ============================================ -->
+  
+  {#if addressMode === 'new' || addressMode === 'create'}
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h4 class="text-lg font-semibold text-gray-900">
+          {addressMode === 'create' ? 'Cadastrar Novo Endereço' : 'Informações de Entrega'}
+        </h4>
+        {#if completionPercentage() > 0}
+          <div class="flex items-center space-x-2 text-sm text-gray-600">
+            <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                class="h-full bg-[#00BFB3] transition-all duration-300"
+                style="width: {completionPercentage()}%"
+              ></div>
+            </div>
+            <span>{completionPercentage()}%</span>
+          </div>
+        {/if}
+      </div>
+      
+      <form class="space-y-6" onsubmit={(e) => e.preventDefault()}>
+        <!-- NOME -->
         <div>
-          <label for="checkout-name" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="checkout-name" class="block text-sm font-medium text-gray-700 mb-2">
             Nome completo *
           </label>
           <input
             id="checkout-name"
             type="text"
             bind:value={addressForm.name}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
             class:border-red-300={addressErrors.name}
             class:border-[#00BFB3]={addressForm.name && !addressErrors.name}
             placeholder="Nome de quem receberá o pedido"
           />
           {#if addressErrors.name}
-            <p class="text-red-600 text-xs mt-1 flex items-center">
-              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <p class="text-red-600 text-sm mt-1 flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
               {addressErrors.name}
             </p>
           {:else if addressForm.name}
-            <p class="text-[#00BFB3] text-xs mt-1 flex items-center">
-              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <p class="text-[#00BFB3] text-sm mt-1 flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
               Nome confirmado
@@ -464,7 +531,7 @@
         
         <!-- CEP -->
         <div>
-          <label for="checkout-zipCode" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="checkout-zipCode" class="block text-sm font-medium text-gray-700 mb-2">
             CEP *
           </label>
           <div class="relative">
@@ -473,143 +540,143 @@
               type="text"
               value={addressForm.zipCode}
               oninput={handleCepInput}
-              class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+              class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
               class:border-red-300={addressErrors.zipCode}
               class:border-[#00BFB3]={addressForm.zipCode && !addressErrors.zipCode}
               placeholder="00000-000"
               maxlength="9"
             />
-            <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div class="absolute right-4 top-1/2 transform -translate-y-1/2">
               {#if loadingCep}
                 <LoadingSpinner size="small" />
               {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8 && !addressErrors.zipCode}
-                <svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
               {/if}
             </div>
           </div>
           {#if addressErrors.zipCode}
-            <p class="text-red-600 text-xs mt-1 flex items-center">
-              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <p class="text-red-600 text-sm mt-1 flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
               {addressErrors.zipCode}
             </p>
           {:else if addressForm.zipCode && addressForm.zipCode.replace(/\D/g, '').length === 8}
-            <p class="text-[#00BFB3] text-xs mt-1 flex items-center">
-              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <p class="text-[#00BFB3] text-sm mt-1 flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
               CEP válido - endereço preenchido automaticamente
             </p>
           {:else if addressForm.zipCode}
-            <p class="text-gray-500 text-xs mt-1">Digite os 8 dígitos do CEP</p>
+            <p class="text-gray-500 text-sm mt-1">Digite os 8 dígitos do CEP</p>
           {/if}
         </div>
         
-        <!-- Logradouro e Número -->
+        <!-- LOGRADOURO E NÚMERO -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
-            <label for="checkout-street" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="checkout-street" class="block text-sm font-medium text-gray-700 mb-2">
               Logradouro *
             </label>
             <input
               id="checkout-street"
               type="text"
               bind:value={addressForm.street}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
               class:border-red-300={addressErrors.street}
               class:border-[#00BFB3]={addressForm.street && !addressErrors.street}
               placeholder="Rua, Avenida, Praça..."
             />
             {#if addressErrors.street}
-              <p class="text-red-600 text-xs mt-1">{addressErrors.street}</p>
+              <p class="text-red-600 text-sm mt-1">{addressErrors.street}</p>
             {/if}
           </div>
           
           <div>
-            <label for="checkout-number" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="checkout-number" class="block text-sm font-medium text-gray-700 mb-2">
               Número *
             </label>
             <input
               id="checkout-number"
               type="text"
               bind:value={addressForm.number}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
               class:border-red-300={addressErrors.number}
               class:border-[#00BFB3]={addressForm.number && !addressErrors.number}
               placeholder="123"
             />
             {#if addressErrors.number}
-              <p class="text-red-600 text-xs mt-1">{addressErrors.number}</p>
+              <p class="text-red-600 text-sm mt-1">{addressErrors.number}</p>
             {/if}
           </div>
         </div>
         
-        <!-- Complemento -->
+        <!-- COMPLEMENTO -->
         <div>
-          <label for="checkout-complement" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="checkout-complement" class="block text-sm font-medium text-gray-700 mb-2">
             Complemento
-            <span class="text-gray-400 text-xs">(opcional)</span>
+            <span class="text-gray-400 text-sm">(opcional)</span>
           </label>
           <input
             id="checkout-complement"
             type="text"
             bind:value={addressForm.complement}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
             placeholder="Apto, Bloco, Sala, etc."
           />
-          <p class="text-gray-500 text-xs mt-1">Ex: Apto 101, Bloco B, Sala 205</p>
+          <p class="text-gray-500 text-sm mt-1">Ex: Apto 101, Bloco B, Sala 205</p>
         </div>
         
-        <!-- Bairro -->
+        <!-- BAIRRO -->
         <div>
-          <label for="checkout-neighborhood" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="checkout-neighborhood" class="block text-sm font-medium text-gray-700 mb-2">
             Bairro *
           </label>
           <input
             id="checkout-neighborhood"
             type="text"
             bind:value={addressForm.neighborhood}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
             class:border-red-300={addressErrors.neighborhood}
             class:border-[#00BFB3]={addressForm.neighborhood && !addressErrors.neighborhood}
             placeholder="Nome do bairro"
           />
           {#if addressErrors.neighborhood}
-            <p class="text-red-600 text-xs mt-1">{addressErrors.neighborhood}</p>
+            <p class="text-red-600 text-sm mt-1">{addressErrors.neighborhood}</p>
           {/if}
         </div>
         
-        <!-- Cidade e Estado -->
+        <!-- CIDADE E ESTADO -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label for="checkout-city" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="checkout-city" class="block text-sm font-medium text-gray-700 mb-2">
               Cidade *
             </label>
             <input
               id="checkout-city"
               type="text"
               bind:value={addressForm.city}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
               class:border-red-300={addressErrors.city}
               class:border-[#00BFB3]={addressForm.city && !addressErrors.city}
               placeholder="Nome da cidade"
             />
             {#if addressErrors.city}
-              <p class="text-red-600 text-xs mt-1">{addressErrors.city}</p>
+              <p class="text-red-600 text-sm mt-1">{addressErrors.city}</p>
             {/if}
           </div>
           
           <div>
-            <label for="checkout-state" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="checkout-state" class="block text-sm font-medium text-gray-700 mb-2">
               Estado *
             </label>
             <select
               id="checkout-state"
               bind:value={addressForm.state}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-all"
               class:border-red-300={addressErrors.state}
               class:border-[#00BFB3]={addressForm.state && !addressErrors.state}
             >
@@ -619,25 +686,44 @@
               {/each}
             </select>
             {#if addressErrors.state}
-              <p class="text-red-600 text-xs mt-1">{addressErrors.state}</p>
+              <p class="text-red-600 text-sm mt-1">{addressErrors.state}</p>
             {/if}
           </div>
         </div>
         
-        <!-- Opção para salvar endereço -->
-        {#if (currentUser || $isAuthenticated) && completionPercentage() >= 85}
-          <div class="p-3 bg-[#00BFB3]/10 border border-[#00BFB3]/30 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-[#00A89D]">💾 Salvar este endereço?</p>
-                <p class="text-xs text-[#00BFB3]">Acelere futuras compras salvando este endereço</p>
+        <!-- OPÇÃO PARA SALVAR ENDEREÇO (USUÁRIOS AUTENTICADOS) -->
+        {#if (currentUser || $isAuthenticated) && addressMode === 'new' && completionPercentage() >= 70}
+          <div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="save-address"
+                bind:checked={showSaveOption}
+                class="mt-1 h-4 w-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
+              />
+              <div class="flex-1">
+                <label for="save-address" class="text-sm font-medium text-[#00A89D] cursor-pointer">
+                  💾 Salvar este endereço para futuras compras
+                </label>
+                <p class="text-xs text-[#00BFB3] mt-1">
+                  Acelere seus próximos pedidos salvando este endereço
+                </p>
+                
+                {#if showSaveOption}
+                  <div class="mt-3">
+                    <label for="address-label" class="block text-sm font-medium text-gray-700 mb-1">
+                      Nome do endereço (opcional)
+                    </label>
+                    <input
+                      id="address-label"
+                      type="text"
+                      bind:value={addressForm.label}
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
+                      placeholder="Ex: Casa, Trabalho, Casa da mãe..."
+                    />
+                  </div>
+                {/if}
               </div>
-              <button
-                onclick={saveCurrentAddress}
-                class="px-4 py-2 bg-[#00BFB3] text-white text-sm rounded-lg hover:bg-[#00A89D] transition-colors font-medium"
-              >
-                Salvar
-              </button>
             </div>
           </div>
         {/if}
@@ -645,25 +731,48 @@
     </div>
   {/if}
   
-  <!-- Botão de continuar -->
-  <button
-    onclick={handleNext}
-    disabled={addressMode === 'select' ? !selectedAddress : !isFormValid()}
-    class="w-full py-3 px-4 bg-[#00BFB3] text-white font-semibold rounded-lg hover:bg-[#00A89D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-  >
-    <span>Continuar para Pagamento</span>
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-    </svg>
-  </button>
+  <!-- ============================================ -->
+  <!-- BOTÃO DE CONTINUAR -->
+  <!-- ============================================ -->
+  
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <button
+      onclick={handleNext}
+      disabled={
+        (addressMode === 'select' && !selectedAddress) || 
+        ((addressMode === 'new' || addressMode === 'create') && !isFormValid()) ||
+        savingAddress
+      }
+      class="w-full py-4 px-6 bg-[#00BFB3] text-white font-semibold rounded-lg hover:bg-[#00A89D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+    >
+      {#if savingAddress}
+        <LoadingSpinner size="small" />
+        <span>Salvando endereço...</span>
+      {:else}
+        <span>Continuar para Pagamento</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      {/if}
+    </button>
+    
+    {#if (addressMode === 'new' || addressMode === 'create') && !isFormValid()}
+      <p class="text-gray-500 text-sm text-center mt-2">
+        Preencha todos os campos obrigatórios para continuar
+      </p>
+    {/if}
+  </div>
 </div>
 
-<!-- Modal de Seleção de Endereços -->
-{#if showAddressManager && (currentUser || $isAuthenticated)}
+<!-- ============================================ -->
+<!-- MODAL DE SELEÇÃO DE ENDEREÇOS -->
+<!-- ============================================ -->
+
+{#if showAddressModal && (currentUser || $isAuthenticated)}
   <div 
     class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm" 
-    onclick={() => showAddressManager = false}
-    onkeydown={(e) => e.key === 'Escape' && (showAddressManager = false)}
+    onclick={() => showAddressModal = false}
+    onkeydown={(e) => e.key === 'Escape' && (showAddressModal = false)}
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
@@ -673,27 +782,27 @@
       <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
       
       <div 
-        class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full border border-gray-100"
+        class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-100"
         role="document"
         onclick={(e) => e.stopPropagation()}
       >
-        <!-- Header do Modal -->
+        <!-- HEADER DO MODAL -->
         <div class="mb-6 pb-4 border-b border-gray-100">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-12 h-12 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
               <div>
-                <h3 id="modal-title" class="text-xl font-bold text-gray-900">Meus Endereços</h3>
-                <p class="text-sm text-gray-600">Escolha um endereço para entrega</p>
+                <h3 id="modal-title" class="text-xl font-bold text-gray-900">Escolher Endereço</h3>
+                <p class="text-sm text-gray-600">Selecione um endereço para entrega ou cadastre um novo</p>
               </div>
             </div>
             <button
-              onclick={() => showAddressManager = false}
+              onclick={() => showAddressModal = false}
               class="w-10 h-10 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200"
               aria-label="Fechar modal de seleção de endereços"
             >
@@ -704,26 +813,180 @@
           </div>
         </div>
         
-        <!-- Conteúdo do Modal -->
+        <!-- CONTEÚDO DO MODAL -->
         <div class="max-h-96 overflow-y-auto">
-          <AddressManager
-            userId={(currentUser || $user)?.id}
-            addressType="shipping"
-            mode="select"
-            showHistory={false}
-            on:addressSelected={handleAddressSelected}
-          />
+          {#if loadingAddresses}
+            <!-- LOADING -->
+            <div class="text-center py-12">
+              <LoadingSpinner />
+              <p class="text-gray-600 mt-4">Carregando seus endereços...</p>
+            </div>
+            
+          {:else if userAddresses.length === 0}
+            <!-- SEM ENDEREÇOS -->
+            <div class="text-center py-12">
+              <svg class="w-20 h-20 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <h4 class="text-xl font-semibold text-gray-900 mb-3">Nenhum endereço encontrado</h4>
+              <p class="text-gray-600 mb-8 max-w-md mx-auto">
+                Você ainda não tem endereços salvos. Cadastre seu primeiro endereço para acelerar futuras compras!
+              </p>
+              
+              <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onclick={() => {
+                    showAddressModal = false;
+                    startCreate();
+                  }}
+                  class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>Cadastrar Primeiro Endereço</span>
+                </button>
+                
+                <button
+                  onclick={loadUserAddresses}
+                  class="px-6 py-3 border-2 border-[#00BFB3] text-[#00BFB3] rounded-lg hover:bg-[#00BFB3] hover:text-white transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Tentar Novamente</span>
+                </button>
+              </div>
+            </div>
+            
+          {:else}
+            <!-- LISTA DE ENDEREÇOS -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between mb-4">
+                <p class="text-sm text-gray-600">
+                  {userAddresses.length} endereço(s) encontrado(s)
+                </p>
+                <button
+                  onclick={loadUserAddresses}
+                  class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center space-x-1"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Atualizar</span>
+                </button>
+              </div>
+              
+              {#each userAddresses as address, index}
+                <div 
+                  class="group p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-[#00BFB3]/50 hover:shadow-md
+                         {selectedAddress?.id === address.id ? 'border-[#00BFB3] bg-[#00BFB3]/5 shadow-md' : 'border-gray-200'}"
+                  onclick={() => {
+                    selectAddress(address);
+                    showAddressModal = false;
+                  }}
+                >
+                  <div class="flex items-start justify-between">
+                    <!-- INFORMAÇÕES DO ENDEREÇO -->
+                    <div class="flex-1">
+                      <div class="flex items-center gap-3 mb-3">
+                        <span class="text-base font-semibold text-gray-900">
+                          {address.label || `Endereço ${index + 1}`}
+                        </span>
+                        {#if address.isDefault}
+                          <span class="text-xs bg-[#00BFB3] text-white px-3 py-1 rounded-full font-medium">
+                            Padrão
+                          </span>
+                        {/if}
+                        {#if selectedAddress?.id === address.id}
+                          <span class="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                            Selecionado
+                          </span>
+                        {/if}
+                      </div>
+                      
+                      <div class="text-sm text-gray-700 space-y-1">
+                        <p class="font-semibold text-gray-900">{address.name}</p>
+                        <p>{address.street}, {address.number}</p>
+                        {#if address.complement}
+                          <p class="text-gray-600">{address.complement}</p>
+                        {/if}
+                        <p>{address.neighborhood} - {address.city}/{address.state}</p>
+                        <p class="text-gray-600">CEP: {address.zipCode}</p>
+                      </div>
+                    </div>
+                    
+                    <!-- INDICADOR DE SELEÇÃO -->
+                    <div class="ml-6 flex items-center">
+                      {#if selectedAddress?.id === address.id}
+                        <div class="w-8 h-8 bg-[#00BFB3] rounded-full flex items-center justify-center">
+                          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      {:else}
+                        <div class="w-8 h-8 border-2 border-gray-300 rounded-full group-hover:border-[#00BFB3] transition-colors"></div>
+                      {/if}
+                    </div>
+                  </div>
+                  
+                  <!-- BOTÃO DE SELEÇÃO RÁPIDA -->
+                  <div class="mt-4 pt-3 border-t border-gray-100">
+                    <button class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center space-x-1 group-hover:text-[#00A89D]">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Selecionar este endereço</span>
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
         
-        <!-- Footer do Modal (opcional) -->
-        <div class="mt-6 pt-4 border-t border-gray-100">
-          <div class="flex items-center justify-between text-xs text-gray-500">
-            <span>💡 Dica: Você pode gerenciar todos os seus endereços na sua conta</span>
-            <div class="flex items-center space-x-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        <!-- FOOTER DO MODAL -->
+        <div class="mt-8 pt-6 border-t border-gray-100">
+          <div class="flex flex-col sm:flex-row gap-3 justify-between">
+            <!-- BOTÃO: NOVO ENDEREÇO -->
+            <button
+              onclick={() => {
+                showAddressModal = false;
+                startNewAddress();
+              }}
+              class="flex-1 p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-[#00BFB3] hover:text-[#00BFB3] transition-colors flex items-center justify-center space-x-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <span>Seus dados estão seguros</span>
+              <span>Usar novo endereço</span>
+            </button>
+            
+            {#if selectedAddress}
+              <!-- BOTÃO: CONFIRMAR SELEÇÃO -->
+              <button
+                onclick={() => showAddressModal = false}
+                class="flex-1 py-4 px-6 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Confirmar Endereço</span>
+              </button>
+            {/if}
+          </div>
+          
+          <!-- INFO ADICIONAL -->
+          <div class="mt-4 pt-4 border-t border-gray-50">
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>💡 Dica: Clique em qualquer endereço para selecioná-lo automaticamente</span>
+              <div class="flex items-center space-x-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Seus dados estão seguros</span>
+              </div>
             </div>
           </div>
         </div>
