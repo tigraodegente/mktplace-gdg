@@ -307,32 +307,37 @@
 		align-items: center;
 		transition: var(--transition-opacity);
 		position: relative;
-		z-index: 40;
+		z-index: 110; /* Acima do header que tem z-index: 100 */
 		/* Mobile: full width sem margin ou border radius */
 		margin: 0;
 		border-radius: 0;
 	}
 	
-	/* Mobile e iPad Mini: até 899px - FULL WIDTH */
+	/* Mobile e iPad Mini: até 899px - FIXED NO TOPO */
 	@media (max-width: 899px) {
 		.countdown {
+			position: fixed;
+			top: 0;
+			left: 0;
 			margin: 0;
 			border-radius: 0;
 			box-shadow: none;
 			max-width: none;
+			z-index: 150; /* Z-index muito alto para mobile */
 		}
 	}
 	
 	/* Tablet médio: 900px - 1023px */
 	@media (min-width: 900px) and (max-width: 1023px) {
 		.countdown {
-			margin-top: 20px;
-			margin-bottom: -24px;
-			border-radius: 24px 24px 0 0;
-			max-width: 95%;
-			margin-left: auto;
-			margin-right: auto;
+			position: fixed;
+			top: 0;
+			left: 0;
+			margin: 0;
+			border-radius: 0;
+			max-width: none;
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			z-index: 150; /* Z-index muito alto para tablet */
 		}
 	}
 	
@@ -346,6 +351,7 @@
 			margin-left: auto;
 			margin-right: auto;
 			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+			z-index: 90; /* No desktop pode ser menor pois não conflita */
 		}
 	}
 	
