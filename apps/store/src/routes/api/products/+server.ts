@@ -24,9 +24,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     try {
       const db = getDatabase(platform);
       
-      // Promise com timeout de 8 segundos para consulta complexa
+      // Promise com timeout de 12 segundos para consulta
       const queryPromise = (async () => {
-        // STEP 1: Query SIMPLIFICADA - produtos básicos sem JOINs complexos
+        // QUERY UNIFICADA E SIMPLIFICADA - SEM LOOPS DE QUERIES SEPARADAS
         const conditions: string[] = ['p.is_active = true'];
         const params: any[] = [];
         let paramIndex = 1;
@@ -36,13 +36,14 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         }
         
         if (categories.length > 0) {
-          conditions.push(`p.category_id = ANY($${paramIndex})`);
+          // Buscar por slug da categoria em vez de ID
+          conditions.push(`EXISTS (SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.slug = ANY($${paramIndex}))`);
           params.push(categories);
           paramIndex++;
         }
         
         if (brands.length > 0) {
-          conditions.push(`p.brand_id = ANY($${paramIndex})`);
+          conditions.push(`EXISTS (SELECT 1 FROM brands b WHERE b.id = p.brand_id AND b.slug = ANY($${paramIndex}))`);
           params.push(brands);
           paramIndex++;
         }
@@ -72,7 +73,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         const whereClause = conditions.join(' AND ');
         
         // Ordenação simplificada
-        let orderBy = 'p.featured DESC, p.sales_count DESC';
+        let orderBy = 'p.featured DESC, p.sales_count DESC NULLS LAST';
         switch (sortBy) {
           case 'menor-preco':
             orderBy = 'p.price ASC';
@@ -81,7 +82,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
             orderBy = 'p.price DESC';
             break;
           case 'mais-vendidos':
-            orderBy = 'p.sales_count DESC';
+            orderBy = 'p.sales_count DESC NULLS LAST';
             break;
           case 'melhor-avaliados':
             orderBy = 'p.rating_average DESC NULLS LAST';
@@ -93,13 +94,22 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         
         const offset = (page - 1) * limit;
         
-        // Query principal SIMPLIFICADA
+        // QUERY ÚNICA COM LEFT JOINs SIMPLES - SEM SUBQUERIES COMPLEXAS
         const productsQuery = `
-          SELECT p.id, p.name, p.slug, p.description, p.price, p.original_price,
-                 p.category_id, p.brand_id, p.seller_id, p.quantity, p.rating_average,
-                 p.rating_count, p.sales_count, p.tags, p.sku, p.featured,
-                 p.is_active, p.created_at, p.updated_at, p.weight
+          SELECT 
+            p.id, p.name, p.slug, p.description, p.price, p.original_price,
+            p.category_id, p.brand_id, p.seller_id, p.quantity, p.rating_average,
+            p.rating_count, p.sales_count, p.tags, p.sku, p.featured,
+            p.is_active, p.created_at, p.updated_at, p.weight,
+            c.name as category_name,
+            c.slug as category_slug,
+            b.name as brand_name,
+            b.slug as brand_slug,
+            s.company_name as seller_name
           FROM products p
+          LEFT JOIN categories c ON c.id = p.category_id
+          LEFT JOIN brands b ON b.id = p.brand_id  
+          LEFT JOIN sellers s ON s.id = p.seller_id
           WHERE ${whereClause}
           ORDER BY ${orderBy}
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -107,104 +117,103 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         
         params.push(limit, offset);
         
+        console.log(`🔍 Executando query: WHERE ${whereClause}`);
+        console.log(`📊 Params: ${JSON.stringify(params)}`);
+        
         const products = await db.query(productsQuery, ...params);
         
-        // STEP 2: Buscar dados relacionados (separado para evitar JOINs complexos)
-        const enhancedProducts = await Promise.all(
-          products.map(async (product: any) => {
-            try {
-              // Buscar imagens (query separada)
-              const images = await db.query`
-                SELECT url FROM product_images 
-                WHERE product_id = ${product.id} 
-                ORDER BY position 
-                LIMIT 5
-              `;
-              
-              // Buscar categoria (query separada)
-              let category_name = 'Categoria';
-              if (product.category_id) {
-                const cats = await db.query`SELECT name FROM categories WHERE id = ${product.category_id} LIMIT 1`;
-                category_name = cats[0]?.name || 'Categoria';
-              }
-              
-              // Buscar marca (query separada)
-              let brand_name = 'Marca';
-              if (product.brand_id) {
-                const brands = await db.query`SELECT name FROM brands WHERE id = ${product.brand_id} LIMIT 1`;
-                brand_name = brands[0]?.name || 'Marca';
-              }
-              
-              return {
-                ...product,
-                images: images.map((img: any) => img.url),
-                category_name,
-                brand_name
-              };
-            } catch (e) {
-              console.log('⚠️ Erro ao enriquecer produto, usando dados básicos');
-              return {
-                ...product,
-                images: [`/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`],
-                category_name: 'Categoria',
-                brand_name: 'Marca'
-              };
-            }
-          })
-        );
+        console.log(`📦 Query retornou ${products.length} produtos`);
         
-        // STEP 3: Count total (query separada e simplificada)
+        // Buscar primeira imagem para cada produto (query simples batch)
+        let productImages: any[] = [];
+        if (products.length > 0) {
+          try {
+            const productIds = products.map((p: any) => p.id);
+            // Query batch para imagens - apenas primeira imagem
+            productImages = await db.query`
+              SELECT DISTINCT ON (product_id) product_id, url
+              FROM product_images 
+              WHERE product_id = ANY(${productIds})
+              ORDER BY product_id, position ASC
+            `;
+            console.log(`🖼️ ${productImages.length} imagens encontradas`);
+          } catch (imgError) {
+            console.log('⚠️ Erro ao buscar imagens em batch, continuando sem elas');
+            productImages = [];
+          }
+        }
+        
+        // Mapear imagens
+        const imageMap = new Map();
+        productImages.forEach(img => {
+          imageMap.set(img.product_id, img.url);
+        });
+        
+        // Count total (query separada simples)
         const countQuery = `SELECT COUNT(*) as total FROM products p WHERE ${whereClause}`;
-        const countResult = await db.query(countQuery, ...params.slice(0, -2));
-        const totalCount = parseInt(countResult[0].total);
+        const countParams = params.slice(0, -2); // Remove LIMIT e OFFSET
+        const countResult = await db.query(countQuery, ...countParams);
+        const totalCount = parseInt(countResult[0]?.total || '0');
+        
+        console.log(`📊 Total: ${totalCount} produtos encontrados`);
         
         return {
-          products: enhancedProducts,
+          products: products.map((product: any) => ({
+            ...product,
+            image_url: imageMap.get(product.id) || null
+          })),
           totalCount
         };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 8000)
+        setTimeout(() => reject(new Error('Database timeout after 12s')), 12000)
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
-      // Formatar produtos
-      const formattedProducts = result.products.map((product: any) => ({
-        id: product.id,
-        name: product.name,
-        slug: product.slug,
-        description: product.description,
-        price: Number(product.price),
-        original_price: product.original_price ? Number(product.original_price) : undefined,
-        discount: product.original_price && product.price < product.original_price
+      // Formatar produtos com dados REAIS
+      const formattedProducts = result.products.map((product: any) => {
+        const hasDiscount = product.original_price && product.price < product.original_price;
+        const discount = hasDiscount 
           ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
-          : undefined,
-        images: product.images.length > 0 ? product.images : [`/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`],
-        image: product.images.length > 0 ? product.images[0] : `/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`,
-        category_id: product.category_id,
-        category_name: product.category_name,
-        brand_id: product.brand_id,
-        brand_name: product.brand_name,
-        seller_id: product.seller_id,
-        seller_name: 'Loja Oficial',
-        is_active: product.is_active,
-        stock: product.quantity,
-        rating: product.rating_average ? Number(product.rating_average) : 4.5,
-        reviews_count: product.rating_count || 0,
-        sold_count: product.sales_count || 0,
-        tags: Array.isArray(product.tags) ? product.tags : [],
-        created_at: product.created_at,
-        updated_at: product.updated_at,
-        is_featured: product.featured || false,
-        sku: product.sku,
-        pieces: product.pieces || 1,
-        weight: product.weight ? Number(product.weight) : 0.5,
-        has_fast_delivery: true
-      }));
+          : undefined;
+          
+        return {
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          price: Number(product.price),
+          original_price: product.original_price ? Number(product.original_price) : undefined,
+          discount,
+          image: product.image_url || `/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`,
+          images: product.image_url ? [product.image_url] : [],
+          category_id: product.category_id,
+          category_name: product.category_name || 'Categoria',
+          category_slug: product.category_slug || 'categoria',
+          brand_id: product.brand_id,
+          brand_name: product.brand_name || 'Marca',
+          brand_slug: product.brand_slug || 'marca',
+          seller_id: product.seller_id,
+          seller_name: product.seller_name || 'Loja Oficial',
+          is_active: product.is_active,
+          stock: product.quantity || 0,
+          rating: product.rating_average ? Number(product.rating_average) : 4.5,
+          reviews_count: product.rating_count || 0,
+          sold_count: product.sales_count || 0,
+          tags: Array.isArray(product.tags) ? product.tags : [],
+          created_at: product.created_at,
+          updated_at: product.updated_at,
+          is_featured: product.featured || false,
+          sku: product.sku,
+          pieces: 1,
+          weight: product.weight ? Number(product.weight) : 0.5,
+          has_fast_delivery: true
+        };
+      });
       
-      console.log(`✅ ${formattedProducts.length} produtos encontrados no banco`);
+      console.log(`✅ ${formattedProducts.length} produtos REAIS formatados com sucesso`);
       
       return json({
         success: true,
@@ -230,308 +239,31 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro products: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.error(`❌ ERRO DATABASE: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      console.error(`📍 Stack: ${error instanceof Error ? error.stack : 'N/A'}`);
       
-      // FALLBACK: Produtos mock de alta qualidade baseados em filtros
-      let mockProducts = [
-        {
-          id: '1',
-          name: 'Xiaomi Redmi Note 13 Pro 256GB',
-          slug: 'xiaomi-redmi-note-13-pro-256gb',
-          description: 'Smartphone Xiaomi com câmera de 200MP, carregamento rápido de 67W e tela AMOLED de 6.67"',
-          price: 899.99,
-          original_price: 1099.99,
-          discount: 18,
-          images: [
-            '/api/placeholder/300/400?text=Xiaomi+Redmi+Note+13+Pro',
-            '/api/placeholder/300/400?text=Xiaomi+Note+13+Pro+2'
-          ],
-          image: '/api/placeholder/300/400?text=Xiaomi+Redmi+Note+13+Pro',
-          category_id: '1',
-          category_name: 'Smartphones',
-          category_slug: 'smartphones',
-          brand_id: '1',
-          brand_name: 'Xiaomi',
-          seller_id: '1',
-          seller_name: 'Loja Oficial Xiaomi',
-          is_active: true,
-          stock: 15,
-          rating: 4.6,
-          reviews_count: 89,
-          sold_count: 145,
-          tags: ['smartphone', 'xiaomi', 'camera', 'promocao'],
-          is_featured: true,
-          sku: 'XIA-RN13P-256',
-          pieces: 1,
-          weight: 0.2,
-          has_fast_delivery: true
-        },
-        {
-          id: '2',
-          name: 'Samsung Galaxy S24 Ultra 256GB',
-          slug: 'samsung-galaxy-s24-ultra-256gb',
-          description: 'O mais avançado smartphone Samsung com S Pen, câmera de 200MP e tela Dynamic AMOLED 2X de 6.8"',
-          price: 2999.99,
-          original_price: 3499.99,
-          discount: 14,
-          images: [
-            '/api/placeholder/300/400?text=Samsung+Galaxy+S24+Ultra',
-            '/api/placeholder/300/400?text=Galaxy+S24+Ultra+2'
-          ],
-          image: '/api/placeholder/300/400?text=Samsung+Galaxy+S24+Ultra',
-          category_id: '1',
-          category_name: 'Smartphones',
-          category_slug: 'smartphones',
-          brand_id: '2',
-          brand_name: 'Samsung',
-          seller_id: '2',
-          seller_name: 'Samsung Store',
-          is_active: true,
-          stock: 8,
-          rating: 4.8,
-          reviews_count: 127,
-          sold_count: 89,
-          tags: ['smartphone', 'samsung', 'premium', 's-pen'],
-          is_featured: true,
-          sku: 'SAM-GS24U-256',
-          pieces: 1,
-          weight: 0.23,
-          has_fast_delivery: true
-        },
-        {
-          id: '3',
-          name: 'iPhone 15 Pro Max 256GB',
-          slug: 'iphone-15-pro-max-256gb',
-          description: 'iPhone 15 Pro Max com chip A17 Pro, câmera de 48MP e tela Super Retina XDR de 6.7"',
-          price: 4299.99,
-          original_price: 4699.99,
-          discount: 9,
-          images: [
-            '/api/placeholder/300/400?text=iPhone+15+Pro+Max',
-            '/api/placeholder/300/400?text=iPhone+15+Pro+Max+2'
-          ],
-          image: '/api/placeholder/300/400?text=iPhone+15+Pro+Max',
-          category_id: '1',
-          category_name: 'Smartphones',
-          category_slug: 'smartphones',
-          brand_id: '4',
-          brand_name: 'Apple',
-          seller_id: '4',
-          seller_name: 'Apple Store',
-          is_active: true,
-          stock: 5,
-          rating: 4.9,
-          reviews_count: 203,
-          sold_count: 67,
-          tags: ['smartphone', 'iphone', 'apple', 'premium'],
-          is_featured: true,
-          sku: 'APL-IP15PM-256',
-          pieces: 1,
-          weight: 0.22,
-          has_fast_delivery: true
-        },
-        {
-          id: '4',
-          name: 'Smart TV Samsung 55" 4K UHD',
-          slug: 'smart-tv-samsung-55-4k-uhd',
-          description: 'Smart TV Samsung 55 polegadas com resolução 4K, HDR10+ e sistema Tizen OS',
-          price: 2199.99,
-          original_price: 2699.99,
-          discount: 19,
-          images: [
-            '/api/placeholder/300/400?text=Samsung+Smart+TV+55',
-            '/api/placeholder/300/400?text=Smart+TV+4K+Samsung'
-          ],
-          image: '/api/placeholder/300/400?text=Samsung+Smart+TV+55',
-          category_id: '2',
-          category_name: 'TVs e Áudio',
-          category_slug: 'tvs-audio',
-          brand_id: '2',
-          brand_name: 'Samsung',
-          seller_id: '2',
-          seller_name: 'Samsung Store',
-          is_active: true,
-          stock: 12,
-          rating: 4.7,
-          reviews_count: 56,
-          sold_count: 34,
-          tags: ['tv', 'smart-tv', '4k', 'samsung'],
-          is_featured: true,
-          sku: 'SAM-TV55-4K',
-          pieces: 1,
-          weight: 15.5,
-          has_fast_delivery: false
-        },
-        {
-          id: '5',
-          name: 'Notebook Lenovo IdeaPad 3i Intel Core i5',
-          slug: 'notebook-lenovo-ideapad-3i-intel-core-i5',
-          description: 'Notebook Lenovo com processador Intel Core i5, 8GB RAM, SSD 256GB e tela 15.6"',
-          price: 1899.99,
-          original_price: 2299.99,
-          discount: 17,
-          images: [
-            '/api/placeholder/300/400?text=Lenovo+IdeaPad+3i',
-            '/api/placeholder/300/400?text=Notebook+Lenovo'
-          ],
-          image: '/api/placeholder/300/400?text=Lenovo+IdeaPad+3i',
-          category_id: '3',
-          category_name: 'Informática',
-          category_slug: 'informatica',
-          brand_id: '3',
-          brand_name: 'Lenovo',
-          seller_id: '3',
-          seller_name: 'TechStore',
-          is_active: true,
-          stock: 6,
-          rating: 4.4,
-          reviews_count: 42,
-          sold_count: 28,
-          tags: ['notebook', 'lenovo', 'intel', 'ssd'],
-          is_featured: false,
-          sku: 'LEN-IP3I-I5',
-          pieces: 1,
-          weight: 2.1,
-          has_fast_delivery: true
-        },
-        {
-          id: '6',
-          name: 'Tablet iPad Air 5ª Geração 64GB',
-          slug: 'tablet-ipad-air-5-geracao-64gb',
-          description: 'iPad Air com chip M1, tela Liquid Retina de 10.9" e suporte ao Apple Pencil',
-          price: 3199.99,
-          original_price: 3699.99,
-          discount: 14,
-          images: [
-            '/api/placeholder/300/400?text=iPad+Air+M1',
-            '/api/placeholder/300/400?text=iPad+Air+64GB'
-          ],
-          image: '/api/placeholder/300/400?text=iPad+Air+M1',
-          category_id: '4',
-          category_name: 'Tablets',
-          category_slug: 'tablets',
-          brand_id: '4',
-          brand_name: 'Apple',
-          seller_id: '4',
-          seller_name: 'Apple Store',
-          is_active: true,
-          stock: 9,
-          rating: 4.8,
-          reviews_count: 95,
-          sold_count: 52,
-          tags: ['tablet', 'ipad', 'apple', 'm1'],
-          is_featured: true,
-          sku: 'APL-IPAD-AIR5-64',
-          pieces: 1,
-          weight: 0.46,
-          has_fast_delivery: true
-        }
-      ];
-      
-      console.log(`📦 Fallback iniciado com ${mockProducts.length} produtos base`);
-      
-      // Aplicar filtros básicos no fallback com MAPEAMENTO INTELIGENTE
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase();
-        mockProducts = mockProducts.filter(p => 
-          p.name.toLowerCase().includes(searchLower) ||
-          p.description.toLowerCase().includes(searchLower) ||
-          p.tags.some(tag => tag.toLowerCase().includes(searchLower))
-        );
-        console.log(`🔍 Filtro search "${searchQuery}": ${mockProducts.length} produtos`);
-      }
-      
-      if (categories.length > 0) {
-        // MAPEAMENTO INTELIGENTE: Por slug, nome ou ID
-        mockProducts = mockProducts.filter(p => {
-          return categories.some(cat => {
-            const catLower = cat.toLowerCase();
-            return (
-              p.category_id === cat || // Por ID
-              p.category_slug === catLower || // Por slug
-              p.category_name.toLowerCase() === catLower || // Por nome
-              p.category_name.toLowerCase().includes(catLower) // Por nome parcial
-            );
-          });
-        });
-        console.log(`📂 Filtro categorias ${JSON.stringify(categories)}: ${mockProducts.length} produtos`);
-      }
-      
-      if (priceMin !== undefined) {
-        mockProducts = mockProducts.filter(p => p.price >= priceMin);
-        console.log(`💰 Filtro preço mín ${priceMin}: ${mockProducts.length} produtos`);
-      }
-      
-      if (priceMax !== undefined) {
-        mockProducts = mockProducts.filter(p => p.price <= priceMax);
-        console.log(`💰 Filtro preço máx ${priceMax}: ${mockProducts.length} produtos`);
-      }
-      
-      if (hasDiscount) {
-        mockProducts = mockProducts.filter(p => p.discount && p.discount > 0);
-        console.log(`🏷️ Filtro promoção: ${mockProducts.length} produtos`);
-      }
-      
-      if (!inStock) {
-        // Se não filtrar por estoque, pode mostrar produtos sem estoque
-        mockProducts.forEach(p => {
-          if (Math.random() > 0.8) p.stock = 0; // 20% chance de estar sem estoque
-        });
-      } else {
-        mockProducts = mockProducts.filter(p => p.stock > 0);
-        console.log(`📦 Filtro em estoque: ${mockProducts.length} produtos`);
-      }
-      
-      // Aplicar ordenação
-      switch (sortBy) {
-        case 'menor-preco':
-          mockProducts.sort((a, b) => a.price - b.price);
-          break;
-        case 'maior-preco':
-          mockProducts.sort((a, b) => b.price - a.price);
-          break;
-        case 'mais-vendidos':
-          mockProducts.sort((a, b) => b.sold_count - a.sold_count);
-          break;
-        case 'melhor-avaliados':
-          mockProducts.sort((a, b) => b.rating - a.rating);
-          break;
-      }
-      
-      // Paginação
-      const offset = (page - 1) * limit;
-      const paginatedProducts = mockProducts.slice(offset, offset + limit);
-      
-      // Adicionar timestamps dinâmicos
-      paginatedProducts.forEach((product: any) => {
-        product.created_at = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString();
-        product.updated_at = product.created_at;
-      });
-      
-      console.log(`📦 ${paginatedProducts.length} produtos mock (filtered: ${mockProducts.length})`);
+      // ⚠️ FALLBACK MÍNIMO - só em caso de erro crítico do banco
+      console.log('🚨 Banco completamente inacessível - usando fallback mínimo');
       
       return json({
-        success: true,
-        data: {
-          products: paginatedProducts,
-          pagination: {
-            page,
-            limit,
-            total: mockProducts.length,
-            totalPages: Math.ceil(mockProducts.length / limit),
-            hasNext: page < Math.ceil(mockProducts.length / limit),
-            hasPrev: page > 1
-          },
-          filters: {
-            categories: categories,
-            brands: brands,
-            priceRange: { min: priceMin, max: priceMax },
-            hasDiscount,
-            inStock
-          }
+        success: false,
+        error: {
+          message: 'Serviço de busca temporariamente indisponível',
+          code: 'DATABASE_ERROR',
+          details: error instanceof Error ? error.message : 'Erro desconhecido'
         },
-        source: 'fallback'
-      });
+        data: {
+          products: [],
+          pagination: {
+            page: 1,
+            limit: 20,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        }
+      }, { status: 503 });
     }
     
   } catch (error: any) {
