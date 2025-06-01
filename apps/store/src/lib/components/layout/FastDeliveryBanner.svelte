@@ -251,6 +251,8 @@
 		ontouchstart={handleTouchStart}
 		ontouchmove={handleTouchMove}
 		ontouchend={handleTouchEnd}
+		role="region"
+		aria-label="Banner de entrega rápida"
 	>
 		<div class="delivery__slides" class:delivery__slides--dragging={isDragging}>
 			{#each slides as slide, index}
