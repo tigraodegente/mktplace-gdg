@@ -5,7 +5,8 @@
  */
 
 import { json } from '@sveltejs/kit';
-import { withDatabase } from '$lib/db';
+import type { RequestHandler } from './$types';
+import { getDatabase } from '$lib/db';
 import { retryEngine } from '$lib/services/integrations/RetryEngine';
 import type { IntegrationRequest } from '$lib/services/integrations/RetryEngine';
 
@@ -367,7 +368,7 @@ async function testNotificationIntegrations(platform: any, count: number, simula
 // ============================================================================
 
 async function getActiveProviders(platform: any, type: string) {
-  return await withDatabase(platform, async (db) => {
+  return await getDatabase(platform, async (db) => {
     const providers = await db.query(`
       SELECT id, name, display_name, type, config, retry_config
       FROM integration_providers

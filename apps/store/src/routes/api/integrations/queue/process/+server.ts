@@ -6,7 +6,8 @@
  */
 
 import { json } from '@sveltejs/kit';
-import { withDatabase } from '$lib/db';
+import type { RequestHandler } from './$types';
+import { getDatabase } from '$lib/db';
 import { retryEngine } from '$lib/services/integrations/RetryEngine';
 
 // ============================================================================
@@ -24,7 +25,7 @@ export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
 
     console.log('📋 [QueueAPI] Consultando fila:', { providerId, status, page, limit });
 
-    const result = await withDatabase(platform, async (db) => {
+    const result = await getDatabase(platform, async (db) => {
       // Construir query dinâmica
       let whereConditions = [];
       let queryParams: any[] = [];
@@ -221,7 +222,7 @@ async function processSpecificProvider(
   forceProcess: boolean
 ): Promise<{ processed: number; results: any[] }> {
   
-  return await withDatabase(platform, async (db) => {
+  return await getDatabase(platform, async (db) => {
     const whereClause = forceProcess 
       ? 'WHERE irq.provider_id = $1 AND irq.status IN (\'pending\', \'retrying\', \'failed\')'
       : 'WHERE irq.provider_id = $1 AND irq.status IN (\'pending\', \'retrying\') AND (irq.next_retry_at IS NULL OR irq.next_retry_at <= NOW()) AND irq.attempts < irq.max_attempts';
@@ -365,7 +366,7 @@ async function processSpecificProvider(
 }
 
 async function getQueueStats(platform: any): Promise<any> {
-  return await withDatabase(platform, async (db) => {
+  return await getDatabase(platform, async (db) => {
     const stats = await db.query(`
       SELECT 
         status,
