@@ -1,5 +1,7 @@
-// Database client inline para resolver problemas de build no Cloudflare
-import postgres from 'postgres';
+// Database client otimizado para Cloudflare Workers
+// Usando import estático mas com lazy loading
+
+import type { Sql } from 'postgres'
 
 export interface DatabaseConfig {
   provider: 'hyperdrive' | 'xata' | 'supabase' | 'neon' | 'postgres';
@@ -21,8 +23,11 @@ export interface DatabaseEnv {
   DATABASE_URL?: string;
 }
 
+// Lazy import global
+let postgresLib: any = null;
+
 export class Database {
-  private sql: postgres.Sql<{}>;
+  private sql: any = null;
   private config: DatabaseConfig;
   private isLocal: boolean;
 
@@ -40,55 +45,72 @@ export class Database {
     // Detectar se é conexão local
     this.isLocal = this.config.connectionString.includes('localhost') ||
       this.config.connectionString.includes('127.0.0.1');
+  }
 
-    // Configurações base para todos os provedores
-    const baseOptions = {
-      ssl: this.isLocal ? false : (this.config.options?.postgres?.ssl ?? 'require'),
-      connection: {
-        application_name: 'mktplace-db'
-      },
-      max: this.config.options?.postgres?.max ?? 1,
-      idle_timeout: this.config.options?.postgres?.idleTimeout ?? 20,
-      connect_timeout: this.config.options?.postgres?.connectTimeout ?? 10,
-      transform: {
-        undefined: null
+  private async getSqlClient() {
+    if (this.sql) return this.sql;
+
+    try {
+      // Lazy load do postgres apenas quando necessário
+      if (!postgresLib) {
+        postgresLib = await import('postgres');
       }
-    };
+      
+      const postgres = postgresLib.default || postgresLib;
 
-    // Ajustes específicos por provedor
-    switch (this.config.provider) {
-      case 'hyperdrive':
-        // Hyperdrive já gerencia pooling
-        baseOptions.max = 1;
-        (baseOptions as any).prepare = false; // Importante para Cloudflare Workers
-        break;
-      case 'supabase':
-        // Supabase precisa de pooling
-        baseOptions.max = 10;
-        break;
-      case 'xata':
-        // Xata tem suas próprias otimizações
-        baseOptions.ssl = 'require';
-        break;
-      case 'neon':
-        // Neon funciona bem com estas configs
-        (baseOptions as any).prepare = false;
-        break;
+      // Configurações otimizadas para Cloudflare Workers
+      const baseOptions = {
+        ssl: this.isLocal ? false : (this.config.options?.postgres?.ssl ?? 'require'),
+        connection: {
+          application_name: 'mktplace-db'
+        },
+        max: 1, // Workers devem usar apenas 1 conexão
+        idle_timeout: 30, // Aumentado para Railway
+        connect_timeout: this.config.options?.postgres?.connectTimeout ?? 20, // Aumentado
+        prepare: false, // Importante para Workers
+        transform: {
+          undefined: null
+        }
+      };
+
+      // Ajustes específicos por provedor
+      switch (this.config.provider) {
+        case 'hyperdrive':
+          // Hyperdrive já gerencia pooling
+            (baseOptions as any).prepare = false;
+            (baseOptions as any).max = 1;
+          break;
+        case 'neon':
+          // Neon funciona bem com estas configs
+          (baseOptions as any).prepare = false;
+          break;
+      }
+
+      this.sql = postgres(this.config.connectionString, baseOptions);
+      return this.sql;
+    } catch (error) {
+      console.error('❌ Erro ao inicializar postgres:', error);
+      throw new Error(`Falha na inicialização do banco: ${error}`);
     }
-
-    this.sql = postgres(this.config.connectionString, baseOptions);
   }
 
   // Query que retorna múltiplas linhas
   async query<T = any>(strings: TemplateStringsArray | string, ...values: any[]): Promise<T[]> {
+    const sql = await this.getSqlClient();
+    
+    try {
     if (typeof strings === 'string') {
       // Query simples com string
-      const result = await this.sql.unsafe(strings, values);
+        const result = await sql.unsafe(strings, values);
+        return result as unknown as T[];
+      }
+      // Template literal query
+      const result = await sql(strings, ...values);
       return result as unknown as T[];
+    } catch (error) {
+      console.error('❌ Erro na query:', error);
+      throw error;
     }
-    // Template literal query
-    const result = await this.sql(strings, ...values);
-    return result as unknown as T[];
   }
 
   // Query que retorna uma única linha
@@ -103,8 +125,9 @@ export class Database {
   }
 
   // Transação
-  async transaction<T>(callback: (sql: postgres.TransactionSql) => Promise<T>): Promise<T> {
-    const result = await this.sql.begin(async (sql) => {
+  async transaction<T>(callback: (sql: any) => Promise<T>): Promise<T> {
+    const sql = await this.getSqlClient();
+    const result = await sql.begin(async (sql: any) => {
       return await callback(sql);
     });
     return result as unknown as T;
@@ -112,15 +135,23 @@ export class Database {
 
   // Fechar conexão
   async close(): Promise<void> {
+    if (!this.sql) return;
+    
     // Em desenvolvimento local, não fecha a conexão para evitar CONNECTION_ENDED
     if (this.isLocal) {
       return;
     }
+    
+    try {
     await this.sql.end();
+    } catch (error) {
+      // Ignorar erros de fechamento
+    }
+    this.sql = null;
   }
 
   // Getter para acessar o cliente SQL diretamente se necessário
-  get client(): postgres.Sql<{}> {
+  get client(): any {
     return this.sql;
   }
 }
@@ -164,6 +195,3 @@ export async function withDatabase<T>(env: DatabaseEnv, callback: (db: Database)
     await db.close();
   }
 }
-
-// Re-export do postgres para uso direto se necessário
-export { postgres }; 

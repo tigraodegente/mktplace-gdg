@@ -5,7 +5,7 @@ import { getDatabase } from '$lib/db';
 export const GET: RequestHandler = async ({ platform, url }) => {
   try {
     console.log('↩️ Returns GET - Estratégia híbrida iniciada');
-    
+
     const userId = url.searchParams.get('user_id');
     const status = url.searchParams.get('status');
 
@@ -19,15 +19,15 @@ export const GET: RequestHandler = async ({ platform, url }) => {
                  created_at, updated_at
           FROM returns
           WHERE 1=1
-        `;
+      `;
         let queryParams = [];
         let paramIndex = 1;
 
         if (userId) {
           baseQuery += ` AND user_id = $${paramIndex}`;
           queryParams.push(userId);
-          paramIndex++;
-        }
+        paramIndex++;
+      }
 
         if (status) {
           baseQuery += ` AND status = $${paramIndex}`;
@@ -35,11 +35,11 @@ export const GET: RequestHandler = async ({ platform, url }) => {
         }
 
         baseQuery += ` ORDER BY created_at DESC LIMIT 50`;
-
+      
         const returns = await db.query(baseQuery, ...queryParams);
         return { success: true, returns };
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 2000)
       });
@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
           updated_at: new Date().toISOString()
         }
       ];
-      
+
       return json({
         success: true,
         returns: mockReturns.filter(r => !status || r.status === status),
@@ -100,34 +100,34 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
       const queryPromise = (async () => {
         // STEP 1: Verificar se o pedido pertence ao usuário
         const orderCheck = await db.query`
-          SELECT id, total_amount FROM orders 
+        SELECT id, total_amount FROM orders 
           WHERE id = ${order_id} AND user_id = ${userId}
           LIMIT 1
         `;
 
-        if (orderCheck.length === 0) {
+      if (orderCheck.length === 0) {
           return { error: 'Pedido não encontrado ou não autorizado', status: 404 };
-        }
+      }
 
         // STEP 2: Calcular valor do reembolso
-        const refundAmount = items.reduce((sum: number, item: any) => 
-          sum + (parseFloat(item.price) * parseInt(item.quantity)), 0
-        );
+      const refundAmount = items.reduce((sum: number, item: any) => 
+        sum + (parseFloat(item.price) * parseInt(item.quantity)), 0
+      );
 
         // STEP 3: Gerar número da devolução
-        const returnNumber = `DV${Date.now().toString().slice(-6)}`;
+      const returnNumber = `DV${Date.now().toString().slice(-6)}`;
 
         // STEP 4: Criar devolução
         const returnInserts = await db.query`
-          INSERT INTO returns (
-            user_id, order_id, return_number, status, reason, 
-            description, refund_amount, refund_type, created_at, updated_at
+        INSERT INTO returns (
+          user_id, order_id, return_number, status, reason, 
+          description, refund_amount, refund_type, created_at, updated_at
           ) VALUES (
             ${userId}, ${order_id}, ${returnNumber}, 'requested', ${reason},
             ${description || ''}, ${refundAmount}, ${refund_type || 'original_payment'}, 
             NOW(), NOW()
           )
-          RETURNING id, return_number, status, created_at
+        RETURNING id, return_number, status, created_at
         `;
 
         const returnRecord = returnInserts[0];
@@ -135,10 +135,10 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
         // STEP 5: Criar itens da devolução (async para não travar)
         setTimeout(async () => {
           try {
-            for (const item of items) {
+      for (const item of items) {
               await db.query`
-                INSERT INTO return_items (
-                  return_id, product_id, quantity, price, reason, created_at
+          INSERT INTO return_items (
+            return_id, product_id, quantity, price, reason, created_at
                 ) VALUES (
                   ${returnRecord.id}, ${item.product_id}, ${item.quantity}, 
                   ${item.price}, ${item.item_reason || reason}, NOW()
@@ -147,20 +147,20 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
             }
           } catch (e) {
             console.log('Return items creation async failed:', e);
-          }
+      }
         }, 100);
 
-        return {
-          success: true,
-          data: {
-            id: returnRecord.id,
-            return_number: returnRecord.return_number,
-            status: returnRecord.status,
-            refund_amount: refundAmount,
-            created_at: returnRecord.created_at
-          },
-          message: 'Devolução solicitada com sucesso'
-        };
+      return {
+        success: true,
+        data: {
+          id: returnRecord.id,
+          return_number: returnRecord.return_number,
+          status: returnRecord.status,
+          refund_amount: refundAmount,
+          created_at: returnRecord.created_at
+        },
+        message: 'Devolução solicitada com sucesso'
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {

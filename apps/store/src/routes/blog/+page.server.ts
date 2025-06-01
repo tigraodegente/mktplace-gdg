@@ -23,33 +23,33 @@ export const load: PageServerLoad = async ({ platform, url, setHeaders }) => {
         // Buscar posts publicados (queries simples)
         const [posts, totalResult] = await Promise.all([
           db.query`
-            SELECT 
+        SELECT 
               id, title, slug, content, excerpt,
               meta_title, meta_description,
               created_at, updated_at
-            FROM pages 
-            WHERE slug LIKE 'blog/%' 
-              AND is_published = true
-            ORDER BY created_at DESC
+        FROM pages 
+        WHERE slug LIKE 'blog/%' 
+          AND is_published = true
+        ORDER BY created_at DESC
             LIMIT ${limit}
             OFFSET ${offset}
           `,
           db.queryOne`
             SELECT COUNT(*) as total
-            FROM pages 
-            WHERE slug LIKE 'blog/%' 
-              AND is_published = true
+        FROM pages 
+        WHERE slug LIKE 'blog/%' 
+          AND is_published = true
           `
         ]);
 
         const totalPosts = parseInt(totalResult?.total || '0');
         const totalPages = Math.ceil(totalPosts / limit);
 
-        return {
+    return {
           posts,
-          pagination: {
-            currentPage: page,
-            totalPages,
+      pagination: {
+        currentPage: page,
+        totalPages,
             totalPosts,
             hasNext: page < totalPages,
             hasPrevious: page > 1

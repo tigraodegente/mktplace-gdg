@@ -19,15 +19,15 @@ export const GET: RequestHandler = async ({ platform, url }) => {
                  created_at, updated_at
           FROM support_tickets
           WHERE 1=1
-        `;
+      `;
         let queryParams = [];
         let paramIndex = 1;
 
         if (userId) {
           baseQuery += ` AND user_id = $${paramIndex}`;
           queryParams.push(userId);
-          paramIndex++;
-        }
+        paramIndex++;
+      }
 
         if (status) {
           baseQuery += ` AND status = $${paramIndex}`;
@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
           updated_at: new Date().toISOString()
         }
       ];
-      
+
       return json({
         success: true,
         tickets: mockTickets.filter(t => !status || t.status === status),
@@ -99,18 +99,18 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
       // Promise com timeout de 4 segundos para operação crítica
       const queryPromise = (async () => {
         // STEP 1: Gerar número do ticket
-        const ticketNumber = `SP${Date.now().toString().slice(-6)}`;
-        
+      const ticketNumber = `SP${Date.now().toString().slice(-6)}`;
+      
         // STEP 2: Criar ticket
         const ticketInserts = await db.query`
-          INSERT INTO support_tickets (
-            user_id, ticket_number, subject, category, order_id, 
-            description, status, priority, created_at, updated_at
+        INSERT INTO support_tickets (
+          user_id, ticket_number, subject, category, order_id, 
+          description, status, priority, created_at, updated_at
           ) VALUES (
             ${userId}, ${ticketNumber}, ${subject}, ${category || 'Outros'}, ${order_id || null},
             ${message}, 'open', ${priority || 3}, NOW(), NOW()
           )
-          RETURNING id, ticket_number, subject, category, order_id, status, priority, created_at
+        RETURNING id, ticket_number, subject, category, order_id, status, priority, created_at
         `;
 
         const ticket = ticketInserts[0];
@@ -119,8 +119,8 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
         setTimeout(async () => {
           try {
             await db.query`
-              INSERT INTO support_ticket_messages (
-                ticket_id, user_id, message, is_internal, created_at
+        INSERT INTO support_ticket_messages (
+          ticket_id, user_id, message, is_internal, created_at
               ) VALUES (${ticket.id}, ${userId}, ${message}, false, NOW())
             `;
           } catch (e) {
@@ -128,21 +128,21 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
           }
         }, 100);
 
-        return {
-          success: true,
-          data: {
-            id: ticket.id,
-            ticket_number: ticket.ticket_number,
-            subject: ticket.subject,
-            category: ticket.category,
-            order_id: ticket.order_id,
-            status: ticket.status,
-            priority: parseInt(ticket.priority),
-            created_at: ticket.created_at,
-            description: message
-          },
-          message: 'Ticket criado com sucesso'
-        };
+      return {
+        success: true,
+        data: {
+          id: ticket.id,
+          ticket_number: ticket.ticket_number,
+          subject: ticket.subject,
+          category: ticket.category,
+          order_id: ticket.order_id,
+          status: ticket.status,
+          priority: parseInt(ticket.priority),
+          created_at: ticket.created_at,
+          description: message
+        },
+        message: 'Ticket criado com sucesso'
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {

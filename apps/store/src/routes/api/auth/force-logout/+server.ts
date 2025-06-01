@@ -16,11 +16,11 @@ export const POST: RequestHandler = async ({ cookies, platform }) => {
         
         // Promise com timeout de 1 segundo (operação simples)
         const queryPromise = (async () => {
-          if (sessionId) {
-            await db.query`
-              DELETE FROM sessions 
-              WHERE id = ${sessionId}
-            `;
+    if (sessionId) {
+        await db.query`
+          DELETE FROM sessions 
+          WHERE id = ${sessionId}
+        `;
           }
           
           if (sessionToken) {
@@ -50,14 +50,14 @@ export const POST: RequestHandler = async ({ cookies, platform }) => {
     cookies.delete('session_id', {
       path: '/',
       httpOnly: true,
-      secure: false, // ajustar para true em produção
+      secure: !!import.meta.env.PROD, // ✅ Consistente com login
       sameSite: 'lax'
     });
     
     cookies.delete('session_token', {
       path: '/',
       httpOnly: true,
-      secure: false,
+      secure: !!import.meta.env.PROD, // ✅ Consistente com login
       sameSite: 'lax'
     });
     
@@ -74,17 +74,17 @@ export const POST: RequestHandler = async ({ cookies, platform }) => {
     
     // SEMPRE tentar limpar cookies mesmo com erro
     try {
-      cookies.delete('session_id', {
-        path: '/',
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax'
-      });
+    cookies.delete('session_id', {
+      path: '/',
+      httpOnly: true,
+      secure: !!import.meta.env.PROD,
+      sameSite: 'lax'
+    });
       
       cookies.delete('session_token', {
         path: '/',
         httpOnly: true,
-        secure: false,
+        secure: !!import.meta.env.PROD,
         sameSite: 'lax'
       });
     } catch (cookieError) {

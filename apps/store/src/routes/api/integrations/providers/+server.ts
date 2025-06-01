@@ -61,12 +61,12 @@ export const GET: RequestHandler = async ({ platform }) => {
           created_at: new Date().toISOString()
         }
       ];
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         providers: mockProviders,
         source: 'fallback'
-      });
+    });
     }
 
   } catch (error: any) {
@@ -124,10 +124,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           SELECT id FROM integration_providers WHERE name = ${name} LIMIT 1
         `;
 
-        if (existing.length > 0) {
+      if (existing.length > 0) {
           // STEP 2: Atualizar existente
           const updated = await db.query`
-            UPDATE integration_providers SET
+          UPDATE integration_providers SET
               display_name = ${displayName},
               type = ${type},
               description = ${description},
@@ -136,12 +136,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
               priority = ${priority || 1},
               config = ${JSON.stringify(config || {})},
               retry_config = ${JSON.stringify(retryConfig || {
-                maxAttempts: 3,
-                backoffType: 'exponential',
-                baseDelay: 1000,
-                maxDelay: 30000,
-                retryableErrors: ['timeout', '5xx', 'network_error'],
-                nonRetryableErrors: ['4xx', 'invalid_credentials']
+            maxAttempts: 3,
+            backoffType: 'exponential',
+            baseDelay: 1000,
+            maxDelay: 30000,
+            retryableErrors: ['timeout', '5xx', 'network_error'],
+            nonRetryableErrors: ['4xx', 'invalid_credentials']
               })},
               webhook_url = ${webhookUrl},
               webhook_secret = ${webhookSecret},
@@ -151,78 +151,78 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             RETURNING *
           `;
 
-          return { provider: updated[0], isNew: false };
-        } else {
+        return { provider: updated[0], isNew: false };
+      } else {
           // STEP 3: Criar novo
           const created = await db.query`
-            INSERT INTO integration_providers (
-              name,
-              display_name,
-              type,
-              description,
-              is_active,
-              is_sandbox,
-              priority,
-              config,
-              retry_config,
-              webhook_url,
-              webhook_secret,
-              webhook_events
+          INSERT INTO integration_providers (
+            name,
+            display_name,
+            type,
+            description,
+            is_active,
+            is_sandbox,
+            priority,
+            config,
+            retry_config,
+            webhook_url,
+            webhook_secret,
+            webhook_events
             ) VALUES (
               ${name}, ${displayName}, ${type}, ${description},
               ${isActive || false}, ${isSandbox || false}, ${priority || 1},
               ${JSON.stringify(config || {})},
               ${JSON.stringify(retryConfig || {
-                maxAttempts: 3,
-                backoffType: 'exponential',
-                baseDelay: 1000,
-                maxDelay: 30000,
-                retryableErrors: ['timeout', '5xx', 'network_error'],
-                nonRetryableErrors: ['4xx', 'invalid_credentials']
+            maxAttempts: 3,
+            backoffType: 'exponential',
+            baseDelay: 1000,
+            maxDelay: 30000,
+            retryableErrors: ['timeout', '5xx', 'network_error'],
+            nonRetryableErrors: ['4xx', 'invalid_credentials']
               })},
               ${webhookUrl}, ${webhookSecret}, ${JSON.stringify(webhookEvents || [])}
             )
             RETURNING *
           `;
 
-          return { provider: created[0], isNew: true };
-        }
+        return { provider: created[0], isNew: true };
+      }
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 4000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
 
-      const provider = {
-        id: result.provider.id,
-        name: result.provider.name,
-        displayName: result.provider.display_name,
-        type: result.provider.type,
-        description: result.provider.description,
-        isActive: result.provider.is_active,
-        isSandbox: result.provider.is_sandbox,
-        priority: result.provider.priority,
-        config: result.provider.config,
-        retryConfig: result.provider.retry_config,
-        webhookUrl: result.provider.webhook_url,
-        webhookSecret: result.provider.webhook_secret,
-        webhookEvents: result.provider.webhook_events,
-        createdAt: result.provider.created_at,
-        updatedAt: result.provider.updated_at
-      };
+    const provider = {
+      id: result.provider.id,
+      name: result.provider.name,
+      displayName: result.provider.display_name,
+      type: result.provider.type,
+      description: result.provider.description,
+      isActive: result.provider.is_active,
+      isSandbox: result.provider.is_sandbox,
+      priority: result.provider.priority,
+      config: result.provider.config,
+      retryConfig: result.provider.retry_config,
+      webhookUrl: result.provider.webhook_url,
+      webhookSecret: result.provider.webhook_secret,
+      webhookEvents: result.provider.webhook_events,
+      createdAt: result.provider.created_at,
+      updatedAt: result.provider.updated_at
+    };
 
-      console.log(`✅ [ProvidersAPI] Provider ${result.isNew ? 'criado' : 'atualizado'}:`, provider.name);
+    console.log(`✅ [ProvidersAPI] Provider ${result.isNew ? 'criado' : 'atualizado'}:`, provider.name);
 
-      return json({
-        success: true,
-        data: {
-          provider,
-          isNew: result.isNew
+    return json({
+      success: true,
+      data: {
+        provider,
+        isNew: result.isNew
         },
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro providers POST: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);

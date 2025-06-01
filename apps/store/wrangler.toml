@@ -3,11 +3,9 @@ compatibility_date = "2024-01-01"
 pages_build_output_dir = ".svelte-kit/cloudflare"
 compatibility_flags = ["nodejs_compat"]
 
-# Hyperdrive configuration
-[[hyperdrive]]
-binding = "HYPERDRIVE_DB"
-id = "89f4454b0426402397a1b857e251495f"
-localConnectionString = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+# Configuração de CPU time estendido para TCP direto
+[limits]
+cpu_ms = 120000
 
 # Environment variables
 [vars]

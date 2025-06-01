@@ -32,15 +32,15 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           let queryParams = [];
           let paramIndex = 1;
 
-          if (publicOnly) {
+      if (publicOnly) {
             baseQuery += ` AND gl.privacy = 'public'`;
-          } else if (userId) {
+      } else if (userId) {
             baseQuery += ` AND gl.user_id = $${paramIndex}`;
             queryParams.push(userId);
             paramIndex++;
-          }
+      }
 
-          if (type) {
+      if (type) {
             baseQuery += ` AND gl.type = $${paramIndex}`;
             queryParams.push(type);
             paramIndex++;
@@ -51,7 +51,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           giftLists = await db.query(baseQuery, ...queryParams);
         } catch (e) {
           console.log('Erro ao buscar gift lists, usando fallback');
-        }
+      }
 
         // STEP 2: Para cada lista, buscar informações adicionais (queries simplificadas)
         const enrichedLists = [];
@@ -106,17 +106,17 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log(`✅ Gift lists encontradas: ${result.length}`);
-      
-      return json({
-        success: true,
-        data: result,
-        meta: {
-          total: result.length,
-          limit,
-          offset
+
+    return json({
+      success: true,
+      data: result,
+      meta: {
+        total: result.length,
+        limit,
+        offset
         },
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro gift lists GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
@@ -256,14 +256,14 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         const listId = `list-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
         
         const newLists = await db.query`
-          INSERT INTO gift_lists (
+        INSERT INTO gift_lists (
             id, user_id, type, title, description, event_date, event_location,
-            couple_name_1, couple_name_2, baby_name, baby_gender,
-            cover_image, theme_color, privacy, allow_partial_contributions,
-            allow_anonymous_contributions, minimum_contribution, goal_amount,
+          couple_name_1, couple_name_2, baby_name, baby_gender,
+          cover_image, theme_color, privacy, allow_partial_contributions,
+          allow_anonymous_contributions, minimum_contribution, goal_amount,
             expires_at, thank_you_message, delivery_address, settings,
             status, created_at
-          ) VALUES (
+        ) VALUES (
             ${listId}, ${data.user_id}, ${data.type}, ${data.title}, 
             ${data.description || null}, ${data.event_date || null}, 
             ${data.event_location || null}, ${data.couple_name_1 || null}, 
@@ -277,71 +277,71 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
             ${JSON.stringify(data.delivery_address || {})}, 
             ${JSON.stringify(data.settings || {})},
             'active', NOW()
-          )
-          RETURNING *
-        `;
+        )
+        RETURNING *
+      `;
 
         const newList = newLists[0];
 
         // STEP 2: Operações async (não travar resposta)
         setTimeout(async () => {
           try {
-            // Se tem template, adicionar itens padrão
-            if (data.template_id) {
+      // Se tem template, adicionar itens padrão
+      if (data.template_id) {
               const templates = await db.query`
-                SELECT default_items FROM gift_list_templates 
-                WHERE id = ${data.template_id} AND is_active = true
+          SELECT default_items FROM gift_list_templates 
+          WHERE id = ${data.template_id} AND is_active = true
                 LIMIT 1
-              `;
+        `;
 
               if (templates.length > 0 && templates[0].default_items) {
                 const items = JSON.parse(templates[0].default_items);
-                for (const item of items) {
+          for (const item of items) {
                   const itemId = `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-                  await db.query`
-                    INSERT INTO gift_list_items (
+            await db.query`
+              INSERT INTO gift_list_items (
                       id, list_id, custom_item_name, category, priority, target_amount,
                       is_active, created_at
-                    ) VALUES (
+              ) VALUES (
                       ${itemId}, ${newList.id}, ${item.name}, ${item.category}, 
                       ${item.priority}, ${item.price || 100.00}, true, NOW()
-                    )
-                  `;
-                }
-              }
-            }
+              )
+            `;
+          }
+        }
+      }
 
-            // Log da atividade
-            await db.query`
+      // Log da atividade
+      await db.query`
               INSERT INTO gift_list_activities (
                 list_id, user_id, action, details, created_at
               ) VALUES (
-                ${newList.id}, ${data.user_id}, 'CREATE',
+          ${newList.id}, ${data.user_id}, 'CREATE',
                 ${JSON.stringify({ type: data.type, title: data.title })}, NOW()
-              )
-            `;
+        )
+      `;
           } catch (e) {
             console.log('Template/activity setup async failed:', e);
           }
         }, 100);
 
-        return newList;
+      return newList;
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 5000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log(`✅ Gift list criada: ${result.title}`);
-      
-      return json({
-        success: true,
-        data: result,
+
+    return json({
+      success: true,
+      data: result,
         message: 'Lista de presentes criada com sucesso!',
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro gift lists POST: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);

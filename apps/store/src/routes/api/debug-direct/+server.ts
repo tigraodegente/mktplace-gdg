@@ -1,5 +1,17 @@
+// ENDPOINT DESABILITADO - Causava erro de build no Cloudflare
+// O import('pg') não é compatível com Workers environment
+
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+
+export const GET: RequestHandler = async () => {
+  return json({
+    success: false,
+    error: 'Endpoint desabilitado para produção'
+  }, { status: 501 });
+};
+
+/* CÓDIGO ORIGINAL COMENTADO PARA EVITAR ERRO DE BUILD:
 
 export const GET: RequestHandler = async ({ platform }) => {
   try {
@@ -65,3 +77,5 @@ export const GET: RequestHandler = async ({ platform }) => {
     }, { status: 500 });
   }
 }; 
+
+*/ 

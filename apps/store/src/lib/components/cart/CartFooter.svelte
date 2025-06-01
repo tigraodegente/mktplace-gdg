@@ -81,7 +81,7 @@
 	<button 
 		onclick={onCheckout}
 		disabled={isCheckoutDisabled}
-		class="w-full bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white py-3 sm:py-3.5 px-4 rounded-lg text-sm sm:text-base font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-transform transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center gap-2"
+		class="w-full bg-[#00BFB3] text-white py-3 sm:py-3.5 px-4 rounded-lg text-sm sm:text-base font-semibold hover:bg-[#00A89D] hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
 		title={checkoutDisabledReason}
 	>
 		<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

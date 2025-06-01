@@ -1,11 +1,11 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
-import type { User } from '@mktplace/shared-types';
+import type { AuthUser } from '@mktplace/shared-types';
 import { clearNotificationsOnLogout } from './notificationStore';
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -96,14 +96,17 @@ function createAuthStore() {
         
         const data = await response.json();
         
+        // ✅ A API retorna { success: true, data: { user } }
+        const user = data.data?.user || data.user; // Compatibilidade
+        
         update(state => ({ 
           ...state, 
-          user: data.user, 
+          user: user, 
           isLoading: false,
           error: null
         }));
         
-        return data.user;
+        return user;
       } catch (error) {
         console.error('Erro ao fazer login:', error);
         update(state => ({ 
@@ -115,7 +118,7 @@ function createAuthStore() {
       }
     },
     
-    setUser(user: User | null) {
+    setUser(user: AuthUser | null) {
       update(state => ({ ...state, user, error: null }));
     },
     

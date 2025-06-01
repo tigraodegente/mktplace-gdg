@@ -33,37 +33,37 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
                  payment_method, shipping_address, notes, created_at, updated_at, user_id
           FROM orders
           WHERE id = ${orderId} AND user_id = ${userId}
-          LIMIT 1
-        `;
-        
-        if (!orders.length) {
-          return null;
-        }
-        
-        const order = orders[0];
-        
+        LIMIT 1
+      `;
+      
+      if (!orders.length) {
+        return null;
+      }
+      
+      const order = orders[0];
+      
         // STEP 2: Buscar itens do pedido (query separada)
         const items = await db.query`
           SELECT oi.id, oi.product_id, oi.quantity, oi.price, oi.total, oi.created_at,
                  p.name as product_name
-          FROM order_items oi
-          LEFT JOIN products p ON oi.product_id = p.id
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
           WHERE oi.order_id = ${orderId}
-          ORDER BY oi.created_at
+        ORDER BY oi.created_at
           LIMIT 20
-        `;
-        
+      `;
+      
         // STEP 3: Buscar histórico de status (opcional)
-        let statusHistory = [];
-        try {
+      let statusHistory = [];
+      try {
           statusHistory = await db.query`
             SELECT status, notes, created_at
-            FROM order_status_history
+          FROM order_status_history
             WHERE order_id = ${orderId}
-            ORDER BY created_at ASC
+          ORDER BY created_at ASC
             LIMIT 10
-          `;
-        } catch (e) {
+        `;
+      } catch (e) {
           console.log('📝 Tabela order_status_history não encontrada');
         }
         
@@ -211,12 +211,12 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
           total: 299.99
         }
       };
-      
-      return json({
-        success: true,
+    
+    return json({
+      success: true,
         data: mockOrder,
         source: 'fallback'
-      });
+    });
     }
     
   } catch (error: any) {

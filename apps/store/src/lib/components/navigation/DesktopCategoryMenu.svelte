@@ -72,9 +72,9 @@
 	
 	// Dados de exemplo para itens em destaque e banner
 	const featuredItems = [
-		{ name: 'Novidades', link: '/novidades', gradient: 'from-purple-500 to-pink-500' },
-		{ name: 'Mais Vendidos', link: '/mais-vendidos', gradient: 'from-blue-500 to-cyan-500' },
-		{ name: 'Promoções', link: '/promocoes', gradient: 'from-orange-500 to-red-500' }
+		{ name: 'Novidades', link: '/novidades', color: 'bg-purple-500' },
+		{ name: 'Mais Vendidos', link: '/mais-vendidos', color: 'bg-blue-500' },
+		{ name: 'Promoções', link: '/promocoes', color: 'bg-orange-500' }
 	];
 	
 	const bannerData = {
@@ -82,7 +82,7 @@
 		subtitle: 'Em compras acima de R$ 199',
 		cta: 'Aproveitar',
 		link: '/promocoes',
-		gradient: 'from-[#00BFB3] to-[#00A89D]'
+		color: 'bg-[#00BFB3]'
 	};
 </script>
 
@@ -111,20 +111,6 @@
 						{#if totalProducts > 0}
 							<span class="text-xs text-white/70 group-hover:text-white/90 transition-colors">({totalProducts})</span>
 						{/if}
-						
-						<!-- Indicador hover -->
-						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-					</a>
-				</li>
-				
-				<!-- Link Blog -->
-				<li>
-					<a
-						href="/blog"
-						class="flex items-center gap-2 py-3 text-white hover:text-white/90 transition-all group relative"
-						style="font-family: 'Lato', sans-serif; font-weight: 700; font-size: 14px;"
-					>
-						<span>📝 Blog</span>
 						
 						<!-- Indicador hover -->
 						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
@@ -161,6 +147,16 @@
 						</a>
 					</li>
 				{/each}
+				
+				<!-- Blog - Último item, sem link -->
+				<li>
+					<span
+						class="flex items-center gap-2 py-3 text-yellow-400"
+						style="font-family: 'Lato', sans-serif; font-weight: 700; font-size: 14px;"
+					>
+						Blog
+					</span>
+				</li>
 			</ul>
 		{:else}
 			<div class="py-3 text-white/80 text-sm mx-auto">
@@ -230,7 +226,7 @@
 								{#each featuredItems as item}
 									<a
 										href={item.link}
-										class="block p-4 rounded-lg bg-gradient-to-r {item.gradient} text-white hover:shadow-md transition-shadow"
+										class="block p-4 rounded-lg {item.color} text-white hover:shadow-md transition-shadow"
 									>
 										<p class="font-medium" style="font-family: 'Lato', sans-serif;">
 											{item.name}
@@ -244,7 +240,7 @@
 						<div>
 							<a
 								href={bannerData.link}
-								class="block h-full p-6 rounded-lg bg-gradient-to-br {bannerData.gradient} text-white hover:shadow-lg transition-shadow"
+								class="block h-full p-6 rounded-lg {bannerData.color} text-white hover:shadow-lg transition-shadow"
 							>
 								<h3 class="text-2xl font-bold mb-2" style="font-family: 'Lato', sans-serif;">
 									{bannerData.title}

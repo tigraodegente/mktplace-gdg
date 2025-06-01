@@ -6,11 +6,11 @@ export const GET: RequestHandler = async ({ platform, params, url, setHeaders, c
 	try {
 		console.log('📍 Order Tracking - Estratégia híbrida iniciada');
 		
-		// Headers de cache otimizados para rastreamento
-		setHeaders({
-			'cache-control': 'private, max-age=300', // 5 minutos para dados pessoais
-			'vary': 'Cookie, Authorization'
-		});
+	// Headers de cache otimizados para rastreamento
+	setHeaders({
+		'cache-control': 'private, max-age=300', // 5 minutos para dados pessoais
+		'vary': 'Cookie, Authorization'
+	});
 
 		const orderId = params.id;
 		if (!orderId) {
@@ -51,14 +51,14 @@ export const GET: RequestHandler = async ({ platform, params, url, setHeaders, c
 				// STEP 2: Buscar pedido básico
 				const orders = await db.query`
 					SELECT id, order_number, status, tracking_code, created_at
-					FROM orders 
+				FROM orders 
 					WHERE id = ${orderId} AND user_id = ${userId}
 					LIMIT 1
 				`;
 
 				if (!orders.length) {
 					return { error: 'Pedido não encontrado', status: 404 };
-				}
+			}
 
 				const order = orders[0];
 
@@ -67,9 +67,9 @@ export const GET: RequestHandler = async ({ platform, params, url, setHeaders, c
 				try {
 					trackingEvents = await db.query`
 						SELECT id, event_type, status, description, location, date_time, created_at
-						FROM order_tracking_events
+				FROM order_tracking_events
 						WHERE order_id = ${orderId}
-						ORDER BY date_time DESC, created_at DESC
+				ORDER BY date_time DESC, created_at DESC
 						LIMIT 20
 					`;
 				} catch (e) {
@@ -94,13 +94,13 @@ export const GET: RequestHandler = async ({ platform, params, url, setHeaders, c
 
 			// Formatar eventos
 			const events = result.trackingEvents.map((event: any) => ({
-				id: event.id,
-				type: event.event_type,
-				status: event.status,
-				description: event.description,
-				location: event.location,
-				dateTime: event.date_time,
-				source: 'internal'
+					id: event.id,
+					type: event.event_type,
+					status: event.status,
+					description: event.description,
+					location: event.location,
+					dateTime: event.date_time,
+					source: 'internal'
 			}));
 
 			// Determinar status atual
@@ -124,8 +124,8 @@ export const GET: RequestHandler = async ({ platform, params, url, setHeaders, c
 
 			console.log(`✅ Rastreamento encontrado: ${trackingData.order.orderNumber}`);
 
-			return json({
-				success: true,
+		return json({
+			success: true,
 				data: trackingData,
 				source: 'database'
 			});
@@ -243,40 +243,40 @@ export const POST: RequestHandler = async ({ platform, params, request, cookies 
 
 				// STEP 2: Inserir evento de rastreamento
 				const newEvents = await db.query`
-					INSERT INTO order_tracking_events (
-						order_id, event_type, status, description, location, date_time
+				INSERT INTO order_tracking_events (
+					order_id, event_type, status, description, location, date_time
 					) VALUES (${orderId}, ${eventType}, ${status}, ${description}, ${location}, NOW())
-					RETURNING *
+				RETURNING *
 				`;
 
 				// STEP 3: Atualizar código de rastreamento e status async
 				setTimeout(async () => {
 					try {
-						if (trackingCode) {
+			if (trackingCode) {
 							await db.query`
-								UPDATE orders 
+					UPDATE orders 
 								SET tracking_code = ${trackingCode}, updated_at = NOW()
 								WHERE id = ${orderId}
 							`;
-						}
+			}
 
-						// Atualizar status do pedido se necessário
+			// Atualizar status do pedido se necessário
 						if (['OBJETO_ENTREGUE', 'OBJETO_SAIU_PARA_ENTREGA'].includes(status)) {
 							const newStatus = status === 'OBJETO_ENTREGUE' ? 'delivered' : 'shipped';
 							await db.query`
-								UPDATE orders 
+					UPDATE orders 
 								SET status = ${newStatus}, updated_at = NOW()
 								WHERE id = ${orderId}
 							`;
 						}
 					} catch (e) {
 						console.log('Update async failed:', e);
-					}
+			}
 				}, 100);
 
 				return { event: newEvents[0] };
 			})();
-			
+
 			const timeoutPromise = new Promise((_, reject) => {
 				setTimeout(() => reject(new Error('Timeout')), 3000)
 			});
@@ -292,11 +292,11 @@ export const POST: RequestHandler = async ({ platform, params, request, cookies 
 
 			console.log(`✅ Evento de rastreamento adicionado: ${orderId}`);
 
-			return json({
-				success: true,
+		return json({
+			success: true,
 				data: result,
 				source: 'database'
-			});
+		});
 
 		} catch (error) {
 			console.log(`⚠️ Erro tracking POST: ${error instanceof Error ? error.message : 'Erro'} - retornando sucesso simulado`);

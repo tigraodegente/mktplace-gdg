@@ -29,13 +29,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       
       // Promise com timeout de 6 segundos
       const queryPromise = (async () => {
-        // Separar IDs e slugs
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const ids = identifiers.filter(id => isUUID.test(id));
-        const slugs = identifiers.filter(slug => !isUUID.test(slug));
-        
-        let products: any[] = [];
-        
+      // Separar IDs e slugs
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const ids = identifiers.filter(id => isUUID.test(id));
+      const slugs = identifiers.filter(slug => !isUUID.test(slug));
+      
+      let products: any[] = [];
+      
         // STEP 1: Buscar produtos básicos por IDs
         if (ids.length > 0) {
           const idProducts = await db.query`
@@ -46,11 +46,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             FROM products
             WHERE id = ANY(${ids}) AND is_active = true
           `;
-          products.push(...idProducts);
-        }
-        
+        products.push(...idProducts);
+      }
+      
         // STEP 2: Buscar produtos básicos por slugs
-        if (slugs.length > 0) {
+      if (slugs.length > 0) {
           const slugProducts = await db.query`
             SELECT id, name, slug, description, price, original_price, category_id,
                    brand_id, seller_id, quantity, rating_average, rating_count,
@@ -59,8 +59,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             FROM products
             WHERE slug = ANY(${slugs}) AND is_active = true
           `;
-          products.push(...slugProducts);
-        }
+        products.push(...slugProducts);
+      }
 
         // STEP 3: Buscar imagens para cada produto (separadamente)
         const productImages: Record<string, string[]> = {};
@@ -183,7 +183,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         success: true,
         data: resultMap,
         meta: {
-          found: formattedProducts.length,
+        found: formattedProducts.length,
           requested: identifiers.length,
           cached: false
         },
@@ -224,26 +224,26 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           sku: `SKU-${index + 1}`,
           pieces: 1,
           has_fast_delivery: true
-        };
-      });
+      };
+    });
       
       const resultMap: Record<string, any> = {};
       mockProducts.forEach(product => {
         resultMap[product.id] = product;
         resultMap[product.slug] = product;
       });
-      
-      return json({
-        success: true,
+    
+    return json({
+      success: true,
         data: resultMap,
-        meta: {
+      meta: {
           found: mockProducts.length,
           requested: identifiers.length,
-          cached: false
+        cached: false
         },
         source: 'fallback'
       });
-    }
+      }
     
   } catch (error) {
     console.error('❌ Erro crítico products batch:', error);

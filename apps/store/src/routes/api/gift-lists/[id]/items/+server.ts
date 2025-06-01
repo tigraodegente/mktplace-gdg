@@ -17,15 +17,15 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
       // Promise com timeout de 3 segundos
       const queryPromise = (async () => {
         // Buscar itens da lista (query simplificada)
-        const items = await db.query`
+      const items = await db.query`
           SELECT gli.id, gli.custom_item_name, gli.category, gli.priority,
                  gli.target_amount, gli.collected_amount, gli.is_purchased,
                  gli.display_order, gli.product_id, gli.created_at, gli.notes,
                  p.name as product_name, p.slug as product_slug
-          FROM gift_list_items gli
-          LEFT JOIN products p ON p.id = gli.product_id
-          WHERE gli.list_id = ${listId} AND gli.is_active = true
-          ORDER BY gli.priority DESC, gli.display_order ASC, gli.created_at ASC
+        FROM gift_list_items gli
+        LEFT JOIN products p ON p.id = gli.product_id
+        WHERE gli.list_id = ${listId} AND gli.is_active = true
+        ORDER BY gli.priority DESC, gli.display_order ASC, gli.created_at ASC
           LIMIT 50
         `;
 
@@ -42,24 +42,24 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
           category_name: item.category || 'Geral'
         }));
 
-        // Incluir contribuições se solicitado
-        if (includeContributions) {
+      // Incluir contribuições se solicitado
+      if (includeContributions) {
           for (const item of enrichedItems) {
             try {
-              const contributions = await db.query`
+          const contributions = await db.query`
                 SELECT id, amount, message, is_anonymous, created_at,
                        contributor_name
                 FROM gift_contributions
                 WHERE item_id = ${item.id} AND payment_status = 'paid'
                 ORDER BY created_at DESC
                 LIMIT 10
-              `;
-              
+          `;
+          
               item.contributions = contributions.map((c: any) => ({
                 ...c,
                 display_name: c.is_anonymous ? 'Anônimo' : c.contributor_name
               }));
-              item.contributor_count = contributions.length;
+          item.contributor_count = contributions.length;
             } catch (e) {
               item.contributions = [];
               item.contributor_count = 0;
@@ -69,20 +69,20 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
 
         return enrichedItems;
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 3000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log(`✅ Gift list items: ${result.length}`);
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro items GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
@@ -193,29 +193,29 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       const queryPromise = (async () => {
         // Verificar se a lista existe
         const lists = await db.query`
-          SELECT id, user_id FROM gift_lists 
-          WHERE id = ${listId} AND status = 'active'
+        SELECT id, user_id FROM gift_lists 
+        WHERE id = ${listId} AND status = 'active'
           LIMIT 1
-        `;
+      `;
 
         if (!lists.length) {
-          return { error: 'Lista não encontrada ou inativa', status: 404 };
-        }
+        return { error: 'Lista não encontrada ou inativa', status: 404 };
+      }
 
-        // Criar o item
+      // Criar o item
         const itemId = `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
         const newItems = await db.query`
-          INSERT INTO gift_list_items (
+        INSERT INTO gift_list_items (
             id, list_id, product_id, custom_item_name, category,
             priority, target_amount, display_order, notes, is_active, created_at
-          ) VALUES (
+        ) VALUES (
             ${itemId}, ${listId}, ${data.product_id || null}, 
             ${data.custom_item_name || null}, ${data.category || 'geral'},
             ${data.priority || 'medium'}, ${data.target_amount}, 
             ${data.display_order || 1}, ${data.notes || null}, true, NOW()
-          )
-          RETURNING *
-        `;
+        )
+        RETURNING *
+      `;
 
         return newItems[0];
       })();
@@ -225,20 +225,20 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (result.error) {
-        return json({
-          success: false,
-          error: { code: 'CREATE_ERROR', message: result.error }
-        }, { status: result.status || 500 });
-      }
-      
+
+    if (result.error) {
       return json({
-        success: true,
-        data: result,
+        success: false,
+          error: { code: 'CREATE_ERROR', message: result.error }
+      }, { status: result.status || 500 });
+    }
+
+    return json({
+      success: true,
+      data: result,
         message: 'Item adicionado à lista com sucesso!',
         source: 'database'
-      });
+    });
       
     } catch (error) {
       // FALLBACK: Simular criação
@@ -294,27 +294,27 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       const db = getDatabase(platform);
       
       const queryPromise = (async () => {
-        // Verificar se a lista existe
+      // Verificar se a lista existe
         const lists = await db.query`
-          SELECT id, user_id FROM gift_lists 
-          WHERE id = ${listId} AND status = 'active'
+        SELECT id, user_id FROM gift_lists 
+        WHERE id = ${listId} AND status = 'active'
           LIMIT 1
-        `;
+      `;
 
         if (!lists.length) {
-          return { error: 'Lista não encontrada', status: 404 };
-        }
+        return { error: 'Lista não encontrada', status: 404 };
+      }
 
-        // Atualizar ordem dos itens
-        for (const [index, item] of items.entries()) {
-          await db.query`
-            UPDATE gift_list_items 
-            SET display_order = ${index + 1}, updated_at = NOW()
-            WHERE id = ${item.id} AND list_id = ${listId}
-          `;
-        }
+      // Atualizar ordem dos itens
+      for (const [index, item] of items.entries()) {
+        await db.query`
+          UPDATE gift_list_items 
+          SET display_order = ${index + 1}, updated_at = NOW()
+          WHERE id = ${item.id} AND list_id = ${listId}
+        `;
+      }
 
-        return { success: true };
+      return { success: true };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
@@ -322,16 +322,16 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (result.error) {
-        return json({
-          success: false,
-          error: { code: 'UPDATE_ERROR', message: result.error }
-        }, { status: result.status || 500 });
-      }
-      
+
+    if (result.error) {
       return json({
-        success: true,
+        success: false,
+          error: { code: 'UPDATE_ERROR', message: result.error }
+      }, { status: result.status || 500 });
+    }
+
+    return json({
+      success: true,
         message: 'Ordem dos itens atualizada com sucesso!',
         source: 'database'
       });
@@ -342,7 +342,7 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         success: true,
         message: 'Ordem dos itens atualizada com sucesso!',
         source: 'fallback'
-      });
+    });
     }
 
   } catch (error) {

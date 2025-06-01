@@ -146,12 +146,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       
       // Limitar resultados
       const limitedTemplates = filteredTemplates.slice(0, limit);
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: limitedTemplates,
         source: 'fallback'
-      });
+    });
     }
 
   } catch (error) {
@@ -193,19 +193,19 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const templateId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
         
         const newTemplates = await db.query`
-          INSERT INTO gift_list_templates (
+        INSERT INTO gift_list_templates (
             id, name, type, description, cover_image, theme_color,
             default_items, suggested_categories, created_by, is_active,
             usage_count, created_at
-          ) VALUES (
+        ) VALUES (
             ${templateId}, ${data.name}, ${data.type}, ${data.description || null},
-            ${data.cover_image || null}, ${data.theme_color || '#FF69B4'},
-            ${JSON.stringify(data.default_items || [])}, 
-            ${data.suggested_categories || []},
+          ${data.cover_image || null}, ${data.theme_color || '#FF69B4'},
+          ${JSON.stringify(data.default_items || [])}, 
+          ${data.suggested_categories || []},
             ${data.created_by || null}, true, 0, NOW()
-          )
-          RETURNING *
-        `;
+        )
+        RETURNING *
+      `;
 
         return newTemplates[0];
       })();
@@ -217,13 +217,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log(`✅ Template criado: ${result.name}`);
-      
-      return json({
-        success: true,
-        data: result,
+
+    return json({
+      success: true,
+      data: result,
         message: 'Template criado com sucesso!',
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro template POST: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);

@@ -43,11 +43,20 @@ export class AuthService {
         credentials: 'include' // 🔑 SEMPRE incluir cookies de sessão
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
       const result: AuthResponse = await response.json();
+      
+      if (!response.ok) {
+        // Se o servidor retornou um JSON com mensagem de erro, usar ela
+        const errorMessage = result.error?.message || `Erro ${response.status}: ${response.statusText}`;
+        console.log('❌ AuthService.login: Falha no login:', errorMessage);
+        return {
+          success: false,
+          error: {
+            message: errorMessage,
+            code: 'LOGIN_ERROR'
+          }
+        };
+      }
       
       if (result.success && result.data?.user) {
         console.log('✅ AuthService.login: Login bem-sucedido, atualizando store...');
@@ -75,8 +84,8 @@ export class AuthService {
       return {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Erro ao fazer login',
-          code: 'LOGIN_ERROR'
+          message: 'Erro de conexão. Verifique sua internet e tente novamente.',
+          code: 'CONNECTION_ERROR'
         }
       };
     }
@@ -96,11 +105,20 @@ export class AuthService {
         credentials: 'include' // 🔑 SEMPRE incluir cookies de sessão
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
       const result: AuthResponse = await response.json();
+      
+      if (!response.ok) {
+        // Se o servidor retornou um JSON com mensagem de erro, usar ela
+        const errorMessage = result.error?.message || `Erro ${response.status}: ${response.statusText}`;
+        console.log('❌ AuthService.register: Falha no registro:', errorMessage);
+        return {
+          success: false,
+          error: {
+            message: errorMessage,
+            code: 'REGISTER_ERROR'
+          }
+        };
+      }
       
       if (result.success && result.data?.user) {
         console.log('✅ AuthService.register: Registro bem-sucedido, atualizando store...');
@@ -128,8 +146,8 @@ export class AuthService {
       return {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Erro ao criar conta',
-          code: 'REGISTER_ERROR'
+          message: 'Erro de conexão. Verifique sua internet e tente novamente.',
+          code: 'CONNECTION_ERROR'
         }
       };
     }
@@ -145,7 +163,39 @@ export class AuthService {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Para 401/403, é esperado não estar autenticado
+        if (response.status === 401 || response.status === 403) {
+          console.log('❌ AuthService.checkAuth: Usuário não autenticado');
+          return {
+            success: false,
+            error: {
+              message: 'Usuário não autenticado',
+              code: 'NOT_AUTHENTICATED'
+            }
+          };
+        }
+        
+        // Para outros erros, tentar extrair mensagem
+        try {
+          const errorResult = await response.json();
+          const errorMessage = errorResult.error?.message || `Erro ${response.status}: ${response.statusText}`;
+          return {
+            success: false,
+            error: {
+              message: errorMessage,
+              code: 'CHECK_AUTH_ERROR'
+            }
+          };
+        } catch {
+          // Se não conseguir fazer parse do JSON, usar mensagem genérica
+          return {
+            success: false,
+            error: {
+              message: `Erro de servidor (${response.status})`,
+              code: 'CHECK_AUTH_ERROR'
+            }
+          };
+        }
       }
       
       const backendResult = await response.json();
@@ -185,8 +235,8 @@ export class AuthService {
       return {
         success: false,
         error: {
-          message: 'Erro ao verificar autenticação',
-          code: 'CHECK_AUTH_ERROR'
+          message: 'Erro de conexão. Verifique sua internet e tente novamente.',
+          code: 'CONNECTION_ERROR'
         }
       };
     }

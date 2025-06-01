@@ -60,6 +60,19 @@
     }
   });
   
+  // 🔄 REATIVO: Carregar endereços quando usuário for autenticado
+  $effect(() => {
+    // Monitora mudanças na autenticação
+    if ((currentUser || $isAuthenticated) && userAddresses.length === 0 && !loadingAddresses) {
+      console.log('🏠 Usuário autenticado detectado - carregando endereços...');
+      loadUserAddresses().then(() => {
+        if (userAddresses.length > 0) {
+          addressMode = 'select';
+        }
+      });
+    }
+  });
+  
   async function loadUserAddresses() {
     if (!currentUser && !$isAuthenticated) return;
     

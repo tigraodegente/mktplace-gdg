@@ -41,14 +41,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                  min_order_amount, max_discount_amount, is_cumulative
           FROM coupons 
           WHERE is_automatic = true AND is_active = true
-            AND (starts_at IS NULL OR starts_at <= NOW())
-            AND (expires_at IS NULL OR expires_at > NOW())
+        AND (starts_at IS NULL OR starts_at <= NOW())
+        AND (expires_at IS NULL OR expires_at > NOW())
           ORDER BY value DESC
           LIMIT 10
-        `;
+      `;
 
-        const appliedCoupons = [];
-        let totalDiscount = 0;
+      const appliedCoupons = [];
+      let totalDiscount = 0;
         const subtotal = body.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
         for (const coupon of automaticCoupons) {
@@ -74,31 +74,31 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           }
 
           if (discountAmount > 0) {
-            appliedCoupons.push({
-              id: coupon.id,
-              code: coupon.code,
-              name: coupon.name,
-              description: coupon.description,
-              type: coupon.type,
-              value: coupon.value,
+          appliedCoupons.push({
+            id: coupon.id,
+            code: coupon.code,
+            name: coupon.name,
+            description: coupon.description,
+            type: coupon.type,
+            value: coupon.value,
               discount_amount: Math.round(discountAmount * 100) / 100,
               applied_to: { global: true }
-            });
+          });
 
             totalDiscount += discountAmount;
 
             // Se não for cumulativo, parar
-            if (!coupon.is_cumulative) {
-              break;
-            }
+          if (!coupon.is_cumulative) {
+            break;
           }
         }
+      }
 
-        return {
-          success: true,
-          automatic_coupons: appliedCoupons,
-          total_discount: Math.round(totalDiscount * 100) / 100
-        };
+      return {
+        success: true,
+        automatic_coupons: appliedCoupons,
+        total_discount: Math.round(totalDiscount * 100) / 100
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
@@ -166,4 +166,4 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       error: 'Erro interno do servidor'
     }, { status: 500 });
   }
-}; 
+};

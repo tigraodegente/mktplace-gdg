@@ -21,11 +21,15 @@
       successMessage = message;
     }
     
-    // Se já está logado, redirecionar
+    // ✅ Só redirecionar se já está logado E não veio do checkout
     auth.subscribe(($auth) => {
       if ($auth.user && !$auth.isLoading) {
-        const target = redirectTo ? decodeURIComponent(redirectTo) : '/';
-        goto(target);
+        // Se não tem redirect ou o redirect não é do checkout, redirecionar
+        if (!redirectTo || !redirectTo.includes('/cart')) {
+          const target = redirectTo ? decodeURIComponent(redirectTo) : '/';
+          goto(target);
+        }
+        // Se veio do checkout, deixar o CheckoutAuth.svelte lidar com o redirecionamento
       }
     });
   });
@@ -45,10 +49,13 @@
     try {
       await auth.login(email, password);
       
-      // Redirecionar após login bem-sucedido
+      // ✅ Só redirecionar se não veio do checkout
       const redirectTo = $page.url.searchParams.get('redirect');
-      const target = redirectTo ? decodeURIComponent(redirectTo) : '/';
-      goto(target);
+      if (!redirectTo || !redirectTo.includes('/cart')) {
+        const target = redirectTo ? decodeURIComponent(redirectTo) : '/';
+        goto(target);
+      }
+      // Se veio do checkout, o CheckoutAuth.svelte já vai lidar com o próximo passo
     } catch (err) {
       error = err instanceof Error ? err.message : 'Erro desconhecido';
     } finally {

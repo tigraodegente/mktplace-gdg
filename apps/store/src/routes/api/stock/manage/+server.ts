@@ -69,88 +69,88 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       const queryPromise = (async () => {
         // STEP 1: Buscar produto atual (query simplificada)
         const products = await db.query`
-          SELECT id, name, quantity, track_inventory
-          FROM products 
-          WHERE id = ${body.product_id}
+        SELECT id, name, quantity, track_inventory
+        FROM products 
+        WHERE id = ${body.product_id}
           LIMIT 1
-        `;
+      `;
 
         if (products.length === 0) {
-          return {
-            success: false,
-            error: {
-              code: 'PRODUCT_NOT_FOUND',
-              message: 'Produto não encontrado'
-            }
-          };
-        }
+        return {
+          success: false,
+          error: {
+            code: 'PRODUCT_NOT_FOUND',
+            message: 'Produto não encontrado'
+          }
+        };
+      }
 
         const product = products[0];
-        const oldQuantity = product.quantity;
-        let newQuantity = oldQuantity;
+      const oldQuantity = product.quantity;
+      let newQuantity = oldQuantity;
 
         // STEP 2: Calcular nova quantidade baseada no tipo
-        switch (body.type) {
-          case 'in':
-            newQuantity = oldQuantity + body.quantity;
-            break;
-          case 'out':
-            newQuantity = Math.max(0, oldQuantity - body.quantity);
-            if (oldQuantity < body.quantity) {
-              return {
-                success: false,
-                error: {
-                  code: 'INSUFFICIENT_STOCK',
-                  message: `Estoque insuficiente. Atual: ${oldQuantity}, Tentativa de saída: ${body.quantity}`
-                }
-              };
-            }
-            break;
-          case 'adjustment':
-            newQuantity = body.quantity; // Ajuste direto para a quantidade especificada
-            break;
-        }
+      switch (body.type) {
+        case 'in':
+          newQuantity = oldQuantity + body.quantity;
+          break;
+        case 'out':
+          newQuantity = Math.max(0, oldQuantity - body.quantity);
+          if (oldQuantity < body.quantity) {
+            return {
+              success: false,
+              error: {
+                code: 'INSUFFICIENT_STOCK',
+                message: `Estoque insuficiente. Atual: ${oldQuantity}, Tentativa de saída: ${body.quantity}`
+              }
+            };
+          }
+          break;
+        case 'adjustment':
+          newQuantity = body.quantity; // Ajuste direto para a quantidade especificada
+          break;
+      }
 
         // STEP 3: Atualizar quantidade do produto
-        if (product.track_inventory) {
-          await db.query`
-            UPDATE products 
-            SET quantity = ${newQuantity}, updated_at = NOW()
-            WHERE id = ${body.product_id}
-          `;
-        }
+      if (product.track_inventory) {
+        await db.query`
+          UPDATE products 
+          SET quantity = ${newQuantity}, updated_at = NOW()
+          WHERE id = ${body.product_id}
+        `;
+      }
 
         // STEP 4: Registrar movimentação async (não travar resposta)
         let movementId = `mov-${Date.now()}`;
         setTimeout(async () => {
           try {
             const movements = await db.query`
-              INSERT INTO stock_movements (
-                product_id, type, quantity, reason, notes, created_by, created_at
-              ) VALUES (
-                ${body.product_id}, ${body.type}, ${body.quantity}, 
-                ${body.reason}, ${body.notes || null}, ${body.user_id || null}, NOW()
-              )
-              RETURNING id
-            `;
+        INSERT INTO stock_movements (
+          product_id, type, quantity, reason, notes, created_by, created_at
+        ) VALUES (
+          ${body.product_id}, ${body.type}, ${body.quantity}, 
+          ${body.reason}, ${body.notes || null}, ${body.user_id || null}, NOW()
+        )
+        RETURNING id
+      `;
             movementId = movements[0]?.id || movementId;
           } catch (e) {
             console.log('Movement registration async failed:', e);
           }
         }, 100);
 
-        console.log(`📦 Estoque atualizado: ${product.name} (${oldQuantity} → ${newQuantity})`);
+      console.log(`📦 Estoque atualizado: ${product.name} (${oldQuantity} → ${newQuantity})`);
 
-        return {
-          success: true,
-          data: {
-            old_quantity: oldQuantity,
-            new_quantity: newQuantity,
-            movement_id: movementId
-          }
-        };
+      return {
+        success: true,
+        data: {
+          old_quantity: oldQuantity,
+          new_quantity: newQuantity,
+          movement_id: movementId
+        }
+      };
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 4000)
       });
@@ -214,18 +214,18 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       const queryPromise = (async () => {
         // STEP 1: Buscar informações atuais do produto
         const products = await db.query`
-          SELECT name, quantity, track_inventory
-          FROM products
-          WHERE id = ${productId}
+        SELECT name, quantity, track_inventory
+        FROM products
+        WHERE id = ${productId}
           LIMIT 1
-        `;
+      `;
 
         if (products.length === 0) {
-          return {
-            success: false,
-            error: 'Produto não encontrado'
-          };
-        }
+        return {
+          success: false,
+          error: 'Produto não encontrado'
+        };
+      }
 
         // STEP 2: Buscar movimentações (query simplificada)
         const movements = await db.query`
@@ -248,20 +248,20 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
         try {
           const statsQuery = await db.query`
-            SELECT 
-              COUNT(*) as total_movements,
-              SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END) as total_in,
-              SUM(CASE WHEN type = 'out' THEN quantity ELSE 0 END) as total_out,
-              SUM(CASE WHEN type = 'adjustment' THEN quantity ELSE 0 END) as total_adjustments
-            FROM stock_movements
-            WHERE product_id = ${productId}
-          `;
+        SELECT 
+          COUNT(*) as total_movements,
+          SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END) as total_in,
+          SUM(CASE WHEN type = 'out' THEN quantity ELSE 0 END) as total_out,
+          SUM(CASE WHEN type = 'adjustment' THEN quantity ELSE 0 END) as total_adjustments
+        FROM stock_movements
+        WHERE product_id = ${productId}
+      `;
           stats = statsQuery[0];
         } catch (e) {
           console.log('Erro ao buscar stats, usando estimativa');
         }
 
-        return {
+      return {
           success: true,
           product: products[0],
           movements: movements.map((mov: any) => ({
@@ -339,7 +339,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       return json({
         ...mockHistory,
         source: 'fallback'
-      });
+    });
     }
 
   } catch (error: any) {

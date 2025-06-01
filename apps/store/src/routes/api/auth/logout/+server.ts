@@ -41,8 +41,18 @@ export const POST: RequestHandler = async ({ cookies, platform }) => {
     }
     
     // Limpar cookies (sempre funciona)
-    cookies.delete('session_token', { path: '/' });
-    cookies.delete('session', { path: '/' }); // Compatibilidade
+    cookies.delete('session_token', { 
+      path: '/',
+      httpOnly: true,
+      secure: !!import.meta.env.PROD, // ✅ Consistente com login
+      sameSite: 'lax'
+    });
+    cookies.delete('session', { 
+      path: '/',
+      httpOnly: true,
+      secure: !!import.meta.env.PROD, // ✅ Consistente com login  
+      sameSite: 'lax'
+    }); // Compatibilidade
     
     console.log('✅ Logout completo');
     
@@ -54,8 +64,18 @@ export const POST: RequestHandler = async ({ cookies, platform }) => {
   } catch (error) {
     console.error('❌ Erro crítico logout:', error);
     // Mesmo com erro, limpar cookies
-    cookies.delete('session_token', { path: '/' });
-    cookies.delete('session', { path: '/' });
+    cookies.delete('session_token', { 
+      path: '/',
+      httpOnly: true,
+      secure: !!import.meta.env.PROD,
+      sameSite: 'lax'
+    });
+    cookies.delete('session', { 
+      path: '/',
+      httpOnly: true,
+      secure: !!import.meta.env.PROD,
+      sameSite: 'lax'
+    });
     
     return json({
       success: true,

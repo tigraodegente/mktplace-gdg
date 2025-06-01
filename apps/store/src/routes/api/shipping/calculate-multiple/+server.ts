@@ -52,18 +52,18 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       // Promise com timeout de 5 segundos
       const queryPromise = (async () => {
         console.log(`🚛 Calculando múltiplas opções para CEP ${cleanPostalCode}`);
-        
+      
         // STEP 1: Calcular peso e valor totais
-        let totalWeight = 0;
-        let totalValue = 0;
-        
-        items.forEach((item: any) => {
-          const weight = (item.product?.weight || 0.5) * 1000; // Converter para gramas
-          totalWeight += weight * item.quantity;
-          totalValue += item.product.price * item.quantity;
-        });
-        
-        console.log(`📦 Peso total: ${totalWeight}g, Valor total: R$ ${totalValue.toFixed(2)}`);
+      let totalWeight = 0;
+      let totalValue = 0;
+      
+      items.forEach((item: any) => {
+        const weight = (item.product?.weight || 0.5) * 1000; // Converter para gramas
+        totalWeight += weight * item.quantity;
+        totalValue += item.product.price * item.quantity;
+      });
+      
+      console.log(`📦 Peso total: ${totalWeight}g, Valor total: R$ ${totalValue.toFixed(2)}`);
 
         // STEP 2: Buscar zonas de frete (query simplificada)
         let zones = [];
@@ -79,11 +79,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           console.log('Erro ao buscar zonas, usando fallback');
         }
 
-        const options = [];
+      const options = [];
 
         // STEP 3: Processar cada zona (simplificado)
         if (zones.length > 0) {
-          for (const zone of zones) {
+      for (const zone of zones) {
             try {
               // Buscar regras de peso (query separada)
               const weightRules = await db.query`
@@ -95,52 +95,52 @@ export const POST: RequestHandler = async ({ request, platform }) => {
               `;
 
               let basePrice = 15.90; // Padrão
-              
-              for (const rule of weightRules) {
+        
+        for (const rule of weightRules) {
                 if (totalWeight >= rule.weight_from && totalWeight <= rule.weight_to) {
                   basePrice = parseFloat(rule.price);
-                  break;
-                }
-              }
+            break;
+          }
+        }
 
               // Verificar frete grátis
               const isFree = totalValue >= 199; // Threshold simplificado
               const finalPrice = isFree ? 0 : basePrice;
 
               // Gerar nome automático baseado no prazo
-              let optionName;
-              if (zone.delivery_days_min === 0) {
-                optionName = 'Frenet - Entrega Hoje';
-              } else if (zone.delivery_days_min === 1) {
-                optionName = 'Frenet - Entrega Amanhã';
-              } else if (zone.delivery_days_min <= 2) {
-                optionName = 'Frenet - Expresso';
-              } else if (zone.delivery_days_min <= 5) {
-                optionName = 'Frenet - Padrão';
-              } else {
-                optionName = 'Frenet - Econômico';
-              }
+        let optionName;
+        if (zone.delivery_days_min === 0) {
+          optionName = 'Frenet - Entrega Hoje';
+        } else if (zone.delivery_days_min === 1) {
+          optionName = 'Frenet - Entrega Amanhã';
+        } else if (zone.delivery_days_min <= 2) {
+          optionName = 'Frenet - Expresso';
+        } else if (zone.delivery_days_min <= 5) {
+          optionName = 'Frenet - Padrão';
+        } else {
+          optionName = 'Frenet - Econômico';
+        }
 
-              const option = {
-                id: `frenet-${zone.id}`,
+        const option = {
+          id: `frenet-${zone.id}`,
                 carrierId: zone.carrier_id || 'frenet-carrier',
-                carrierName: 'Frenet',
-                name: optionName,
-                price: finalPrice,
+          carrierName: 'Frenet',
+          name: optionName,
+          price: finalPrice,
                 originalPrice: basePrice,
-                isFree,
+          isFree,
                 freeReason: isFree ? `Frete grátis acima de R$ 199` : '',
-                deliveryDaysMin: zone.delivery_days_min,
-                deliveryDaysMax: zone.delivery_days_max,
-                breakdown: {
-                  basePrice,
+          deliveryDaysMin: zone.delivery_days_min,
+          deliveryDaysMax: zone.delivery_days_max,
+          breakdown: {
+            basePrice,
                   taxes: { gris: 0, adv: 0 },
                   totalTaxes: 0,
                   freeShippingDiscount: isFree ? basePrice : 0
-                }
-              };
+          }
+        };
 
-              options.push(option);
+        options.push(option);
             } catch (e) {
               console.log(`Erro ao processar zona ${zone.id}`);
             }
@@ -175,38 +175,38 @@ export const POST: RequestHandler = async ({ request, platform }) => {
               }
             });
           }
-        }
+      }
 
         // Ordenar opções (frete grátis primeiro, depois por preço e prazo)
         options.sort((a: any, b: any) => {
-          if (a.isFree && !b.isFree) return -1;
-          if (!a.isFree && b.isFree) return 1;
-          if (a.price !== b.price) return a.price - b.price;
-          return a.deliveryDaysMin - b.deliveryDaysMin;
-        });
+        if (a.isFree && !b.isFree) return -1;
+        if (!a.isFree && b.isFree) return 1;
+        if (a.price !== b.price) return a.price - b.price;
+        return a.deliveryDaysMin - b.deliveryDaysMin;
+      });
 
-        return {
-          postalCode: cleanPostalCode,
-          sellerId,
-          totalWeight,
-          totalValue,
-          options
-        };
+      return {
+        postalCode: cleanPostalCode,
+        sellerId,
+        totalWeight,
+        totalValue,
+        options
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 5000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log(`✅ ${result.options.length} opções calculadas`);
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro shipping multiple: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);

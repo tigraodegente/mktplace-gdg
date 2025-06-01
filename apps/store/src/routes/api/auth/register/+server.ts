@@ -56,8 +56,8 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         
         // STEP 3: Criar usuário
         const newUsers = await db.query`
-          INSERT INTO users (email, password_hash, name, role, is_active, email_verified)
-          VALUES (${email}, ${passwordHash}, ${name}, ${role}, true, false)
+          INSERT INTO users (email, password_hash, name, role, status, email_verified)
+          VALUES (${email}, ${passwordHash}, ${name}, ${role}, 'active', false)
           RETURNING id, email, name, role
         `;
         

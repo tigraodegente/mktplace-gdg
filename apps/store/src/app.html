@@ -25,11 +25,6 @@
 			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap">
 		</noscript>
 		
-		<!-- DNS Prefetch para recursos externos -->
-		<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-		<link rel="dns-prefetch" href="https://www.googletagmanager.com">
-		<link rel="dns-prefetch" href="https://www.google-analytics.com">
-		
 		<!-- Preload CSS crítico -->
 		%sveltekit.head%
 		
@@ -46,158 +41,42 @@
 				100% { background-position: -200% 0; }
 			}
 		</style>
-		
-		<!-- Performance Optimizations -->
+
+		<!-- Service Worker Registration (APENAS PRODUÇÃO) -->
 		<script>
-			// Detectar conexão lenta e dispositivo
-			if ('connection' in navigator) {
-				const connection = navigator.connection;
-				if (connection.effectiveType === '3g' || connection.effectiveType === '2g') {
-					document.documentElement.classList.add('slow-connection');
-					// Reduzir qualidade de imagens em conexões lentas
-					document.documentElement.style.setProperty('--image-quality', '0.7');
-				}
-				
-				// Detectar data saver mode
-				if (connection.saveData) {
-					document.documentElement.classList.add('save-data');
-				}
-			}
-			
-			// Detectar modo escuro do sistema
-			if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-				document.documentElement.classList.add('dark-mode-preferred');
-			}
-			
-			// Intersection Observer para lazy loading
-			if ('IntersectionObserver' in window) {
-				window.lazyImageObserver = new IntersectionObserver((entries) => {
-					entries.forEach(entry => {
-						if (entry.isIntersecting) {
-							const img = entry.target;
-							const src = img.getAttribute('data-src');
-							if (src && !img.src) {
-								img.src = src;
-								img.removeAttribute('data-src');
-								window.lazyImageObserver.unobserve(img);
-							}
-						}
-					});
-				}, { 
-					rootMargin: '50px',
-					threshold: 0.1 
-				});
-			}
-		</script>
-		
-		<!-- Service Worker Registration -->
-		<script>
-			// DESABILITADO EM DESENVOLVIMENTO para evitar loop infinito
+			// COMPLETAMENTE DESABILITADO EM LOCALHOST
 			if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
 				window.addEventListener('load', async () => {
 					try {
 						const registration = await navigator.serviceWorker.register('/sw.js', {
 							scope: '/',
-							updateViaCache: 'imports' // Permite cache do SW em produção
+							updateViaCache: 'imports'
 						});
-						
 						console.log('🎉 Service Worker registrado:', registration.scope);
-						
-						// Verificar atualizações apenas a cada 24h em produção
-						let lastUpdateCheck = localStorage.getItem('sw-last-update-check');
-						const now = Date.now();
-						const oneDay = 24 * 60 * 60 * 1000;
-						
-						if (!lastUpdateCheck || (now - parseInt(lastUpdateCheck)) > oneDay) {
-							registration.update();
-							localStorage.setItem('sw-last-update-check', now.toString());
-						}
-						
-						// Listen para atualizações com menos agressividade
-						registration.addEventListener('updatefound', () => {
-							const newWorker = registration.installing;
-							if (newWorker) {
-								newWorker.addEventListener('statechange', () => {
-									if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-										// Mostrar notificação discreta em vez de confirm()
-										showUpdateNotification();
-									}
-								});
-							}
-						});
-						
 					} catch (error) {
-						console.warn('Service Worker não pôde ser registrado:', error);
+						console.warn('Service Worker erro:', error);
 					}
 				});
 			} else if (window.location.hostname === 'localhost') {
-				console.log('🚫 Service Worker desabilitado em localhost para evitar problemas');
+				console.log('🚫 Service Worker desabilitado em localhost');
 			}
-			
-			// Notificação discreta para atualizações
-			function showUpdateNotification() {
-				const notification = document.createElement('div');
-				notification.innerHTML = `
-					<div style="position: fixed; top: 20px; right: 20px; background: #00BFB3; color: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; font-family: system-ui;">
-						<div style="margin-bottom: 8px; font-weight: 600;">Nova versão disponível</div>
-						<button onclick="updateApp()" style="background: white; color: #00BFB3; border: none; padding: 6px 12px; border-radius: 4px; margin-right: 8px; cursor: pointer;">Atualizar</button>
-						<button onclick="dismissUpdate()" style="background: transparent; color: white; border: 1px solid white; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Depois</button>
-					</div>
-				`;
-				document.body.appendChild(notification);
+		</script>
+
+		<!-- Analytics apenas em produção -->
+		<script>
+			if (window.location.hostname !== 'localhost') {
+				// Google Analytics 4
+				(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+				new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+				j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+				'https://www.googletagmanager.com/gtag/js?id='+i+dl;f.parentNode.insertBefore(j,f);
+				})(window,document,'script','dataLayer','GA_MEASUREMENT_ID');
 				
-				// Auto-remover após 10 segundos
-				setTimeout(() => {
-					if (notification.parentNode) {
-						notification.remove();
-					}
-				}, 10000);
+				window.dataLayer = window.dataLayer || [];
+				function gtag(){dataLayer.push(arguments);}
+				gtag('js', new Date());
+				gtag('config', 'GA_MEASUREMENT_ID');
 			}
-			
-			function updateApp() {
-				window.location.reload();
-			}
-			
-			function dismissUpdate() {
-				document.querySelector('[onclick="dismissUpdate()"]')?.closest('div')?.remove();
-			}
-		</script>
-		
-		<!-- Google Analytics 4 (Critical) -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
-		<script>
-			window.dataLayer = window.dataLayer || [];
-			function gtag(){dataLayer.push(arguments);}
-			gtag('js', new Date());
-			gtag('config', 'GA_MEASUREMENT_ID', {
-				page_title: document.title,
-				page_location: window.location.href,
-				send_page_view: true,
-				anonymize_ip: true,
-				cookie_flags: 'SameSite=None;Secure'
-			});
-		</script>
-		
-		<!-- Web Vitals Reporting -->
-		<script>
-			// Core Web Vitals tracking
-			function sendToGA(metric) {
-				gtag('event', metric.name, {
-					event_category: 'Web Vitals',
-					event_label: metric.id,
-					value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
-					non_interaction: true,
-				});
-			}
-			
-			// Load web-vitals library e track métricas
-			import('https://unpkg.com/web-vitals@3?module').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-				getCLS(sendToGA);
-				getFID(sendToGA);
-				getFCP(sendToGA);
-				getLCP(sendToGA);
-				getTTFB(sendToGA);
-			}).catch(e => console.warn('Web Vitals não pôde ser carregado:', e));
 		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover" class="bg-white">
@@ -207,89 +86,14 @@
 		<!-- Chat Widget Container -->
 		<div id="chat-widget-root"></div>
 		
-		<!-- Install PWA Prompt -->
-		<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #00BFB3; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999;">
-			<span>Instalar app na tela inicial?</span>
-			<button onclick="installPWA()" style="margin-left: 12px; background: white; color: #00BFB3; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600;">Instalar</button>
-			<button onclick="dismissInstallPrompt()" style="margin-left: 8px; background: transparent; color: white; border: 1px solid white; padding: 4px 12px; border-radius: 4px;">Depois</button>
-		</div>
-		
-		<!-- PWA Install Script -->
-		<script>
-			let deferredPrompt;
-			
-			window.addEventListener('beforeinstallprompt', (e) => {
-				// Prevenir prompt automático
-				e.preventDefault();
-				deferredPrompt = e;
-				
-				// Mostrar prompt customizado após 30 segundos se o usuário está engajado
-				setTimeout(() => {
-					if (document.hasFocus() && !localStorage.getItem('pwa-prompt-dismissed')) {
-						document.getElementById('install-prompt').style.display = 'block';
-					}
-				}, 30000);
-			});
-			
-			async function installPWA() {
-				if (deferredPrompt) {
-					deferredPrompt.prompt();
-					const { outcome } = await deferredPrompt.userChoice;
-					
-					if (outcome === 'accepted') {
-						gtag('event', 'pwa_install', {
-							event_category: 'PWA',
-							event_label: 'user_accepted'
-						});
-					}
-					
-					deferredPrompt = null;
-					document.getElementById('install-prompt').style.display = 'none';
-				}
-			}
-			
-			function dismissInstallPrompt() {
-				document.getElementById('install-prompt').style.display = 'none';
-				localStorage.setItem('pwa-prompt-dismissed', Date.now());
-				
-				gtag('event', 'pwa_prompt_dismissed', {
-					event_category: 'PWA',
-					event_label: 'user_dismissed'
-				});
-			}
-			
-			// Track PWA install
-			window.addEventListener('appinstalled', () => {
-				gtag('event', 'pwa_installed', {
-					event_category: 'PWA',
-					event_label: 'app_installed'
-				});
-			});
-		</script>
-		
 		<!-- Error Tracking (Development) -->
 		<script>
 			window.addEventListener('error', (e) => {
-				console.error('Global Error:', e.error);
-				
-				// Send to analytics in production
-				if (typeof gtag !== 'undefined') {
-					gtag('event', 'exception', {
-						description: e.error?.message || 'Unknown error',
-						fatal: false
-					});
-				}
+				console.error('🚨 Global Error:', e.error);
 			});
 			
 			window.addEventListener('unhandledrejection', (e) => {
-				console.error('Unhandled Promise Rejection:', e.reason);
-				
-				if (typeof gtag !== 'undefined') {
-					gtag('event', 'exception', {
-						description: e.reason?.message || 'Promise rejection',
-						fatal: false
-					});
-				}
+				console.error('🚨 Unhandled Promise:', e.reason);
 			});
 		</script>
 	</body>

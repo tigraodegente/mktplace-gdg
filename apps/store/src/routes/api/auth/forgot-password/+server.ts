@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       const queryPromise = (async () => {
         // STEP 1: Buscar usuário (query simples)
         const users = await db.query`
-          SELECT id, email, name, is_active 
+          SELECT id, email, name, status 
           FROM users 
           WHERE email = ${email}
           LIMIT 1
@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const user = users[0];
         
         // Sempre retorna sucesso para não vazar informações
-        if (!user || !user.is_active) {
+        if (!user || user.status !== 'active') {
           return {
             success: true,
             message: 'Se o email existir, você receberá as instruções de recuperação'

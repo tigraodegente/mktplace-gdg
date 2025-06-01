@@ -146,7 +146,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       return json({
         success: true,
         data: {
-          suggestions,
+        suggestions,
           totalProducts: result.totalProducts
         },
         source: 'database'
@@ -226,15 +226,15 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           count: mockSuggestions.length * 5
         });
       }
-      
-      return json({
-        success: true,
+    
+    return json({
+      success: true,
         data: {
           suggestions: mockSuggestions,
           totalProducts: mockSuggestions.length * 5
         },
         source: 'fallback'
-      });
+    });
     }
     
   } catch (error) {

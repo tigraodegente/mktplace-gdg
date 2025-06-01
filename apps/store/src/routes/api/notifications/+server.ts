@@ -4,7 +4,7 @@ import { getDatabase } from '$lib/db';
 
 export const GET: RequestHandler = async ({ platform, url, setHeaders, cookies }) => {
 	console.log('🔔 Notifications GET - Estratégia híbrida iniciada');
-	
+
 	// Headers de cache otimizados para notificações
 	setHeaders({
 		'cache-control': 'private, max-age=60', // 1 minuto para dados pessoais
@@ -53,69 +53,69 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders, cookies }
 				// STEP 2: Buscar notificações (query simplificada)
 				let baseQuery = `
 					SELECT id, type, title, message, data, read_at, created_at, updated_at
-					FROM notifications
-					WHERE user_id = $1
-				`;
+				FROM notifications
+				WHERE user_id = $1
+			`;
 				let queryParams = [userId];
-				let paramIndex = 2;
+			let paramIndex = 2;
 
-				if (unreadOnly) {
+			if (unreadOnly) {
 					baseQuery += ` AND read_at IS NULL`;
-				}
+			}
 
-				if (type) {
+			if (type) {
 					baseQuery += ` AND type = $${paramIndex}`;
 					queryParams.push(type);
-				}
+			}
 
 				baseQuery += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
 				const notifications = await db.query(baseQuery, ...queryParams);
 
 				// STEP 3: Contar total (query separada simplificada)
-				let countQuery = `SELECT COUNT(*) as total FROM notifications WHERE user_id = $1`;
-				let countParams = [userId];
-				
-				if (unreadOnly) {
-					countQuery += ` AND read_at IS NULL`;
-				}
-				
-				if (type) {
+			let countQuery = `SELECT COUNT(*) as total FROM notifications WHERE user_id = $1`;
+			let countParams = [userId];
+
+			if (unreadOnly) {
+				countQuery += ` AND read_at IS NULL`;
+			}
+
+			if (type) {
 					countQuery += ` AND type = $2`;
-					countParams.push(type);
-				}
+				countParams.push(type);
+			}
 
 				const totalResults = await db.query(countQuery, ...countParams);
 				const total = parseInt(totalResults[0]?.total || '0');
 
 				// STEP 4: Formatar notificações
-				const formattedNotifications = notifications.map((notif: any) => ({
-					id: notif.id,
-					type: notif.type,
-					title: notif.title,
-					message: notif.message,
+			const formattedNotifications = notifications.map((notif: any) => ({
+				id: notif.id,
+				type: notif.type,
+				title: notif.title,
+				message: notif.message,
 					data: notif.data ? (typeof notif.data === 'string' ? JSON.parse(notif.data) : notif.data) : null,
-					read: !!notif.read_at,
-					createdAt: notif.created_at,
-					readAt: notif.read_at
-				}));
+				read: !!notif.read_at,
+				createdAt: notif.created_at,
+				readAt: notif.read_at
+			}));
 
-				return {
+			return {
 					success: true,
 					data: {
-						notifications: formattedNotifications,
-						pagination: {
-							page,
-							limit,
-							total,
-							totalPages: Math.ceil(total / limit),
-							hasNext: offset + limit < total,
-							hasPrev: page > 1
-						}
+				notifications: formattedNotifications,
+				pagination: {
+					page,
+					limit,
+					total,
+					totalPages: Math.ceil(total / limit),
+					hasNext: offset + limit < total,
+					hasPrev: page > 1
+				}
 					}
-				};
+			};
 			})();
-			
+
 			const timeoutPromise = new Promise((_, reject) => {
 				setTimeout(() => reject(new Error('Timeout')), 3000)
 			});
@@ -185,9 +185,9 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders, cookies }
 			const start = offset;
 			const end = start + limit;
 			const paginatedNotifications = filteredNotifications.slice(start, end);
-			
-			return json({
-				success: true,
+
+		return json({
+			success: true,
 				data: {
 					notifications: paginatedNotifications,
 					pagination: {
@@ -200,7 +200,7 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders, cookies }
 					}
 				},
 				source: 'fallback'
-			});
+		});
 		}
 
 	} catch (error) {
@@ -253,42 +253,42 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 				const userId = sessions[0].user_id;
 
 				// STEP 2: Executar ação
-				if (action === 'markAsRead') {
-					if (notificationIds && Array.isArray(notificationIds)) {
-						// Marcar notificações específicas como lidas
-						await db.query`
-							UPDATE notifications 
-							SET read_at = NOW(), updated_at = NOW()
+			if (action === 'markAsRead') {
+				if (notificationIds && Array.isArray(notificationIds)) {
+					// Marcar notificações específicas como lidas
+					await db.query`
+						UPDATE notifications 
+						SET read_at = NOW(), updated_at = NOW()
 							WHERE id = ANY($1) AND user_id = $2
 						`([notificationIds, userId]);
-					} else {
-						// Marcar todas como lidas
-						await db.query`
-							UPDATE notifications 
-							SET read_at = NOW(), updated_at = NOW()
+				} else {
+					// Marcar todas como lidas
+					await db.query`
+						UPDATE notifications 
+						SET read_at = NOW(), updated_at = NOW()
 							WHERE user_id = $1 AND read_at IS NULL
 						`([userId]);
-					}
+				}
 
 					return { 
 						success: true,
 						data: { updated: true }
 					};
-				}
+			}
 
-				if (action === 'delete') {
-					if (notificationIds && Array.isArray(notificationIds)) {
-						await db.query`
-							DELETE FROM notifications 
+			if (action === 'delete') {
+				if (notificationIds && Array.isArray(notificationIds)) {
+					await db.query`
+						DELETE FROM notifications 
 							WHERE id = ANY($1) AND user_id = $2
 						`([notificationIds, userId]);
-					}
+				}
 
 					return { 
 						success: true,
 						data: { deleted: true }
 					};
-				}
+			}
 
 				return {
 					success: false,
@@ -329,12 +329,12 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 					error: { message: 'Ação não suportada' }
 				}, { status: 400 });
 			}
-			
-			return json({
-				success: true,
+
+		return json({
+			success: true,
 				data: mockResult,
 				source: 'fallback'
-			});
+		});
 		}
 
 	} catch (error) {
@@ -346,4 +346,4 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 			}
 		}, { status: 500 });
 	}
-}; 
+};

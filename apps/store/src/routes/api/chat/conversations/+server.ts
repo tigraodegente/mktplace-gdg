@@ -33,13 +33,13 @@ export const GET: RequestHandler = async ({ url, cookies, platform }) => {
           WHERE $1 = ANY(participants) AND status = $2
         `;
         let queryParams = [userId, status];
-        let paramIndex = 3;
+      let paramIndex = 3;
 
-        if (type) {
+      if (type) {
           baseQuery += ` AND type = $${paramIndex}`;
           queryParams.push(type);
-          paramIndex++;
-        }
+        paramIndex++;
+      }
 
         baseQuery += ` ORDER BY last_message_at DESC NULLS LAST, created_at DESC
                        LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
@@ -53,17 +53,17 @@ export const GET: RequestHandler = async ({ url, cookies, platform }) => {
             // Última mensagem
             const lastMessages = await db.query`
               SELECT m.content, m.created_at, u.name as sender_name
-              FROM chat_messages m
-              JOIN users u ON m.sender_id = u.id
+            FROM chat_messages m
+            JOIN users u ON m.sender_id = u.id
               WHERE m.conversation_id = ${conv.id}
-              ORDER BY m.created_at DESC
-              LIMIT 1
+            ORDER BY m.created_at DESC
+            LIMIT 1
             `;
 
             // Contagem não lidas  
             const unreadCounts = await db.query`
               SELECT COUNT(*) as unread
-              FROM chat_messages m
+            FROM chat_messages m
               LEFT JOIN chat_message_reads r ON m.id = r.message_id AND r.user_id = ${userId}
               WHERE m.conversation_id = ${conv.id} AND m.sender_id != ${userId} AND r.id IS NULL
             `;
@@ -83,30 +83,30 @@ export const GET: RequestHandler = async ({ url, cookies, platform }) => {
           }
         }
 
-        return {
+      return {
           conversations: enrichedConversations,
-          pagination: {
-            page,
-            limit,
+        pagination: {
+          page,
+          limit,
             total: enrichedConversations.length,
             pages: Math.ceil(enrichedConversations.length / limit)
-          }
-        };
+        }
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 3000)
-      });
-      
+    });
+
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log(`✅ Conversas carregadas: ${result.conversations.length}`);
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro conversations GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
@@ -201,31 +201,31 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       const queryPromise = (async () => {
         // STEP 1: Verificar se já existe conversa similar (simplificado)
         let checkQuery = `
-          SELECT id FROM chat_conversations
+        SELECT id FROM chat_conversations
           WHERE type = $1 AND $2 = ANY(participants) AND status = 'active'
-        `;
+      `;
         let checkParams = [type, userId];
 
-        if (order_id) {
+      if (order_id) {
           checkQuery += ` AND order_id = $3`;
           checkParams.push(order_id);
-        }
+      }
 
         checkQuery += ' LIMIT 1';
 
         const existing = await db.query(checkQuery, ...checkParams);
 
         if (existing.length > 0) {
-          return {
-            conversation_id: existing[0].id,
-            message: 'Conversa já existe'
-          };
-        }
+        return {
+          conversation_id: existing[0].id,
+          message: 'Conversa já existe'
+        };
+      }
 
         // STEP 2: Criar nova conversa
         const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
         const newConversations = await db.query`
-          INSERT INTO chat_conversations (
+        INSERT INTO chat_conversations (
             id, type, title, participants, order_id, seller_id, 
             created_by, status, created_at
           ) VALUES (
@@ -233,7 +233,7 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
             ${participants}, ${order_id}, ${seller_id}, ${userId}, 
             'active', NOW()
           )
-          RETURNING *
+        RETURNING *
         `;
 
         return {
@@ -241,18 +241,18 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
           message: 'Conversa criada com sucesso'
         };
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 2000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro conversations POST: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);

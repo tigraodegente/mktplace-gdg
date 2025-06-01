@@ -156,8 +156,8 @@
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
-		<!-- Header com gradiente -->
-		<div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] p-4 text-white relative overflow-hidden">
+		<!-- Header sem gradiente -->
+		<div class="bg-[#00BFB3] p-4 text-white relative overflow-hidden">
 			<!-- Padrão de fundo sutil -->
 			<div class="absolute inset-0 opacity-10">
 				<svg class="w-full h-full" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -201,9 +201,9 @@
 		</div>
 		
 		{#if itemCount === 0}
-			<!-- Empty State Aprimorado -->
+			<!-- Empty State sem degradês -->
 			<div class="p-8 text-center">
-				<div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center relative">
+				<div class="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center relative">
 					<svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
 					</svg>
@@ -217,7 +217,7 @@
 				</p>
 				<button 
 					onclick={onClose}
-					class="px-6 py-3 bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-medium"
+					class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transform hover:scale-105 transition-all duration-200 font-medium"
 				>
 					Continuar comprando
 				</button>
@@ -226,7 +226,7 @@
 			<!-- Barra de Progresso Frete Grátis -->
 			{@const freeShippingProgress = getFreeShippingProgress()}
 			{#if !freeShippingProgress.hasFreeship}
-				<div class="p-4 bg-gradient-to-r from-blue-50 to-green-50 border-b border-gray-100">
+				<div class="p-4 bg-blue-50 border-b border-gray-100">
 					<div class="flex items-center gap-2 mb-2">
 						<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -237,13 +237,13 @@
 					</div>
 					<div class="w-full bg-gray-200 rounded-full h-2">
 						<div 
-							class="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-500 ease-out"
+							class="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
 							style="width: {freeShippingProgress.percentage}%"
 						></div>
 					</div>
 				</div>
 			{:else}
-				<div class="p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
+				<div class="p-3 bg-green-50 border-b border-green-100">
 					<div class="flex items-center gap-2">
 						<div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
 							<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -372,7 +372,7 @@
 			</div>
 			
 			<!-- Footer com totais aprimorados -->
-			<div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200">
+			<div class="p-4 bg-gray-50 border-t border-gray-200">
 				<!-- Resumo de totais -->
 				<div class="space-y-2 mb-4">
 					<div class="flex justify-between text-sm">
@@ -408,7 +408,7 @@
 				<div class="space-y-3">
 					<button 
 						onclick={handleCheckout}
-						class="w-full bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white py-3 px-4 rounded-xl text-sm font-bold hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+						class="w-full bg-[#00BFB3] text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-[#00A89D] transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />

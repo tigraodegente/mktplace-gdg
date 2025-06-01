@@ -28,11 +28,11 @@ export const GET: RequestHandler = async ({ params, url, platform, request }) =>
           FROM gift_lists
           WHERE (id = ${id} OR share_token = ${id}) AND status = 'active'
           LIMIT 1
-        `;
+      `;
 
         if (!lists.length) {
-          return null;
-        }
+        return null;
+      }
 
         const list = lists[0];
 
@@ -54,33 +54,33 @@ export const GET: RequestHandler = async ({ params, url, platform, request }) =>
         // STEP 4: Atualizar view count (async para não travar)
         setTimeout(async () => {
           try {
-            await db.query`
-              UPDATE gift_lists 
-              SET view_count = view_count + 1, updated_at = NOW()
-              WHERE id = ${list.id}
-            `;
+      await db.query`
+        UPDATE gift_lists 
+        SET view_count = view_count + 1, updated_at = NOW()
+        WHERE id = ${list.id}
+      `;
           } catch (e) {
             console.log('View count update async failed');
           }
         }, 100);
 
-        let items = [];
-        let contributions = [];
+      let items = [];
+      let contributions = [];
 
         // STEP 5: Incluir itens se solicitado
-        if (includeItems) {
+      if (includeItems) {
           try {
-            items = await db.query`
+        items = await db.query`
               SELECT gli.id, gli.custom_item_name, gli.category, gli.priority,
                      gli.target_amount, gli.collected_amount, gli.is_purchased,
                      gli.display_order, gli.product_id, gli.created_at,
                      p.name as product_name, p.slug as product_slug
-              FROM gift_list_items gli
-              LEFT JOIN products p ON p.id = gli.product_id
-              WHERE gli.list_id = ${list.id} AND gli.is_active = true
-              ORDER BY gli.priority DESC, gli.display_order ASC, gli.created_at ASC
+          FROM gift_list_items gli
+          LEFT JOIN products p ON p.id = gli.product_id
+          WHERE gli.list_id = ${list.id} AND gli.is_active = true
+          ORDER BY gli.priority DESC, gli.display_order ASC, gli.created_at ASC
               LIMIT 50
-            `;
+        `;
             
             // Enriquecer com dados calculados
             items = items.map((item: any) => ({
@@ -95,19 +95,19 @@ export const GET: RequestHandler = async ({ params, url, platform, request }) =>
             console.log('Erro ao buscar itens');
             items = [];
           }
-        }
+      }
 
         // STEP 6: Incluir contribuições se solicitado
-        if (includeContributions) {
+      if (includeContributions) {
           try {
-            contributions = await db.query`
+        contributions = await db.query`
               SELECT gc.id, gc.amount, gc.message, gc.is_anonymous,
                      gc.payment_status, gc.created_at, gc.contributor_name,
                      gli.custom_item_name, gli.target_amount as item_target_amount
-              FROM gift_contributions gc
-              LEFT JOIN gift_list_items gli ON gli.id = gc.item_id
+          FROM gift_contributions gc
+          LEFT JOIN gift_list_items gli ON gli.id = gc.item_id
               WHERE gc.list_id = ${list.id} AND gc.payment_status = 'paid'
-              ORDER BY gc.created_at DESC
+          ORDER BY gc.created_at DESC
               LIMIT 50
             `;
             
@@ -126,48 +126,48 @@ export const GET: RequestHandler = async ({ params, url, platform, request }) =>
           ? Math.round((list.collected_amount / list.goal_amount) * 100 * 100) / 100
           : 0;
 
-        return {
-          ...list,
+      return {
+        ...list,
           owner_name: owner.name,
           owner_email: owner.email,
           owner_avatar: owner.avatar,
           total_items: parseInt(counts.total_items),
           purchased_items: parseInt(counts.purchased_items),
           completion_percentage,
-          items,
-          contributions,
-          stats: {
+        items,
+        contributions,
+        stats: {
             total_items: parseInt(counts.total_items),
             purchased_items: parseInt(counts.purchased_items),
             completion_percentage,
-            total_contributors: contributions.length
-          }
-        };
+          total_contributors: contributions.length
+        }
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 4000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (!result) {
-        return json({
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Lista de presentes não encontrada'
-          }
-        }, { status: 404 });
-      }
+
+    if (!result) {
+      return json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Lista de presentes não encontrada'
+        }
+      }, { status: 404 });
+    }
       
       console.log(`✅ Gift list encontrada: ${result.title}`);
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro gift list GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
@@ -285,11 +285,11 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
         // STEP 1: Verificar se a lista existe
         const existingLists = await db.query`
           SELECT user_id FROM gift_lists WHERE id = ${id} LIMIT 1
-        `;
+      `;
 
         if (!existingLists.length) {
-          return { error: 'Lista não encontrada', status: 404 };
-        }
+        return { error: 'Lista não encontrada', status: 404 };
+      }
 
         // STEP 2: Atualizar lista (campos fornecidos)
         const updateFields = [];
@@ -332,8 +332,8 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
           UPDATE gift_lists 
           SET ${updateFields.join(', ')}
           WHERE id = $${paramIndex}
-          RETURNING *
-        `;
+        RETURNING *
+      `;
 
         const updatedLists = await db.query(updateQuery, ...updateValues);
         const updatedList = updatedLists[0];
@@ -341,46 +341,46 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
         // Log da atividade (async)
         setTimeout(async () => {
           try {
-            await db.query`
+      await db.query`
               INSERT INTO gift_list_activities (
                 list_id, user_id, action, details, created_at
               ) VALUES (
                 ${id}, ${existingLists[0].user_id}, 'UPDATE',
                 ${JSON.stringify(data)}, NOW()
-              )
-            `;
+        )
+      `;
           } catch (e) {
             console.log('Activity log async failed');
           }
         }, 100);
 
-        return { data: updatedList };
+      return { data: updatedList };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 3000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (result.error) {
-        return json({
-          success: false,
-          error: {
-            code: 'UPDATE_ERROR',
-            message: result.error
-          }
-        }, { status: result.status || 500 });
-      }
+
+    if (result.error) {
+      return json({
+        success: false,
+        error: {
+          code: 'UPDATE_ERROR',
+          message: result.error
+        }
+      }, { status: result.status || 500 });
+    }
       
       console.log(`✅ Gift list atualizada: ${result.data.title}`);
-      
-      return json({
-        success: true,
-        data: result.data,
+
+    return json({
+      success: true,
+      data: result.data,
         message: 'Lista de presentes atualizada com sucesso!',
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro gift list PUT: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
@@ -428,58 +428,58 @@ export const DELETE: RequestHandler = async ({ params, platform, locals }) => {
         // STEP 1: Verificar se a lista existe
         const existingLists = await db.query`
           SELECT user_id, title FROM gift_lists WHERE id = ${id} LIMIT 1
-        `;
+      `;
 
         if (!existingLists.length) {
-          return { error: 'Lista não encontrada', status: 404 };
-        }
+        return { error: 'Lista não encontrada', status: 404 };
+      }
 
         // STEP 2: Soft delete (marcar como cancelada)
-        await db.query`
-          UPDATE gift_lists 
-          SET status = 'cancelled', updated_at = NOW()
-          WHERE id = ${id}
-        `;
+      await db.query`
+        UPDATE gift_lists 
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = ${id}
+      `;
 
         // Log da atividade (async)
         setTimeout(async () => {
           try {
-            await db.query`
+      await db.query`
               INSERT INTO gift_list_activities (
                 list_id, user_id, action, details, created_at
               ) VALUES (
                 ${id}, ${existingLists[0].user_id}, 'DELETE',
                 ${JSON.stringify({ title: existingLists[0].title })}, NOW()
-              )
-            `;
+        )
+      `;
           } catch (e) {
             console.log('Delete activity log async failed');
           }
         }, 100);
 
-        return { success: true };
+      return { success: true };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 2000)
-      });
+    });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (result.error) {
-        return json({
-          success: false,
-          error: {
-            code: 'DELETE_ERROR',
-            message: result.error
-          }
-        }, { status: result.status || 500 });
-      }
+
+    if (result.error) {
+      return json({
+        success: false,
+        error: {
+          code: 'DELETE_ERROR',
+          message: result.error
+        }
+      }, { status: result.status || 500 });
+    }
       
       console.log(`✅ Gift list removida: ${id}`);
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         message: 'Lista de presentes removida com sucesso!',
         source: 'database'
       });
@@ -492,7 +492,7 @@ export const DELETE: RequestHandler = async ({ params, platform, locals }) => {
         success: true,
         message: 'Lista de presentes removida com sucesso!',
         source: 'fallback'
-      });
+    });
     }
 
   } catch (error) {

@@ -13,39 +13,33 @@
 
 <div class="flex flex-col items-center justify-center h-full p-8 text-center">
 	<div 
-		class="bg-gradient-to-br from-[#00BFB3]/10 to-[#00A89D]/10 rounded-full p-8 shadow-lg mb-6 relative"
-		transition:scale={{ duration: 600, delay: 100, easing: elasticOut }}
+		class="bg-[#00BFB3]/10 rounded-full p-8 shadow-lg mb-6 relative"
+		transition:scale={{ delay: 200, duration: 300 }}
 	>
-		<!-- Animated circles background -->
-		<div class="absolute inset-0 rounded-full overflow-hidden">
-			<div class="absolute w-32 h-32 bg-[#00BFB3]/20 rounded-full -top-8 -left-8 animate-blob"></div>
-			<div class="absolute w-24 h-24 bg-[#00A89D]/20 rounded-full -bottom-6 -right-6 animate-blob animation-delay-2000"></div>
-			<div class="absolute w-20 h-20 bg-[#00BFB3]/15 rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-blob animation-delay-4000"></div>
-		</div>
-		
-		<svg class="w-32 h-32 text-[#00BFB3]/40 relative z-10 animate-float" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+		<!-- Ícone animado -->
+		<svg 
+			class="w-20 h-20 text-[#00BFB3] animate-bounce"
+			fill="none" 
+			stroke="currentColor" 
+			viewBox="0 0 24 24"
+		>
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
 		</svg>
+		
+		<!-- Efeito de pulso -->
+		<div class="absolute inset-0 bg-[#00BFB3]/5 rounded-full animate-ping"></div>
 	</div>
 	
-	<h3 
-		class="text-2xl font-bold text-gray-900 mb-2"
-		transition:fade={{ duration: 400, delay: 300 }}
-	>
-		{MESSAGES.EMPTY_CART}
-	</h3>
-	
-	<p 
-		class="text-gray-600 mb-8 max-w-sm"
-		transition:fade={{ duration: 400, delay: 400 }}
-	>
-		{MESSAGES.EMPTY_CART_SUBTITLE}
+	<h2 class="text-2xl font-bold text-gray-900 mb-4">Seu carrinho está vazio</h2>
+	<p class="text-gray-600 mb-8 max-w-md">
+		Que tal começar adicionando alguns produtos incríveis ao seu carrinho?
 	</p>
 	
-	<button 
-		onclick={onContinueShopping}
-		class="px-8 py-4 bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white font-semibold rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 hover:gap-3 group"
-		transition:scale={{ duration: 400, delay: 500, easing: elasticOut }}
+	<!-- CTA Button -->
+	<a 
+		href="/categorias"
+		class="px-8 py-4 bg-[#00BFB3] text-white font-semibold rounded-xl hover:bg-[#00A89D] hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 hover:gap-3 group"
+		transition:fly={{ delay: 400, duration: 300, y: 20 }}
 	>
 		<svg class="w-5 h-5 transition-transform group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h10m-7 5h4m-9 4h14l1-12H4l1 12z" />
@@ -54,7 +48,7 @@
 		<svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 		</svg>
-	</button>
+	</a>
 </div>
 
 <style>

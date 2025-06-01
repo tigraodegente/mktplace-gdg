@@ -65,57 +65,58 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 // STEP 1: Buscar zona por CEP (query simplificada)
                 const zones = await db.query`
                     SELECT z.id as zone_id, z.name as zone_name, z.uf, 
-                           c.name as carrier_name
-                    FROM shipping_zones z
-                    JOIN shipping_carriers c ON z.carrier_id = c.id
+                    c.name as carrier_name
+                FROM shipping_zones z
+                JOIN shipping_carriers c ON z.carrier_id = c.id
                     WHERE z.is_active = true AND c.is_active = true
                     LIMIT 5
-                `;
+            `;
 
                 let zone = null;
                 if (zones.length > 0) {
                     // Usar primeira zona ativa (simplificado)
                     zone = zones[0];
                 } else {
-                    return {
-                        success: false,
-                        error: 'CEP não atendido',
-                        options: []
-                    };
-                }
+                return {
+                    success: false,
+                    error: 'CEP não atendido',
+                    options: []
+                };
+            }
 
                 // STEP 2: Calcular métricas de peso/volume
-                const totalWeight = calculateTotalWeight(items);
-                const totalVolume = calculateTotalVolume(items);
-                const cubicWeight = calculateCubicWeight(totalVolume);
-                const effectiveWeight = calculateEffectiveWeight(items);
+            const totalWeight = calculateTotalWeight(items);
+            const totalVolume = calculateTotalVolume(items);
+            const cubicWeight = calculateCubicWeight(totalVolume);
+            const effectiveWeight = calculateEffectiveWeight(items);
 
                 // STEP 3: Buscar opções de modalidades (query simplificada)
                 let modalitiesOptions = [];
                 try {
                     modalitiesOptions = await db.query`
                         SELECT id, name, description, delivery_days_min, delivery_days_max,
-                               pricing_type, base_price
+                               pricing_type, min_price, max_price, price_multiplier
                         FROM shipping_modalities
                         WHERE is_active = true
                         ORDER BY priority ASC, delivery_days_min ASC
                         LIMIT 10
-                    `;
+            `;
                 } catch (e) {
                     console.log('Erro ao buscar modalidades, usando fallback');
                 }
 
-                const shippingOptions: AdvancedShippingOption[] = [];
+            const shippingOptions: AdvancedShippingOption[] = [];
 
                 // STEP 4: Processar opções (simplificado)
                 if (modalitiesOptions.length > 0) {
                     for (const option of modalitiesOptions) {
-                        const basePrice = calculateAdvancedPrice(effectiveWeight, option.base_price || 15.90);
+                        // Usar min_price como base_price, ou fallback se não existir
+                        const basePrice = calculateAdvancedPrice(effectiveWeight, option.min_price || option.max_price || 15.90);
                         const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                         const isFreeShipping = totalValue >= 199; // Threshold simplificado
-                        
-                        const shippingOption: AdvancedShippingOption = {
-                            id: option.id,
+                
+                const shippingOption: AdvancedShippingOption = {
+                    id: option.id,
                             name: generateShippingName(option.name, option.delivery_days_min),
                             description: option.description || '',
                             price: isFreeShipping ? 0 : basePrice,
@@ -123,12 +124,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                             modality_id: option.id,
                             modality_name: option.name,
                             pricing_type: option.pricing_type || 'per_shipment',
-                            carrier: zone.carrier_name,
-                            zone_name: zone.zone_name
-                        };
-                        
-                        shippingOptions.push(shippingOption);
-                    }
+                    carrier: zone.carrier_name,
+                    zone_name: zone.zone_name
+                };
+                
+                shippingOptions.push(shippingOption);
+            }
                 } else {
                     // Opções padrão se não encontrou no banco
                     const defaultOptions = [
@@ -169,26 +170,26 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 }
 
                 // Ordenar por preço
-                shippingOptions.sort((a, b) => a.price - b.price);
+            shippingOptions.sort((a, b) => a.price - b.price);
 
-                return {
-                    success: true,
-                    options: shippingOptions,
-                    zone_info: {
-                        zone_id: zone.zone_id,
-                        zone_name: zone.zone_name,
-                        uf: zone.uf,
-                        carrier: zone.carrier_name
-                    },
-                    calculation_info: {
-                        total_weight: totalWeight,
-                        total_volume: totalVolume,
-                        cubic_weight: cubicWeight,
-                        effective_weight: effectiveWeight,
-                        postal_code: cleanPostalCode,
-                        items_count: items.length
-                    }
-                };
+            return {
+                success: true,
+                options: shippingOptions,
+                zone_info: {
+                    zone_id: zone.zone_id,
+                    zone_name: zone.zone_name,
+                    uf: zone.uf,
+                    carrier: zone.carrier_name
+                },
+                calculation_info: {
+                    total_weight: totalWeight,
+                    total_volume: totalVolume,
+                    cubic_weight: cubicWeight,
+                    effective_weight: effectiveWeight,
+                    postal_code: cleanPostalCode,
+                    items_count: items.length
+                }
+            };
             })();
             
             const timeoutPromise = new Promise((_, reject) => {

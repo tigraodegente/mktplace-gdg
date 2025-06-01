@@ -77,7 +77,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       
       // Promise com timeout de 8 segundos para operação crítica
       const queryPromise = (async () => {
-        console.log('🔄 Iniciando criação de pedido...');
+      console.log('🔄 Iniciando criação de pedido...');
 
         // STEP 1: Validar produtos (query simplificada)
         let subtotal = 0;
@@ -99,7 +99,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           }
 
           subtotal += item.price * item.quantity;
-        }
+      }
 
         // STEP 2: Calcular totais (simplificado)
         const shipping = subtotal > 100 ? 0 : 15.90;
@@ -129,36 +129,36 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
         // STEP 4: Criar pedido
         const orders = await db.query`
-          INSERT INTO orders (
-            user_id, order_number, status, payment_status, payment_method,
-            subtotal, shipping_cost, discount_amount, total,
+        INSERT INTO orders (
+          user_id, order_number, status, payment_status, payment_method,
+          subtotal, shipping_cost, discount_amount, total,
             shipping_address, billing_address, notes,
-            created_at, updated_at
-          ) VALUES (
+          created_at, updated_at
+        ) VALUES (
             ${body.user_id}, ${orderNumber}, 'pending', 'pending', ${body.payment_method},
             ${subtotal}, ${shipping}, ${discount}, ${total},
-            ${JSON.stringify(body.shipping_address)}, ${JSON.stringify(body.billing_address || null)}, 
+          ${JSON.stringify(body.shipping_address)}, ${JSON.stringify(body.billing_address || null)}, 
             ${body.notes || null}, NOW(), NOW()
-          )
-          RETURNING id, order_number, total, status
-        `;
+        )
+        RETURNING id, order_number, total, status
+      `;
 
         const order = orders[0];
-        console.log(`✅ Pedido criado: ${order.order_number}`);
+      console.log(`✅ Pedido criado: ${order.order_number}`);
 
         // STEP 5: Criar itens do pedido
-        for (const item of body.items) {
-          await db.query`
-            INSERT INTO order_items (
-              order_id, product_id, seller_id, quantity, price, total,
-              created_at
-            ) VALUES (
+      for (const item of body.items) {
+        await db.query`
+          INSERT INTO order_items (
+            order_id, product_id, seller_id, quantity, price, total,
+            created_at
+          ) VALUES (
               ${order.id}, ${item.product_id}, ${item.seller_id || 'seller-1'}, 
-              ${item.quantity}, ${item.price}, ${item.quantity * item.price},
-              NOW()
-            )
-          `;
-        }
+            ${item.quantity}, ${item.price}, ${item.quantity * item.price},
+            NOW()
+          )
+        `;
+      }
 
         // STEP 6: Operações async (não travar resposta)
         setTimeout(async () => {
@@ -197,17 +197,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           }
         }, 100);
 
-        return {
-          success: true,
-          order: {
-            id: order.id,
-            order_number: order.order_number,
+      return {
+        success: true,
+        order: {
+          id: order.id,
+          order_number: order.order_number,
             total: parseFloat(order.total),
-            status: order.status
-          }
-        };
+          status: order.status
+        }
+      };
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 8000)
       });
@@ -220,12 +220,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         ...result,
         source: 'database'
       } as OrderResponse);
-      
+
     } catch (error) {
       console.log(`⚠️ Erro orders create: ${error instanceof Error ? error.message : 'Erro'}`);
       
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      
+    
       // FALLBACK SEGURO: NUNCA criar pedido inválido
       // Em caso de timeout ou erro crítico, sempre falhar
       
@@ -261,4 +261,4 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       }
     } as OrderResponse, { status: 500 });
   }
-}; 
+};

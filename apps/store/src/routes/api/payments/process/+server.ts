@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           newStatus = 'confirmed';
         } else if (action === 'cancel') {
           newStatus = 'cancelled';
-        }
+}
 
         // Atualizar status
         await db.query`
@@ -42,13 +42,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           WHERE id = ${payment_id}
         `;
 
-        return {
+  return {
           success: true,
           payment: { ...payment, status: newStatus },
           message: `Pagamento ${action === 'confirm' ? 'confirmado' : 'cancelado'} com sucesso`
         };
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 3000)
       });
@@ -67,11 +67,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           amount: 99.90,
           status: action === 'confirm' ? 'confirmed' : 'cancelled',
           payment_method: 'credit_card'
-        },
+    },
         message: `Pagamento ${action === 'confirm' ? 'confirmado' : 'cancelado'} com sucesso`,
         source: 'fallback'
-      });
-    }
+  });
+}
 
   } catch (error: any) {
     console.error('❌ Erro payments process:', error);

@@ -193,7 +193,10 @@
 			newParams.set('pagina', '1');
 		}
 		
-		goto(`?${newParams.toString()}`, { 
+		const newUrl = `?${newParams.toString()}`;
+		console.log('🔄 Atualizando URL:', newUrl);
+		
+		goto(newUrl, { 
 			replaceState: true, 
 			keepFocus: true,
 			noScroll: true
@@ -374,10 +377,13 @@
 			<!-- Filtros Desktop -->
 			<aside class="w-64 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
 				<FilterSidebar
-					categories={(stableFacets || searchResult?.facets)?.categories.map(c => ({
-						...c,
-						selected: urlParams.selectedCategories.includes(c.slug || c.id)
-					})) || []}
+					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
+						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
+						return {
+							...c,
+							selected: isSelected
+						};
+					}) || []}
 					brands={(stableFacets || searchResult?.facets)?.brands?.map(b => ({
 						...b,
 						selected: urlParams.selectedBrands.includes(b.slug || b.id)
@@ -755,10 +761,13 @@
 			<!-- Conteúdo dos filtros -->
 			<div class="flex-1 overflow-y-auto">
 				<FilterSidebar
-					categories={(stableFacets || searchResult?.facets)?.categories.map(c => ({
-						...c,
-						selected: urlParams.selectedCategories.includes(c.slug || c.id)
-					})) || []}
+					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
+						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
+						return {
+							...c,
+							selected: isSelected
+						};
+					}) || []}
 					brands={(stableFacets || searchResult?.facets)?.brands?.map(b => ({
 						...b,
 						selected: urlParams.selectedBrands.includes(b.slug || b.id)

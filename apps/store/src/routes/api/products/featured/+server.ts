@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db';
+import postgres from 'postgres';
+import { env } from '$env/dynamic/private';
 
 interface BasicProduct {
   id: string;
@@ -15,14 +16,22 @@ export const GET: RequestHandler = async ({ platform, url }) => {
   try {
     const limit = Number(url.searchParams.get('limit')) || 12;
     
-    console.log('🔍 Featured - Versão híbrida otimizada');
+    console.log('🔍 Featured - Testando conexão direta com postgres...');
     
-    // Tentar buscar dados reais do banco com query SUPER simples
+    // Tentar conexão direta com postgres
     try {
-      const db = getDatabase(platform);
+      const dbUrl = env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev';
+      console.log('📡 URL do banco:', dbUrl.replace(/\/\/.*@/, '//***@')); // Ocultar credenciais
       
-      // Promise com timeout de 3 segundos
-      const queryPromise = db.query`
+      const sql = postgres(dbUrl, {
+        max: 1,
+        idle_timeout: 30,
+        connect_timeout: 10,
+        ssl: false // Local não precisa SSL
+      });
+      
+      console.log('🔍 Executando query SQL...');
+      const products = await sql`
         SELECT id, name, slug, price, original_price, category_id
         FROM products 
         WHERE featured = true AND is_active = true 
@@ -30,17 +39,14 @@ export const GET: RequestHandler = async ({ platform, url }) => {
         LIMIT ${limit}
       `;
       
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 3000)
-      });
+      console.log(`✅ SUCESSO: ${products.length} produtos encontrados no banco`);
+      console.log('📦 Produtos:', products.map(p => ({ id: p.id, name: p.name })));
       
-      const queryResult = await Promise.race([queryPromise, timeoutPromise]);
-      const products = queryResult as BasicProduct[];
+      // Fechar conexão
+      await sql.end();
       
-      console.log(`✅ Banco OK: ${products.length} produtos reais`);
-      
-      // Formatar produtos com dados reais + placeholder para o resto
-      const formattedProducts = products.map((product: BasicProduct, index: number) => ({
+      // Formatar produtos com dados reais
+      const formattedProducts = products.map((product: any, index: number) => ({
         id: product.id,
         name: product.name,
         slug: product.slug,
@@ -83,7 +89,9 @@ export const GET: RequestHandler = async ({ platform, url }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Banco timeout/erro: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error(`❌ ERRO no banco: ${errorMsg}`);
+      console.error('❌ Stack:', error);
       
       // FALLBACK: Dados mock de alta qualidade baseados nos produtos reais do banco
       const mockProducts = [

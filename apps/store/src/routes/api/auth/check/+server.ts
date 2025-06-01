@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
             
             const queryPromise = (async () => {
               const user = await db.query`
-                SELECT id, email, name, role, is_active
+                SELECT id, email, name, role, status
                 FROM users
                 WHERE id = ${sessionData.userId}
                 LIMIT 1
@@ -37,7 +37,7 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
             
             const user = await Promise.race([queryPromise, timeoutPromise]) as any;
             
-            if (user && user.is_active) {
+            if (user && user.status === 'active') {
               console.log('✅ Sessão antiga válida');
               return json({
                 authenticated: true,
@@ -70,95 +70,37 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
     try {
       const db = getDatabase(platform);
       
-      // Promise com timeout de 3 segundos para auth
-      const queryPromise = (async () => {
-        // STEP 1: Query simplificada - apenas verificar sessão
-        const sessions = await db.query`
-          SELECT id, user_id, expires_at
-          FROM sessions
-          WHERE token = ${sessionToken}
-          LIMIT 1
-        `;
-        
-        const session = sessions[0];
-        if (!session) {
-          return {
-            authenticated: false,
-            user: null,
-            reason: 'session_not_found'
-          };
-        }
-        
-        // STEP 2: Verificar se a sessão expirou (em memória, não DELETE complexo)
-        if (new Date(session.expires_at) < new Date()) {
-          // Marcar para cleanup async (não travar a resposta)
-          setTimeout(async () => {
-            try {
-              await db.query`DELETE FROM sessions WHERE id = ${session.id}`;
-            } catch (e) {
-              console.log('Cleanup async failed:', e);
-            }
-          }, 100);
-          
-          return {
-            authenticated: false,
-            user: null,
-            reason: 'session_expired'
-          };
-        }
-        
-        // STEP 3: Query separada para usuário
-        const users = await db.query`
-          SELECT id, email, name, role, is_active
-          FROM users
-          WHERE id = ${session.user_id}
-          LIMIT 1
-        `;
-        
-        const user = users[0];
-        if (!user || !user.is_active) {
-          return {
-            authenticated: false,
-            user: null,
-            reason: 'user_inactive'
-          };
-        }
-        
-        // STEP 4: Update async (não travar resposta)
-        setTimeout(async () => {
-          try {
-            await db.query`
-              UPDATE sessions 
-              SET updated_at = NOW()
-              WHERE id = ${session.id}
-            `;
-          } catch (e) {
-            console.log('Update async failed:', e);
-          }
-        }, 100);
-        
-        return {
+      // Query otimizada com JOIN
+      const result = await db.query`
+        SELECT u.id, u.email, u.name, u.role, u.status
+        FROM sessions s
+        INNER JOIN users u ON s.user_id = u.id
+        WHERE s.token = ${sessionToken}
+          AND s.expires_at > NOW()
+          AND u.status = 'active'
+        LIMIT 1
+      `;
+      
+      const user = result[0];
+      if (user && user.status === 'active') {
+        console.log('✅ Auth OK: Autenticado');
+        return json({
           authenticated: true,
           user: {
             id: user.id,
             email: user.email,
             name: user.name,
             role: user.role
-          }
-        };
-      })();
+          },
+          source: 'database'
+        });
+      }
       
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 3000)
-      });
-      
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      console.log(`✅ Auth OK: ${result.authenticated ? 'Autenticado' : 'Não autenticado'}`);
-      
+      // Não autenticado, mas retorna 200
       return json({
-        ...result,
-        source: 'database'
+        authenticated: false,
+        user: null,
+        source: 'no_session'
       });
       
     } catch (error) {

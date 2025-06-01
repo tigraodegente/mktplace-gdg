@@ -115,45 +115,30 @@
 	// Estado dos grupos expandidos
 	let expandedGroups = $state<Set<string>>(new Set(['categories', 'price', 'brands', 'benefits']));
 	
-	// Filtros selecionados
-	let selectedCategories = $state<Set<string>>(new Set());
-	let selectedBrands = $state<Set<string>>(new Set());
+	// Filtros selecionados - SIMPLIFICADO: usar diretamente as props ao invés de state interno
 	let selectedPrice = $state(priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 }));
 	
-	// Sincronizar categorias e marcas selecionadas com as props usando $derived.by
-	$effect.pre(() => {
-		// Sincronizar categorias selecionadas apenas na primeira vez
-		const currentCategories = categories.filter(c => c.selected).map(c => c.slug || c.id);
-		const newSet = new Set(currentCategories);
-		
-		// Só atualizar se realmente mudou
-		if (selectedCategories.size !== newSet.size || 
-			![...selectedCategories].every(cat => newSet.has(cat))) {
-			selectedCategories = newSet;
+	// NOVO: Usar computed derivado das props ao invés de state interno
+	let selectedCategories = $derived.by(() => {
+		const result = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
+		// Log apenas se houver categorias selecionadas
+		if (result.size > 0) {
+			console.log('✅ FilterSidebar: Categorias selecionadas:', Array.from(result));
 		}
+		return result;
 	});
 	
-	$effect.pre(() => {
-		// Sincronizar marcas selecionadas apenas na primeira vez
-		const currentBrands = brands.filter(b => b.selected).map(b => b.slug || b.id);
-		const newSet = new Set(currentBrands);
-		
-		// Só atualizar se realmente mudou
-		if (selectedBrands.size !== newSet.size || 
-			![...selectedBrands].every(brand => newSet.has(brand))) {
-			selectedBrands = newSet;
-		}
+	let selectedBrands = $derived.by(() => {
+		return new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
 	});
 	
-	// Atualizar selectedPrice quando priceRange mudar - com guard
-	$effect.pre(() => {
-		if (!priceRange) return;
-		
-		const newPrice = priceRange.current || { min: priceRange.min, max: priceRange.max };
-		
-		// Só atualizar se realmente mudou
-		if (selectedPrice.min !== newPrice.min || selectedPrice.max !== newPrice.max) {
-			selectedPrice = newPrice;
+	// Atualizar selectedPrice quando priceRange mudar
+	$effect(() => {
+		if (priceRange) {
+			const newPrice = priceRange.current || { min: priceRange.min, max: priceRange.max };
+			if (selectedPrice.min !== newPrice.min || selectedPrice.max !== newPrice.max) {
+				selectedPrice = newPrice;
+			}
 		}
 	});
 	
@@ -167,28 +152,42 @@
 	}
 	
 	function toggleFilter(type: 'category' | 'brand', filter: Filter) {
-		const filterValue = filter.slug || filter.id; // Usar slug se disponível, senão usar id
-		const set = type === 'category' ? selectedCategories : selectedBrands;
+		const filterValue = filter.slug || filter.id;
+		const currentSelected = type === 'category' ? selectedCategories : selectedBrands;
 		
-		if (set.has(filterValue)) {
-			set.delete(filterValue);
+		// Criar nova lista de selecionados
+		let newSelected: string[];
+		if (currentSelected.has(filterValue)) {
+			// Remover filtro
+			newSelected = Array.from(currentSelected).filter(id => id !== filterValue);
+			console.log(`🗑️ Removendo filtro: ${filter.name}`);
 		} else {
-			set.add(filterValue);
+			// Adicionar filtro
+			newSelected = [...Array.from(currentSelected), filterValue];
+			console.log(`✅ Adicionando filtro: ${filter.name}`);
 		}
 		
-		// Forçar reatividade
-		if (type === 'category') {
-			selectedCategories = new Set(selectedCategories);
-		} else {
-			selectedBrands = new Set(selectedBrands);
-		}
+		// Emitir mudança imediatamente
+		const eventData = type === 'category' ? {
+			categories: newSelected,
+			brands: Array.from(selectedBrands),
+			priceRange: undefined // Não alterar preço neste evento
+		} : {
+			categories: Array.from(selectedCategories),
+			brands: newSelected,
+			priceRange: undefined // Não alterar preço neste evento
+		};
 		
-		emitFilterChange();
+		dispatch('filterChange', eventData);
 	}
 	
 	function handlePriceChange(event: CustomEvent<{ min: number; max: number }>) {
 		selectedPrice = event.detail;
-		emitFilterChange();
+		dispatch('filterChange', {
+			categories: Array.from(selectedCategories),
+			brands: Array.from(selectedBrands),
+			priceRange: selectedPrice
+		});
 	}
 	
 	function handleRatingChange(event: CustomEvent<{ rating: number | undefined }>) {
@@ -224,15 +223,6 @@
 	}
 	
 	function clearFilters() {
-		// Limpar filtros locais
-		selectedCategories.clear();
-		selectedBrands.clear();
-		selectedPrice = priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 });
-		
-		// Forçar reatividade
-		selectedCategories = new Set();
-		selectedBrands = new Set();
-		
 		// Emitir evento para limpar todos os filtros externos
 		dispatch('clearAll');
 		
@@ -253,24 +243,11 @@
 		}
 		
 		// Emitir mudança dos filtros locais
-		emitFilterChange();
-	}
-	
-	function emitFilterChange() {
-		const filterData: any = {
-			categories: Array.from(selectedCategories),
-			brands: Array.from(selectedBrands)
-		};
-		
-		// Só incluir preço se foi alterado do valor padrão
-		if (priceRange && (
-			selectedPrice.min !== priceRange.min || 
-			selectedPrice.max !== priceRange.max
-		)) {
-			filterData.priceRange = selectedPrice;
-		}
-		
-		dispatch('filterChange', filterData);
+		dispatch('filterChange', {
+			categories: [],
+			brands: [],
+			priceRange: undefined
+		});
 	}
 	
 	// Contar filtros ativos
@@ -556,34 +533,8 @@
 				{/if}
 			</div>
 			
-			<!-- 5. AVALIAÇÃO - Confiança é importante -->
-			<div class="border-b border-gray-200 pb-4">
-				<button
-					onclick={() => toggleGroup('rating')}
-					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
-					aria-expanded={expandedGroups.has('rating')}
-				>
-					<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Avaliação</h3>
-					<svg 
-						class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('rating') ? 'rotate-180' : ''}"
-						fill="none" 
-						stroke="currentColor" 
-						viewBox="0 0 24 24"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				</button>
-				
-				{#if expandedGroups.has('rating')}
-					<div class="mt-3">
-						<RatingFilter
-							{currentRating}
-							counts={ratingCounts}
-							on:change={handleRatingChange}
-						/>
-					</div>
-				{/if}
-			</div>
+			<!-- 5. AVALIAÇÃO - TEMPORARIAMENTE DESABILITADO -->
+			<!-- TODO: Corrigir tipos do RatingFilter depois de resolver filtros de categoria -->
 			
 			<!-- 6. CONDIÇÃO - Importante para eletrônicos -->
 			{#if conditions.length > 0}

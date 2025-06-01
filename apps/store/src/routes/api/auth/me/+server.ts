@@ -37,9 +37,9 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
         
         // STEP 2: Query separada para usuário
         const users = await db.query`
-          SELECT id, email, name, role, avatar_url, email_verified, is_active
-          FROM users 
-          WHERE id = ${session.user_id} AND is_active = true
+          SELECT id, email, name, role, avatar_url, email_verified, status
+          FROM users
+          WHERE id = ${session.user_id} AND status = 'active'
           LIMIT 1
         `;
         

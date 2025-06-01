@@ -16,57 +16,57 @@ export const GET: RequestHandler = async ({ platform }) => {
         let tables = [];
         try {
           tables = await db.query`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_name LIKE 'shipping%' 
-            ORDER BY table_name
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE 'shipping%' 
+        ORDER BY table_name
             LIMIT 10
-          `;
+      `;
         } catch (e) {
           console.log('Erro ao buscar tabelas shipping');
           tables = [];
         }
 
         // STEP 2: Verificar contadores (queries separadas simples)
-        const counts: any = {};
-        
+      const counts: any = {};
+      
         // Verificar cada tabela individualmente com try/catch
         const tablesToCheck = ['shipping_carriers', 'shipping_zones', 'shipping_rates', 'shipping_base_rates', 'shipping_calculated_options'];
         
         for (const tableName of tablesToCheck) {
           if (tables.some((t: any) => t.table_name === tableName)) {
-            try {
+        try {
               const result = await db.query`SELECT COUNT(*) as count FROM ${tableName} LIMIT 1`;
               counts[tableName] = parseInt(result[0]?.count || '0');
-            } catch (err) {
+        } catch (err) {
               counts[tableName] = 0;
             }
-          }
         }
+      }
 
         // STEP 3: Verificar zona SP (query simplificada)
-        let spZoneExists = false;
+      let spZoneExists = false;
         if (tables.some((t: any) => t.table_name === 'shipping_zones')) {
-          try {
-            const spCheck = await db.query`
-              SELECT COUNT(*) as count 
-              FROM shipping_zones 
-              WHERE uf = 'SP' AND is_active = true
+        try {
+          const spCheck = await db.query`
+            SELECT COUNT(*) as count 
+            FROM shipping_zones 
+            WHERE uf = 'SP' AND is_active = true
               LIMIT 1
-            `;
+          `;
             spZoneExists = parseInt(spCheck[0]?.count || '0') > 0;
-          } catch (err) {
-            spZoneExists = false;
-          }
+        } catch (err) {
+          spZoneExists = false;
         }
+      }
 
-        return {
+      return {
           database: 'PostgreSQL via Hyperdrive',
           shipping_tables: tables.map((t: any) => t.table_name),
-          table_counts: counts,
-          sp_zone_exists: spZoneExists,
-          total_shipping_tables: tables.length
-        };
+        table_counts: counts,
+        sp_zone_exists: spZoneExists,
+        total_shipping_tables: tables.length
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {

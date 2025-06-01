@@ -16,10 +16,10 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         const pages = await db.query`
           SELECT id, title, slug, content, meta_title, meta_description,
                  is_published, created_at, updated_at
-          FROM pages 
-          WHERE slug = ${slug} AND is_published = true
+        FROM pages 
+        WHERE slug = ${slug} AND is_published = true
           LIMIT 1
-        `;
+      `;
 
         return pages[0] || null;
       })();
@@ -29,19 +29,19 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (!result) {
-        return json({
-          success: false,
-          error: { code: 'PAGE_NOT_FOUND', message: 'Página não encontrada' }
-        }, { status: 404 });
-      }
-      
+
+    if (!result) {
       return json({
-        success: true,
+        success: false,
+          error: { code: 'PAGE_NOT_FOUND', message: 'Página não encontrada' }
+      }, { status: 404 });
+    }
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       console.log(`⚠️ Erro pages: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);

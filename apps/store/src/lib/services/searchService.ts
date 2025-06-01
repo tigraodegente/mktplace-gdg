@@ -242,7 +242,7 @@ class SearchService {
       
       const searchResult = {
         products: result.data.products,
-        totalCount: result.data.totalCount,
+        totalCount: result.data.pagination?.total || 0,
         page: page,
         limit: limit,
         facets: result.data.facets
@@ -406,27 +406,8 @@ class SearchService {
       return this.popularSearchesCache;
     }
     
-    try {
-      const response = await fetch('/api/search/popular-terms');
-      
-      if (!response.ok) {
-        throw new Error('Erro ao buscar termos populares');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && Array.isArray(result.data)) {
-        this.popularSearchesCache = result.data;
-        this.popularSearchesCacheTime = now;
-        return result.data;
-      }
-      
-    } catch (error) {
-      console.error('Erro ao buscar termos populares:', error);
-    }
-    
-    // Fallback para termos padrão
-    return [
+    // Fallback imediato para evitar loops
+    const fallbackTerms = [
       'samsung',
       'iphone',
       'notebook',
@@ -436,6 +417,44 @@ class SearchService {
       'smartphone',
       'monitor'
     ];
+    
+    try {
+      // Timeout mais agressivo para desenvolvimento
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 1000)
+      });
+      
+      const fetchPromise = fetch('/api/search/popular-terms');
+      
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      if (!response.ok) {
+        console.warn('⚠️ API popular-terms retornou erro:', response.status);
+        this.popularSearchesCache = fallbackTerms;
+        this.popularSearchesCacheTime = now;
+        return fallbackTerms;
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        this.popularSearchesCache = result.data;
+        this.popularSearchesCacheTime = now;
+        return result.data;
+      } else {
+        console.warn('⚠️ API popular-terms formato inválido:', result);
+        this.popularSearchesCache = fallbackTerms;
+        this.popularSearchesCacheTime = now;
+        return fallbackTerms;
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar termos populares - usando fallback:', error instanceof Error ? error.message : 'erro');
+      // Cache o fallback para evitar re-tentativas constantes
+      this.popularSearchesCache = fallbackTerms;
+      this.popularSearchesCacheTime = now;
+      return fallbackTerms;
+    }
   }
 
   // Helpers privados

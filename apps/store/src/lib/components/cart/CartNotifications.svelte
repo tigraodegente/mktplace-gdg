@@ -120,7 +120,7 @@
 <!-- Banner promocional se aplicável -->
 {#if sellerGroups.length >= 3}
   <div 
-    class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white p-4 rounded-lg mb-6"
+    class="bg-[#00BFB3] text-white p-4 rounded-lg mb-6"
     transition:fade={{ duration: 300 }}
   >
     <div class="flex items-center gap-3">

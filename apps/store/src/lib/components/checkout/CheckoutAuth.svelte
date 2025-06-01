@@ -23,9 +23,10 @@
     confirmPassword: ''
   });
   
-  // Se já está autenticado, avançar automaticamente
+  // Se já está autenticado ao carregar o componente, avançar automaticamente
   $effect(() => {
-    if ($isAuthenticated) {
+    if ($isAuthenticated && !authLoading) {
+      console.log('🔄 CheckoutAuth: Usuário já estava autenticado, avançando...');
       dispatch('next', { user: $user });
     }
   });
@@ -45,7 +46,11 @@
       
       if (result.success && result.data?.user) {
         console.log('✅ CheckoutAuth: Login bem-sucedido via AuthService');
+        
+        // ✅ Garantir que o evento seja disparado imediatamente
         dispatch('next', { user: result.data.user });
+        
+        console.log('🔄 CheckoutAuth: Evento next disparado para prosseguir checkout');
       } else {
         authError = result.error?.message || 'Erro ao fazer login';
       }

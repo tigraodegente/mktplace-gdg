@@ -8,8 +8,8 @@ export async function GET({ platform }: { platform: any }) {
     let pages: any[] = [];
     let products: any[] = [];
     let categories: any[] = [];
-    
-    try {
+  
+  try {
       const db = getDatabase(platform);
       
       const queryPromise = (async () => {
@@ -22,27 +22,27 @@ export async function GET({ platform }: { platform: any }) {
             ORDER BY updated_at DESC
           `,
           db.query`
-            SELECT slug, updated_at 
-            FROM products 
-            WHERE is_active = true
-            ORDER BY updated_at DESC
+        SELECT slug, updated_at
+        FROM products
+        WHERE is_active = true
+        ORDER BY updated_at DESC
             LIMIT 1000
           `,
           db.query`
-            SELECT slug, updated_at 
-            FROM categories 
-            WHERE is_active = true
+        SELECT slug, updated_at
+        FROM categories
+        WHERE is_active = true
             ORDER BY updated_at DESC
           `
         ]);
-        
+      
         return {
           pages: pagesResult,
           products: productsResult, 
           categories: categoriesResult
         };
       })();
-      
+    
       const timeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Timeout sitemap')), 5000)
       );
@@ -125,14 +125,14 @@ export async function GET({ platform }: { platform: any }) {
     <priority>0.6</priority>
   </url>
 </urlset>`;
-
+    
     return new Response(sitemap.trim(), {
       headers: {
         'Content-Type': 'application/xml',
         'Cache-Control': 'public, max-age=3600, s-maxage=7200' // 1h client, 2h CDN
       }
     });
-
+    
   } catch (error) {
     console.error('❌ Erro crítico ao gerar sitemap:', error);
     
@@ -155,7 +155,7 @@ export async function GET({ platform }: { platform: any }) {
     <priority>0.8</priority>
   </url>
 </urlset>`;
-
+    
     return new Response(fallbackSitemap.trim(), {
       headers: {
         'Content-Type': 'application/xml',

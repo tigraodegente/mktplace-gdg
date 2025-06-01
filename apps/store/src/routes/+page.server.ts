@@ -73,39 +73,39 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					
 					const queryPromise = (async () => {
 						// Query simplificada sem WITH/CTE
-						const products = await db.query`
-							SELECT 
-								p.id,
-								p.name,
-								p.slug,
-								p.description,
-								p.price,
-								p.original_price,
-								p.quantity as stock,
-								p.sku,
-								p.sales_count,
-								p.rating_average,
-								p.rating_count,
-								p.tags,
-								p.is_active,
-								p.featured,
-								p.created_at,
-								p.updated_at,
-								c.name as category_name,
-								c.slug as category_slug,
-								b.name as brand_name,
+				const products = await db.query`
+					SELECT 
+						p.id,
+						p.name,
+						p.slug,
+						p.description,
+						p.price,
+						p.original_price,
+						p.quantity as stock,
+						p.sku,
+						p.sales_count,
+						p.rating_average,
+						p.rating_count,
+						p.tags,
+						p.is_active,
+						p.featured,
+						p.created_at,
+						p.updated_at,
+						c.name as category_name,
+						c.slug as category_slug,
+						b.name as brand_name,
 								s.company_name as seller_name
-							FROM products p
-							LEFT JOIN categories c ON c.id = p.category_id
-							LEFT JOIN brands b ON b.id = p.brand_id
-							LEFT JOIN sellers s ON s.id = p.seller_id
-							WHERE 
-								p.is_active = true 
-								AND p.featured = true 
-								AND p.quantity > 0
+					FROM products p
+					LEFT JOIN categories c ON c.id = p.category_id
+					LEFT JOIN brands b ON b.id = p.brand_id
+					LEFT JOIN sellers s ON s.id = p.seller_id
+					WHERE 
+						p.is_active = true 
+						AND p.featured = true 
+						AND p.quantity > 0
 							ORDER BY p.sales_count DESC NULLS LAST, p.rating_average DESC NULLS LAST
-							LIMIT 8
-						`;
+					LIMIT 8
+				`;
 						
 						// Buscar imagens separadamente para evitar array_agg complexo
 						const productIds = products.map(p => p.id);
@@ -136,36 +136,36 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 							}
 							imageMap.get(img.product_id).push(img.url);
 						});
-						
-						return products.map((product: any): Product => ({
-							id: product.id,
-							name: product.name,
-							slug: product.slug,
-							description: product.description,
-							price: Number(product.price),
-							original_price: product.original_price ? Number(product.original_price) : undefined,
-							discount: product.original_price && product.price < product.original_price
-								? Math.round(((product.original_price - product.price) / product.original_price) * 100)
-								: undefined,
+				
+				return products.map((product: any): Product => ({
+					id: product.id,
+					name: product.name,
+					slug: product.slug,
+					description: product.description,
+					price: Number(product.price),
+					original_price: product.original_price ? Number(product.original_price) : undefined,
+					discount: product.original_price && product.price < product.original_price
+						? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+						: undefined,
 							images: imageMap.get(product.id) || [],
 							image: (imageMap.get(product.id) || [])[0] || '/api/placeholder/300/400?text=Produto&bg=f0f0f0&color=333',
-							category_id: product.category_id,
-							category_name: product.category_name,
-							seller_id: product.seller_id,
-							seller_name: product.seller_name,
-							stock: product.stock,
-							sku: product.sku,
-							tags: product.tags || [],
-							rating: product.rating_average ? Number(product.rating_average) : undefined,
-							reviews_count: product.rating_count,
-							sold_count: product.sales_count,
+					category_id: product.category_id,
+					category_name: product.category_name,
+					seller_id: product.seller_id,
+					seller_name: product.seller_name,
+					stock: product.stock,
+					sku: product.sku,
+					tags: product.tags || [],
+					rating: product.rating_average ? Number(product.rating_average) : undefined,
+					reviews_count: product.rating_count,
+					sold_count: product.sales_count,
 							is_black_friday: product.original_price && product.price < product.original_price
 								&& ((product.original_price - product.price) / product.original_price) >= 0.3,
 							has_fast_delivery: (product.tags || []).some((tag: string) => 
 								['entrega-rapida', 'frete-gratis'].includes(tag)),
-							created_at: product.created_at?.toISOString(),
-							updated_at: product.updated_at?.toISOString()
-						}));
+					created_at: product.created_at?.toISOString(),
+					updated_at: product.updated_at?.toISOString()
+				}));
 					})();
 
 					const timeoutPromise = new Promise<never>((_, reject) => 
@@ -185,29 +185,29 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					const db = getDatabase(platform);
 					
 					const queryPromise = (async () => {
-						const categories = await db.query`
-							SELECT 
-								c.id,
-								c.name,
-								c.slug,
-								c.description,
+				const categories = await db.query`
+					SELECT 
+						c.id,
+						c.name,
+						c.slug,
+						c.description,
 								COUNT(p.id) as product_count
-							FROM categories c
-							LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true AND p.quantity > 0
-							WHERE c.is_active = true
-							GROUP BY c.id, c.name, c.slug, c.description
+					FROM categories c
+					LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true AND p.quantity > 0
+					WHERE c.is_active = true
+					GROUP BY c.id, c.name, c.slug, c.description
 							HAVING COUNT(p.id) > 0
 							ORDER BY COUNT(p.id) DESC
-							LIMIT 6
-						`;
-						
-						return categories.map((cat: any) => ({
-							id: cat.id,
-							name: cat.name,
-							slug: cat.slug,
-							icon: getCategoryIcon(cat.slug || cat.name),
-							count: parseInt(cat.product_count) || 0
-						}));
+					LIMIT 6
+				`;
+				
+				return categories.map((cat: any) => ({
+					id: cat.id,
+					name: cat.name,
+					slug: cat.slug,
+					icon: getCategoryIcon(cat.slug || cat.name),
+					count: parseInt(cat.product_count) || 0
+				}));
 					})();
 
 					const timeoutPromise = new Promise<never>((_, reject) => 
@@ -234,8 +234,8 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 							db.queryOne`SELECT COUNT(*) as count FROM sellers WHERE is_active = true`,
 							db.queryOne`SELECT COUNT(*) as count FROM products WHERE featured = true AND is_active = true`
 						]);
-						
-						return {
+				
+				return {
 							totalProducts: parseInt(products?.count || '0'),
 							totalCategories: parseInt(categories?.count || '0'),
 							totalSellers: parseInt(sellers?.count || '0'),
@@ -255,7 +255,7 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 						totalCategories: 12,
 						totalSellers: 18,
 						featuredProducts: 24
-					};
+				};
 				}
 			})()
 		]);
@@ -277,7 +277,7 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 		
 		// Armazenar no cache apenas se temos dados reais
 		if (result.dataSource.products === 'database') {
-			setCache(cacheKey, result);
+		setCache(cacheKey, result);
 		}
 		
 		console.log(`✅ Página principal carregada: ${featuredProducts.length} produtos, ${categoriesData.length} categorias`);

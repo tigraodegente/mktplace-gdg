@@ -91,19 +91,19 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         }
 
         if (failedItems.length > 0) {
-          return {
-            success: false,
-            error: {
-              code: 'INSUFFICIENT_STOCK',
-              message: 'Estoque insuficiente para alguns itens',
+        return {
+          success: false,
+          error: {
+            code: 'INSUFFICIENT_STOCK',
+            message: 'Estoque insuficiente para alguns itens',
               failed_items: failedItems
-            }
-          };
-        }
+          }
+        };
+      }
 
         // STEP 2: Calcular tempo de expiração
-        const expiresInMinutes = body.expires_in_minutes || 15;
-        const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+      const expiresInMinutes = body.expires_in_minutes || 15;
+      const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 
         // STEP 3: Criar a reserva (simplificado)
         const reservationId = `res-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -122,7 +122,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
               )
             `;
 
-            await db.query`
+        await db.query`
               CREATE TABLE IF NOT EXISTS stock_reservation_items (
                 id VARCHAR(255) PRIMARY KEY,
                 reservation_id VARCHAR(255) NOT NULL,
@@ -155,13 +155,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             `;
           } catch (e) {
             console.log('Reservation creation async failed:', e);
-          }
+      }
         }, 100);
 
         console.log(`✅ Reserva criada: ${reservationId} (expira em ${expiresInMinutes}min)`);
 
-        return {
-          success: true,
+      return {
+        success: true,
           reservation_id: reservationId,
           expires_at: expiresAt.toISOString()
         };
@@ -187,7 +187,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       const expiresInMinutes = body.expires_in_minutes || 15;
       const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
       const reservationId = `fallback-${Date.now()}`;
-      
+
       return json({
         success: true,
         reservation_id: reservationId,
@@ -230,27 +230,27 @@ export const DELETE: RequestHandler = async ({ url, platform }) => {
       // Promise com timeout de 2 segundos
       const queryPromise = (async () => {
         const releases = await db.query`
-          UPDATE stock_reservations 
-          SET status = 'released', updated_at = NOW()
-          WHERE id = ${reservationId} 
-          AND session_id = ${sessionId}
-          AND status = 'active'
-          RETURNING id
-        `;
+        UPDATE stock_reservations 
+        SET status = 'released', updated_at = NOW()
+        WHERE id = ${reservationId} 
+        AND session_id = ${sessionId}
+        AND status = 'active'
+        RETURNING id
+      `;
 
         if (releases.length === 0) {
-          return {
-            success: false,
-            error: 'Reserva não encontrada ou já processada'
-          };
-        }
-
-        console.log(`🔓 Reserva liberada: ${reservationId}`);
-
         return {
-          success: true,
-          message: 'Reserva liberada com sucesso'
+          success: false,
+          error: 'Reserva não encontrada ou já processada'
         };
+      }
+
+      console.log(`🔓 Reserva liberada: ${reservationId}`);
+
+      return {
+        success: true,
+        message: 'Reserva liberada com sucesso'
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
@@ -282,4 +282,4 @@ export const DELETE: RequestHandler = async ({ url, platform }) => {
       error: 'Erro interno do servidor'
     }, { status: 500 });
   }
-}; 
+};

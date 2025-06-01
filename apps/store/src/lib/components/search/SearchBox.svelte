@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { searchService, type SearchSuggestion } from '$lib/services/searchService';
-	import type { Product } from '@mktplace/shared-types';
 
 	let { 
 		placeholder = "O que você está procurando?",
@@ -22,9 +21,13 @@
 	onMount(() => {
 		// Carregar dados iniciais
 		searchHistory = searchService.getHistory();
-		// Buscar termos populares de forma assíncrona
+		// Buscar termos populares de forma assíncrona com tratamento de erro robusto
 		searchService.getPopularSearches().then(terms => {
 			popularSearches = terms;
+		}).catch(error => {
+			console.warn('⚠️ Falha ao carregar termos populares no SearchBox:', error);
+			// Fallback padrão para evitar tela branca
+			popularSearches = ['samsung', 'iphone', 'notebook', 'tv', 'smartphone'];
 		});
 	});
 

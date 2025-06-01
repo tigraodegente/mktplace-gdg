@@ -21,7 +21,6 @@
 	
 	let userMenuOpen = $state(false);
 	let miniCartVisible = $state(false);
-	let cartHoverTimeout: NodeJS.Timeout | null = null;
 	let showDropdown = $state(false);
 	let showSubcategories = $state<string | null>(null);
 	
@@ -29,20 +28,13 @@
 		userMenuOpen = !userMenuOpen;
 	}
 	
-	// Controlar mini carrinho com hover
-	function showMiniCart() {
-		if (cartHoverTimeout) clearTimeout(cartHoverTimeout);
-		miniCartVisible = true;
+	// Controlar mini carrinho apenas com clique
+	function toggleMiniCart() {
+		miniCartVisible = !miniCartVisible;
 	}
 	
-	function hideMiniCart() {
-		cartHoverTimeout = setTimeout(() => {
-			miniCartVisible = false;
-		}, 300); // Delay para permitir hover no mini carrinho
-	}
-	
-	function keepMiniCartVisible() {
-		if (cartHoverTimeout) clearTimeout(cartHoverTimeout);
+	function closeMiniCart() {
+		miniCartVisible = false;
 	}
 	
 	function handleViewCart() {
@@ -57,12 +49,15 @@
 	
 	// Fechar menu ao clicar fora
 	$effect(() => {
-		if (!userMenuOpen) return;
+		if (!userMenuOpen && !miniCartVisible) return;
 		
 		const handleClickOutside = (event: MouseEvent) => {
 			const target = event.target as HTMLElement;
-			if (!target.closest('.user-menu-container')) {
+			if (!target.closest('.user-menu-container') && userMenuOpen) {
 				userMenuOpen = false;
+			}
+			if (!target.closest('.mini-cart-container') && miniCartVisible) {
+				miniCartVisible = false;
 			}
 		};
 		
@@ -215,14 +210,12 @@
 						</a>
 						
 						<div 
-							class="relative"
+							class="relative mini-cart-container"
 							role="region"
 							aria-label="Carrinho de compras"
-							onmouseenter={showMiniCart}
-							onmouseleave={hideMiniCart}
 						>
 							<button 
-								onclick={onOpenCart}
+								onclick={toggleMiniCart}
 								class="flex items-center justify-center w-6 h-6 text-white hover:text-white/80 transition" 
 								aria-label="Carrinho de compras"
 								aria-expanded={miniCartVisible}
@@ -241,12 +234,10 @@
 							<div 
 								role="region"
 								aria-label="Mini carrinho"
-								onmouseenter={keepMiniCartVisible} 
-								onmouseleave={hideMiniCart}
 							>
 								<MiniCart 
 									isVisible={miniCartVisible}
-									onClose={() => miniCartVisible = false}
+									onClose={closeMiniCart}
 									onViewCart={handleViewCart}
 									onCheckout={handleCheckout}
 									showQuickActions={true}

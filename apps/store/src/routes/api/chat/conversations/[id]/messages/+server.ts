@@ -26,64 +26,64 @@ export const GET: RequestHandler = async ({ params, url, cookies, platform }) =>
       const queryPromise = (async () => {
         // Verificar acesso à conversa
         const accessCheck = await db.query`
-          SELECT id FROM chat_conversations
+        SELECT id FROM chat_conversations
           WHERE id = ${conversationId} AND ${userId} = ANY(participants)
           LIMIT 1
         `;
 
         if (!accessCheck.length) {
-          throw new Error('Sem acesso a esta conversa');
-        }
+        throw new Error('Sem acesso a esta conversa');
+      }
 
         // Buscar mensagens (simplificado)
         const messages = await db.query`
           SELECT m.id, m.conversation_id, m.sender_id, m.message_type,
                  m.content, m.attachments, m.metadata, m.created_at,
                  u.name as sender_name, u.avatar as sender_avatar
-          FROM chat_messages m
-          JOIN users u ON m.sender_id = u.id
+        FROM chat_messages m
+        JOIN users u ON m.sender_id = u.id
           WHERE m.conversation_id = ${conversationId}
-          ORDER BY m.created_at ASC
+        ORDER BY m.created_at ASC
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
         `;
 
-        // Formatar mensagens
-        const formattedMessages = messages.map((msg: any) => ({
-          id: msg.id,
-          conversation_id: msg.conversation_id,
-          sender_id: msg.sender_id,
-          sender_name: msg.sender_name,
-          sender_avatar: msg.sender_avatar || '/api/placeholder/40/40',
-          message_type: msg.message_type,
-          content: msg.content,
-          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
-          metadata: typeof msg.metadata === 'object' ? msg.metadata : {},
+      // Formatar mensagens
+      const formattedMessages = messages.map((msg: any) => ({
+        id: msg.id,
+        conversation_id: msg.conversation_id,
+        sender_id: msg.sender_id,
+        sender_name: msg.sender_name,
+        sender_avatar: msg.sender_avatar || '/api/placeholder/40/40',
+        message_type: msg.message_type,
+        content: msg.content,
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+        metadata: typeof msg.metadata === 'object' ? msg.metadata : {},
           is_own_message: msg.sender_id === userId,
-          created_at: msg.created_at
-        }));
+        created_at: msg.created_at
+      }));
 
-        return {
-          messages: formattedMessages,
-          pagination: {
-            page,
-            limit,
+      return {
+        messages: formattedMessages,
+        pagination: {
+          page,
+          limit,
             total: formattedMessages.length,
             pages: Math.ceil(formattedMessages.length / limit)
-          }
-        };
+        }
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 3000)
-      });
-      
+    });
+
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      return json({
-        success: true,
+
+    return json({
+      success: true,
         data: result,
         source: 'database'
-      });
+    });
       
     } catch (error) {
       // FALLBACK: Mensagens mock
@@ -158,19 +158,19 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
       const queryPromise = (async () => {
         // Verificar acesso
         const accessCheck = await db.query`
-          SELECT id FROM chat_conversations
+        SELECT id FROM chat_conversations
           WHERE id = ${conversationId} AND ${userId} = ANY(participants)
           LIMIT 1
         `;
 
         if (!accessCheck.length) {
-          throw new Error('Sem acesso a esta conversa');
-        }
+        throw new Error('Sem acesso a esta conversa');
+      }
 
-        // Inserir nova mensagem
+      // Inserir nova mensagem
         const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
         const newMessages = await db.query`
-          INSERT INTO chat_messages (
+        INSERT INTO chat_messages (
             id, conversation_id, sender_id, message_type, content, 
             attachments, metadata, created_at
           ) VALUES (
@@ -178,11 +178,11 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
             ${content}, ${JSON.stringify(attachments)}, ${JSON.stringify(metadata)}, 
             NOW()
           )
-          RETURNING *
+        RETURNING *
         `;
 
         const message = newMessages[0];
-        
+
         return {
           id: message.id,
           conversation_id: message.conversation_id,
@@ -197,19 +197,19 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
           created_at: message.created_at
         };
       })();
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 2000)
-      });
-      
+    });
+
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      return json({
-        success: true,
-        data: result,
+
+    return json({
+      success: true,
+      data: result,
         message: 'Mensagem enviada com sucesso',
         source: 'database'
-      });
+    });
       
     } catch (error) {
       // FALLBACK: Simular criação de mensagem

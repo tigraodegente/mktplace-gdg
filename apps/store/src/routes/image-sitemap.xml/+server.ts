@@ -6,8 +6,8 @@ export async function GET({ platform }: { platform: any }) {
     
     // Tentar buscar imagens com timeout
     let images: any[] = [];
-    
-    try {
+  
+  try {
       const db = getDatabase(platform);
       
       const queryPromise = (async () => {
@@ -21,12 +21,12 @@ export async function GET({ platform }: { platform: any }) {
           FROM product_images pi
           JOIN products p ON p.id = pi.product_id
           WHERE p.is_active = true
-            AND pi.url IS NOT NULL
-            AND pi.url != ''
+          AND pi.url IS NOT NULL
+          AND pi.url != ''
           ORDER BY pi.updated_at DESC
-          LIMIT 1000
-        `;
-        
+        LIMIT 1000
+      `;
+      
         return results;
       })();
       
@@ -39,7 +39,7 @@ export async function GET({ platform }: { platform: any }) {
       console.log(`✅ Image sitemap dados: ${images.length} imagens`);
     } catch (dbError) {
       console.log('⚠️ Erro no banco para image sitemap, usando dados mínimos');
-      
+    
       // Fallback com imagens básicas
       images = [
         {
@@ -93,14 +93,14 @@ export async function GET({ platform }: { platform: any }) {
   }).join('')}
   
 </urlset>`;
-
+    
     return new Response(imageSitemap.trim(), {
       headers: {
         'Content-Type': 'application/xml',
         'Cache-Control': 'public, max-age=7200, s-maxage=14400' // 2h client, 4h CDN
       }
     });
-
+    
   } catch (error) {
     console.error('❌ Erro crítico ao gerar image sitemap:', error);
     
@@ -121,7 +121,7 @@ export async function GET({ platform }: { platform: any }) {
     </image:image>
   </url>
 </urlset>`;
-
+    
     return new Response(fallbackSitemap.trim(), {
       headers: {
         'Content-Type': 'application/xml',

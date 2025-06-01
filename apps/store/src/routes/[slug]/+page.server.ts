@@ -18,21 +18,21 @@ export const load: PageServerLoad = async ({ params, platform, setHeaders }) => 
       const db = getDatabase(platform);
       
       const queryPromise = (async () => {
-        const [result] = await db.query`
-          SELECT 
-            id,
-            title,
-            slug,
-            content,
-            meta_title,
-            meta_description,
-            is_published,
-            created_at,
-            updated_at
-          FROM pages 
-          WHERE slug = ${slug} AND is_published = true
-        `;
-        return result;
+      const [result] = await db.query`
+        SELECT 
+          id,
+          title,
+          slug,
+          content,
+          meta_title,
+          meta_description,
+          is_published,
+          created_at,
+          updated_at
+        FROM pages 
+        WHERE slug = ${slug} AND is_published = true
+      `;
+      return result;
       })();
 
       const timeoutPromise = new Promise<never>((_, reject) => 
@@ -41,18 +41,18 @@ export const load: PageServerLoad = async ({ params, platform, setHeaders }) => 
       
       const page = await Promise.race([queryPromise, timeoutPromise]);
 
-      if (!page) {
-        throw error(404, 'Página não encontrada');
-      }
+    if (!page) {
+      throw error(404, 'Página não encontrada');
+    }
 
       console.log(`✅ Página estática carregada: ${page.title}`);
-      return {
-        page,
-        meta: {
-          title: page.meta_title || page.title,
-          description: page.meta_description || null
-        }
-      };
+    return {
+      page,
+      meta: {
+        title: page.meta_title || page.title,
+        description: page.meta_description || null
+      }
+    };
     } catch (dbError) {
       console.log('⚠️ Erro ao buscar página no banco, verificando fallback...');
       throw error(404, 'Página não encontrada');

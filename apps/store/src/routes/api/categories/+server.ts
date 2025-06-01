@@ -33,13 +33,27 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       
       // Promise com timeout de 3 segundos
       const queryPromise = (async () => {
-        // Query super simples - apenas categorias básicas
-        const categories = await db.query`
-          SELECT id, name, slug, parent_id, description, position
-          FROM categories
-          WHERE is_active = true
-          ORDER BY position ASC NULLS LAST, name ASC
+        // Query com contagens reais de produtos
+        const categoriesQuery = `
+          SELECT 
+            c.id,
+            c.name,
+            c.slug,
+            c.parent_id,
+            c.description,
+            c.position,
+            COALESCE(
+              (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = true), 
+              0
+            ) as product_count
+          FROM categories c
+          WHERE c.is_active = true
+          ORDER BY c.position ASC NULLS LAST, c.name ASC
         `;
+        
+        console.log('🔍 Executando query de categorias com contagens reais...');
+        const categories = await db.query(categoriesQuery);
+        console.log(`📂 ${categories.length} categorias carregadas com contagens reais`);
         
         return categories;
       })();
@@ -52,13 +66,8 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       
       console.log(`✅ Banco OK: ${categories.length} categorias reais`);
       
-      // Build hierarchy sem queries complexas
+      // Build hierarchy com contagens reais do banco
       const { categoryMap, rootCategories } = buildCategoryHierarchy(categories);
-      
-      // Se includeCount, usar dados estimados (evitar query complexa)
-      if (includeCount) {
-        addEstimatedProductCounts(categoryMap);
-      }
       
       sortSubcategories(rootCategories);
       
@@ -212,7 +221,7 @@ function buildCategoryHierarchy(categories: any[]): {
       position: cat.position,
       parent_id: cat.parent_id,
       subcategories: [],
-      product_count: 0
+      product_count: parseInt(cat.product_count) || 0 // Usar contagem real do banco
     });
   }
   
@@ -232,36 +241,6 @@ function buildCategoryHierarchy(categories: any[]): {
   }
   
   return { categoryMap, rootCategories };
-}
-
-/**
- * Add estimated product counts (avoid complex queries)
- */
-function addEstimatedProductCounts(categoryMap: Map<string, CategoryData>): void {
-  // Usar estimativas baseadas em dados reais para evitar queries complexas
-  const estimates: Record<string, number> = {
-    'smartphones': 27,
-    'tvs-audio': 8,
-    'informatica': 6,
-    'casa-decoracao': 5,
-    'eletronicos': 12,
-    'moda': 15,
-    'esportes': 10
-  };
-  
-  for (const category of categoryMap.values()) {
-    // Usar slug para estimativa ou valor padrão
-    const estimate = estimates[category.slug] || Math.floor(Math.random() * 10) + 3;
-    category.product_count = estimate;
-    
-    // Distribuir entre subcategorias
-    if (category.subcategories.length > 0) {
-      const perSub = Math.floor(estimate / category.subcategories.length);
-      category.subcategories.forEach((sub, index) => {
-        sub.product_count = perSub + (index === 0 ? estimate % category.subcategories.length : 0);
-      });
-    }
-  }
 }
 
 /**

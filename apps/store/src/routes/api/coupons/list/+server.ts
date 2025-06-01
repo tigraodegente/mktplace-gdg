@@ -11,25 +11,25 @@ export const GET: RequestHandler = async ({ platform }) => {
       const db = getDatabase(platform);
       
       const queryPromise = (async () => {
-        const coupons = await db.query`
+      const coupons = await db.query`
           SELECT code, name, description, type, value, scope,
-                 min_order_amount, max_discount_amount, max_uses, current_uses,
-                 is_active, is_automatic, is_first_purchase_only,
+          min_order_amount, max_discount_amount, max_uses, current_uses,
+          is_active, is_automatic, is_first_purchase_only,
                  starts_at, expires_at, created_at
-          FROM coupons 
-          ORDER BY created_at DESC
+        FROM coupons 
+        ORDER BY created_at DESC
           LIMIT 50
-        `;
+      `;
 
-        return {
-          success: true,
+      return {
+        success: true,
           coupons: coupons.map((coupon: any) => ({
-            ...coupon,
-            starts_at: coupon.starts_at?.toISOString(),
-            expires_at: coupon.expires_at?.toISOString(),
-            created_at: coupon.created_at?.toISOString()
-          }))
-        };
+          ...coupon,
+          starts_at: coupon.starts_at?.toISOString(),
+          expires_at: coupon.expires_at?.toISOString(),
+          created_at: coupon.created_at?.toISOString()
+        }))
+      };
       })();
       
       const timeoutPromise = new Promise((_, reject) => {

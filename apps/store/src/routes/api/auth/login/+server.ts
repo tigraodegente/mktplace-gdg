@@ -110,7 +110,7 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 5000)
+        setTimeout(() => reject(new Error('Timeout')), 10000)
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
