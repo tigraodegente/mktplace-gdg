@@ -1,6 +1,10 @@
 <script lang="ts">
-  export let order: any;
-  export let onNewOrder: () => void;
+  interface Props {
+    order: any;
+    onNewOrder: () => void;
+  }
+  
+  let { order, onNewOrder }: Props = $props();
   
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {
@@ -30,8 +34,8 @@
     alert('Download do boleto iniciado!');
   }
   
-  $: paymentMethod = order?.payment?.method || '';
-  $: paymentData = order?.payment?.paymentData || {};
+  const paymentMethod = $derived(order?.payment?.method || '');
+  const paymentData = $derived(order?.payment?.paymentData || {});
 </script>
 
 <div class="p-6 text-center">

@@ -1,4 +1,14 @@
-import type { Product } from '@mktplace/shared-types';
+// Definindo Product localmente até resolver imports
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  original_price?: number;
+  weight?: number;
+  seller_id: string;
+  [key: string]: any; // Permitir propriedades adicionais
+}
 
 // ============================================================================
 // ENUMS & CONSTANTS

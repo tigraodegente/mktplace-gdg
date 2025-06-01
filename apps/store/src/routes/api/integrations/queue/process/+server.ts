@@ -7,14 +7,14 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db';
+import { withDatabase } from '$lib/db';
 import { retryEngine } from '$lib/services/integrations/RetryEngine';
 
 // ============================================================================
 // GET - STATUS DA FILA
 // ============================================================================
 
-export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
+export const GET: RequestHandler = async ({ url, platform }) => {
   try {
     const searchParams = url.searchParams;
     const providerId = searchParams.get('providerId');
@@ -25,7 +25,7 @@ export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
 
     console.log('📋 [QueueAPI] Consultando fila:', { providerId, status, page, limit });
 
-    const result = await getDatabase(platform, async (db) => {
+    const result = await withDatabase(platform, async (db) => {
       // Construir query dinâmica
       let whereConditions = [];
       let queryParams: any[] = [];
@@ -93,7 +93,7 @@ export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
       const total = parseInt(totalResult[0].total);
 
       return {
-        items: items.map(item => ({
+        items: items.map((item: any) => ({
           id: item.id,
           providerId: item.provider_id,
           providerName: item.provider_name,
@@ -116,7 +116,7 @@ export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
           completedAt: item.completed_at,
           externalId: item.external_id
         })),
-        stats: statsResult.reduce((acc, stat) => {
+        stats: statsResult.reduce((acc: Record<string, any>, stat: any) => {
           acc[stat.status] = {
             count: parseInt(stat.count),
             avgAttempts: parseFloat(stat.avg_attempts || '0')
@@ -157,7 +157,7 @@ export const GET = async ({ url, platform }: { url: URL; platform: any }) => {
 // POST - PROCESSAR FILA
 // ============================================================================
 
-export const POST = async ({ request, platform }: { request: Request; platform: any }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const data = await request.json();
     const { limit = 50, providerId, forceProcess = false } = data;
@@ -222,7 +222,7 @@ async function processSpecificProvider(
   forceProcess: boolean
 ): Promise<{ processed: number; results: any[] }> {
   
-  return await getDatabase(platform, async (db) => {
+  return await withDatabase(platform, async (db) => {
     const whereClause = forceProcess 
       ? 'WHERE irq.provider_id = $1 AND irq.status IN (\'pending\', \'retrying\', \'failed\')'
       : 'WHERE irq.provider_id = $1 AND irq.status IN (\'pending\', \'retrying\') AND (irq.next_retry_at IS NULL OR irq.next_retry_at <= NOW()) AND irq.attempts < irq.max_attempts';
@@ -366,7 +366,7 @@ async function processSpecificProvider(
 }
 
 async function getQueueStats(platform: any): Promise<any> {
-  return await getDatabase(platform, async (db) => {
+  return await withDatabase(platform, async (db) => {
     const stats = await db.query(`
       SELECT 
         status,
@@ -379,7 +379,7 @@ async function getQueueStats(platform: any): Promise<any> {
       ORDER BY status
     `);
 
-    return stats.reduce((acc, stat) => {
+    return stats.reduce((acc: Record<string, any>, stat: any) => {
       acc[stat.status] = {
         count: parseInt(stat.count),
         avgAttempts: parseFloat(stat.avg_attempts || '0'),

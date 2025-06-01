@@ -7,42 +7,60 @@
 		itemClick: { product: any; index: number };
 	}>();
 	
-	export let products: any[] = [];
-	export let columns: number = 3;
-	export let itemHeight: number = 420;
-	export let gap: number = 16;
-	export let overscan: number = 5;
-	export let loading: boolean = false;
-	export let hasMore: boolean = false;
-	export let loadMoreThreshold: number = 5;
-	export let viewMode: 'grid' | 'list' = 'grid';
+	interface Props {
+		products?: any[];
+		columns?: number;
+		itemHeight?: number;
+		gap?: number;
+		overscan?: number;
+		loading?: boolean;
+		hasMore?: boolean;
+		loadMoreThreshold?: number;
+		viewMode?: 'grid' | 'list';
+	}
+	
+	let {
+		products = [],
+		columns = 3,
+		itemHeight = 420,
+		gap = 16,
+		overscan = 5,
+		loading = false,
+		hasMore = false,
+		loadMoreThreshold = 5,
+		viewMode = 'grid'
+	}: Props = $props();
 	
 	// Elementos DOM
 	let viewport: HTMLElement;
 	let contentContainer: HTMLElement;
 	
 	// Estado do scroll virtual
-	let viewportHeight = 0;
-	let scrollTop = 0;
-	let itemsPerRow = columns;
-	let visibleStart = 0;
-	let visibleEnd = 0;
-	let totalRows = 0;
-	let rowHeight = itemHeight + gap;
+	let viewportHeight = $state(0);
+	let scrollTop = $state(0);
+	let itemsPerRow = $state(columns);
+	let visibleStart = $state(0);
+	let visibleEnd = $state(0);
+	let totalRows = $state(0);
+	let rowHeight = $state(itemHeight + gap);
 	
 	// Cache de renderização
-	let visibleItems: Array<{ product: any; index: number; row: number; col: number }> = [];
+	let visibleItems = $state<Array<{ product: any; index: number; row: number; col: number }>>([]);
 	
 	// Observer para redimensionamento
 	let resizeObserver: ResizeObserver;
 	
-	$: if (products.length > 0) {
-		calculateLayout();
-	}
+	$effect(() => {
+		if (products.length > 0) {
+			calculateLayout();
+		}
+	});
 	
-	$: if (scrollTop !== undefined && viewportHeight > 0) {
-		updateVisibleItems();
-	}
+	$effect(() => {
+		if (scrollTop !== undefined && viewportHeight > 0) {
+			updateVisibleItems();
+		}
+	});
 	
 	function calculateLayout() {
 		if (!viewport) return;

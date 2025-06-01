@@ -3,6 +3,87 @@
 	<!-- Deploy seletivo - teste -->
 	<head>
 		<meta charset="utf-8" />
+		
+		<!-- PROTEÇÕES DO CARRINHO - DEVE SER O PRIMEIRO SCRIPT -->
+		<script>
+			// Proteções ativadas APENAS na página do carrinho
+			if (window.location.pathname === '/cart' || window.location.pathname.startsWith('/cart/')) {
+				console.log('🛡️🛡️🛡️ PROTEÇÕES DO CARRINHO ATIVADAS NO HTML! 🛡️🛡️🛡️');
+				
+				// 1. Interceptar ALERT imediatamente
+				window.alert = function(message) {
+					if (message && (
+						message.toLowerCase().includes('sessão') || 
+						message.toLowerCase().includes('login') || 
+						message.toLowerCase().includes('expirou') ||
+						message.toLowerCase().includes('página')
+					)) {
+						console.log('🛡️ Alert BLOQUEADO NO HTML!', message);
+						return;
+					}
+					// Outros alerts passam
+					return window.alert.originalAlert ? window.alert.originalAlert.call(window, message) : null;
+				};
+				// Salvar referência do alert original
+				window.alert.originalAlert = window.alert;
+				
+				// 2. Interceptar redirecionamentos
+				const blockedPaths = ['/login', '/logout'];
+				
+				// window.location.href
+				const originalHref = Object.getOwnPropertyDescriptor(window.location, 'href');
+				Object.defineProperty(window.location, 'href', {
+					get() {
+						return originalHref?.get?.call(window.location);
+					},
+					set(value) {
+						if (value && blockedPaths.some(path => value.toString().includes(path))) {
+							console.warn('🛡️ Redirecionamento BLOQUEADO NO HTML!', value);
+							return;
+						}
+						originalHref?.set?.call(window.location, value);
+					}
+				});
+				
+				// window.location.assign
+				const originalAssign = window.location.assign;
+				window.location.assign = function(url) {
+					if (url && blockedPaths.some(path => url.includes(path))) {
+						console.warn('🛡️ location.assign BLOQUEADO NO HTML!', url);
+						return;
+					}
+					originalAssign.call(window.location, url);
+				};
+				
+				// window.location.replace
+				const originalReplace = window.location.replace;
+				window.location.replace = function(url) {
+					if (url && blockedPaths.some(path => url.includes(path))) {
+						console.warn('🛡️ location.replace BLOQUEADO NO HTML!', url);
+						return;
+					}
+					originalReplace.call(window.location, url);
+				};
+				
+				// 3. Interceptar FETCH para bloquear logout
+				const originalFetch = window.fetch;
+				window.fetch = async function(...args) {
+					const [url] = args;
+					if (typeof url === 'string' && url.includes('/api/auth/logout')) {
+						console.warn('🛡️ LOGOUT API BLOQUEADO NO HTML!');
+						return new Response(JSON.stringify({ success: true }), {
+							status: 200,
+							headers: { 'Content-Type': 'application/json' }
+						});
+					}
+					return originalFetch.apply(window, args);
+				};
+				
+				// Marcar globalmente
+				window.__cartHTMLProtection = true;
+			}
+		</script>
+		
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		

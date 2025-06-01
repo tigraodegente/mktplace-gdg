@@ -1,4 +1,4 @@
-import type { Database } from '$lib/db/database.types';
+import type { DatabaseWithRPC } from '$lib/db/database.types';
 import type { ShippingOption, ShippingCalculationRequest } from '$lib/types/shipping';
 
 export interface AdvancedShippingOption {
@@ -22,7 +22,7 @@ export interface ShippingCalculationResult {
 }
 
 export class AdvancedShippingService {
-    constructor(private db: Database) {}
+    constructor(private db: DatabaseWithRPC) {}
 
     /**
      * Calcular opções de frete usando a nova estrutura avançada
@@ -159,7 +159,7 @@ export class AdvancedShippingService {
             return [];
         }
 
-        return data?.map(option => ({
+        return data?.map((option: any) => ({
             id: option.id,
             modality_id: option.modality_id,
             modality_name: option.shipping_modalities.name,

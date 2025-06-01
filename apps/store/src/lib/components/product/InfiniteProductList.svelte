@@ -3,12 +3,20 @@
   import ProductCard from './ProductCard.svelte';
   import LoadingSpinner from '../ui/LoadingSpinner.svelte';
 
-  export let loadMore: () => Promise<any[]>;
-  export let hasMore = true;
-  export let threshold = 0.8; // 80% da página
+  interface Props {
+    loadMore: () => Promise<any[]>;
+    hasMore?: boolean;
+    threshold?: number;
+  }
 
-  let products: any[] = [];
-  let loading = false;
+  let {
+    loadMore,
+    hasMore = true,
+    threshold = 0.8
+  }: Props = $props();
+
+  let products = $state<any[]>([]);
+  let loading = $state(false);
   let observer: IntersectionObserver;
   let sentinel: HTMLDivElement;
 

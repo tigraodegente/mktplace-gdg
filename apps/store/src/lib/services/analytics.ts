@@ -5,7 +5,36 @@
  * Integração futura com Google Analytics, Facebook Pixel, etc.
  */
 
-import type { Product } from '@mktplace/shared-types';
+// Por ora definindo Product localmente até resolver o import
+export interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  price: number;
+  original_price?: number;
+  discount?: number;
+  image?: string;
+  images?: string[];
+  category_id: string;
+  category_name?: string;
+  seller_id: string;
+  seller_name?: string;
+  sku?: string;
+  pieces?: number;
+  rating?: number;
+  reviews_count?: number;
+  sold_count?: number;
+  is_black_friday?: boolean;
+  has_fast_delivery?: boolean;
+  tags?: string[];
+  weight?: number;
+  stock?: number;
+  stock_alert_threshold?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 import { dev } from '$app/environment';
 
 export interface AnalyticsEvent {

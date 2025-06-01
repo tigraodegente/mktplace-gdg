@@ -172,7 +172,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       
       // Criar mapa de resultados por identificador
       const resultMap: Record<string, any> = {};
-      formattedProducts.forEach(product => {
+      formattedProducts.forEach((product: any) => {
         resultMap[product.id] = product;
         resultMap[product.slug] = product;
       });

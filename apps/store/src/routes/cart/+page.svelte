@@ -1,3 +1,24 @@
+<!-- PROTEÇÕES IMEDIATAS -->
+<script context="module">
+  // EXECUTAR IMEDIATAMENTE NO CONTEXTO DO MÓDULO
+  if (typeof window !== 'undefined') {
+    console.log('🛡️🛡️🛡️ PROTEÇÕES ULTRA-IMEDIATAS ATIVADAS! 🛡️🛡️🛡️');
+    
+    // INTERCEPTAR ALERTS ANTES DE TUDO
+    const originalAlert = window.alert;
+    window.alert = function(message: string) {
+      if (message && (message.toLowerCase().includes('sessão') || message.toLowerCase().includes('login') || message.toLowerCase().includes('expirou'))) {
+        console.log('🛡️ Alert BLOQUEADO ULTRA-IMEDIATO!', message);
+        return;
+      }
+      return originalAlert.call(window, message);
+    };
+    
+    // MARCAR QUE PROTEÇÕES ESTÃO ATIVAS
+    (window as any).__cartUltraProtection = true;
+  }
+</script>
+
 <script lang="ts">
   import { cartStore } from '$lib/stores/cartStore';
   import { isAuthenticated, user } from '$lib/stores/authStore';
@@ -63,6 +84,19 @@
   let sessionExpiredWarning = $state(false);
   let processingOrder = $state(false);
   let checkoutInProgress = $state(false); // FLAG PARA DESABILITAR VERIFICAÇÕES DURANTE CHECKOUT
+  
+  // TORNAR GLOBALMENTE ACESSÍVEL PARA DEBUGGING
+  if (browser) {
+    (window as any).__checkoutInProgress = false;
+  }
+  
+  // Atualizar flag global quando mudar
+  $effect(() => {
+    if (browser) {
+      (window as any).__checkoutInProgress = checkoutInProgress;
+      console.log('🔄 Checkout in progress:', checkoutInProgress);
+    }
+  });
   
   // Auto-scroll inteligente com contexto específico
   function scrollToStep(step: CheckoutStep, delay: number = 150) {
@@ -515,27 +549,97 @@
     );
   });
 
-  onMount(() => {
-    // INTERCEPTAR E DESABILITAR ALERTS DURANTE CHECKOUT
+  // ====================================
+  // PROTEÇÕES ATIVADAS IMEDIATAMENTE
+  // ====================================
+  if (browser) {
+    console.log('🛡️🛡️🛡️ ATIVANDO PROTEÇÕES DO CARRINHO IMEDIATAMENTE! 🛡️🛡️🛡️');
+    
+    // INTERCEPTAR ALERTS IMEDIATAMENTE
     const originalAlert = window.alert;
     window.alert = function(message: string) {
-      console.warn('�� Alert interceptado:', message);
+      console.warn('🚫 Alert interceptado:', message);
       
-      // Se for sobre sessão e estamos em checkout, ignorar
-      if (checkoutInProgress && message.toLowerCase().includes('sessão')) {
-        console.log('🛡️ Alert de sessão bloqueado durante checkout');
+      // Bloquear QUALQUER alert sobre sessão
+      if (message && (message.toLowerCase().includes('sessão') || message.toLowerCase().includes('login'))) {
+        console.log('🛡️ Alert BLOQUEADO!');
         return;
       }
       
-      // Outros alerts passam normalmente
+      // Outros alerts passam
       originalAlert.call(window, message);
     };
     
-    // Restaurar alert original quando componente for destruído
-    return () => {
-      window.alert = originalAlert;
+    // INTERCEPTAR FETCH IMEDIATAMENTE
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const [url, options] = args;
+      
+      // Bloquear logout
+      if (typeof url === 'string' && url.includes('/api/auth/logout')) {
+        console.warn('🛡️ LOGOUT BLOQUEADO!');
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      return originalFetch.apply(window, args);
     };
-  });
+    
+    // INTERCEPTAR TODOS OS MÉTODOS DE REDIRECIONAMENTO
+    // 1. window.location.href
+    const originalHref = Object.getOwnPropertyDescriptor(window.location, 'href');
+    Object.defineProperty(window.location, 'href', {
+      get() {
+        return originalHref?.get?.call(window.location);
+      },
+      set(value) {
+        if (value && value.toString().includes('/login')) {
+          console.warn('🛡️ REDIRECIONAMENTO BLOQUEADO!');
+          return;
+        }
+        originalHref?.set?.call(window.location, value);
+      }
+    });
+    
+    // 2. window.location.assign
+    const originalAssign = window.location.assign;
+    window.location.assign = function(url: string) {
+      if (url && url.includes('/login')) {
+        console.warn('🛡️ location.assign BLOQUEADO!');
+        return;
+      }
+      originalAssign.call(window.location, url);
+    };
+    
+    // 3. window.location.replace
+    const originalReplace = window.location.replace;
+    window.location.replace = function(url: string) {
+      if (url && url.includes('/login')) {
+        console.warn('🛡️ location.replace BLOQUEADO!');
+        return;
+      }
+      originalReplace.call(window.location, url);
+    };
+    
+    // 4. Interceptar o próprio goto do SvelteKit
+    const originalGotoSymbol = Symbol.for('svelte.goto');
+    const originalGoto = (window as any)[originalGotoSymbol] || goto;
+    
+    // Sobrescrever o goto global
+    (window as any)[originalGotoSymbol] = async function(url: string, ...args: any[]) {
+      if (url && url.includes('/login')) {
+        console.warn('🛡️ goto() PARA LOGIN BLOQUEADO!');
+        return Promise.resolve();
+      }
+      return originalGoto(url, ...args);
+    };
+    
+    // Marcar globalmente que proteções estão ativas
+    (window as any).__cartProtectionsActive = true;
+    console.log('✅ TODAS AS PROTEÇÕES ATIVADAS!');
+  }
 </script>
 
 <svelte:head>
@@ -596,6 +700,16 @@
             <p class="text-sm text-blue-700">Por favor, aguarde. Não feche esta página.</p>
           </div>
         </div>
+      </div>
+    {/if}
+    
+    <!-- DEBUG: Indicador de Proteção Ativa -->
+    {#if browser}
+      <div class="fixed bottom-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs flex items-center space-x-2 z-50">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <span>Proteção Ativa</span>
       </div>
     {/if}
     

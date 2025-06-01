@@ -34,11 +34,12 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders, cookies }
 			// Promise com timeout de 3 segundos
 			const queryPromise = (async () => {
 				// STEP 1: Verificar sessão e obter userId
-				const sessions = await db.query`
-					SELECT user_id FROM sessions 
-					WHERE token = ${sessionToken} AND expires_at > NOW()
-					LIMIT 1
-				`;
+				const sessions = await db.query(
+					`SELECT user_id FROM sessions 
+					WHERE token = $1 AND expires_at > NOW()
+					LIMIT 1`,
+					sessionToken
+				);
 
 				if (!sessions.length) {
 					return {
@@ -236,11 +237,12 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 			// Promise com timeout de 2 segundos
 			const queryPromise = (async () => {
 				// STEP 1: Verificar sessão
-				const sessions = await db.query`
-					SELECT user_id FROM sessions 
-					WHERE token = ${sessionToken} AND expires_at > NOW()
-					LIMIT 1
-				`;
+				const sessions = await db.query(
+					`SELECT user_id FROM sessions 
+					WHERE token = $1 AND expires_at > NOW()
+					LIMIT 1`,
+					sessionToken
+				);
 
 				if (!sessions.length) {
 					return {
@@ -256,18 +258,20 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 			if (action === 'markAsRead') {
 				if (notificationIds && Array.isArray(notificationIds)) {
 					// Marcar notificações específicas como lidas
-					await db.query`
-						UPDATE notifications 
+					await db.query(
+						`UPDATE notifications 
 						SET read_at = NOW(), updated_at = NOW()
-							WHERE id = ANY($1) AND user_id = $2
-						`([notificationIds, userId]);
+						WHERE id = ANY($1) AND user_id = $2`,
+						notificationIds, userId
+					);
 				} else {
 					// Marcar todas como lidas
-					await db.query`
-						UPDATE notifications 
+					await db.query(
+						`UPDATE notifications 
 						SET read_at = NOW(), updated_at = NOW()
-							WHERE user_id = $1 AND read_at IS NULL
-						`([userId]);
+						WHERE user_id = $1 AND read_at IS NULL`,
+						userId
+					);
 				}
 
 					return { 
@@ -278,10 +282,11 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 
 			if (action === 'delete') {
 				if (notificationIds && Array.isArray(notificationIds)) {
-					await db.query`
-						DELETE FROM notifications 
-							WHERE id = ANY($1) AND user_id = $2
-						`([notificationIds, userId]);
+					await db.query(
+						`DELETE FROM notifications 
+						WHERE id = ANY($1) AND user_id = $2`,
+						notificationIds, userId
+					);
 				}
 
 					return { 

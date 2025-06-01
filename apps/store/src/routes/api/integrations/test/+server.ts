@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db';
+import { withDatabase } from '$lib/db';
 import { retryEngine } from '$lib/services/integrations/RetryEngine';
 import type { IntegrationRequest } from '$lib/services/integrations/RetryEngine';
 
@@ -14,7 +14,7 @@ import type { IntegrationRequest } from '$lib/services/integrations/RetryEngine'
 // POST - EXECUTAR TESTES
 // ============================================================================
 
-export const POST = async ({ request, platform }: { request: Request; platform: any }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const data = await request.json();
     const { 
@@ -368,13 +368,13 @@ async function testNotificationIntegrations(platform: any, count: number, simula
 // ============================================================================
 
 async function getActiveProviders(platform: any, type: string) {
-  return await getDatabase(platform, async (db) => {
+  return await withDatabase(platform, async (db) => {
     const providers = await db.query(`
       SELECT id, name, display_name, type, config, retry_config
       FROM integration_providers
       WHERE type = $1 AND is_active = true
       ORDER BY priority ASC
-    `, [type]);
+    `, type);
 
     return providers;
   });

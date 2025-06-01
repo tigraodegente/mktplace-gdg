@@ -7,36 +7,54 @@
 		reset: void;
 	}>();
 	
-	export let hasMore: boolean = false;
-	export let loading: boolean = false;
-	export let totalItems: number | undefined = undefined;
-	export let currentItems: number = 0;
-	export let itemsPerPage: number = 20;
-	export let showLoadMore: boolean = true;
-	export let showProgress: boolean = true;
-	export let variant: 'buttons' | 'infinite' = 'buttons';
+	interface Props {
+		hasMore?: boolean;
+		loading?: boolean;
+		totalItems?: number | undefined;
+		currentItems?: number;
+		itemsPerPage?: number;
+		showLoadMore?: boolean;
+		showProgress?: boolean;
+		variant?: 'buttons' | 'infinite';
+	}
+	
+	let {
+		hasMore = false,
+		loading = false,
+		totalItems = undefined,
+		currentItems = 0,
+		itemsPerPage = 20,
+		showLoadMore = true,
+		showProgress = true,
+		variant = 'buttons'
+	}: Props = $props();
 	
 	// Auto-load more no infinite scroll
 	let loadMoreButton: HTMLButtonElement;
 	let observer: IntersectionObserver;
 	
-	$: if (variant === 'infinite' && loadMoreButton && !loading) {
-		observer?.disconnect();
-		observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && hasMore) {
-					dispatch('loadMore');
-				}
-			},
-			{ threshold: 0.1 }
-		);
-		observer.observe(loadMoreButton);
-	}
-	
-	const progressPercentage = $derived(() => {
-		if (!totalItems) return 0;
-		return Math.min((currentItems / totalItems) * 100, 100);
+	$effect(() => {
+		if (variant === 'infinite' && loadMoreButton && !loading) {
+			observer?.disconnect();
+			observer = new IntersectionObserver(
+				(entries) => {
+					if (entries[0].isIntersecting && hasMore) {
+						dispatch('loadMore');
+					}
+				},
+				{ threshold: 0.1 }
+			);
+			observer.observe(loadMoreButton);
+			
+			return () => {
+				observer?.disconnect();
+			};
+		}
 	});
+	
+	const progressPercentage = $derived(
+		!totalItems ? 0 : Math.min((currentItems / totalItems) * 100, 100)
+	);
 </script>
 
 <nav class="flex flex-col items-center gap-4 py-6" aria-label="Paginação por cursor">
@@ -123,11 +141,5 @@
 	/* Loading state */
 	button:disabled {
 		transform: scale(0.98);
-	}
-	
-	/* Progress bar animation */
-	.bg-\[#00BFB3\] {
-		background: linear-gradient(90deg, #00BFB3 0%, #00A89D 100%);
-		box-shadow: 0 2px 4px rgba(0, 191, 179, 0.2);
 	}
 </style>

@@ -3,6 +3,8 @@ import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 import { requireAuth } from '$lib/utils/auth';
 import ShippingIntegration from '$lib/services/shipping';
+import { AppmaxService } from '$lib/services/integrations/appmax/service';
+import { logger } from '$lib/utils/logger';
 
 interface CreateOrderRequest {
   items: Array<{
@@ -20,8 +22,55 @@ interface CreateOrderRequest {
     zipCode: string;
   };
   paymentMethod: 'pix' | 'credit_card' | 'debit_card' | 'boleto';
+  paymentData?: any; // Dados do pagamento (cartão tokenizado, etc)
   couponCode?: string;
   notes?: string;
+}
+
+// Função para decidir qual gateway usar
+async function selectPaymentGateway(
+  platform: any,
+  paymentMethod: string,
+  orderTotal: number
+): Promise<'appmax' | 'default' | null> {
+  try {
+    const db = getDatabase(platform);
+    
+    // Buscar gateways ativos e suas configurações
+    const gateways = await db.query`
+      SELECT 
+        name,
+        is_active,
+        supported_methods,
+        min_amount,
+        max_amount,
+        priority
+      FROM payment_gateways
+      WHERE is_active = true
+      ORDER BY priority DESC
+    `;
+    
+    // Lógica de decisão (pode ser customizada)
+    // Exemplo: usar AppMax para PIX e cartões, outro gateway para boleto
+    for (const gateway of gateways) {
+      const supportedMethods = JSON.parse(gateway.supported_methods || '[]');
+      
+      // Verificar se o gateway suporta o método
+      if (!supportedMethods.includes(paymentMethod)) continue;
+      
+      // Verificar limites de valor
+      if (gateway.min_amount && orderTotal < gateway.min_amount) continue;
+      if (gateway.max_amount && orderTotal > gateway.max_amount) continue;
+      
+      // Retornar o primeiro gateway que atende aos critérios
+      return gateway.name;
+    }
+    
+    return 'default'; // Gateway padrão se nenhum atender
+  } catch (error) {
+    logger.error('Failed to select payment gateway', { error });
+    return null;
+  }
 }
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
@@ -327,6 +376,72 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       
       console.log(`✅ Pedido criado: ${result.order.orderNumber}`);
       
+      // Variável para armazenar o gateway selecionado
+      let selectedGateway: string | null = null;
+      
+      // =====================================================
+      // INTEGRAÇÃO COM GATEWAY DE PAGAMENTO
+      // =====================================================
+      
+      try {
+        selectedGateway = await selectPaymentGateway(
+          platform,
+          orderData.paymentMethod,
+          result.order.total
+        );
+        
+        logger.info('Payment gateway selected', {
+          orderId: result.order.id,
+          gateway: selectedGateway,
+          method: orderData.paymentMethod
+        });
+        
+        // Se AppMax foi selecionada e está configurada
+        if (selectedGateway === 'appmax') {
+          const appmaxConfig = await AppmaxService.getConfig(platform);
+          
+          if (appmaxConfig) {
+            logger.info('Processing payment with AppMax', {
+              orderId: result.order.id
+            });
+            
+            // Processar com AppMax de forma assíncrona
+            setTimeout(async () => {
+              try {
+                const appmaxService = new AppmaxService(appmaxConfig);
+                
+                // 1. Sincronizar cliente
+                const appmaxCustomer = await appmaxService.syncCustomer(
+                  platform,
+                  authResult.user!.id
+                );
+                
+                if (appmaxCustomer?.id) {
+                  // 2. Criar pedido na AppMax
+                  await appmaxService.createOrder(
+                    platform,
+                    result.order.id.toString(),
+                    appmaxCustomer.id
+                  );
+                  
+                  logger.info('Order synced with AppMax', {
+                    orderId: result.order.id
+                  });
+                }
+              } catch (error) {
+                logger.error('Failed to sync with AppMax', {
+                  orderId: result.order.id,
+                  error: error instanceof Error ? error.message : 'Unknown error'
+                });
+              }
+            }, 100);
+          }
+        }
+      } catch (error) {
+        // Não falhar a criação do pedido por erro na seleção do gateway
+        logger.error('Payment gateway selection failed', { error });
+      }
+      
       // =====================================================
       // INTEGRAÇÃO COM TRANSPORTADORAS (ASSÍNCRONA)
       // =====================================================
@@ -360,7 +475,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       }
       
       // =====================================================
-      // RETORNAR RESPOSTA IMEDIATA (NÃO AGUARDA TRANSPORTADORA)
+      // RETORNAR RESPOSTA IMEDIATA
       // =====================================================
       
       return json({
@@ -368,7 +483,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
         data: {
           order: result.order,
           totals: result.totals,
-          items: result.items
+          items: result.items,
+          // Informar qual gateway foi selecionado (para debug/admin)
+          paymentGateway: selectedGateway || 'default'
         },
         source: 'database'
       });

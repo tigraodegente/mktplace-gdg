@@ -272,7 +272,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           pagination: {
             limit,
             offset,
-            total: parseInt(stats.total_movements)
+            total: parseInt(stats.total_movements.toString())
           }
         };
       })();

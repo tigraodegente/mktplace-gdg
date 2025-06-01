@@ -150,6 +150,31 @@ export interface IShippingProvider {
 }
 
 // =====================================================
+// TIPOS PARA CÁLCULO DE FRETE
+// =====================================================
+
+export interface ShippingOption {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  estimatedDays: number;
+  provider?: string;
+}
+
+export interface ShippingCalculationRequest {
+  postal_code: string;
+  items: Array<{
+    product_id: string;
+    quantity: number;
+    price: number;
+    weight?: number;
+    category_id?: string;
+  }>;
+  seller_id?: string;
+}
+
+// =====================================================
 // DADOS INTERNOS DO SISTEMA
 // =====================================================
 

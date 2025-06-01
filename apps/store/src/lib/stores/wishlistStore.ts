@@ -1,5 +1,14 @@
 import { writable, derived, get } from 'svelte/store';
-import type { Product } from '@mktplace/shared-types';
+
+// Definindo Product localmente até resolver imports
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  image?: string;
+  [key: string]: any; // Permitir propriedades adicionais
+}
 
 export interface WishlistItem extends Product {
   addedAt: Date;

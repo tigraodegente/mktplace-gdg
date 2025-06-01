@@ -5,7 +5,20 @@
  * Suporte a frete grátis por produto, seller e global
  */
 
-import type { Product } from '@mktplace/shared-types';
+// Definindo Product localmente até resolver imports
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  category_id: string;
+  weight?: number;
+  height?: number;
+  width?: number;
+  length?: number;
+  [key: string]: any;
+}
+
 import { withDatabase } from '$lib/db';
 
 // ============================================================================
