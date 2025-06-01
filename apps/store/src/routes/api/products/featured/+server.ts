@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
         const products = await db.query`
           SELECT id, name, slug, price, original_price, category_id
           FROM products 
-          WHERE is_featured = true AND is_active = true 
+          WHERE featured = true AND is_active = true 
           ORDER BY created_at DESC 
           LIMIT ${limit}
         `;
