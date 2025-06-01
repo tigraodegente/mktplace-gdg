@@ -284,13 +284,6 @@
     background-color: white !important;
   }
   
-  /* Espaço para countdown no mobile e tablet */
-  @media (max-width: 1023px) {
-    :global(body) {
-      padding-top: 48px; /* Espaço para o countdown */
-    }
-  }
-  
   /* Customização do Countdown Refatorado */
   :global(.enhanced-countdown) {
     /* Cores customizadas para demo */
@@ -311,10 +304,6 @@
       --font-size-text: 13px;
       --unit-width: 28px;
       --unit-height: 24px;
-    }
-    
-    :global(body) {
-      padding-top: 44px; /* Altura específica do countdown mobile */
     }
   }
 </style>

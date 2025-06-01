@@ -307,43 +307,43 @@
 		align-items: center;
 		transition: var(--transition-opacity);
 		position: relative;
-		z-index: 110; /* Acima do header que tem z-index: 100 */
+		z-index: 110; /* Acima do header quando necessário */
 		/* Mobile: full width sem margin ou border radius */
 		margin: 0;
 		border-radius: 0;
 	}
 	
-	/* Mobile e iPad Mini: até 899px - FIXED NO TOPO */
+	/* Mobile e iPad Mini: até 899px - FLUXO NORMAL */
 	@media (max-width: 899px) {
 		.countdown {
-			position: fixed;
-			top: 0;
-			left: 0;
+			position: relative;
 			margin: 0;
 			border-radius: 0;
 			box-shadow: none;
 			max-width: none;
-			z-index: 150; /* Z-index muito alto para mobile */
+			z-index: 50; /* Z-index normal para mobile */
 		}
 	}
 	
 	/* Tablet médio: 900px - 1023px */
 	@media (min-width: 900px) and (max-width: 1023px) {
 		.countdown {
-			position: fixed;
-			top: 0;
-			left: 0;
-			margin: 0;
-			border-radius: 0;
-			max-width: none;
+			position: relative;
+			margin-top: 20px;
+			margin-bottom: -24px;
+			border-radius: 24px 24px 0 0;
+			max-width: 95%;
+			margin-left: auto;
+			margin-right: auto;
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-			z-index: 150; /* Z-index muito alto para tablet */
+			z-index: 50; /* Z-index normal para tablet */
 		}
 	}
 	
 	/* Desktop: 1024px+ */
 	@media (min-width: 1024px) {
 		.countdown {
+			position: relative;
 			margin-top: 48px;
 			margin-bottom: 0;
 			border-radius: 32px 32px 0 0;
@@ -351,7 +351,7 @@
 			margin-left: auto;
 			margin-right: auto;
 			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-			z-index: 90; /* No desktop pode ser menor pois não conflita */
+			z-index: 50; /* Z-index normal para desktop */
 		}
 	}
 	
