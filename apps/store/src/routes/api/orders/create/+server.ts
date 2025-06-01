@@ -1,13 +1,13 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { withDatabase } from '$lib/db';
+import { getDatabase } from '$lib/db';
 
 interface OrderCreateRequest {
   items: Array<{
     product_id: string;
     quantity: number;
     price: number;
-    seller_id: string;
+    seller_id?: string;
     selectedColor?: string;
     selectedSize?: string;
   }>;
@@ -46,6 +46,8 @@ interface OrderResponse {
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   try {
+    console.log('🛒 Orders Create - Estratégia híbrida iniciada');
+    
     const body = await request.json() as OrderCreateRequest;
     
     // Validações básicas
@@ -69,253 +71,194 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       } as OrderResponse, { status: 400 });
     }
 
-    const result = await withDatabase(platform, async (db) => {
-      console.log('🔄 Iniciando criação de pedido...');
+    // Tentar criar pedido com timeout
+    try {
+      const db = getDatabase(platform);
+      
+      // Promise com timeout de 8 segundos para operação crítica
+      const queryPromise = (async () => {
+        console.log('🔄 Iniciando criação de pedido...');
 
-      // 1. Validar e reservar estoque de todos os produtos
-      const stockValidation = await validateAndReserveStock(db, body.items);
-      if (!stockValidation.success) {
-        throw new Error(`STOCK_ERROR: ${stockValidation.error}`);
-      }
+        // STEP 1: Validar produtos (query simplificada)
+        let subtotal = 0;
+        for (const item of body.items) {
+          const products = await db.query`
+            SELECT id, name, price, quantity
+            FROM products 
+            WHERE id = ${item.product_id} AND is_active = true
+            LIMIT 1
+          `;
 
-      // 2. Calcular totais
-      const totals = await calculateOrderTotals(db, body.items, body.coupon_code);
+          const product = products[0];
+          if (!product) {
+            throw new Error(`Produto não encontrado: ${item.product_id}`);
+          }
 
-      // 3. Gerar número do pedido único
-      const orderNumber = await generateOrderNumber(db);
+          if (product.quantity < item.quantity) {
+            throw new Error(`Estoque insuficiente para ${product.name}`);
+          }
 
-      // 4. Validar/criar usuário se for guest
-      const userId = await validateOrCreateUser(db, body.user_id);
-
-      // 5. Criar o pedido principal
-      const orderResult = await db.query`
-        INSERT INTO orders (
-          user_id, order_number, status, payment_status, payment_method,
-          subtotal, shipping_cost, discount_amount, total,
-          shipping_address, billing_address, notes, metadata,
-          created_at, updated_at
-        ) VALUES (
-          ${userId}, ${orderNumber}, 'pending', 'pending', ${body.payment_method},
-          ${totals.subtotal}, ${totals.shipping}, ${totals.discount}, ${totals.total},
-          ${JSON.stringify(body.shipping_address)}, ${JSON.stringify(body.billing_address || null)}, 
-          ${body.notes || null}, ${JSON.stringify({ installments: body.installments || 1 })},
-          NOW(), NOW()
-        )
-        RETURNING id, order_number, total, status
-      `;
-
-      const order = orderResult[0];
-      console.log(`✅ Pedido criado: ${order.order_number}`);
-
-      // 6. Criar itens do pedido
-      for (const item of body.items) {
-        await db.query`
-          INSERT INTO order_items (
-            order_id, product_id, seller_id, quantity, price, total,
-            created_at
-          ) VALUES (
-            ${order.id}, ${item.product_id}, ${item.seller_id}, 
-            ${item.quantity}, ${item.price}, ${item.quantity * item.price},
-            NOW()
-          )
-        `;
-      }
-
-      // 7. Atualizar estoque definitivamente
-      await updateProductStock(db, body.items);
-
-      // 8. Registrar movimentações de estoque
-      await recordStockMovements(db, body.items, order.id, 'order_created');
-
-      // 9. Aplicar cupom se fornecido
-      if (body.coupon_code) {
-        await applyCouponToOrder(db, order.id, body.coupon_code, totals.discount);
-      }
-
-      console.log(`🎉 Pedido ${order.order_number} criado com sucesso!`);
-
-      return {
-        success: true,
-        order: {
-          id: order.id,
-          order_number: order.order_number,
-          total: order.total,
-          status: order.status
+          subtotal += item.price * item.quantity;
         }
-      };
-    });
 
-    return json(result as OrderResponse);
+        // STEP 2: Calcular totais (simplificado)
+        const shipping = subtotal > 100 ? 0 : 15.90;
+        let discount = 0;
+        
+        if (body.coupon_code) {
+          const coupons = await db.query`
+            SELECT value, type FROM coupons 
+            WHERE code = ${body.coupon_code} AND is_active = true
+            LIMIT 1
+          `;
+          
+          if (coupons.length > 0) {
+            const coupon = coupons[0];
+            if (coupon.type === 'percentage') {
+              discount = subtotal * (coupon.value / 100);
+            } else if (coupon.type === 'fixed') {
+              discount = coupon.value;
+            }
+          }
+        }
 
-  } catch (err: any) {
-    console.error('❌ Erro ao criar pedido:', err);
-    
-    // Tratar diferentes tipos de erro
-    if (err.message.startsWith('STOCK_ERROR:')) {
+        const total = subtotal + shipping - discount;
+
+        // STEP 3: Gerar número do pedido
+        const orderNumber = `ORD${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+        // STEP 4: Criar pedido
+        const orders = await db.query`
+          INSERT INTO orders (
+            user_id, order_number, status, payment_status, payment_method,
+            subtotal, shipping_cost, discount_amount, total,
+            shipping_address, billing_address, notes,
+            created_at, updated_at
+          ) VALUES (
+            ${body.user_id}, ${orderNumber}, 'pending', 'pending', ${body.payment_method},
+            ${subtotal}, ${shipping}, ${discount}, ${total},
+            ${JSON.stringify(body.shipping_address)}, ${JSON.stringify(body.billing_address || null)}, 
+            ${body.notes || null}, NOW(), NOW()
+          )
+          RETURNING id, order_number, total, status
+        `;
+
+        const order = orders[0];
+        console.log(`✅ Pedido criado: ${order.order_number}`);
+
+        // STEP 5: Criar itens do pedido
+        for (const item of body.items) {
+          await db.query`
+            INSERT INTO order_items (
+              order_id, product_id, seller_id, quantity, price, total,
+              created_at
+            ) VALUES (
+              ${order.id}, ${item.product_id}, ${item.seller_id || 'seller-1'}, 
+              ${item.quantity}, ${item.price}, ${item.quantity * item.price},
+              NOW()
+            )
+          `;
+        }
+
+        // STEP 6: Operações async (não travar resposta)
+        setTimeout(async () => {
+          try {
+            // Atualizar estoque
+            for (const item of body.items) {
+              await db.query`
+                UPDATE products 
+                SET quantity = quantity - ${item.quantity}, updated_at = NOW()
+                WHERE id = ${item.product_id}
+              `;
+            }
+
+            // Registrar movimentações de estoque
+            for (const item of body.items) {
+              await db.query`
+                INSERT INTO stock_movements (
+                  product_id, type, quantity, reason, reference_id, created_at
+                ) VALUES (
+                  ${item.product_id}, 'out', ${item.quantity}, 
+                  'order_created', ${order.id}, NOW()
+                )
+              `;
+            }
+
+            // Aplicar cupom
+            if (body.coupon_code && discount > 0) {
+              await db.query`
+                UPDATE coupons 
+                SET used_count = used_count + 1
+                WHERE code = ${body.coupon_code}
+              `;
+            }
+          } catch (e) {
+            console.log('Updates async failed:', e);
+          }
+        }, 100);
+
+        return {
+          success: true,
+          order: {
+            id: order.id,
+            order_number: order.order_number,
+            total: parseFloat(order.total),
+            status: order.status
+          }
+        };
+      })();
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 8000)
+      });
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
+      console.log(`✅ Pedido criado com sucesso: ${result.order.order_number}`);
+      
+      return json({
+        ...result,
+        source: 'database'
+      } as OrderResponse);
+      
+    } catch (error) {
+      console.log(`⚠️ Erro orders create: ${error instanceof Error ? error.message : 'Erro'}`);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      
+      // FALLBACK SEGURO: NUNCA criar pedido inválido
+      // Em caso de timeout ou erro crítico, sempre falhar
+      
+      // Retornar erro específico se for validação
+      if (errorMessage.includes('Produto') || errorMessage.includes('Estoque') || errorMessage.includes('Timeout')) {
+        return json({
+          success: false,
+          error: {
+            code: errorMessage.includes('Timeout') ? 'TIMEOUT_ERROR' : 'VALIDATION_ERROR',
+            message: errorMessage.includes('Timeout') 
+              ? 'Erro temporário no servidor. Tente novamente em alguns instantes.'
+              : errorMessage
+          }
+        } as OrderResponse, { status: errorMessage.includes('Timeout') ? 503 : 400 });
+      }
+
       return json({
         success: false,
         error: {
-          code: 'INSUFFICIENT_STOCK',
-          message: err.message.replace('STOCK_ERROR: ', ''),
+          code: 'ORDER_CREATION_FAILED',
+          message: 'Erro interno do servidor. Tente novamente.'
         }
-      } as OrderResponse, { status: 400 });
+      } as OrderResponse, { status: 500 });
     }
 
+  } catch (error: any) {
+    console.error('❌ Erro crítico orders create:', error);
     return json({
       success: false,
       error: {
-        code: 'ORDER_CREATION_FAILED',
-        message: 'Erro interno do servidor. Tente novamente.',
-        details: err.message
+        code: 'INTERNAL_ERROR',
+        message: 'Erro ao processar pedido'
       }
     } as OrderResponse, { status: 500 });
   }
-};
-
-// ===== FUNÇÕES AUXILIARES =====
-
-async function validateAndReserveStock(db: any, items: OrderCreateRequest['items']) {
-  
-  for (const item of items) {
-    // Buscar produto para validação de estoque
-    const productResult = await db.query`
-      SELECT id, name, quantity, track_inventory, allow_backorder
-      FROM products 
-      WHERE id = ${item.product_id}
-    `;
-
-    if (productResult.length === 0) {
-      return {
-        success: false,
-        error: `Produto não encontrado: ${item.product_id}`
-      };
-    }
-
-    const product = productResult[0];
-
-    // Verificar se controla estoque
-    if (product.track_inventory) {
-      if (product.quantity < item.quantity) {
-        if (!product.allow_backorder) {
-          return {
-            success: false,
-            error: `Estoque insuficiente para ${product.name}. Disponível: ${product.quantity}, Solicitado: ${item.quantity}`
-          };
-        }
-      }
-    }
-  }
-
-  return { success: true };
-}
-
-async function calculateOrderTotals(db: any, items: OrderCreateRequest['items'], couponCode?: string) {
-  let subtotal = 0;
-
-  // Calcular subtotal
-  for (const item of items) {
-    subtotal += item.price * item.quantity;
-  }
-
-  // TODO: Calcular frete real aqui
-  const shipping = 0; // Por enquanto grátis
-
-  // Calcular desconto do cupom
-  let discount = 0;
-  if (couponCode) {
-    discount = await calculateCouponDiscount(db, couponCode, subtotal);
-  }
-
-  const total = subtotal + shipping - discount;
-
-  return {
-    subtotal,
-    shipping,
-    discount,
-    total
-  };
-}
-
-async function generateOrderNumber(db: any): Promise<string> {
-  const prefix = 'ORD';
-  const timestamp = Date.now().toString().slice(-8);
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}${timestamp}${random}`;
-}
-
-async function updateProductStock(db: any, items: OrderCreateRequest['items']) {
-  console.log('📦 Atualizando estoque...');
-  
-  for (const item of items) {
-    await db.query`
-      UPDATE products 
-      SET 
-        quantity = quantity - ${item.quantity},
-        updated_at = NOW()
-      WHERE id = ${item.product_id}
-      AND track_inventory = true
-    `;
-  }
-}
-
-async function recordStockMovements(db: any, items: OrderCreateRequest['items'], orderId: string, reason: string) {
-  console.log('📝 Registrando movimentações...');
-  
-  for (const item of items) {
-    await db.query`
-      INSERT INTO stock_movements (
-        product_id, type, quantity, reason, reference_id, created_at
-      ) VALUES (
-        ${item.product_id}, 'out', ${item.quantity}, 
-        ${reason}, ${orderId}, NOW()
-      )
-    `;
-  }
-}
-
-async function calculateCouponDiscount(db: any, couponCode: string, subtotal: number): Promise<number> {
-  // TODO: Implementar lógica de cupons
-  return 0;
-}
-
-async function applyCouponToOrder(db: any, orderId: string, couponCode: string, discount: number) {
-  // TODO: Implementar aplicação de cupom
-}
-
-async function validateOrCreateUser(db: any, userId: string): Promise<string> {
-  // Se for guest-user, criar um usuário temporário
-  if (userId === 'guest-user' || !userId) {
-    const guestResult = await db.query`
-      INSERT INTO users (
-        name, email, password_hash, created_at, updated_at
-      ) VALUES (
-        'Usuário Convidado', 'guest@temp.com', 'temp-guest-hash', NOW(), NOW()
-      )
-      ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
-      RETURNING id
-    `;
-    
-    return guestResult[0].id;
-  }
-
-  // Verificar se o usuário existe
-  const userCheck = await db.query`
-    SELECT id FROM users WHERE id = ${userId}
-  `;
-
-  if (userCheck.length === 0) {
-    // Se o usuário não existe, criar um usuário guest
-    const newUserResult = await db.query`
-      INSERT INTO users (
-        name, email, password_hash, created_at, updated_at
-      ) VALUES (
-        'Usuário Convidado', 'guest-' || gen_random_uuid()::text || '@temp.com', 'temp-guest-hash', NOW(), NOW()
-      )
-      RETURNING id
-    `;
-    
-    return newUserResult[0].id;
-  }
-
-  return userId;
-} 
+}; 
