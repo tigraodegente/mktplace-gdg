@@ -220,11 +220,20 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             console.log(`✅ Debug: Order_item ${index + 1} criado com sucesso!`);
 
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
-            console.log(`🔍 Debug: Quantity a subtrair: ${item.quantity}`);
+            console.log(`🔍 Debug: Quantity: ${item.quantity}`);
             
-            // Atualizar estoque de forma simples e direta
+            // Atualizar estoque mantendo padrão do site
             try {
               console.log(`🔍 Debug: Executando UPDATE do estoque...`);
+              console.log(`🔍 Debug: ProductId: ${item.productId}`);
+              console.log(`🔍 Debug: Quantity: ${item.quantity}`);
+              
+              // Primeira verificação: estrutura da tabela
+              console.log(`🔍 Debug: Verificando produto antes do UPDATE...`);
+              const productCheck = await sql`
+                SELECT id, quantity FROM products WHERE id = ${item.productId} LIMIT 1
+              `;
+              console.log(`🔍 Debug: Produto encontrado:`, productCheck[0]);
               
               await sql`
                 UPDATE products 
@@ -237,6 +246,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               
             } catch (updateError) {
               console.log(`⚠️ Debug: Erro no UPDATE do estoque (não crítico):`, updateError);
+              console.log(`🔍 Debug: Error details:`, updateError instanceof Error ? updateError.message : 'Unknown error', updateError instanceof Error ? updateError.stack : '');
               console.log(`🔍 Debug: Continuando sem atualizar estoque...`);
               // Não falhar a transação por causa do estoque
             }
