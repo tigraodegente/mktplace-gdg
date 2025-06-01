@@ -145,19 +145,47 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
           console.log('📦 Criando pedido:', orderNumber);
 
-          // STEP 5: Criar pedido
+          // STEP 5: Criar pedido - Query simplificada para debug
+          console.log('🔍 Debug: Iniciando criação do pedido...');
+          console.log('🔍 Debug: user_id:', authResult.user!.id);
+          console.log('🔍 Debug: orderNumber:', orderNumber);
+          console.log('🔍 Debug: paymentMethod:', orderData.paymentMethod);
+          console.log('🔍 Debug: subtotal:', subtotal);
+          console.log('🔍 Debug: shippingCost:', shippingCost);
+          console.log('🔍 Debug: discount:', discount);
+          console.log('🔍 Debug: total:', total);
+          
           const orders = await sql`
             INSERT INTO orders (
-              user_id, order_number, status, payment_status, payment_method,
-              subtotal, shipping_cost, discount_amount, total, shipping_address,
-              coupon_code, notes, created_at, updated_at
+              user_id, 
+              order_number, 
+              status, 
+              payment_status, 
+              payment_method,
+              subtotal, 
+              shipping_cost, 
+              discount_amount, 
+              total, 
+              shipping_address,
+              coupon_code, 
+              notes
             ) VALUES (
-              ${authResult.user!.id}, ${orderNumber}, 'pending', 'pending', ${orderData.paymentMethod},
-              ${subtotal}, ${shippingCost}, ${discount}, ${total}, ${JSON.stringify(orderData.shippingAddress)},
-              ${orderData.couponCode || null}, ${orderData.notes || null}, NOW(), NOW()
+              ${authResult.user!.id}, 
+              ${orderNumber}, 
+              'pending', 
+              'pending', 
+              ${orderData.paymentMethod},
+              ${subtotal}, 
+              ${shippingCost}, 
+              ${discount}, 
+              ${total}, 
+              ${JSON.stringify(orderData.shippingAddress)}::jsonb,
+              ${orderData.couponCode || null}, 
+              ${orderData.notes || null}
             ) RETURNING id, order_number, total, created_at
           `;
           
+          console.log('✅ Debug: Pedido criado com sucesso!');
           const order = orders[0];
 
           // STEP 6: Adicionar itens e reduzir estoque
