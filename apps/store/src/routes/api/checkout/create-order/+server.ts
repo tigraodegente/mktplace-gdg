@@ -219,11 +219,17 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             console.log(`✅ Debug: Order_item ${index + 1} criado com sucesso!`);
 
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
-            await sql`
+            console.log(`🔍 Debug: Quantity a subtrair: ${item.quantity}`);
+            console.log(`🔍 Debug: Tentando query UPDATE simples...`);
+            
+            // Query ultra-simples para debug
+            const updateResult = await sql`
               UPDATE products 
-              SET quantity = quantity - ${item.quantity}
-              WHERE id = ${item.productId}::uuid
+              SET quantity = quantity - 1
+              WHERE id = ${item.productId}
             `;
+            
+            console.log(`🔍 Debug: UPDATE result:`, updateResult);
             console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
           }
           
