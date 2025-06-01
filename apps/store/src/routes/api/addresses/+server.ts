@@ -40,10 +40,15 @@ export const GET: RequestHandler = async ({ request, platform, cookies }) => {
         const session = sessions[0];
         if (!session) {
           console.log('❌ Sessão não encontrada ou expirada');
+          
+          // SOLUÇÃO: Limpar cookie inválido para evitar loop infinito
+          console.log('🧹 Limpando cookie de sessão inválido...');
+          
           return {
             success: false,
             error: { message: 'Sessão inválida' },
-            status: 401
+            status: 401,
+            clearCookie: true // Flag para limpar cookie
           };
         }
 
@@ -94,6 +99,21 @@ export const GET: RequestHandler = async ({ request, platform, cookies }) => {
       
       if (!result.success) {
         console.log('❌ Resultado falhou:', result.error);
+        
+        // Se a sessão é inválida, limpar cookie para evitar loop infinito
+        if (result.clearCookie) {
+          console.log('🧹 Limpando cookie session_token...');
+          return json(
+            { success: false, error: result.error }, 
+            { 
+              status: result.status || 500,
+              headers: {
+                'Set-Cookie': `session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`
+              }
+            }
+          );
+        }
+        
         return json(result, { status: result.status || 500 });
       }
       
@@ -233,10 +253,15 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
         const session = sessions[0];
         if (!session) {
           console.log('❌ Sessão não encontrada ou expirada');
+          
+          // SOLUÇÃO: Limpar cookie inválido para evitar loop infinito
+          console.log('🧹 Limpando cookie de sessão inválido...');
+          
           return {
             success: false,
             error: { message: 'Sessão inválida' },
-            status: 401
+            status: 401,
+            clearCookie: true // Flag para limpar cookie
           };
         }
 
@@ -324,6 +349,21 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       
       if (!result.success) {
         console.log('❌ Resultado falhou:', result.error);
+        
+        // Se a sessão é inválida, limpar cookie para evitar loop infinito
+        if (result.clearCookie) {
+          console.log('🧹 Limpando cookie session_token...');
+          return json(
+            { success: false, error: result.error }, 
+            { 
+              status: result.status || 500,
+              headers: {
+                'Set-Cookie': `session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`
+              }
+            }
+          );
+        }
+        
         return json(result, { status: result.status || 500 });
       }
       
