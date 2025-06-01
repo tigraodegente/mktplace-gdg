@@ -220,17 +220,17 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
             console.log(`🔍 Debug: Quantity a subtrair: ${item.quantity}`);
-            console.log(`🔍 Debug: Tentando query UPDATE simples...`);
+            console.log(`🔍 Debug: SKIPPING UPDATE para debug - só testando o fluxo...`);
             
-            // Query ultra-simples para debug
-            const updateResult = await sql`
-              UPDATE products 
-              SET quantity = quantity - 1
-              WHERE id = ${item.productId}
-            `;
+            // TEMPORARIAMENTE COMENTADO PARA DEBUG
+            // const updateResult = await sql`
+            //   UPDATE products 
+            //   SET quantity = quantity - 1
+            //   WHERE id = ${item.productId}
+            // `;
             
-            console.log(`🔍 Debug: UPDATE result:`, updateResult);
-            console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
+            console.log(`🔍 Debug: UPDATE SKIPPED (debug mode)`);
+            console.log(`✅ Debug: Estoque "atualizado" para produto ${index + 1}!`);
           }
           
           console.log('✅ Debug: STEP 6 concluído - Todos os order_items criados!');
