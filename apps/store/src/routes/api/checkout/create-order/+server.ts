@@ -26,6 +26,7 @@ interface CreateOrderRequest {
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
+    console.log('🛒 Create Order v2.0 - Query SQL corrigida definitivamente');
     console.log('🛒 Create Order - Estratégia híbrida com integração de transportadoras iniciada');
     
     // Verificar autenticação
