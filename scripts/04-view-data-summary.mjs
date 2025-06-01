@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import 'dotenv/config'
-import { Database } from '../packages/db-hyperdrive/dist/index.js'
+import { Database } from '../apps/store/src/lib/db/database.js'
 
 console.log('📊 Resumo dos dados do marketplace\n')
 
