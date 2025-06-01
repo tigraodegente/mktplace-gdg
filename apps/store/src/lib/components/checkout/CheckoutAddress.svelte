@@ -19,6 +19,12 @@
   let loadingCep = $state(false);
   let savingAddress = $state(false);
   
+  // 🎯 REFS PARA AUTO-SCROLL E FOCO
+  let formContainer = $state<HTMLElement>();
+  let nameInput = $state<HTMLInputElement>();
+  let cepInput = $state<HTMLInputElement>();
+  let streetInput = $state<HTMLInputElement>();
+  
   // Formulário de endereço
   let addressForm = $state({
     name: '',
@@ -54,6 +60,63 @@
     { value: 'TO', label: 'Tocantins' }
   ];
   
+  // 🎯 FUNÇÃO DE AUTO-SCROLL E FOCO INTELIGENTE
+  function scrollToFormAndFocus(delay: number = 200) {
+    if (typeof window === 'undefined') return;
+    
+    setTimeout(() => {
+      if (!formContainer) return;
+      
+      // Detectar se é mobile
+      const isMobile = window.innerWidth < 768;
+      
+      // Scroll para o formulário
+      formContainer.scrollIntoView({
+        behavior: 'smooth',
+        block: isMobile ? 'start' : 'center',
+        inline: 'nearest'
+      });
+      
+      // Foco no primeiro campo após scroll
+      setTimeout(() => {
+        // Se não tem nome, focar no nome primeiro
+        if (!addressForm.name && nameInput) {
+          nameInput.focus();
+          console.log('🎯 Foco no campo Nome');
+        }
+        // Senão, focar no CEP (campo mais importante)
+        else if (cepInput) {
+          cepInput.focus();
+          console.log('🎯 Foco no campo CEP');
+        }
+      }, isMobile ? 600 : 400);
+      
+    }, delay);
+  }
+  
+  // 🔍 SCROLL PARA PRIMEIRO ERRO COM FOCO
+  function scrollToFirstError() {
+    if (typeof window === 'undefined' || !formContainer) return;
+    
+    setTimeout(() => {
+      const firstErrorField = formContainer?.querySelector('.border-red-300');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Focar no campo com erro
+        setTimeout(() => {
+          if (firstErrorField.tagName === 'INPUT') {
+            (firstErrorField as HTMLInputElement).focus();
+          }
+        }, 300);
+      }
+    }, 100);
+  }
+  
   onMount(async () => {
     if (currentUser || $isAuthenticated) {
       console.log('🏠 Usuário autenticado - verificando endereços...');
@@ -64,9 +127,13 @@
         addressMode = 'select';
       } else {
         addressMode = 'create';
+        // Auto-scroll se não tem endereços (primeiro acesso)
+        scrollToFormAndFocus(500);
       }
     } else {
       addressMode = 'new';
+      // Para convidados, sempre focar no formulário
+      scrollToFormAndFocus(300);
     }
     
     // Preencher nome se disponível
@@ -190,6 +257,12 @@
   function validateAndSetErrors(): boolean {
     const errors = getValidationErrors();
     addressErrors = errors;
+    
+    // 🎯 Auto-scroll para primeiro erro
+    if (Object.keys(errors).length > 0) {
+      scrollToFirstError();
+    }
+    
     return Object.keys(errors).length === 0;
   }
   
@@ -276,16 +349,24 @@
     selectedAddress = null;
   }
   
+  // 🎯 MELHORADO: Auto-scroll ao iniciar novo endereço
   function startNewAddress() {
     addressMode = 'new';
     clearForm();
     showSaveOption = true;
+    
+    // Auto-scroll e foco no formulário
+    scrollToFormAndFocus(150);
   }
   
+  // 🎯 MELHORADO: Auto-scroll ao criar endereço
   function startCreate() {
     addressMode = 'create';
     clearForm();
     showSaveOption = false;
+    
+    // Auto-scroll e foco no formulário
+    scrollToFormAndFocus(150);
   }
   
   function showAddressList() {
@@ -365,12 +446,12 @@
           
           <button
             onclick={startCreate}
-            class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 mx-auto"
+            class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 mx-auto shadow-md hover:shadow-lg"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span>Cadastrar Endereço</span>
+            <span>📍 Cadastrar Endereço</span>
           </button>
         </div>
         
@@ -381,8 +462,8 @@
             <!-- BOTÃO: USAR ENDEREÇO SALVO -->
             <button
               onclick={showAddressList}
-              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 
-                     {addressMode === 'select' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
+              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 hover:shadow-md
+                     {addressMode === 'select' ? 'border-[#00BFB3] bg-[#00BFB3]/5 shadow-md' : 'border-gray-200'}"
             >
               <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,7 +471,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <div class="text-left">
-                  <p class="font-semibold text-gray-900">Usar endereço salvo</p>
+                  <p class="font-semibold text-gray-900">🏠 Usar endereço salvo</p>
                   <p class="text-sm text-gray-600">{userAddresses.length} endereço(s) disponível(eis)</p>
                 </div>
               </div>
@@ -399,15 +480,15 @@
             <!-- BOTÃO: NOVO ENDEREÇO -->
             <button
               onclick={startNewAddress}
-              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50
-                     {addressMode === 'new' ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-200'}"
+              class="flex-1 p-4 border-2 rounded-lg transition-all hover:border-[#00BFB3]/50 hover:shadow-md
+                     {addressMode === 'new' ? 'border-[#00BFB3] bg-[#00BFB3]/5 shadow-md' : 'border-gray-200'}"
             >
               <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 <div class="text-left">
-                  <p class="font-semibold text-gray-900">Novo endereço</p>
+                  <p class="font-semibold text-gray-900">📍 Novo endereço</p>
                   <p class="text-sm text-gray-600">Cadastrar um novo endereço</p>
                 </div>
               </div>
@@ -479,10 +560,10 @@
   <!-- ============================================ -->
   
   {#if addressMode === 'new' || addressMode === 'create'}
-    <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div bind:this={formContainer} class="bg-white rounded-xl border border-gray-200 p-6 scroll-mt-4">
       <div class="flex items-center justify-between mb-6">
         <h4 class="text-lg font-semibold text-gray-900">
-          {addressMode === 'create' ? 'Cadastrar Novo Endereço' : 'Informações de Entrega'}
+          {addressMode === 'create' ? '📍 Cadastrar Novo Endereço' : '📍 Informações de Entrega'}
         </h4>
         {#if completionPercentage() > 0}
           <div class="flex items-center space-x-2 text-sm text-gray-600">
@@ -504,6 +585,7 @@
             Nome completo *
           </label>
           <input
+            bind:this={nameInput}
             id="checkout-name"
             type="text"
             bind:value={addressForm.name}
@@ -536,6 +618,7 @@
           </label>
           <div class="relative">
             <input
+              bind:this={cepInput}
               id="checkout-zipCode"
               type="text"
               value={addressForm.zipCode}
@@ -582,6 +665,7 @@
               Logradouro *
             </label>
             <input
+              bind:this={streetInput}
               id="checkout-street"
               type="text"
               bind:value={addressForm.street}
@@ -840,12 +924,12 @@
                     showAddressModal = false;
                     startCreate();
                   }}
-                  class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2"
+                  class="px-8 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  <span>Cadastrar Primeiro Endereço</span>
+                  <span>📍 Cadastrar Primeiro Endereço</span>
                 </button>
                 
                 <button
@@ -960,7 +1044,7 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <span>Usar novo endereço</span>
+              <span>📍 Usar novo endereço</span>
             </button>
             
             {#if selectedAddress}
