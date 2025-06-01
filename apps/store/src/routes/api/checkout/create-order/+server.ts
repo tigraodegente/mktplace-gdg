@@ -189,43 +189,69 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           const order = orders[0];
 
           // STEP 6: Adicionar itens e reduzir estoque
-          for (const item of orderItems) {
+          console.log('🔍 Debug: STEP 6 - Iniciando criação de order_items...');
+          console.log('🔍 Debug: orderItems.length:', orderItems.length);
+          
+          for (const [index, item] of orderItems.entries()) {
+            console.log(`🔍 Debug: Processando item ${index + 1}/${orderItems.length}: ${item.productName}`);
+            
             // Buscar seller_id do produto para o order_item
+            console.log(`🔍 Debug: Buscando seller_id para produto ${item.productId}...`);
             const productSeller = await sql`
               SELECT seller_id FROM products WHERE id = ${item.productId} LIMIT 1
             `;
             
             const sellerId = productSeller[0]?.seller_id || '0c882099-6a71-4f35-88b3-a467322be13b'; // Fallback para seller padrão
+            console.log(`🔍 Debug: Seller encontrado: ${sellerId}`);
+            
+            console.log(`🔍 Debug: Inserindo order_item...`);
+            console.log(`🔍 Debug: order.id: ${order.id}`);
+            console.log(`🔍 Debug: productId: ${item.productId}`);
+            console.log(`🔍 Debug: sellerId: ${sellerId}`);
+            console.log(`🔍 Debug: quantity: ${item.quantity}`);
+            console.log(`🔍 Debug: unitPrice: ${item.unitPrice}`);
+            console.log(`🔍 Debug: totalPrice: ${item.totalPrice}`);
             
             await sql`
               INSERT INTO order_items (order_id, product_id, seller_id, quantity, price, total, status)
               VALUES (${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, ${item.unitPrice}, ${item.totalPrice}, 'pending')
             `;
+            console.log(`✅ Debug: Order_item ${index + 1} criado com sucesso!`);
 
+            console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
             await sql`
               UPDATE products 
               SET quantity = quantity - ${item.quantity}
               WHERE id = ${item.productId}
             `;
+            console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
           }
+          
+          console.log('✅ Debug: STEP 6 concluído - Todos os order_items criados!');
 
           // STEP 7: Incrementar uso do cupom
           if (orderData.couponCode) {
+            console.log('🔍 Debug: STEP 7 - Incrementando uso do cupom...');
             await sql`
               UPDATE coupons 
               SET used_count = used_count + 1
               WHERE code = ${orderData.couponCode}
             `;
+            console.log('✅ Debug: STEP 7 concluído - Cupom atualizado!');
+          } else {
+            console.log('🔍 Debug: STEP 7 - Sem cupom para atualizar');
           }
 
           // STEP 8: Adicionar log de histórico (simplificado)
+          console.log('🔍 Debug: STEP 8 - Criando histórico...');
           try {
             await sql`
               INSERT INTO order_status_history (order_id, new_status, created_by, created_by_type, notes)
               VALUES (${order.id}, 'pending', ${authResult.user!.id}, 'user', 'Pedido criado')
             `;
+            console.log('✅ Debug: STEP 8 concluído - Histórico criado!');
           } catch (historyError) {
-            console.log('⚠️ Erro ao criar histórico (não crítico):', historyError);
+            console.log('⚠️ Debug: Erro ao criar histórico (não crítico):', historyError);
           }
 
           console.log('✅ Pedido criado com sucesso!');
