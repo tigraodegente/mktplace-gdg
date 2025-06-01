@@ -222,7 +222,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             await sql`
               UPDATE products 
               SET quantity = quantity - ${item.quantity}
-              WHERE id = ${item.productId}
+              WHERE id = ${item.productId}::uuid
             `;
             console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
           }
