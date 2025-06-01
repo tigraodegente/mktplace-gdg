@@ -6,6 +6,7 @@
  */
 
 import type { Product } from '@mktplace/shared-types';
+import { dev } from '$app/environment';
 
 export interface AnalyticsEvent {
   event: string;
@@ -87,7 +88,7 @@ class AnalyticsService {
     ]);
     
     // Log for debugging in development
-    if (process.env.NODE_ENV === 'development') {
+    if (dev) {
       console.log('Analytics Event:', enrichedEvent);
     }
   }

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
+import { dev } from '$app/environment';
 
 interface QueueItem {
   id: string;
@@ -349,19 +350,19 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 };
 
 // Processamento real de pagamento baseado no gateway
-async function processPayment(item: any): Promise<boolean> {
+async function processPayment(item: any, platform?: App.Platform): Promise<boolean> {
   try {
     const { method, external_id, payment_data } = item;
-    const gateway = process.env.PAYMENT_GATEWAY || 'pagseguro';
+    const gateway = (platform as any)?.env?.PAYMENT_GATEWAY || 'pagseguro';
     
     console.log(`🔄 Processando pagamento ${item.payment_id} via ${gateway}`);
     
     // Verificar status atual no gateway
     let gatewayStatus;
     
-    if (gateway === 'pagseguro' && process.env.PAGSEGURO_TOKEN) {
-      gatewayStatus = await checkPagSeguroStatus(external_id);
-    } else if (process.env.NODE_ENV === 'development') {
+    if (gateway === 'pagseguro' && (platform as any)?.env?.PAGSEGURO_TOKEN) {
+      gatewayStatus = await checkPagSeguroStatus(external_id, platform);
+    } else if (dev) {
       // Em desenvolvimento, simular verificação baseada em dados reais
       gatewayStatus = await simulateGatewayCheck(item);
     } else {
@@ -377,10 +378,10 @@ async function processPayment(item: any): Promise<boolean> {
 }
 
 // Verificar status no PagSeguro
-async function checkPagSeguroStatus(externalId: string): Promise<string> {
+async function checkPagSeguroStatus(externalId: string, platform?: App.Platform): Promise<string> {
   try {
-    const apiUrl = process.env.PAGSEGURO_API_URL || 'https://ws.pagseguro.uol.com.br/v4';
-    const token = process.env.PAGSEGURO_TOKEN;
+    const apiUrl = (platform as any)?.env?.PAGSEGURO_API_URL || 'https://ws.pagseguro.uol.com.br/v4';
+    const token = (platform as any)?.env?.PAGSEGURO_TOKEN;
     
     const response = await fetch(`${apiUrl}/orders/${externalId}`, {
       headers: {

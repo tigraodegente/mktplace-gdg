@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 import { nanoid } from 'nanoid';
+import { dev } from '$app/environment';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   try {
@@ -72,7 +73,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             `;
             
             // Adicionar email à fila
-            const baseUrl = process.env.APP_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+            const baseUrl = (platform as any)?.env?.APP_URL || 'https://mktplace-store.pages.dev';
             const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
             
             await db.query`
@@ -94,8 +95,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         }, 100);
         
         // Log para desenvolvimento
-        if (process.env.NODE_ENV === 'development') {
-          const baseUrl = process.env.APP_URL || 'http://localhost:5173';
+        if (dev) {
+          const baseUrl = (platform as any)?.env?.APP_URL || 'http://localhost:5173';
           const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
           console.log(`🔑 Token de reset para ${email}: ${resetToken}`);
           console.log(`🔗 Link: ${resetUrl}`);
