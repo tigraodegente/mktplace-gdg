@@ -1,188 +1,361 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	
+	// Estados do formulário
 	let email = '';
 	let password = '';
 	let isLoading = false;
-	let errorMessage = '';
-	let logoError = false;
+	let error = '';
 	
-	// Verificar se há mensagem de erro nos parâmetros
-	$: {
-		const urlError = $page.url.searchParams.get('error');
-		if (urlError === 'access_denied') {
-			errorMessage = 'Acesso negado. Você precisa ter permissões de administrador.';
+	// Estados do sistema
+	let userRoles: string[] = [];
+	let showRoleSelector = false;
+	let userName = '';
+	
+	onMount(() => {
+		// Limpar qualquer estado anterior
+		userRoles = [];
+		showRoleSelector = false;
+		error = '';
+		
+		// Em desenvolvimento, pré-preencher
+		if (import.meta.env.DEV) {
+			email = 'admin@dev.local';
+			password = '123456';
 		}
-	}
+	});
 	
 	async function handleLogin() {
 		if (!email || !password) {
-			errorMessage = 'Por favor, preencha todos os campos.';
+			error = 'Por favor, preencha todos os campos';
 			return;
 		}
 		
 		isLoading = true;
-		errorMessage = '';
+		error = '';
 		
 		try {
-			// Em desenvolvimento, simular login bem-sucedido
+			// Em desenvolvimento, simular login
 			if (import.meta.env.DEV) {
-				// Simular delay de rede
-				await new Promise(resolve => setTimeout(resolve, 1000));
-				
-				// Criar cookie de sessão mock
-				document.cookie = 'auth_session=mock-admin-session; path=/; max-age=604800';
-				
-				goto('/');
+				await simulateLogin();
 				return;
 			}
 			
-			// Em produção, fazer requisição real
+			// Em produção, fazer login real
 			const response = await fetch('/api/auth/login', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ email, password, role: 'admin' })
+				credentials: 'include',
+				body: JSON.stringify({ email, password })
 			});
 			
 			const result = await response.json();
 			
-			if (result.success) {
-				goto('/');
+			if (result.success && result.user) {
+				await handleLoginSuccess(result.user);
 			} else {
-				errorMessage = result.error || 'Erro no login. Verifique suas credenciais.';
+				error = result.error || 'Email ou senha incorretos';
 			}
-			
-		} catch (error) {
-			errorMessage = 'Erro de conexão. Tente novamente.';
-			console.error('Erro no login:', error);
+		} catch (err) {
+			console.error('Erro no login:', err);
+			error = 'Erro de conexão. Tente novamente.';
 		} finally {
 			isLoading = false;
 		}
 	}
 	
-	function handleKeyPress(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			handleLogin();
+	async function simulateLogin() {
+		// Simular delay de rede
+		await new Promise(resolve => setTimeout(resolve, 1000));
+		
+		// Simular diferentes usuários baseado no email
+		let mockUser;
+		
+		if (email.includes('multi')) {
+			// Usuário com múltiplos roles
+			mockUser = {
+				id: 'user-multi',
+				name: 'Carlos Multi',
+				email: email,
+				roles: ['admin', 'vendor', 'customer']
+			};
+		} else if (email.includes('vendor') || email.includes('joao')) {
+			// Só vendedor
+			mockUser = {
+				id: 'vendor-dev',
+				name: 'João Vendedor',
+				email: email,
+				roles: ['vendor']
+			};
+		} else {
+			// Só admin (default)
+			mockUser = {
+				id: 'admin-dev',
+				name: 'Maria Admin',
+				email: email,
+				roles: ['admin']
+			};
+		}
+		
+		await handleLoginSuccess(mockUser);
+	}
+	
+	async function handleLoginSuccess(user: any) {
+		userName = user.name;
+		
+		// Filtrar apenas roles que podem acessar os painéis
+		const adminRoles = user.roles?.filter((role: string) => ['admin', 'vendor'].includes(role)) || [];
+		
+		if (adminRoles.length === 0) {
+			error = 'Acesso negado. Você não tem permissão para acessar este painel.';
+			return;
+		}
+		
+		if (adminRoles.length === 1) {
+			// Único role - ir direto para o painel
+			const role = adminRoles[0];
+			await redirectToPanel(role);
+		} else {
+			// Múltiplos roles - mostrar seletor
+			userRoles = adminRoles;
+			showRoleSelector = true;
 		}
 	}
 	
-	function handleLogoError() {
-		logoError = true;
+	async function selectRole(selectedRole: string) {
+		isLoading = true;
+		await redirectToPanel(selectedRole);
+	}
+	
+	async function redirectToPanel(role: string) {
+		try {
+			// Definir contexto do usuário na sessão
+			await fetch('/api/auth/set-context', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				credentials: 'include',
+				body: JSON.stringify({ role })
+			});
+			
+			// Redirecionar para o painel
+			goto(`/?user=${role}`);
+		} catch (err) {
+			console.error('Erro ao definir contexto:', err);
+			// Em desenvolvimento, ir direto mesmo com erro
+			if (import.meta.env.DEV) {
+				goto(`/?user=${role}`);
+			} else {
+				error = 'Erro ao acessar painel. Tente novamente.';
+			}
+		}
+	}
+	
+	function backToLogin() {
+		showRoleSelector = false;
+		userRoles = [];
+		userName = '';
+		error = '';
+	}
+	
+	// Atalhos para desenvolvimento
+	function quickLogin(role: string) {
+		if (role === 'admin') {
+			email = 'admin@dev.local';
+		} else if (role === 'vendor') {
+			email = 'joao@vendor.local';
+		} else if (role === 'multi') {
+			email = 'carlos@multi.local';
+		}
+		password = '123456';
+		handleLogin();
 	}
 </script>
 
 <svelte:head>
-	<title>Login - Admin Panel</title>
+	<title>Login - Marketplace GDG</title>
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-	<div class="max-w-md w-full space-y-8 p-8">
-		<!-- Logo e Header -->
-		<div class="text-center">
-			<div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-6 overflow-hidden">
-				{#if !logoError}
-					<img 
-						src="/logo.png" 
-						alt="Marketplace GDG" 
-						class="w-12 h-12 object-contain"
-						on:error={handleLogoError}
-					/>
-				{:else}
-					<svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-					</svg>
+<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+	<div class="max-w-md w-full space-y-8">
+		{#if !showRoleSelector}
+			<!-- Formulário de Login -->
+			<div>
+				<div class="text-center">
+					<div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-4">
+						<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+						</svg>
+					</div>
+					<h2 class="mt-6 text-3xl font-bold text-gray-900">
+						Acesse sua conta
+					</h2>
+					<p class="mt-2 text-sm text-gray-600">
+						Painel Administrativo do Marketplace
+					</p>
+				</div>
+				
+				<form class="mt-8 space-y-6" on:submit|preventDefault={handleLogin}>
+					<div class="space-y-4">
+						<div>
+							<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+								Email
+							</label>
+							<input
+								id="email"
+								name="email"
+								type="email"
+								autocomplete="email"
+								required
+								bind:value={email}
+								disabled={isLoading}
+								class="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+								placeholder="seu@email.com"
+							/>
+						</div>
+						
+						<div>
+							<label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+								Senha
+							</label>
+							<input
+								id="password"
+								name="password"
+								type="password"
+								autocomplete="current-password"
+								required
+								bind:value={password}
+								disabled={isLoading}
+								class="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+								placeholder="Sua senha"
+							/>
+						</div>
+					</div>
+					
+					{#if error}
+						<div class="bg-red-50 border border-red-200 rounded-lg p-4">
+							<div class="flex">
+								<svg class="w-5 h-5 text-red-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+								</svg>
+								<p class="text-sm text-red-700">{error}</p>
+							</div>
+						</div>
+					{/if}
+					
+					<div>
+						<button
+							type="submit"
+							disabled={isLoading}
+							class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+						>
+							{#if isLoading}
+								<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+								Entrando...
+							{:else}
+								Entrar
+							{/if}
+						</button>
+					</div>
+				</form>
+				
+				{#if import.meta.env.DEV}
+					<div class="mt-8 pt-6 border-t border-gray-200">
+						<p class="text-xs text-gray-500 text-center mb-4">🛠️ Atalhos para Desenvolvimento:</p>
+						<div class="space-y-2">
+							<button
+								on:click={() => quickLogin('admin')}
+								disabled={isLoading}
+								class="w-full text-left px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+							>
+								👨‍💼 Entrar como Admin
+							</button>
+							<button
+								on:click={() => quickLogin('vendor')}
+								disabled={isLoading}
+								class="w-full text-left px-3 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
+							>
+								🏪 Entrar como Vendedor
+							</button>
+							<button
+								on:click={() => quickLogin('multi')}
+								disabled={isLoading}
+								class="w-full text-left px-3 py-2 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+							>
+								👑 Entrar como Multi-Role (Admin + Vendedor)
+							</button>
+						</div>
+					</div>
 				{/if}
 			</div>
-			<h2 class="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h2>
-			<p class="text-gray-600">Acesso ao painel administrativo</p>
-			<p class="text-sm text-gray-500 mt-2">Marketplace GDG</p>
-		</div>
-
-		<!-- Formulário de Login -->
-		<div class="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
-			<form class="space-y-6" on:submit|preventDefault={handleLogin}>
-				<div>
-					<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-						Email do Administrador
-					</label>
-					<input
-						id="email"
-						type="email"
-						required
-						bind:value={email}
-						on:keypress={handleKeyPress}
-						class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
-						placeholder="admin@marketplace.com"
-						disabled={isLoading}
-					/>
+		{:else}
+			<!-- Seletor de Role -->
+			<div>
+				<div class="text-center">
+					<div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-4">
+						<span class="text-2xl">👑</span>
+					</div>
+					<h2 class="mt-6 text-3xl font-bold text-gray-900">
+						Olá, {userName}!
+					</h2>
+					<p class="mt-2 text-sm text-gray-600">
+						Como você gostaria de acessar o sistema hoje?
+					</p>
 				</div>
-
-				<div>
-					<label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-						Senha
-					</label>
-					<input
-						id="password"
-						type="password"
-						required
-						bind:value={password}
-						on:keypress={handleKeyPress}
-						class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
-						placeholder="Sua senha de administrador"
-						disabled={isLoading}
-					/>
+				
+				<div class="mt-8 space-y-4">
+					{#each userRoles as role}
+						<button
+							on:click={() => selectRole(role)}
+							disabled={isLoading}
+							class="group w-full flex items-center justify-between p-6 bg-white border border-gray-200 rounded-xl hover:border-primary-200 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							<div class="flex items-center space-x-4">
+								<div class="w-12 h-12 bg-gradient-to-br {role === 'admin' ? 'from-blue-500 to-blue-600' : 'from-green-500 to-green-600'} rounded-xl flex items-center justify-center text-white text-xl">
+									{role === 'admin' ? '👨‍💼' : '🏪'}
+								</div>
+								<div class="text-left">
+									<h3 class="text-lg font-semibold text-gray-900 group-hover:text-primary-700">
+										{role === 'admin' ? 'Administrador' : 'Vendedor'}
+									</h3>
+									<p class="text-sm text-gray-500">
+										{role === 'admin' 
+											? 'Gerencie todo o marketplace, usuários e configurações' 
+											: 'Gerencie seus produtos, vendas e relatórios'
+										}
+									</p>
+								</div>
+							</div>
+							<svg class="w-6 h-6 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+							</svg>
+						</button>
+					{/each}
 				</div>
-
-				{#if errorMessage}
-					<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-						{errorMessage}
+				
+				<div class="mt-6">
+					<button
+						on:click={backToLogin}
+						disabled={isLoading}
+						class="w-full text-center text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+					>
+						← Voltar ao login
+					</button>
+				</div>
+				
+				{#if isLoading}
+					<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+						<div class="bg-white rounded-lg p-6 text-center">
+							<div class="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+							<p class="text-gray-600">Acessando painel...</p>
+						</div>
 					</div>
 				{/if}
-
-				<button
-					type="submit"
-					disabled={isLoading}
-					class="w-full flex items-center justify-center px-4 py-3 bg-primary-500 border border-transparent rounded-lg font-medium text-white hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-				>
-					{#if isLoading}
-						<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-						Verificando credenciais...
-					{:else}
-						<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-						</svg>
-						Acessar Admin Panel
-					{/if}
-				</button>
-			</form>
-
-			<!-- Info de Desenvolvimento -->
-			{#if import.meta.env.DEV}
-				<div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-					<div class="text-sm text-blue-800">
-						<strong>🔧 Modo Desenvolvimento:</strong>
-						<p class="mt-1">Qualquer email/senha funcionará para acessar o admin panel.</p>
-						<p class="text-xs text-blue-600 mt-2">
-							Ex: admin@test.com / 123456
-						</p>
-					</div>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Links úteis -->
-		<div class="text-center space-y-2">
-			<a href="/" class="text-sm text-primary-600 hover:text-primary-700 transition-colors">
-				← Voltar para a loja
-			</a>
-			<br>
-			<a href="/seller/login" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-				Acessar como vendedor
-			</a>
-		</div>
+			</div>
+		{/if}
 	</div>
 </div> 
