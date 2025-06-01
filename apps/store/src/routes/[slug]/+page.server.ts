@@ -1,10 +1,11 @@
 import type { PageServerLoad } from './$types';
-import { withDatabase } from '$lib/db/index.js';
+import { getDatabase } from '$lib/db/index.js';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, platform, setHeaders }) => {
   try {
     const { slug } = params;
+    console.log(`📄 Carregando página estática: ${slug} - Estratégia híbrida`);
 
     // Headers de cache para páginas estáticas
     setHeaders({
@@ -12,39 +13,53 @@ export const load: PageServerLoad = async ({ params, platform, setHeaders }) => 
       'vary': 'Accept-Encoding'
     });
 
-    const page = await withDatabase(platform, async (db) => {
-      const [result] = await db.query`
-        SELECT 
-          id,
-          title,
-          slug,
-          content,
-          meta_title,
-          meta_description,
-          is_published,
-          created_at,
-          updated_at
-        FROM pages 
-        WHERE slug = ${slug} AND is_published = true
-      `;
+    // Tentar buscar página com timeout
+    try {
+      const db = getDatabase(platform);
+      
+      const queryPromise = (async () => {
+        const [result] = await db.query`
+          SELECT 
+            id,
+            title,
+            slug,
+            content,
+            meta_title,
+            meta_description,
+            is_published,
+            created_at,
+            updated_at
+          FROM pages 
+          WHERE slug = ${slug} AND is_published = true
+        `;
+        return result;
+      })();
 
-      return result;
-    });
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout page')), 3000)
+      );
+      
+      const page = await Promise.race([queryPromise, timeoutPromise]);
 
-    if (!page) {
+      if (!page) {
+        throw error(404, 'Página não encontrada');
+      }
+
+      console.log(`✅ Página estática carregada: ${page.title}`);
+      return {
+        page,
+        meta: {
+          title: page.meta_title || page.title,
+          description: page.meta_description || null
+        }
+      };
+    } catch (dbError) {
+      console.log('⚠️ Erro ao buscar página no banco, verificando fallback...');
       throw error(404, 'Página não encontrada');
     }
 
-    return {
-      page,
-      meta: {
-        title: page.meta_title || page.title,
-        description: page.meta_description || null
-      }
-    };
-
   } catch (err) {
-    console.error('Erro ao carregar página estática:', err);
+    console.error('❌ Erro ao carregar página estática:', err);
     throw error(404, 'Página não encontrada');
   }
 }; 
