@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import postgres from 'postgres';
-import { env } from '$env/dynamic/private';
+import { getDatabase } from '$lib/db';
 
 interface BasicProduct {
   id: string;
@@ -16,34 +15,36 @@ export const GET: RequestHandler = async ({ platform, url }) => {
   try {
     const limit = Number(url.searchParams.get('limit')) || 12;
     
-    console.log('🔍 Featured - Testando conexão direta com postgres...');
+    console.log('🔍 Featured - Usando estratégia híbrida...');
     
-    // Tentar conexão direta com postgres
+    // Tentar buscar produtos com timeout
     try {
-      const dbUrl = env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev';
-      console.log('📡 URL do banco:', dbUrl.replace(/\/\/.*@/, '//***@')); // Ocultar credenciais
+      const db = getDatabase(platform);
       
-      const sql = postgres(dbUrl, {
-        max: 1,
-        idle_timeout: 30,
-        connect_timeout: 10,
-        ssl: false // Local não precisa SSL
+      // Promise com timeout de 3 segundos
+      const queryPromise = (async () => {
+        console.log('🔍 Executando query de produtos featured...');
+        
+        // Query corrigida com nomes de colunas corretos
+        const products = await db.query`
+          SELECT id, name, slug, price, original_price, category_id
+          FROM products 
+          WHERE is_featured = true AND is_active = true 
+          ORDER BY created_at DESC 
+          LIMIT ${limit}
+        `;
+        
+        console.log(`✅ SUCESSO: ${products.length} produtos encontrados no banco`);
+        console.log('📦 Produtos:', products.map((p: any) => ({ id: p.id, name: p.name })));
+        
+        return products;
+      })();
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 3000)
       });
       
-      console.log('🔍 Executando query SQL...');
-      const products = await sql`
-        SELECT id, name, slug, price, original_price, category_id
-        FROM products 
-        WHERE featured = true AND is_active = true 
-        ORDER BY sales_count DESC 
-        LIMIT ${limit}
-      `;
-      
-      console.log(`✅ SUCESSO: ${products.length} produtos encontrados no banco`);
-      console.log('📦 Produtos:', products.map(p => ({ id: p.id, name: p.name })));
-      
-      // Fechar conexão
-      await sql.end();
+      const products = await Promise.race([queryPromise, timeoutPromise]) as any[];
       
       // Formatar produtos com dados reais
       const formattedProducts = products.map((product: any, index: number) => ({
