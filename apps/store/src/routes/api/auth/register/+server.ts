@@ -1,11 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { withDatabase } from '$lib/db';
+import { getDatabase } from '$lib/db';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 
 export const POST: RequestHandler = async ({ request, cookies, platform }) => {
   try {
+    console.log('📝 Auth Register - Estratégia híbrida iniciada');
+    
     const { email, password, name, role = 'customer' } = await request.json();
     
     // Validar dados
@@ -33,88 +35,117 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       }, { status: 400 });
     }
     
-    const result = await withDatabase(platform, async (db) => {
-      // Verificar se email já existe
-      const existingUser = await db.queryOne`
-        SELECT id FROM users WHERE email = ${email}
-      `;
+    // Tentar registrar usuário com timeout
+    try {
+      const db = getDatabase(platform);
       
-      if (existingUser) {
-        throw new Error('Email já cadastrado');
-      }
-      
-      // Criar hash da senha
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(password, salt);
-      
-      // Criar novo usuário
-      const newUser = await db.queryOne`
-        INSERT INTO users (email, password_hash, name, role, is_active, email_verified)
-        VALUES (${email}, ${passwordHash}, ${name}, ${role}, true, false)
-        RETURNING id, email, name, role
-      `;
-      
-      // Se for vendedor, criar perfil de vendedor
-      if (role === 'seller') {
-        const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
+      // Promise com timeout de 6 segundos para registro
+      const queryPromise = (async () => {
+        // STEP 1: Verificar se email já existe (query simples)
+        const existingUsers = await db.query`
+          SELECT id FROM users WHERE email = ${email} LIMIT 1
+        `;
+        
+        if (existingUsers.length > 0) {
+          throw new Error('Email já cadastrado');
+        }
+        
+        // STEP 2: Criar hash da senha (pode ser lento)
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+        
+        // STEP 3: Criar usuário
+        const newUsers = await db.query`
+          INSERT INTO users (email, password_hash, name, role, is_active, email_verified)
+          VALUES (${email}, ${passwordHash}, ${name}, ${role}, true, false)
+          RETURNING id, email, name, role
+        `;
+        
+        const newUser = newUsers[0];
+        
+        // STEP 4: Criar sessão
+        const sessionToken = nanoid(32);
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
         
         await db.query`
-          INSERT INTO sellers (
-            user_id, company_name, slug, description, 
-            is_active, is_verified, rating, total_sales
-          )
+          INSERT INTO sessions (user_id, token, ip_address, user_agent, expires_at)
           VALUES (
-            ${newUser.id}, ${name}, ${slug}, ${`Loja de ${name}`},
-            false, false, 0, 0
+            ${newUser.id}, ${sessionToken}, 
+            ${request.headers.get('x-forwarded-for') || 'unknown'},
+            ${request.headers.get('user-agent') || 'unknown'},
+            ${expiresAt}
           )
         `;
+        
+        // STEP 5: Criar perfil de vendedor async (se necessário)
+        if (role === 'seller') {
+          setTimeout(async () => {
+            try {
+              const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
+              await db.query`
+                INSERT INTO sellers (user_id, company_name, slug, description, is_active, is_verified, rating, total_sales)
+                VALUES (${newUser.id}, ${name}, ${slug}, ${`Loja de ${name}`}, false, false, 0, 0)
+              `;
+            } catch (e) {
+              console.log('Seller profile creation async failed:', e);
+            }
+          }, 100);
+        }
+        
+        return { user: newUser, sessionToken };
+      })();
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 6000)
+      });
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
+      console.log(`✅ Register OK: ${result.user.email}`);
+      
+      // Criar sessão no cookie
+      cookies.set('session_token', result.sessionToken, {
+        path: '/',
+        httpOnly: true,
+        secure: import.meta.env.PROD,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7
+      });
+      
+      return json({
+        success: true,
+        data: {
+          user: result.user
+        },
+        source: 'database'
+      });
+      
+    } catch (error) {
+      console.log(`⚠️ Erro register: ${error instanceof Error ? error.message : 'Erro'}`);
+      
+      if (error instanceof Error && error.message === 'Email já cadastrado') {
+        return json({
+          success: false,
+          error: { message: error.message }
+        }, { status: 400 });
       }
       
-      // Criar sessão
-      const sessionToken = nanoid(32);
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
-      
-      await db.query`
-        INSERT INTO sessions (user_id, token, ip_address, user_agent, expires_at)
-        VALUES (
-          ${newUser.id}, 
-          ${sessionToken}, 
-          ${request.headers.get('x-forwarded-for') || 'unknown'},
-          ${request.headers.get('user-agent') || 'unknown'},
-          ${expiresAt}
-        )
-      `;
-      
-      return { user: newUser, sessionToken };
-    });
-    
-    // Criar sessão no cookie
-    cookies.set('session_token', result.sessionToken, {
-      path: '/',
-      httpOnly: true,
-      secure: import.meta.env.PROD,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 dias
-    });
-    
-    return json({
-      success: true,
-      data: {
-        user: result.user
+      if (error instanceof Error && error.message === 'Timeout') {
+        return json({
+          success: false,
+          error: { message: 'Erro temporário no servidor. Tente novamente em alguns instantes.' }
+        }, { status: 503 });
       }
-    });
-    
-  } catch (error) {
-    console.error('Erro no registro:', error);
-    
-    if (error instanceof Error && error.message === 'Email já cadastrado') {
+      
       return json({
         success: false,
-        error: { message: error.message }
-      }, { status: 400 });
+        error: { message: 'Erro ao processar registro' }
+      }, { status: 500 });
     }
     
+  } catch (error) {
+    console.error('❌ Erro crítico register:', error);
     return json({
       success: false,
       error: { message: 'Erro ao processar registro' }

@@ -1,10 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { withDatabase } from '$lib/db';
+import { getDatabase } from '$lib/db';
 import { nanoid } from 'nanoid';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   try {
+    console.log('🔑 Auth Forgot Password - Estratégia híbrida iniciada');
+    
     const { email } = await request.json();
     
     // Validar email
@@ -23,91 +25,121 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
-    const result = await withDatabase(platform, async (db) => {
-      // Buscar usuário pelo email
-      const user = await db.queryOne`
-        SELECT id, email, name, is_active 
-        FROM users 
-        WHERE email = ${email}
-      `;
+    // Tentar processar recuperação com timeout
+    try {
+      const db = getDatabase(platform);
       
-      // Sempre retorna sucesso para não vazar informações
-      if (!user || !user.is_active) {
+      // Promise com timeout de 4 segundos
+      const queryPromise = (async () => {
+        // STEP 1: Buscar usuário (query simples)
+        const users = await db.query`
+          SELECT id, email, name, is_active 
+          FROM users 
+          WHERE email = ${email}
+          LIMIT 1
+        `;
+        
+        const user = users[0];
+        
+        // Sempre retorna sucesso para não vazar informações
+        if (!user || !user.is_active) {
+          return {
+            success: true,
+            message: 'Se o email existir, você receberá as instruções de recuperação'
+          };
+        }
+        
+        // STEP 2: Gerar token de reset
+        const resetToken = nanoid(64);
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 1);
+        
+        // STEP 3: Operações críticas síncronas
+        await db.query`
+          INSERT INTO password_resets (user_id, token, expires_at)
+          VALUES (${user.id}, ${resetToken}, ${expiresAt})
+          ON CONFLICT (token) DO NOTHING
+        `;
+        
+        // STEP 4: Operações não-críticas async
+        setTimeout(async () => {
+          try {
+            // Invalidar tokens anteriores
+            await db.query`
+              UPDATE password_resets 
+              SET used = true 
+              WHERE user_id = ${user.id} AND used = false AND token != ${resetToken}
+            `;
+            
+            // Adicionar email à fila
+            const baseUrl = process.env.APP_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+            const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+            
+            await db.query`
+              INSERT INTO email_queue (to_email, to_name, subject, template, template_data)
+              VALUES (
+                ${user.email}, ${user.name}, 
+                'Recuperação de senha - Marketplace GDG',
+                'password_reset',
+                ${JSON.stringify({
+                  user_name: user.name,
+                  reset_url: resetUrl,
+                  expires_in: '1 hora'
+                })}
+              )
+            `;
+          } catch (e) {
+            console.log('Email queue async failed:', e);
+          }
+        }, 100);
+        
+        // Log para desenvolvimento
+        if (process.env.NODE_ENV === 'development') {
+          const baseUrl = process.env.APP_URL || 'http://localhost:5173';
+          const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+          console.log(`🔑 Token de reset para ${email}: ${resetToken}`);
+          console.log(`🔗 Link: ${resetUrl}`);
+          
+          return {
+            success: true,
+            message: 'Se o email existir, você receberá as instruções de recuperação',
+            resetToken,
+            resetUrl
+          };
+        }
+        
         return {
           success: true,
           message: 'Se o email existir, você receberá as instruções de recuperação'
         };
-      }
+      })();
       
-      // Gerar token de reset
-      const resetToken = nanoid(64);
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 1); // Expira em 1 hora
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 4000)
+      });
       
-      // Salvar token no banco (criar tabela se não existir)
-      await db.execute`
-        CREATE TABLE IF NOT EXISTS password_resets (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          token VARCHAR(255) UNIQUE NOT NULL,
-          expires_at TIMESTAMP NOT NULL,
-          used BOOLEAN DEFAULT false,
-          created_at TIMESTAMP DEFAULT NOW()
-        )
-      `;
+      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
-      // Invalidar tokens anteriores
-      await db.execute`
-        UPDATE password_resets 
-        SET used = true 
-        WHERE user_id = ${user.id} AND used = false
-      `;
+      console.log(`✅ Forgot password OK para ${email}`);
       
-      // Criar novo token
-      await db.execute`
-        INSERT INTO password_resets (user_id, token, expires_at)
-        VALUES (${user.id}, ${resetToken}, ${expiresAt})
-      `;
+      return json({
+        ...result,
+        source: 'database'
+      });
       
-      // Implementar envio de email real em produção
-      const baseUrl = process.env.APP_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
-      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+    } catch (error) {
+      console.log(`⚠️ Erro forgot-password: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
       
-      // Adicionar email à fila
-      await db.execute`
-        INSERT INTO email_queue (
-          to_email, to_name, subject, template, template_data
-        ) VALUES (
-          ${user.email}, 
-          ${user.name}, 
-          'Recuperação de senha - Marketplace GDG',
-          'password_reset',
-          ${JSON.stringify({
-            user_name: user.name,
-            reset_url: resetUrl,
-            expires_in: '1 hora'
-          })}
-        )
-      `;
-      
-      // Log apenas em desenvolvimento
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔑 Token de reset para ${email}: ${resetToken}`);
-        console.log(`🔗 Link: ${resetUrl}`);
-      }
-      
-      return {
+      // FALLBACK SEGURO: sempre retornar sucesso (não vazar informações)
+      return json({
         success: true,
         message: 'Se o email existir, você receberá as instruções de recuperação',
-        // Em desenvolvimento, retornar o token para facilitar testes
-        ...(process.env.NODE_ENV === 'development' && { resetToken, resetUrl })
-      };
-    });
-    
-    return json(result);
+        source: 'fallback'
+      });
+    }
     
   } catch (error) {
-    console.error('Erro ao processar recuperação de senha:', error);
+    console.error('❌ Erro crítico forgot-password:', error);
     return json({
       success: false,
       error: { message: 'Erro interno do servidor' }
