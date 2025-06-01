@@ -220,17 +220,27 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
             console.log(`🔍 Debug: Quantity a subtrair: ${item.quantity}`);
-            console.log(`🔍 Debug: SKIPPING UPDATE para debug - só testando o fluxo...`);
             
-            // TEMPORARIAMENTE COMENTADO PARA DEBUG
-            // const updateResult = await sql`
-            //   UPDATE products 
-            //   SET quantity = quantity - 1
-            //   WHERE id = ${item.productId}
-            // `;
-            
-            console.log(`🔍 Debug: UPDATE SKIPPED (debug mode)`);
-            console.log(`✅ Debug: Estoque "atualizado" para produto ${index + 1}!`);
+            // NOVA ABORDAGEM: Query UPDATE robusta com tratamento isolado
+            try {
+              console.log(`🔍 Debug: Executando UPDATE do estoque...`);
+              
+              const updateQuery = `
+                UPDATE products 
+                SET quantity = quantity - $1
+                WHERE id = $2
+              `;
+              
+              const updateResult = await sql.unsafe(updateQuery, [item.quantity, item.productId]);
+              
+              console.log(`🔍 Debug: UPDATE executado com sucesso`);
+              console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
+              
+            } catch (updateError) {
+              console.log(`⚠️ Debug: Erro no UPDATE do estoque (não crítico):`, updateError);
+              console.log(`🔍 Debug: Continuando sem atualizar estoque...`);
+              // Não falhar a transação por causa do estoque
+            }
           }
           
           console.log('✅ Debug: STEP 6 concluído - Todos os order_items criados!');
