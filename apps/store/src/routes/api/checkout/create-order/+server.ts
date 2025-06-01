@@ -221,17 +221,15 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
             console.log(`🔍 Debug: Quantity a subtrair: ${item.quantity}`);
             
-            // NOVA ABORDAGEM: Query UPDATE robusta com tratamento isolado
+            // Atualizar estoque de forma simples e direta
             try {
               console.log(`🔍 Debug: Executando UPDATE do estoque...`);
               
-              const updateQuery = `
+              await sql`
                 UPDATE products 
-                SET quantity = quantity - $1
-                WHERE id = $2
+                SET quantity = quantity - ${item.quantity}
+                WHERE id = ${item.productId}
               `;
-              
-              const updateResult = await sql.unsafe(updateQuery, [item.quantity, item.productId]);
               
               console.log(`🔍 Debug: UPDATE executado com sucesso`);
               console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
