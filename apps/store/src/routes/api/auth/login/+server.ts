@@ -61,12 +61,28 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
           };
         }
         
-        // STEP 4: Operações async (não travar resposta)
+        // STEP 4: Criar sessão SÍNCRONA (não async)
         const sessionToken = nanoid(32);
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
         
-        // Update last_login async
+        console.log(`🔑 Criando sessão síncrona para: ${user.email}`);
+        
+        // Insert session SÍNCRONO - crítico para funcionar
+        await db.query`
+          INSERT INTO sessions (user_id, token, ip_address, user_agent, expires_at)
+          VALUES (
+            ${user.id},
+            ${sessionToken},
+            ${request.headers.get('x-forwarded-for') || 'unknown'},
+            ${request.headers.get('user-agent') || 'unknown'},
+            ${expiresAt}
+          )
+        `;
+        
+        console.log(`✅ Sessão criada no banco: ${sessionToken.substring(0, 8)}...`);
+        
+        // Update last_login async (não crítico)
         setTimeout(async () => {
           try {
             await db.query`
@@ -76,24 +92,6 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
             `;
           } catch (e) {
             console.log('Update last_login async failed:', e);
-          }
-        }, 100);
-        
-        // Insert session async
-        setTimeout(async () => {
-          try {
-            await db.query`
-              INSERT INTO sessions (user_id, token, ip_address, user_agent, expires_at)
-              VALUES (
-                ${user.id},
-                ${sessionToken},
-                ${request.headers.get('x-forwarded-for') || 'unknown'},
-                ${request.headers.get('user-agent') || 'unknown'},
-                ${expiresAt}
-              )
-            `;
-          } catch (e) {
-            console.log('Insert session async failed:', e);
           }
         }, 100);
         
@@ -126,14 +124,24 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       
       console.log(`✅ Login success: ${result.user.email}`);
       
-      // Criar sessão no cookie
+      // Configuração otimizada do cookie para remoto
+      const isProduction = request.url.includes('.pages.dev') || 
+                          request.url.includes('https://') ||
+                          !request.url.includes('localhost');
+      
+      console.log(`🍪 Configurando cookie - Produção: ${isProduction}`);
+      
+      // Criar sessão no cookie com configuração específica para ambiente
       cookies.set('session_token', result.sessionToken!, {
         path: '/',
         httpOnly: true,
-        secure: import.meta.env.PROD,
+        secure: isProduction, // true apenas em produção real
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7 // 7 dias
+        maxAge: 60 * 60 * 24 * 7, // 7 dias
+        domain: undefined // deixar o browser decidir
       });
+      
+      console.log(`🍪 Cookie configurado: session_token=${result.sessionToken!.substring(0, 8)}...`);
       
       return json({
         success: true,
