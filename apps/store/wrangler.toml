@@ -10,12 +10,19 @@ cpu_ms = 120000
 # Environment variables
 [vars]
 NODE_ENV = "production"
+DATABASE_URL = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
 
 # KV Namespaces para cache
 [[kv_namespaces]]
 binding = "CACHE_KV"
 id = "780e9e83f99b45f4a6ac7a44f6ee8f4b"
 preview_id = "f7678a2cec1d438a9bb518f1c820d114"
+
+# Hyperdrive para otimizar conexões com Neon
+[[hyperdrive]]
+binding = "HYPERDRIVE_DB"
+id = "YOUR_HYPERDRIVE_ID_HERE"
+localConnectionString = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
 
 # D1 Database (se você quiser usar no futuro)
 # [[d1_databases]]
