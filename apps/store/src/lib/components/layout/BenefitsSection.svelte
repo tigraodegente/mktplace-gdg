@@ -1,4 +1,8 @@
 <script lang="ts">
+	// =============================================================================
+	// TYPES
+	// =============================================================================
+	
 	type IconType = 'payment' | 'delivery' | 'discount' | 'exchange';
 	
 	interface Benefit {
@@ -16,6 +20,10 @@
 		benefits?: Benefit[];
 		class?: string;
 	}
+	
+	// =============================================================================
+	// PROPS
+	// =============================================================================
 	
 	let { 
 		benefits = [
@@ -51,26 +59,21 @@
 		class: className = ''
 	}: BenefitsSectionProps = $props();
 	
-	// SVGs dos ícones
+	// =============================================================================
+	// CONSTANTS
+	// =============================================================================
+	
 	const icons: Record<IconType, string> = {
-		payment: `<svg xmlns="http://www.w3.org/2000/svg" width="78" height="78" viewBox="0 0 78 78" fill="none">
-			<circle cx="38.9659" cy="38.9659" r="38.9659" fill="#E9FFFE"/>
-			<rect x="22" y="28" width="34" height="22" rx="4" stroke="#00BFB3" stroke-width="2" fill="none"/>
-			<path d="M22 34H56" stroke="#00BFB3" stroke-width="2"/>
-			<path d="M26 42H32" stroke="#00BFB3" stroke-width="2" stroke-linecap="round"/>
+		payment: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40" fill="none">
+			<path d="M16.1417 4.59057C16.0937 4.51764 16.0605 4.43593 16.0441 4.35014C16.0277 4.26434 16.0283 4.17614 16.046 4.09059C16.0637 4.00505 16.098 3.92384 16.147 3.85161C16.1961 3.77939 16.2589 3.71758 16.3318 3.66971L20.3196 1.04788C20.4665 0.951035 20.6456 0.916598 20.8178 0.952145C20.9899 0.987693 21.141 1.09031 21.2376 1.23743C21.3342 1.38455 21.3686 1.56411 21.3331 1.73662C21.2977 1.90913 21.1953 2.06045 21.0484 2.1573L17.0599 4.77979C16.9131 4.87628 16.734 4.91041 16.5621 4.87468C16.3902 4.83895 16.2394 4.73629 16.143 4.58925L16.1417 4.59057ZM13.936 6.70517C14.0651 6.70531 14.1914 6.66745 14.2991 6.59629L14.9107 6.19461C14.9834 6.14666 15.046 6.08482 15.0949 6.01262C15.1438 5.94043 15.178 5.85929 15.1956 5.77384C15.2132 5.68839 15.2138 5.60031 15.1974 5.51462C15.181 5.42892 15.148 5.3473 15.1001 5.27442C15.0523 5.20153 14.9906 5.1388 14.9185 5.08981C14.8465 5.04082 14.7655 5.00653 14.6802 4.9889C14.595 4.97126 14.5071 4.97063 14.4216 4.98704C14.336 5.00345 14.2546 5.03658 14.1819 5.08453L13.571 5.48621C13.4518 5.56463 13.361 5.67951 13.3121 5.81378C13.2632 5.94804 13.2589 6.09453 13.2998 6.23145C13.3406 6.36838 13.4245 6.48844 13.5389 6.57378C13.6533 6.65913 13.7921 6.70521 13.9347 6.70517H13.936ZM21.6215 24.4319L21.3042 24.6411C21.1573 24.7379 21.0548 24.8893 21.0193 25.0618C20.9837 25.2344 21.0181 25.414 21.1147 25.5613C21.2113 25.7085 21.3624 25.8112 21.5346 25.8468C21.7068 25.8824 21.8861 25.848 22.033 25.7511L22.3503 25.542C22.4231 25.494 22.4857 25.4322 22.5346 25.36C22.5834 25.2878 22.6177 25.2067 22.6353 25.1212C22.6529 25.0358 22.6535 24.9477 22.6371 24.862C22.6207 24.7763 22.5877 24.6947 22.5398 24.6218C22.492 24.5489 22.4303 24.4862 22.3582 24.4372C22.2862 24.3882 22.2052 24.3539 22.1199 24.3363C22.0347 24.3186 21.9468 24.318 21.8612 24.3344C21.7757 24.3508 21.6943 24.384 21.6215 24.4319ZM26.694 21.0944L23.3872 23.2701C23.2403 23.3669 23.1378 23.5183 23.1023 23.6908C23.0668 23.8634 23.1011 24.043 23.1977 24.1903C23.2944 24.3375 23.4454 24.4402 23.6176 24.4758C23.7898 24.5114 23.9691 24.477 24.116 24.3801L27.4228 22.2045C27.4955 22.1565 27.5581 22.0947 27.607 22.0225C27.6559 21.9503 27.6901 21.8691 27.7077 21.7837C27.7253 21.6982 27.7259 21.6102 27.7095 21.5245C27.6932 21.4388 27.6601 21.3571 27.6122 21.2843C27.5644 21.2114 27.5027 21.1486 27.4306 21.0996C27.3586 21.0507 27.2776 21.0164 27.1924 20.9987C27.1071 20.9811 27.0192 20.9805 26.9337 20.9969C26.8482 21.0133 26.7667 21.0464 26.694 21.0944ZM31.8293 15.1987C31.7602 15.5411 31.6238 15.8662 31.428 16.1551C31.2323 16.4441 30.9811 16.6911 30.6891 16.8818L19.0886 24.5129C18.9767 25.854 18.4334 30.7538 16.3888 32.5696C15.4902 33.3823 14.4664 34.0439 13.357 34.5289L13.9129 34.9664C14.0404 35.0668 14.1267 35.2106 14.1556 35.3705C14.1844 35.5304 14.1537 35.6954 14.0692 35.8341L12.2141 38.8789C12.1549 38.9763 12.0717 39.0568 11.9725 39.1126C11.8733 39.1684 11.7614 39.1977 11.6476 39.1976C11.5262 39.1978 11.4071 39.164 11.3038 39.1C11.1538 39.0083 11.0464 38.8607 11.005 38.6896C10.9636 38.5186 10.9917 38.338 11.0831 38.1877L12.6295 35.6462L3.21612 28.2349L1.25831 30.5022C1.20136 30.5682 1.132 30.6223 1.05418 30.6614C0.976368 30.7006 0.891621 30.724 0.804782 30.7303C0.717943 30.7366 0.630712 30.7257 0.548069 30.6983C0.465427 30.6708 0.388992 30.6273 0.323128 30.5702C0.257265 30.5132 0.203262 30.4437 0.164204 30.3657C0.125146 30.2877 0.101797 30.2028 0.0954913 30.1158C0.0891852 30.0287 0.100045 29.9413 0.127451 29.8585C0.154857 29.7757 0.198272 29.6991 0.255218 29.6331L2.62646 26.8858C2.7379 26.7566 2.89476 26.6753 3.06443 26.659C3.23409 26.6427 3.40351 26.6925 3.53745 26.7981L4.92018 27.8863C5.4128 27.2107 5.71674 26.4157 5.8007 25.5832C5.81262 25.3176 5.81196 24.9956 5.81196 24.6351C5.81196 22.6865 5.8166 19.8243 7.34508 18.1027L7.13903 17.7874L7.13108 17.7781V17.7708L6.35392 16.5843C5.96895 15.9962 5.83254 15.279 5.97464 14.5902C6.11674 13.9014 6.52573 13.2972 7.11187 12.9102L21.7733 3.27136C22.0639 3.07957 22.3894 2.94712 22.7312 2.88163C23.073 2.81613 23.4243 2.81886 23.765 2.88966C24.1058 2.96047 24.4292 3.09795 24.7168 3.29424C25.0044 3.49053 25.2506 3.74176 25.4411 4.03354L26.2507 5.27043C26.2507 5.27043 26.2573 5.27574 26.2593 5.27906C26.2613 5.28238 26.2593 5.28637 26.2633 5.28969L31.4497 13.2083C31.6417 13.4987 31.7742 13.8244 31.8396 14.1666C31.905 14.5087 31.902 14.8604 31.8307 15.2014L31.8293 15.1987ZM7.45705 15.8514L7.87777 16.4941L24.7839 5.44836L24.3327 4.75921C24.2377 4.61342 24.1149 4.48787 23.9714 4.38978C23.8279 4.29169 23.6664 4.22299 23.4963 4.18764C23.3262 4.15229 23.1508 4.15098 22.9801 4.18378C22.8095 4.21658 22.647 4.28285 22.5021 4.37878L7.84066 14.0196C7.6953 14.1153 7.57024 14.2387 7.47268 14.383C7.37513 14.5272 7.30699 14.6894 7.2722 14.8601C7.23563 15.0299 7.23326 15.2052 7.26523 15.3759C7.2972 15.5466 7.36286 15.7091 7.45838 15.854L7.45705 15.8514ZM17.6562 25.4557L16.027 26.5279C15.9414 26.582 15.8529 26.6314 15.762 26.676C15.658 27.962 15.0677 29.5063 12.5739 30.9404C12.4984 30.984 12.4152 31.0122 12.3288 31.0236C12.2425 31.0349 12.1548 31.0291 12.0707 31.0065C11.9866 30.9839 11.9077 30.9449 11.8387 30.8917C11.7696 30.8386 11.7117 30.7723 11.6682 30.6967C11.6247 30.6211 11.5964 30.5377 11.5851 30.4511C11.5738 30.3646 11.5796 30.2767 11.6022 30.1924C11.6247 30.1082 11.6637 30.0292 11.7167 29.96C11.7698 29.8908 11.8359 29.8327 11.9113 29.7891C14.5953 28.2455 14.5065 26.7762 14.429 25.4783C14.3559 25.1197 14.3561 24.7499 14.4295 24.3914C14.503 24.0329 14.6481 23.693 14.8563 23.3922C15.3963 22.7734 16.1582 21.8586 16.7618 21.1276C16.9834 20.8572 17.1302 20.5332 17.1875 20.1881C17.2448 19.8429 17.2107 19.4888 17.0884 19.161L17.0301 19.0063C16.9917 18.9038 16.9285 18.8124 16.8462 18.7402C16.7639 18.6681 16.6651 18.6175 16.5586 18.5929C16.4521 18.5683 16.3411 18.5705 16.2357 18.5993C16.1302 18.6282 16.0335 18.6827 15.9542 18.758L10.1059 24.3111C9.97832 24.4323 9.80792 24.4978 9.63217 24.4931C9.45641 24.4885 9.28971 24.414 9.16873 24.2862C9.04775 24.1584 8.9824 23.9876 8.98706 23.8115C8.99172 23.6354 9.066 23.4683 9.19357 23.3471L10.1715 22.4176L8.11098 19.2719C7.14036 20.6734 7.13771 23.0124 7.13704 24.6351C7.13704 25.0175 7.13704 25.3594 7.12445 25.6409C7.02588 26.7507 6.62402 27.8117 5.96302 28.7076L12.13 33.5629C13.3867 33.1534 14.5396 32.4751 15.5089 31.5751C16.7625 30.4637 17.3958 27.4647 17.6562 25.4557ZM30.3426 13.9366L25.5107 6.55844L8.6059 17.6068L11.1487 21.4901L15.0418 17.7907C15.2799 17.5644 15.5703 17.4006 15.8869 17.3141C16.2035 17.2276 16.5366 17.221 16.8564 17.2949C17.1762 17.3688 17.4728 17.5209 17.7196 17.7376C17.9665 17.9544 18.1559 18.229 18.2711 18.5369L18.33 18.695C18.5337 19.2413 18.5904 19.8317 18.4946 20.407C18.3988 20.9823 18.1538 21.5223 17.7841 21.9727C17.1719 22.7143 16.4014 23.6412 15.8541 24.2666C15.7237 24.5343 15.6828 24.8369 15.7375 25.1297L29.9623 15.7684C30.1079 15.6733 30.2333 15.5504 30.3313 15.4066C30.4293 15.2628 30.498 15.101 30.5333 14.9305C30.5687 14.76 30.57 14.5841 30.5373 14.4131C30.5045 14.2421 30.4384 14.0793 30.3426 13.934V13.9366ZM24.7858 9.14641L21.9946 10.9729C21.8473 11.069 21.7442 11.2198 21.7079 11.3922C21.6716 11.5645 21.7051 11.7442 21.8011 11.8917C21.897 12.0393 22.0475 12.1426 22.2195 12.179C22.3915 12.2153 22.5708 12.1817 22.718 12.0856L25.5093 10.2611C25.6566 10.165 25.7597 10.0142 25.796 9.84186C25.8323 9.66954 25.7987 9.48983 25.7028 9.34227C25.6069 9.19471 25.4564 9.09139 25.2844 9.05504C25.1124 9.01868 24.9331 9.05227 24.7858 9.14841V9.14641Z" fill="#00BFB3"/>
 		</svg>`,
 		
-		delivery: `<svg xmlns="http://www.w3.org/2000/svg" width="78" height="78" viewBox="0 0 78 78" fill="none">
-			<circle cx="38.9659" cy="38.9659" r="38.9659" fill="#E9FFFE"/>
-			<path d="M38.1417 23.5906C38.0937 23.5176 38.0605 23.4359 38.0441 23.3501C38.0277 23.2643 38.0283 23.1761 38.046 23.0906C38.0637 23.005 38.098 22.9238 38.147 22.8516C38.1961 22.7794 38.2589 22.7176 38.3318 22.6697L42.3196 20.0479C42.4665 19.951 42.6456 19.9166 42.8178 19.9521C42.9899 19.9877 43.141 20.0903 43.2376 20.2374C43.3342 20.3845 43.3686 20.5641 43.3331 20.7366C43.2977 20.9091 43.1953 21.0605 43.0484 21.1573L39.0599 23.7798C38.9131 23.8763 38.734 23.9104 38.5621 23.8747C38.3902 23.8389 38.2394 23.7363 38.143 23.5892L38.1417 23.5906ZM35.936 25.7052C36.0651 25.7053 36.1914 25.6674 36.2991 25.5963L36.9107 25.1946C36.9834 25.1467 37.046 25.0848 37.0949 25.0126C37.1438 24.9404 37.178 24.8593 37.1956 24.7738C37.2132 24.6884 37.2138 24.6003 37.1974 24.5146C37.181 24.4289 37.148 24.3473 37.1001 24.2744C37.0523 24.2015 36.9906 24.1388 36.9185 24.0898C36.8465 24.0408 36.7655 24.0065 36.6802 23.9889C36.595 23.9713 36.5071 23.9706 36.4216 23.987C36.336 24.0035 36.2546 24.0366 36.1819 24.0845L35.571 24.4862C35.4518 24.5646 35.361 24.6795 35.3121 24.8138C35.2632 24.948 35.2589 25.0945 35.2998 25.2315C35.3406 25.3684 35.4245 25.4884 35.5389 25.5738C35.6533 25.6591 35.7921 25.7052 35.9347 25.7052H35.936ZM43.6215 43.4319L43.3042 43.6411C43.1573 43.7379 43.0548 43.8893 43.0193 44.0618C42.9837 44.2344 43.0181 44.414 43.1147 44.5613C43.2113 44.7085 43.3624 44.8112 43.5346 44.8468C43.7068 44.8824 43.8861 44.848 44.033 44.7511L44.3503 44.542C44.4231 44.494 44.4857 44.4322 44.5346 44.36C44.5834 44.2878 44.6177 44.2067 44.6353 44.1212C44.6529 44.0358 44.6535 43.9477 44.6371 43.862C44.6207 43.7763 44.5877 43.6947 44.5398 43.6218C44.492 43.5489 44.4303 43.4862 44.3582 43.4372C44.2862 43.3882 44.2052 43.3539 44.1199 43.3363C44.0347 43.3186 43.9468 43.318 43.8612 43.3344C43.7757 43.3508 43.6943 43.384 43.6215 43.4319ZM48.694 40.0944L45.3872 42.2701C45.2403 42.3669 45.1378 42.5183 45.1023 42.6908C45.0668 42.8634 45.1011 43.043 45.1977 43.1903C45.2944 43.3375 45.4454 43.4402 45.6176 43.4758C45.7898 43.5114 45.9691 43.477 46.116 43.3801L49.4228 41.2045C49.4955 41.1565 49.5581 41.0947 49.607 41.0225C49.6559 40.9503 49.6901 40.8691 49.7077 40.7837C49.7253 40.6982 49.7259 40.6102 49.7095 40.5245C49.6932 40.4388 49.6601 40.3571 49.6122 40.2843C49.5644 40.2114 49.5027 40.1486 49.4306 40.0996C49.3586 40.0507 49.2776 40.0164 49.1924 39.9987C49.1071 39.9811 49.0192 39.9805 48.9337 39.9969C48.8482 40.0133 48.7667 40.0464 48.694 40.0944ZM53.8293 34.1987C53.7602 34.5411 53.6238 34.8662 53.428 35.1551C53.2323 35.4441 52.9811 35.6911 52.6891 35.8818L41.0886 43.5129C40.9767 44.854 40.4334 49.7538 38.3888 51.5696C37.4902 52.3823 36.4664 53.0439 35.357 53.5289L35.9129 53.9664C36.0404 54.0668 36.1267 54.2106 36.1556 54.3705C36.1844 54.5304 36.1537 54.6954 36.0692 54.8341L34.2141 57.8789C34.1549 57.9763 34.0717 58.0568 33.9725 58.1126C33.8733 58.1684 33.7614 58.1977 33.6476 58.1976C33.5262 58.1978 33.4071 58.164 33.3038 58.1C33.1538 58.0083 33.0464 57.8607 33.005 57.6896C32.9636 57.5186 32.9917 57.338 33.0831 57.1877L34.6295 54.6462L25.2161 47.2349L23.2583 49.5022C23.2014 49.5682 23.132 49.6223 23.0542 49.6614C22.9764 49.7006 22.8916 49.724 22.8048 49.7303C22.7179 49.7366 22.6307 49.7257 22.5481 49.6983C22.4654 49.6708 22.389 49.6273 22.3231 49.5702C22.2573 49.5132 22.2033 49.4437 22.1642 49.3657C22.1251 49.2877 22.1018 49.2028 22.0955 49.1158C22.0892 49.0287 22.1 48.9413 22.1275 48.8585C22.1549 48.7757 22.1983 48.6991 22.2552 48.6331L24.6265 45.8858C24.7379 45.7566 24.8948 45.6753 25.0644 45.659C25.2341 45.6427 25.4035 45.6925 25.5375 45.7981L26.9202 46.8863C27.4128 46.2107 27.7167 45.4157 27.8007 44.5832C27.8126 44.3176 27.812 43.9956 27.812 43.6351C27.812 41.6865 27.8166 38.8243 29.3451 37.1027L29.139 36.7874L29.1311 36.7781V36.7708L28.3539 35.5843C27.9689 34.9962 27.8325 34.279 27.9746 33.5902C28.1167 32.9014 28.5257 32.2972 29.1119 31.9102L43.7733 22.2714C44.0639 22.0796 44.3894 21.9471 44.7312 21.8816C45.073 21.8161 45.4243 21.8189 45.765 21.8897C46.1058 21.9605 46.4292 22.098 46.7168 22.2942C47.0044 22.4905 47.2506 22.7418 47.4411 23.0335L48.2507 24.2704C48.2507 24.2704 48.2573 24.2757 48.2593 24.2791C48.2613 24.2824 48.2593 24.2864 48.2633 24.2897L53.4497 32.2083C53.6417 32.4987 53.7742 32.8244 53.8396 33.1666C53.905 33.5087 53.902 33.8604 53.8307 34.2014L53.8293 34.1987ZM29.4571 34.8514L29.8778 35.4941L46.7839 24.4484L46.3327 23.7592C46.2377 23.6134 46.1149 23.4879 45.9714 23.3898C45.8279 23.2917 45.6664 23.223 45.4963 23.1876C45.3262 23.1523 45.1508 23.151 44.9801 23.1838C44.8095 23.2166 44.647 23.2829 44.5021 23.3788L29.8407 33.0196C29.6953 33.1153 29.5702 33.2387 29.4727 33.383C29.3751 33.5272 29.307 33.6894 29.2722 33.8601C29.2356 34.0299 29.2333 34.2052 29.2652 34.3759C29.2972 34.5466 29.3629 34.7091 29.4584 34.854L29.4571 34.8514ZM39.6562 44.4557L38.027 45.5279C37.9414 45.582 37.8529 45.6314 37.762 45.676C37.658 46.962 37.0677 48.5063 34.5739 49.9404C34.4984 49.984 34.4152 50.0122 34.3288 50.0236C34.2425 50.0349 34.1548 50.0291 34.0707 50.0065C33.9866 49.9839 33.9077 49.9449 33.8387 49.8917C33.7696 49.8386 33.7117 49.7723 33.6682 49.6967C33.6247 49.6211 33.5964 49.5377 33.5851 49.4511C33.5738 49.3646 33.5796 49.2767 33.6022 49.1924C33.6247 49.1082 33.6637 49.0292 33.7167 48.96C33.7698 48.8908 33.8359 48.8327 33.9113 48.7891C36.5953 47.2455 36.5065 45.7762 36.429 44.4783C36.3559 44.1197 36.3561 43.7499 36.4295 43.3914C36.503 43.0329 36.6481 42.693 36.8563 42.3922C37.3963 41.7734 38.1582 40.8586 38.7618 40.1276C38.9834 39.8572 39.1302 39.5332 39.1875 39.1881C39.2448 38.8429 39.2107 38.4888 39.0884 38.161L39.0301 38.0063C38.9917 37.9038 38.9285 37.8124 38.8462 37.7402C38.7639 37.6681 38.6651 37.6175 38.5586 37.5929C38.4521 37.5683 38.3411 37.5705 38.2357 37.5993C38.1302 37.6282 38.0335 37.6827 37.9542 37.758L32.1059 43.3111C31.9783 43.4323 31.8079 43.4978 31.6322 43.4931C31.4564 43.4885 31.2897 43.414 31.1687 43.2862C31.0477 43.1584 30.9824 42.9876 30.9871 42.8115C30.9917 42.6354 31.066 42.4683 31.1936 42.3471L32.1715 41.4176L30.111 38.2719C29.1404 39.6734 29.1377 42.0124 29.137 43.6351C29.137 44.0175 29.137 44.3594 29.1245 44.6409C29.0259 45.7507 28.624 46.8117 27.963 47.7076L34.13 52.5629C35.3867 52.1534 36.5396 51.4751 37.5089 50.5751C38.7625 49.4637 39.3958 46.4647 39.6562 44.4557ZM52.3426 32.9366L47.5107 25.5584L30.6059 36.6068L33.1487 40.4901L37.0418 36.7907C37.2799 36.5644 37.5703 36.4006 37.8869 36.3141C38.2035 36.2276 38.5366 36.221 38.8564 36.2949C39.1762 36.3688 39.4728 36.5209 39.7196 36.7376C39.9665 36.9544 40.1559 37.229 40.2711 37.5369L40.33 37.695C40.5337 38.2413 40.5904 38.8317 40.4946 39.407C40.3988 39.9823 40.1538 40.5223 39.7841 40.9727C39.1719 41.7143 38.4014 42.6412 37.8541 43.2666C37.7237 43.5343 37.6828 43.8369 37.7375 44.1297L51.9623 34.7684C52.1079 34.6733 52.2333 34.5504 52.3313 34.4066C52.4293 34.2628 52.498 34.101 52.5333 33.9305C52.5687 33.76 52.57 33.5841 52.5373 33.4131C52.5045 33.2421 52.4384 33.0793 52.3426 32.934V32.9366ZM46.7858 28.1464L43.9946 29.9729C43.8473 30.069 43.7442 30.2198 43.7079 30.3922C43.6716 30.5645 43.7051 30.7442 43.8011 30.8917C43.897 31.0393 44.0475 31.1426 44.2195 31.179C44.3915 31.2153 44.5708 31.1817 44.718 31.0856L47.5093 29.2611C47.6566 29.165 47.7597 29.0142 47.796 28.8419C47.8323 28.6695 47.7987 28.4898 47.7028 28.3423C47.6069 28.1947 47.4564 28.0914 47.2844 28.055C47.1124 28.0187 46.9331 28.0523 46.7858 28.1484V28.1464Z" fill="#00BFB3"/>
+		delivery: `<svg xmlns="http://www.w3.org/2000/svg" width="21" height="30" viewBox="0 0 21 30" fill="none">
+			<path d="M5.91693 1.05664H14.2226L14.2431 1.06543L14.2441 1.06641C14.2462 1.06961 14.2464 1.0724 14.246 1.07422L11.2861 9.86914L10.9277 10.9355H19.2079C19.2193 10.9355 19.226 10.9413 19.2285 10.9453L19.2304 10.9482C19.2308 10.9496 19.2311 10.951 19.2304 10.9521L19.2294 10.9541L9.2597 29.0664C9.25829 29.069 9.25568 29.0727 9.24994 29.0752L9.23138 29.0762L9.21674 29.0625V17.5518H0.93158C0.922412 17.5518 0.914498 17.5465 0.911072 17.542C0.909521 17.5393 0.90961 17.5368 0.910095 17.5352L0.945251 17.4199V17.418L5.89447 1.06934C5.89504 1.06745 5.8976 1.0643 5.90131 1.06152L5.91693 1.05664Z" stroke="#00BFB3" stroke-width="1.61658"/>
 		</svg>`,
 		
-		discount: `<svg xmlns="http://www.w3.org/2000/svg" width="78" height="78" viewBox="0 0 78 78" fill="none">
-			<circle cx="38.9659" cy="38.9659" r="38.9659" fill="#E9FFFE"/>
-			<circle cx="39" cy="39" r="16" stroke="#00BFB3" stroke-width="2" fill="none"/>
-			<path d="M32 39L36 43L46 33" stroke="#00BFB3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-			<path d="M39 25V29" stroke="#00BFB3" stroke-width="2" stroke-linecap="round"/>
-			<path d="M39 49V53" stroke="#00BFB3" stroke-width="2" stroke-linecap="round"/>
+		discount: `<svg xmlns="http://www.w3.org/2000/svg" width="29" height="28" viewBox="0 0 29 28" fill="none">
+			<path d="M0.76325 15.518C0.436754 15.8472 0.44033 16.3805 0.771674 16.7092L11.4326 27.3701C11.7619 27.6968 12.2916 27.6984 12.6188 27.3735L27.8659 12.1264C28.0571 11.9339 28.143 11.6603 28.0965 11.3922L26.5225 2.30651C26.4616 1.95309 26.184 1.67546 25.8307 1.61473L16.7437 0.0394535C16.4756 -0.00637842 16.2027 0.0798674 16.0105 0.271028L0.76325 15.518ZM2.55384 16.1165L16.8943 1.77605L24.9644 3.17623L26.3646 11.2463L12.0241 25.5868L2.55384 16.1165ZM7.59223 13.0263C7.17072 13.4698 6.91214 14.0683 6.91345 14.7223C6.91631 16.0723 8.03075 17.1867 9.38072 17.1896C10.7307 17.1924 11.8396 16.0836 11.8367 14.7336C11.8338 13.3836 10.7196 12.2624 9.36975 12.2594C8.6734 12.2578 8.04075 12.5545 7.59223 13.0263ZM12.5538 9.9079L12.5747 19.5535L14.2576 19.5621L14.2414 9.91432L12.5538 9.9079ZM8.79488 14.1964C8.93514 14.0398 9.13955 13.9441 9.37333 13.9446C9.81313 13.9454 10.1516 14.2886 10.1526 14.7285C10.1534 15.1683 9.81665 15.5051 9.37683 15.5043C8.93702 15.5035 8.59974 15.1662 8.59875 14.7262C8.5983 14.52 8.67118 14.3345 8.79488 14.1964ZM20.0987 4.89448C19.282 5.75484 19.2989 7.14442 20.1475 7.99302C21.0096 8.85511 22.4264 8.85455 23.2831 7.9978C24.1399 7.14104 24.1393 5.7254 23.2772 4.86332C22.4151 4.00123 20.996 3.99715 20.1392 4.8539C20.1258 4.86732 20.1116 4.8809 20.0987 4.89448ZM21.3338 6.04845C21.5498 5.83244 21.878 5.83193 22.0933 6.04724C22.3086 6.26256 22.3082 6.59054 22.0921 6.80672C21.876 7.02273 21.5514 7.01976 21.3361 6.80445C21.1207 6.58913 21.1178 6.26446 21.3338 6.04845ZM15.6557 13.0425C15.2341 13.486 14.9744 14.0857 14.9757 14.7397C14.9786 16.0896 16.093 17.2041 17.443 17.2069C18.793 17.2098 19.903 16.0997 19.9001 14.7498C19.8973 13.3998 18.7829 12.2808 17.4328 12.2779C16.7366 12.2764 16.1043 12.5704 15.6557 13.0425ZM16.8571 14.2138C16.9974 14.0572 17.2018 13.9615 17.4356 13.962C17.8754 13.9628 18.2139 14.3059 18.2148 14.7459C18.2157 15.1857 17.8789 15.5225 17.4391 15.5217C16.9993 15.5208 16.662 15.1835 16.661 14.7436C16.6606 14.5374 16.7334 14.3518 16.8571 14.2138Z" fill="#00BFB3"/>
 		</svg>`,
 		
 		exchange: `<svg xmlns="http://www.w3.org/2000/svg" width="78" height="78" viewBox="0 0 78 78" fill="none">
@@ -83,20 +86,27 @@
 	};
 </script>
 
-<section class="benefits-section {className}">
-	<!-- Desktop: Um card com todos os benefícios -->
-	<div class="benefits-section__desktop">
-		<div class="benefits-section__container">
+<section 
+	class="benefits {className}"
+	aria-label="Benefícios da loja"
+>
+	<!-- Desktop: Card único horizontal -->
+	<div class="benefits__desktop">
+		<div class="benefits__container">
 			{#each benefits as benefit}
-				<div class="benefits-section__item">
-					<div class="benefits-section__icon">
+				<div class="benefits__item">
+					<div class="benefits__icon" aria-hidden="true">
 						{@html icons[benefit.icon] || icons.delivery}
 					</div>
-					<div class="benefits-section__content">
-						<h3 class="benefits-section__title">{benefit.title}</h3>
-						<p class="benefits-section__subtitle">{benefit.subtitle}</p>
+					<div class="benefits__content">
+						<h3 class="benefits__title">{benefit.title}</h3>
+						<p class="benefits__subtitle">{benefit.subtitle}</p>
 						{#if benefit.link}
-							<a href={benefit.link.url} class="benefits-section__link">
+							<a 
+								href={benefit.link.url} 
+								class="benefits__link"
+								aria-label="{benefit.link.text} sobre {benefit.title}"
+							>
 								{benefit.link.text}
 							</a>
 						{/if}
@@ -107,18 +117,29 @@
 	</div>
 
 	<!-- Mobile: Cards separados com scroll horizontal -->
-	<div class="benefits-section__mobile">
-		<div class="benefits-section__scroll">
+	<div class="benefits__mobile">
+		<div 
+			class="benefits__scroll"
+			role="list"
+			aria-label="Lista de benefícios"
+		>
 			{#each benefits as benefit}
-				<div class="benefits-section__card">
-					<div class="benefits-section__icon">
+				<div 
+					class="benefits__card"
+					role="listitem"
+				>
+					<div class="benefits__icon" aria-hidden="true">
 						{@html icons[benefit.icon] || icons.delivery}
 					</div>
-					<div class="benefits-section__content">
-						<h3 class="benefits-section__title">{benefit.title}</h3>
-						<p class="benefits-section__subtitle">{benefit.subtitle}</p>
+					<div class="benefits__content">
+						<h3 class="benefits__title">{benefit.title}</h3>
+						<p class="benefits__subtitle">{benefit.subtitle}</p>
 						{#if benefit.link}
-							<a href={benefit.link.url} class="benefits-section__link">
+							<a 
+								href={benefit.link.url} 
+								class="benefits__link"
+								aria-label="{benefit.link.text} sobre {benefit.title}"
+							>
 								{benefit.link.text}
 							</a>
 						{/if}
@@ -130,268 +151,321 @@
 </section>
 
 <style>
-	/* Container principal */
-	.benefits-section {
-		width: 100%;
-		padding: 0 16px;
-		margin: 20px 0;
-		background: white;
+	/* =============================================================================
+	   CSS CUSTOM PROPERTIES
+	   ============================================================================= */
+	
+	.benefits {
+		/* Colors */
+		--color-primary: #00BFB3;
+		--color-text-primary: #000000;
+		--color-background: #FFFFFF;
+		--color-border: #E4E3E3;
+		--color-icon-background: #E9FFFE;
+		--color-link: #00BBB4;
+		--color-shadow: rgba(0, 0, 0, 0.08);
+		
+		/* Spacing */
+		--spacing-xs: 4px;
+		--spacing-sm: 8px;
+		--spacing-md: 12px;
+		--spacing-lg: 16px;
+		--spacing-xl: 20px;
+		--spacing-2xl: 24px;
+		--spacing-3xl: 32px;
+		--spacing-4xl: 40px;
+		
+		/* Dimensions */
+		--container-max-width: 1440px;
+		--card-max-width: 1200px;
+		--card-height-desktop: 120px;
+		--card-height-mobile: 140px;
+		--card-width-mobile: 280px;
+		--icon-size: 77.932px;
+		--icon-size-mobile: 50px;
+		
+		/* Border radius */
+		--border-radius-sm: 16px;
+		--border-radius-md: 18px;
+		--border-radius-lg: 20px;
+		--border-radius-full: 77.932px;
+		
+		/* Borders */
+		--border-width: 1px;
+		--border-width-mobile: 1.48px;
+		
+		/* Typography */
+		--font-family: 'Lato', sans-serif;
+		--font-size-title-mobile: 12px;
+		--font-size-title-tablet: 13px;
+		--font-size-title-desktop: 14px;
+		--font-size-subtitle-mobile: 10px;
+		--font-size-subtitle-tablet: 11px;
+		--font-size-subtitle-desktop: 12px;
+		--font-size-link-mobile: 9px;
+		--font-size-link-tablet: 10px;
+		--font-size-link-desktop: 12px;
+		--font-weight-title: 700;
+		--font-weight-subtitle: 400;
+		--letter-spacing-title: 0.28px;
+		--letter-spacing-subtitle: 0.24px;
+		--letter-spacing-link: 0.24px;
+		--line-height: 1.2;
+		
+		/* Transitions */
+		--transition-fast: 0.2s ease;
+		--transition-base: 0.3s ease;
+		
+		/* Shadows */
+		--box-shadow: 0 2px 8px var(--color-shadow);
+		--box-shadow-hover: 0 4px 12px var(--color-shadow);
 	}
 	
-	/* Desktop: Card único horizontal */
-	.benefits-section__desktop {
+	/* =============================================================================
+	   BASE STYLES
+	   ============================================================================= */
+	
+	.benefits {
+		width: 100%;
+		background: var(--color-background);
+		padding: 0 var(--spacing-lg);
+		margin: var(--spacing-xl) 0;
+	}
+	
+	/* =============================================================================
+	   DESKTOP LAYOUT
+	   ============================================================================= */
+	
+	.benefits__desktop {
 		display: none;
 	}
 	
 	@media (min-width: 1024px) {
-		.benefits-section {
+		.benefits {
 			padding: 0;
-			margin: 32px 0;
+			margin: var(--spacing-3xl) 0;
 			display: flex;
 			justify-content: center;
-			background: white;
 		}
 		
-		.benefits-section__desktop {
+		.benefits__desktop {
 			display: flex;
 			justify-content: center;
 			width: 100%;
-			max-width: 1440px;
-			padding: 0 20px;
+			max-width: var(--container-max-width);
+			padding: 0 var(--spacing-xl);
 		}
 		
-		.benefits-section__container {
+		.benefits__container {
 			width: 100%;
-			max-width: 1200px;
-			height: 120px;
+			max-width: var(--card-max-width);
+			height: var(--card-height-desktop);
 			flex-shrink: 0;
-			border-radius: 20px;
-			border: 1px solid #E4E3E3;
+			border-radius: var(--border-radius-lg);
+			border: var(--border-width) solid var(--color-border);
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			padding: 0 40px;
-			background: white;
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+			padding: 0 var(--spacing-4xl);
+			background: var(--color-background);
+			box-shadow: var(--box-shadow);
+			transition: box-shadow var(--transition-base);
 		}
 		
-		.benefits-section__item {
+		.benefits__container:hover {
+			box-shadow: var(--box-shadow-hover);
+		}
+		
+		.benefits__item {
 			display: flex;
 			align-items: center;
-			gap: 16px;
+			gap: var(--spacing-lg);
 			flex: 1;
 			justify-content: center;
 			max-width: 280px;
 		}
 	}
 	
-	/* Mobile: Cards separados com scroll */
-	.benefits-section__mobile {
+	/* =============================================================================
+	   MOBILE LAYOUT
+	   ============================================================================= */
+	
+	.benefits__mobile {
 		display: block;
 		overflow-x: auto;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
 		-ms-overflow-style: none;
-		margin: 0 -16px; /* Permite que cards saiam da área de padding */
+		margin: 0 calc(-1 * var(--spacing-lg));
 		position: relative;
 	}
 	
-	.benefits-section__mobile::-webkit-scrollbar {
+	.benefits__mobile::-webkit-scrollbar {
 		display: none;
 	}
 	
-	/* Gradiente sutil nas laterais para indicar scroll */
-	.benefits-section__mobile::before,
-	.benefits-section__mobile::after {
+	/* Gradiente visual para indicar scroll */
+	.benefits__mobile::before,
+	.benefits__mobile::after {
 		content: '';
 		position: absolute;
 		top: 0;
 		bottom: 0;
-		width: 20px;
+		width: var(--spacing-xl);
 		z-index: 2;
 		pointer-events: none;
 	}
 	
-	.benefits-section__mobile::before {
+	.benefits__mobile::before {
 		left: 0;
-		background: linear-gradient(to right, rgba(255,255,255,1), transparent);
+		background: linear-gradient(to right, var(--color-background), transparent);
 	}
 	
-	.benefits-section__mobile::after {
+	.benefits__mobile::after {
 		right: 0;
-		background: linear-gradient(to left, rgba(255,255,255,1), transparent);
+		background: linear-gradient(to left, var(--color-background), transparent);
 	}
 	
-	.benefits-section__scroll {
+	.benefits__scroll {
 		display: flex;
-		gap: 16px;
-		padding: 0 24px 16px 24px; /* Padding maior para mostrar cards parciais */
+		gap: var(--spacing-lg);
+		padding: 0 var(--spacing-2xl) var(--spacing-lg) var(--spacing-2xl);
 		width: max-content;
 	}
 	
-	/* Ajuste para mostrar parcialmente o primeiro e último card */
-	.benefits-section__scroll::before {
-		content: '';
-		width: 0; /* Início sem espaço extra */
+	.benefits__card {
+		width: var(--card-width-mobile);
+		height: var(--card-height-mobile);
 		flex-shrink: 0;
-	}
-	
-	.benefits-section__scroll::after {
-		content: '';
-		width: 20px; /* Espaço extra no final para indicar mais conteúdo */
-		flex-shrink: 0;
-	}
-	
-	.benefits-section__card {
-		width: 280px; /* Tamanho que permite ver parcialmente o próximo */
-		height: 140px;
-		flex-shrink: 0;
-		border-radius: 20px;
-		border: 1.48px solid #E4E3E3;
+		border-radius: var(--border-radius-lg);
+		border: var(--border-width-mobile) solid var(--color-border);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 16px;
-		padding: 20px;
-		background: white;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-		transition: transform 0.2s ease;
+		gap: var(--spacing-lg);
+		padding: var(--spacing-xl);
+		background: var(--color-background);
+		box-shadow: var(--box-shadow);
+		transition: transform var(--transition-fast), box-shadow var(--transition-base);
 	}
 	
-	.benefits-section__card:hover {
+	.benefits__card:hover {
 		transform: translateY(-2px);
-	}
-	
-	.benefits-section__card:first-child {
-		margin-left: 0;
-	}
-	
-	.benefits-section__card:last-child {
-		margin-right: 0;
+		box-shadow: var(--box-shadow-hover);
 	}
 	
 	@media (min-width: 1024px) {
-		.benefits-section__mobile {
+		.benefits__mobile {
 			display: none;
 		}
 	}
 	
-	/* Ícone */
-	.benefits-section__icon {
-		width: 60px; /* Reduzido para mobile */
-		height: 60px;
+	/* =============================================================================
+	   ICON STYLES
+	   ============================================================================= */
+	
+	.benefits__icon {
+		width: var(--icon-size);
+		height: var(--icon-size);
 		flex-shrink: 0;
+		border-radius: var(--border-radius-full);
+		background: var(--color-icon-background);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 	
-	/* SVGs responsivos - removido seletor não usado */
-	@media (min-width: 1024px) {
-		.benefits-section__icon {
-			width: 70px; /* Tamanho intermediário para desktop */
-			height: 70px;
-		}
-	}
+	/* =============================================================================
+	   CONTENT STYLES
+	   ============================================================================= */
 	
-	/* Conteúdo dos textos */
-	.benefits-section__content {
+	.benefits__content {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: var(--spacing-xs);
 		flex: 1;
 	}
 	
-	/* Título principal */
-	.benefits-section__title {
-		color: #000;
-		font-family: 'Lato', sans-serif;
-		font-size: 13px;
-		font-style: normal;
-		font-weight: 700;
-		line-height: 1.2;
-		letter-spacing: 0.28px;
+	.benefits__title {
+		color: var(--color-text-primary);
+		font-family: var(--font-family);
+		font-size: var(--font-size-title-tablet);
+		font-weight: var(--font-weight-title);
+		line-height: var(--line-height);
+		letter-spacing: var(--letter-spacing-title);
 		margin: 0;
 	}
 	
-	@media (min-width: 1024px) {
-		.benefits-section__title {
-			font-size: 14px;
-		}
-	}
-	
-	/* Subtítulo */
-	.benefits-section__subtitle {
-		color: #000;
-		font-family: 'Lato', sans-serif;
-		font-size: 11px;
-		font-style: normal;
-		font-weight: 400;
-		line-height: 1.2;
-		letter-spacing: 0.24px;
+	.benefits__subtitle {
+		color: var(--color-text-primary);
+		font-family: var(--font-family);
+		font-size: var(--font-size-subtitle-tablet);
+		font-weight: var(--font-weight-subtitle);
+		line-height: var(--line-height);
+		letter-spacing: var(--letter-spacing-subtitle);
 		margin: 0;
 	}
 	
-	@media (min-width: 1024px) {
-		.benefits-section__subtitle {
-			font-size: 12px;
-		}
-	}
-	
-	/* Link */
-	.benefits-section__link {
-		color: var(--Verde-Gro, #00BBB4);
-		font-family: 'Lato', sans-serif;
-		font-size: 10px;
-		font-style: normal;
-		font-weight: 400;
-		line-height: 1.2;
-		letter-spacing: 0.24px;
-		text-decoration-line: underline;
-		text-decoration-style: solid;
-		text-decoration-skip-ink: none;
-		text-decoration-thickness: auto;
-		text-underline-offset: auto;
-		text-underline-position: from-font;
-		transition: opacity 0.3s ease;
+	.benefits__link {
+		color: var(--color-link);
+		font-family: var(--font-family);
+		font-size: var(--font-size-link-tablet);
+		font-weight: var(--font-weight-subtitle);
+		line-height: var(--line-height);
+		letter-spacing: var(--letter-spacing-link);
+		text-decoration: underline;
+		transition: opacity var(--transition-base);
 		margin: 0;
 	}
 	
-	@media (min-width: 1024px) {
-		.benefits-section__link {
-			font-size: 12px;
-		}
-	}
-	
-	.benefits-section__link:hover {
+	.benefits__link:hover {
 		opacity: 0.8;
 	}
 	
-	/* Responsividade para telas muito pequenas */
+	/* =============================================================================
+	   RESPONSIVE BREAKPOINTS
+	   ============================================================================= */
+	
+	/* Mobile pequeno: até 375px */
 	@media (max-width: 375px) {
-		.benefits-section__card {
-			width: 280px;
+		.benefits__card {
+			width: var(--card-width-mobile);
 			height: 130px;
-			border-radius: 18px;
-			padding: 16px;
-			gap: 12px;
+			border-radius: var(--border-radius-md);
+			padding: var(--spacing-lg);
+			gap: var(--spacing-md);
 		}
 		
-		.benefits-section__icon {
-			width: 50px;
-			height: 50px;
+		.benefits__icon {
+			width: var(--icon-size-mobile);
+			height: var(--icon-size-mobile);
 		}
 		
-		.benefits-section__title {
-			font-size: 12px;
+		.benefits__title {
+			font-size: var(--font-size-title-mobile);
 		}
 		
-		.benefits-section__subtitle {
-			font-size: 10px;
+		.benefits__subtitle {
+			font-size: var(--font-size-subtitle-mobile);
 		}
 		
-		.benefits-section__link {
-			font-size: 9px;
+		.benefits__link {
+			font-size: var(--font-size-link-mobile);
+		}
+	}
+	
+	/* Desktop: 1024px+ */
+	@media (min-width: 1024px) {
+		.benefits__title {
+			font-size: var(--font-size-title-desktop);
+		}
+		
+		.benefits__subtitle {
+			font-size: var(--font-size-subtitle-desktop);
+		}
+		
+		.benefits__link {
+			font-size: var(--font-size-link-desktop);
 		}
 	}
 </style> 

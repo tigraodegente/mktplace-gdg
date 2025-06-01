@@ -73,7 +73,7 @@
 	});
 </script>
 
-<header class="hidden lg:block bg-[#00BFB3] sticky top-0 z-20 {className}">
+<header class="hidden lg:block bg-[#00BFB3] sticky top-0 z-[100] {className}">
 	<!-- Container principal com altura total de 150px -->
 	<div class="w-full max-w-[1440px] mx-auto h-[150px] flex flex-col">
 		<!-- Top Header com busca e ações -->

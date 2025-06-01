@@ -5,6 +5,8 @@
   import HomeBanner from '$lib/components/layout/HomeBanner.svelte';
   import OfferCountdown from '$lib/components/layout/OfferCountdown.svelte';
   import BenefitsSection from '$lib/components/layout/BenefitsSection.svelte';
+  import FastDeliveryBanner from '$lib/components/layout/FastDeliveryBanner.svelte';
+  import CategorySection from '$lib/components/category/CategorySection.svelte';
   import ProductGridSkeleton from '$lib/components/ui/ProductGridSkeleton.svelte';
   import SchemaMarkup from '$lib/components/SEO/SchemaMarkup.svelte';
   import type { PageData } from './$types';
@@ -42,38 +44,70 @@
   const bannerSlides = [
     {
       id: '1',
-      image: '/api/placeholder/1115/560',
+      image: 'https://picsum.photos/1440/640?random=1',
       imageAlt: 'Ofertas Especiais - Até 50% OFF',
-      title: 'Ofertas Especiais',
-      subtitle: 'Até 50% OFF em produtos selecionados',
-      ctaText: 'COMPRAR AGORA',
-      ctaLink: '/promocoes',
-      mobileImage: '/api/placeholder/767/767'
+      mobileImage: 'https://picsum.photos/767/767?random=1',
+      link: '/promocoes'
     },
     {
       id: '2',
-      image: '/api/placeholder/1115/560',
+      image: 'https://picsum.photos/1440/640?random=2',
       imageAlt: 'Novidades da temporada',
-      title: 'Novidades',
-      subtitle: 'Confira os últimos lançamentos da temporada',
-      ctaText: 'VER MAIS',
-      ctaLink: '/novidades',
-      mobileImage: '/api/placeholder/767/767'
+      mobileImage: 'https://picsum.photos/767/767?random=2',
+      link: '/novidades'
     },
     {
       id: '3',
-      image: '/api/placeholder/1115/560',
+      image: 'https://picsum.photos/1440/640?random=3',
       imageAlt: 'Frete Grátis para todo o Brasil',
-      title: 'Frete Grátis',
-      subtitle: 'Em compras acima de R$ 199 para todo o Brasil',
-      ctaText: 'APROVEITAR',
-      ctaLink: '/frete-gratis',
-      mobileImage: '/api/placeholder/767/767'
+      mobileImage: 'https://picsum.photos/767/767?random=3',
+      link: '/frete-gratis'
     }
   ];
   
   // Configuração do countdown - 6 horas a partir de agora para demonstração
   const offerEndTime = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  
+  // Estados para demonstrar as novas funcionalidades do countdown
+  let countdownPaused = $state(false);
+  let urgentAlert = $state(false);
+  let criticalAlert = $state(false);
+  let countdownCompleted = $state(false);
+  
+  // Handlers para eventos do countdown
+  function handleCountdownExpired() {
+    console.log('🚨 Oferta expirou!');
+    countdownCompleted = true;
+    // Aqui poderia redirecionar, mostrar modal, etc.
+  }
+  
+  function handleUrgentTime(event: CustomEvent<{ secondsLeft: number }>) {
+    console.log(`⚠️ Tempo urgente! ${event.detail.secondsLeft} segundos restantes`);
+    urgentAlert = true;
+    
+    // Remove alerta após 5 segundos
+    setTimeout(() => {
+      urgentAlert = false;
+    }, 5000);
+  }
+  
+  function handleCriticalTime(event: CustomEvent<{ secondsLeft: number }>) {
+    console.log(`🔥 Tempo crítico! ${event.detail.secondsLeft} segundos restantes`);
+    criticalAlert = true;
+    
+    // Remove alerta após 3 segundos
+    setTimeout(() => {
+      criticalAlert = false;
+    }, 3000);
+  }
+  
+  function handleCountdownTick(event: CustomEvent) {
+    // Log a cada minuto para não spammar
+    const { minutes, seconds } = event.detail;
+    if (seconds === 0) {
+      console.log(`⏰ Countdown tick: ${event.detail.hours}h ${minutes}m`);
+    }
+  }
   
   // Função para recarregar produtos se necessário
   async function reloadProducts() {
@@ -139,7 +173,11 @@
 <!-- Contador de Ofertas -->
 <OfferCountdown 
   endTime={offerEndTime}
-  text="Ofertas terminam em:"
+  text="🔥 MEGA OFERTA termina em:"
+  showDays={false}
+  autoHide={false}
+  pulse={true}
+  class="enhanced-countdown"
 />
 
 <!-- Banner Principal com Carrossel -->
@@ -149,30 +187,18 @@
   autoPlayInterval={5000}
   showIndicators={true}
   showArrows={true}
-  fullWidth={true}
-  class="mb-8 lg:mb-12"
+  hasCountdown={true}
+  class="lg:mb-12"
 />
 
 <!-- Seção de Benefícios -->
 <BenefitsSection />
 
-<!-- Categorias -->
-<section class="py-16 bg-white">
-  <div class="w-full max-w-[1440px] mx-auto px-8">
-    <h2 class="text-3xl font-bold text-center mb-12 text-[var(--text-color)]">Explore por Categoria</h2>
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-      {#each categories as category}
-        <a href="/categorias/{category.slug || ''}" class="card hover:shadow-lg transition text-center group block">
-          <div class="card-body">
-            <div class="text-4xl mb-3 group-hover:scale-110 transition">{category.icon}</div>
-            <h3 class="font-semibold text-[var(--text-color)]">{category.name}</h3>
-            <p class="text-sm text-[var(--gray300)] mt-1">{category.count} produtos</p>
-          </div>
-        </a>
-      {/each}
-    </div>
-  </div>
-</section>
+<!-- Fast Delivery Banner -->
+<FastDeliveryBanner />
+
+<!-- Compre por categoria -->
+<CategorySection />
 
 <!-- Produtos em Destaque -->
 <section class="py-16 bg-white">
@@ -256,5 +282,28 @@
   /* Container principal da página */
   :global(.page-container) {
     background-color: white !important;
+  }
+  
+  /* Customização do Countdown Refatorado */
+  :global(.enhanced-countdown) {
+    /* Cores customizadas para demo */
+    --color-border-urgent: #ff8500;
+    --color-border-critical: #ff2d2d;
+    
+    /* Animações mais suaves */
+    --pulse-duration: 1.5s;
+    --shake-duration: 0.4s;
+    
+    /* Transições mais fluidas */
+    --transition-base: 0.4s ease-in-out;
+  }
+  
+  /* Mobile: ajustes específicos */
+  @media (max-width: 767px) {
+    :global(.enhanced-countdown) {
+      --font-size-text: 13px;
+      --unit-width: 28px;
+      --unit-height: 24px;
+    }
   }
 </style>
