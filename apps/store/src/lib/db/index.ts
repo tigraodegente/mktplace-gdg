@@ -6,15 +6,17 @@ import { dbCache } from './cache'
 // CORREÇÃO: Não usar singleton, criar nova conexão por request
 // Função para criar conexão otimizada por request
 function createDatabaseConnection(platform?: App.Platform): Database {
-  // EM PRODUÇÃO: Preferir Neon direto (mais próximo dos usuários)
+  // EM PRODUÇÃO: Usar DATABASE_URL do platform.env (Cloudflare)
   if (!dev) {
-    // PRIORIDADE 1: Neon (São Paulo) - mais rápido para Brasil
-    const neonUrl = 'postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require'
-    console.log('🚀 Neon TCP: Conexão por request (Workers compliant)')
+    // PRIORIDADE 1: platform.env.DATABASE_URL (configurado no Cloudflare Dashboard)
+    const dbUrl = (platform as any)?.env?.DATABASE_URL || 'postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require'
+    
+    console.log('🚀 PRODUÇÃO: Usando DATABASE_URL do Cloudflare')
+    console.log('📡 URL:', dbUrl.replace(/\/\/.*@/, '//***@')) // Mascarar credenciais
     
     return new Database({
       provider: 'neon',
-      connectionString: neonUrl,
+      connectionString: dbUrl,
       options: {
         postgres: {
           // CONFIGURAÇÃO OTIMIZADA PARA WORKERS:
@@ -27,8 +29,8 @@ function createDatabaseConnection(platform?: App.Platform): Database {
     })
   }
   
-  // EM DESENVOLVIMENTO: Usar Neon ou local
-  const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
+  // EM DESENVOLVIMENTO: Usar env local ou fallback
+  const dbUrl = env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
   
   console.log('🔌 Dev:', dbUrl.includes('neon.tech') ? 'NEON' : 'LOCAL')
   

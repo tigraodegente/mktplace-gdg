@@ -2,9 +2,12 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { env } from '$env/dynamic/private'
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ platform }) => {
   try {
-    const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL || 'não encontrado'
+    // Acesso seguro às variáveis de ambiente
+    const envDbUrl = env.DATABASE_URL
+    const platformDbUrl = (platform as any)?.env?.DATABASE_URL
+    const dbUrl = platformDbUrl || envDbUrl || 'não encontrado'
     
     // Mascarar credenciais para não expor
     const maskedUrl = dbUrl.replace(/\/\/.*@/, '//***@')
@@ -12,11 +15,11 @@ export const GET: RequestHandler = async () => {
     return json({
       success: true,
       data: {
-        hasEnv: !!env.DATABASE_URL,
-        hasProcessEnv: !!process.env.DATABASE_URL,
+        hasEnv: !!envDbUrl,
+        hasPlatformEnv: !!platformDbUrl,
         url: maskedUrl,
         isLocal: dbUrl.includes('localhost'),
-        nodeEnv: process.env.NODE_ENV || 'undefined'
+        environment: (platform as any)?.env ? 'cloudflare' : 'development'
       }
     })
   } catch (error) {
