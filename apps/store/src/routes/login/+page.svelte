@@ -16,16 +16,22 @@
     const urlParams = $page.url.searchParams;
     const message = urlParams.get('message');
     const redirectTo = urlParams.get('redirect');
+    const isRecovery = urlParams.get('recovery') === 'true';
     
     if (message) {
       successMessage = message;
     }
     
-    // ✅ Só redirecionar se já está logado E não veio do checkout
+    // Mostrar mensagem especial para recuperação de checkout
+    if (isRecovery) {
+      successMessage = 'Sua sessão expirou durante o checkout. Faça login para continuar.';
+    }
+    
+    // ✅ Só redirecionar se já está logado E não veio do checkout/recuperação
     auth.subscribe(($auth) => {
       if ($auth.user && !$auth.isLoading) {
-        // Se não tem redirect ou o redirect não é do checkout, redirecionar
-        if (!redirectTo || !redirectTo.includes('/cart')) {
+        // Se não tem redirect ou o redirect não é do checkout/carrinho, redirecionar
+        if (!redirectTo || (!redirectTo.includes('/cart') && !redirectTo.includes('/checkout'))) {
           const target = redirectTo ? decodeURIComponent(redirectTo) : '/';
           goto(target);
         }
@@ -49,13 +55,13 @@
     try {
       await auth.login(email, password);
       
-      // ✅ Só redirecionar se não veio do checkout
+      // ✅ Só redirecionar se não veio do checkout ou carrinho
       const redirectTo = $page.url.searchParams.get('redirect');
-      if (!redirectTo || !redirectTo.includes('/cart')) {
+      if (!redirectTo || (!redirectTo.includes('/cart') && !redirectTo.includes('/checkout'))) {
         const target = redirectTo ? decodeURIComponent(redirectTo) : '/';
         goto(target);
       }
-      // Se veio do checkout, o CheckoutAuth.svelte já vai lidar com o próximo passo
+      // Se veio do checkout/carrinho, o CheckoutAuth.svelte já vai lidar com o próximo passo
     } catch (err) {
       error = err instanceof Error ? err.message : 'Erro desconhecido';
     } finally {

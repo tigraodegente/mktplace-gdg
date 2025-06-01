@@ -84,6 +84,9 @@
   ];
 
   onMount(async () => {
+    // RECUPERAÇÃO: Verificar se há dados salvos de sessão expirada
+    await recoverCheckoutData();
+    
     // Verificar se há itens no carrinho
     const groups = $sellerGroups;
     if (!groups || groups.length === 0) {
@@ -131,6 +134,57 @@
       }
     }
   });
+  
+  // FUNÇÃO DE RECUPERAÇÃO DE DADOS
+  async function recoverCheckoutData() {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const recoveryData = sessionStorage.getItem('checkout_recovery_data');
+      if (!recoveryData) return;
+      
+      const parsed = JSON.parse(recoveryData);
+      const timeDiff = Date.now() - parsed.timestamp;
+      
+      // Se os dados são muito antigos (mais de 30 minutos), ignorar
+      if (timeDiff > 30 * 60 * 1000) {
+        sessionStorage.removeItem('checkout_recovery_data');
+        return;
+      }
+      
+      console.log('🔄 Recuperando dados do checkout após reautenticação...');
+      
+      // Restaurar dados do checkout
+      if (parsed.checkoutData) {
+        checkoutData = parsed.checkoutData;
+        
+        // Restaurar dados de endereço se havia
+        if (parsed.checkoutData.addressData) {
+          addressForm = { ...addressForm, ...parsed.checkoutData.addressData };
+        }
+      }
+      
+      // Restaurar step atual (mas não voltar para auth se já estiver logado)
+      if ($isAuthenticated && parsed.currentStep && parsed.currentStep !== 'auth') {
+        currentStep = parsed.currentStep;
+      }
+      
+      // Mostrar mensagem de recuperação bem-sucedida
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          alert('✅ Dados do checkout recuperados! Você pode continuar de onde parou.');
+        }
+      }, 1000);
+      
+      // Remover dados de recuperação após usar
+      sessionStorage.removeItem('checkout_recovery_data');
+      
+    } catch (error) {
+      console.error('❌ Erro ao recuperar dados do checkout:', error);
+      // Remover dados corrompidos
+      sessionStorage.removeItem('checkout_recovery_data');
+    }
+  }
   
   // Função para carregar endereços do usuário
   async function loadUserAddresses() {

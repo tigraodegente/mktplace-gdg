@@ -389,8 +389,24 @@
           console.log('Erro no logout via AuthService:', logoutError);
         }
         
-        alert('Sua sessão expirou. A página será recarregada e você será redirecionado para login.');
-        window.location.href = '/login?redirect=/cart';
+        // CORREÇÃO: Salvar dados do checkout no sessionStorage para preservar contexto
+        try {
+          sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
+            checkoutData,
+            selectedShippingOptions,
+            appliedCoupon: $appliedCoupon,
+            zipCode: $zipCode,
+            currentStep,
+            timestamp: Date.now()
+          }));
+          console.log('💾 Dados do checkout salvos para recuperação');
+        } catch (error) {
+          console.log('❌ Erro ao salvar dados de recuperação:', error);
+        }
+        
+        alert('Sua sessão expirou durante o checkout. Você será redirecionado para login e poderá continuar de onde parou.');
+        // CORREÇÃO: Redirecionar para checkout ao invés de carrinho
+        window.location.href = '/login?redirect=/checkout&recovery=true';
         return;
       }
       
@@ -400,8 +416,25 @@
     } catch (error) {
       processingOrder = false;
       console.error('❌ Erro na verificação de sessão via AuthService:', error);
-      alert('Erro ao verificar sessão. Por favor, faça login novamente.');
-      window.location.href = '/login?redirect=/cart';
+      
+      // CORREÇÃO: Salvar dados do checkout mesmo em caso de erro
+      try {
+        sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
+          checkoutData,
+          selectedShippingOptions,
+          appliedCoupon: $appliedCoupon,
+          zipCode: $zipCode,
+          currentStep,
+          timestamp: Date.now()
+        }));
+        console.log('💾 Dados do checkout salvos para recuperação (erro)');
+      } catch (storageError) {
+        console.log('❌ Erro ao salvar dados de recuperação:', storageError);
+      }
+      
+      alert('Erro ao verificar sessão durante checkout. Você será redirecionado para login e poderá continuar de onde parou.');
+      // CORREÇÃO: Redirecionar para checkout ao invés de carrinho
+      window.location.href = '/login?redirect=/checkout&recovery=true';
       return;
     }
     
