@@ -41,7 +41,7 @@ echo "📦 Migração automática com credenciais fornecidas"
 echo ""
 
 # Configurações do Neon (extraídas da URL fornecida)
-NEON_DATABASE_URL="postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+NEON_DATABASE_URL="postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 NEON_HOST="ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech"
 NEON_DATABASE="neondb"
 NEON_USER="neondb_owner"

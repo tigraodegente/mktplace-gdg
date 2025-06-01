@@ -103,7 +103,7 @@ fi
 log_success "PostgreSQL está rodando"
 
 # Configurar URL do banco
-DATABASE_URL="postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+DATABASE_URL="postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
 
 # Verificar se arquivo de backup foi especificado
 if [ -z "$BACKUP_FILE" ]; then
@@ -296,7 +296,7 @@ if [ ! -f .env ]; then
     log_info "Criando arquivo .env..."
     cat > .env << EOF
 # Configuração do banco de dados local
-DATABASE_URL="postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+DATABASE_URL="postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
 HYPERDRIVE_BINDING="false"
 
 # Configurações de desenvolvimento
@@ -330,7 +330,7 @@ echo ""
 echo "🎉 IMPORTAÇÃO CONCLUÍDA COM SUCESSO!"
 echo ""
 echo "🗄️ BANCO CONFIGURADO:"
-echo "  URL: postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+echo "  URL: postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
 echo "  Tabelas: $table_count"
 echo "  Produtos: $product_count"
 echo ""

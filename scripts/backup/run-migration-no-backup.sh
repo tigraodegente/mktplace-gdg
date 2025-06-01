@@ -10,7 +10,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configurações
-DB_URL="postgresql://787mk0:xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1@us-east-1.sql.xata.sh/mktplace-gdg:main?sslmode=require"
+DB_URL="postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 echo -e "${YELLOW}🚀 Iniciando migração do banco de dados...${NC}"

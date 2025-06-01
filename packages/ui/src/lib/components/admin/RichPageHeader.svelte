@@ -14,12 +14,23 @@
 		disabled?: boolean;
 	}
 	
-	export let title: string;
-	export let subtitle: string = '';
-	export let breadcrumbs: Breadcrumb[] = [];
-	export let actions: Action[] = [];
-	export let loading: boolean = false;
-	export let gradient: boolean = false;
+	interface Props {
+		title: string;
+		subtitle?: string;
+		breadcrumbs?: Breadcrumb[];
+		actions?: Action[];
+		loading?: boolean;
+		gradient?: boolean;
+	}
+	
+	let {
+		title,
+		subtitle = '',
+		breadcrumbs = [],
+		actions = [],
+		loading = false,
+		gradient = false
+	}: Props = $props();
 	
 	const iconMap: Record<string, string> = {
 		add: 'M12 4v16m8-8H4',
@@ -116,7 +127,7 @@
 							</a>
 						{:else}
 							<button 
-								on:click={() => handleAction(action)}
+								onclick={() => handleAction(action)}
 								disabled={action.disabled || action.loading}
 								class="btn btn-{action.variant || 'secondary'}"
 								class:loading={action.loading}

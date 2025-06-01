@@ -26,17 +26,31 @@
     description: string;
   }
 
-  // Props
-  export let cartItems: CartItem[] = [];
-  export let totals: OrderTotals;
-  export let appliedCoupon: AppliedCoupon | null = null;
-  export let showItems = true;
-  export let showActions = true;
-  export let isLoading = false;
-  export let onCheckout: (() => void) | null = null;
-  export let onContinueShopping: (() => void) | null = null;
-  export let checkoutButtonText = "Finalizar Compra";
-  export let checkoutButtonDisabled = false;
+  interface Props {
+    cartItems?: CartItem[];
+    totals: OrderTotals;
+    appliedCoupon?: AppliedCoupon | null;
+    showItems?: boolean;
+    showActions?: boolean;
+    isLoading?: boolean;
+    onCheckout?: (() => void) | null;
+    onContinueShopping?: (() => void) | null;
+    checkoutButtonText?: string;
+    checkoutButtonDisabled?: boolean;
+  }
+
+  let { 
+    cartItems = [],
+    totals,
+    appliedCoupon = null,
+    showItems = true,
+    showActions = true,
+    isLoading = false,
+    onCheckout = null,
+    onContinueShopping = null,
+    checkoutButtonText = "Finalizar Compra",
+    checkoutButtonDisabled = false
+  }: Props = $props();
   
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {

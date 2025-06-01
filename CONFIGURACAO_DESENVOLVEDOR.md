@@ -72,14 +72,14 @@ Porta: 5432
 Banco: mktplace_dev
 Usuário: mktplace_user  
 Senha: 123456
-URL: postgresql://mktplace_user:123456@localhost:5432/mktplace_dev
+URL: postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev
 ```
 
 ## 🧪 **Testando se Funcionou**
 
 ```bash
 # Verificar banco
-psql "postgresql://mktplace_user:123456@localhost:5432/mktplace_dev" -c "SELECT COUNT(*) FROM products;"
+psql "postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev" -c "SELECT COUNT(*) FROM products;"
 
 # Testar API
 curl http://localhost:5173/api/products

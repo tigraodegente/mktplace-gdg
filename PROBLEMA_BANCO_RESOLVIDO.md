@@ -24,7 +24,7 @@ O usuário relatou que "tanto o banco de autenticação como de produtos, catego
 ### 1. Correção de Configuração
 ```bash
 # Antes (apps/store/.env)
-DATABASE_URL="postgresql://postgres:dUqxGkGhAnTYWRGWdmdfOGXMqhTQYPsx@shinkansen.proxy.rlwy.net:41615/railway"
+DATABASE_URL="postgresql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_NAME"
 
 # Depois (apps/store/.env)
 DATABASE_URL="postgresql://postgres@localhost/mktplace_dev"

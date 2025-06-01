@@ -20,7 +20,7 @@ A aplicação remota usa dados fallback porque **não consegue conectar no banco
 4. **Production Environment** → `Add variable`
 5. **Adicione**:
    ```
-   DATABASE_URL = postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+   DATABASE_URL = postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require
    NODE_ENV = production
    ```
 6. **Clique**: `Save`
@@ -34,7 +34,7 @@ cpu_ms = 120000  # CPU estendido para TCP
 
 [vars]
 NODE_ENV = "production"
-DATABASE_URL = "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL = "postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 ```
 
 ### **ETAPA 3: Fazer Deploy**
@@ -117,7 +117,7 @@ time curl https://mktplace-store.pages.dev/api/products/search-suggestions
 
 1. **Testar conexão local:**
    ```bash
-   psql "postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb"
+   psql "postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME"
    ```
 
 2. **Verificar status do Neon:**

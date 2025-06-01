@@ -42,10 +42,10 @@ Sistema configurado para alternar facilmente entre:
 DATABASE_URL=postgresql://postgres@localhost/mktplace_dev
 
 # Neon
-DATABASE_URL="postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 
 # Railway
-DATABASE_URL="postgresql://postgres:dUqxGkGhAnTYWRGWdmdfOGXMqhTQYPsx@shinkansen.proxy.rlwy.net:41615/railway"
+DATABASE_URL="postgresql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_NAME"
 ```
 
 ## 🔄 Fluxo de Trabalho Recomendado

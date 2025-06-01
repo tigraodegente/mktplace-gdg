@@ -10,7 +10,7 @@ const execAsync = promisify(exec)
 console.log('📥 Importando dados para o Neon...\n')
 
 // Connection string do Neon (pode ser passada via env ou hardcoded temporariamente)
-const neonUrl = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require'
+const neonUrl = process.env.DATABASE_URL || 'postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require'
 
 // Encontrar o arquivo de export mais recente
 const exportDir = 'scripts/export'

@@ -3,15 +3,25 @@ import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
+import { logAuth, logOperation, logPerformance, logger } from '$lib/utils/logger';
 
 export const POST: RequestHandler = async ({ request, cookies, platform }) => {
+  const startTime = performance.now();
+  
   try {
     const { email, password } = await request.json();
     
-    console.log(`🔐 Login attempt for: ${email}`);
+    // Configurar contexto do logger
+    logger.setContext({ 
+      operation: 'auth_login',
+      requestId: nanoid(8)
+    });
+    
+    logAuth('attempt', true, { email });
     
     // Validar dados
     if (!email || !password) {
+      logAuth('validation_failed', false, { email, reason: 'missing_credentials' });
       return json({
         success: false,
         error: { message: 'Email e senha são obrigatórios' }
@@ -34,6 +44,7 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         
         const user = users[0];
         if (!user) {
+          logAuth('user_not_found', false, { email });
           return {
             success: false,
             error: { message: 'Email ou senha inválidos' },
@@ -42,9 +53,12 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         }
         
         // STEP 2: Verificar senha (bcrypt pode ser lento)
+        const passwordStartTime = performance.now();
         const isValidPassword = await bcrypt.compare(password, user.password_hash);
+        logPerformance('password_verification', passwordStartTime);
         
         if (!isValidPassword) {
+          logAuth('invalid_password', false, { email, userId: user.id });
           return {
             success: false,
             error: { message: 'Email ou senha inválidos' },
@@ -54,6 +68,7 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         
         // STEP 3: Verificar se usuário está ativo
         if (!user.is_active) {
+          logAuth('user_inactive', false, { email, userId: user.id });
           return {
             success: false,
             error: { message: 'Usuário inativo' },
@@ -66,7 +81,11 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
         
-        console.log(`🔑 Criando sessão síncrona para: ${user.email}`);
+        logger.info('Creating user session', { 
+          userId: user.id, 
+          email: user.email,
+          sessionId: sessionToken.substring(0, 8) + '...'
+        });
         
         // Insert session SÍNCRONO - crítico para funcionar
         await db.query`
@@ -80,7 +99,10 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
           )
         `;
         
-        console.log(`✅ Sessão criada no banco: ${sessionToken.substring(0, 8)}...`);
+        logOperation(true, 'Session created in database', {
+          userId: user.id,
+          sessionId: sessionToken.substring(0, 8) + '...'
+        });
         
         // Update last_login async (não crítico)
         setTimeout(async () => {
@@ -91,7 +113,7 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
               WHERE id = ${user.id}
             `;
           } catch (e) {
-            console.log('Update last_login async failed:', e);
+            logger.warn('Update last_login async failed', { userId: user.id, error: e });
           }
         }, 100);
         
@@ -115,21 +137,28 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       
       // Se houve erro, retornar com o status apropriado
       if (!result.success) {
-        console.log(`❌ Login failed: ${result.error.message}`);
+        logOperation(false, 'Login failed', { reason: result.error.message });
         return json({
           success: false,
           error: result.error
         }, { status: result.status || 500 });
       }
       
-      console.log(`✅ Login success: ${result.user.email}`);
+      logAuth('success', true, { 
+        email: result.user.email,
+        userId: result.user.id,
+        role: result.user.role
+      });
       
       // Configuração otimizada do cookie para remoto
       const isProduction = request.url.includes('.pages.dev') || 
                           request.url.includes('https://') ||
                           !request.url.includes('localhost');
       
-      console.log(`🍪 Configurando cookie - Produção: ${isProduction}`);
+      logger.debug('Setting authentication cookie', { 
+        isProduction, 
+        url: request.url.substring(0, 50) + '...'
+      });
       
       // Criar sessão no cookie com configuração específica para ambiente
       cookies.set('session_token', result.sessionToken!, {
@@ -141,7 +170,12 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
         domain: undefined // deixar o browser decidir
       });
       
-      console.log(`🍪 Cookie configurado: session_token=${result.sessionToken!.substring(0, 8)}...`);
+      logger.debug('Authentication cookie set', {
+        sessionId: result.sessionToken!.substring(0, 8) + '...',
+        isProduction
+      });
+      
+      logPerformance('complete_login', startTime);
       
       return json({
         success: true,
@@ -152,7 +186,10 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Login timeout/erro: ${error instanceof Error ? error.message : 'Erro'} - negando acesso`);
+      logger.warn('Login timeout or database error - denying access', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        email 
+      });
       
       // FALLBACK SEGURO: sempre negar login em caso de timeout
       // (nunca permitir acesso sem verificar senha)
@@ -163,10 +200,17 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
     }
     
   } catch (error) {
-    console.error('❌ Erro crítico login:', error);
+    logger.error('Critical login error', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return json({
       success: false,
       error: { message: 'Erro ao processar login' }
     }, { status: 500 });
+  } finally {
+    // Limpar contexto do logger
+    logger.clearContext();
   }
 }; 

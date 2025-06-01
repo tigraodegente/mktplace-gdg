@@ -34,7 +34,7 @@ Este guia te ajudará a migrar **TODOS** os seus dados do banco local para o Neo
 psql --version
 
 # Verificar se o banco local está rodando
-psql "postgresql://mktplace_user:123456@localhost:5432/mktplace_dev" -c "SELECT 1;"
+psql "postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev" -c "SELECT 1;"
 ```
 
 ## 🚀 Executar a migração

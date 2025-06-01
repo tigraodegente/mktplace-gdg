@@ -6,7 +6,7 @@ echo ""
 
 # Configurações
 LOCAL_DB="postgresql://postgres@localhost/mktplace_dev"
-NEON_DB="postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+NEON_DB="postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 
 # Arquivo temporário para dump
 DUMP_FILE="neon_migration_$(date +%Y%m%d_%H%M%S).sql"

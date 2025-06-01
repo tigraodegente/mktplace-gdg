@@ -4,7 +4,7 @@
 
 ### Passo 1: Backup do Banco
 ```bash
-pg_dump "postgresql://787mk0:xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1@us-east-1.sql.xata.sh/mktplace-gdg:main?sslmode=require" > backup_$(date +%Y%m%d_%H%M%S).sql
+pg_dump "postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require" > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 ## 📋 Executando a Migração
@@ -20,7 +20,7 @@ pg_dump "postgresql://787mk0:xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1@us-east-1.sql
 
 ```bash
 # Conectar ao banco
-psql "postgresql://787mk0:xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1@us-east-1.sql.xata.sh/mktplace-gdg:main?sslmode=require"
+psql "postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 
 # Executar o script completo
 \i /Users/guga/apps/mktplace-gdg/scripts/execute-migration-step-by-step.sql

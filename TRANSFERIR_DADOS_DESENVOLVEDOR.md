@@ -71,7 +71,7 @@ pnpm dev
 
 ```bash
 # 1. Export completo
-pg_dump "postgresql://mktplace_user:123456@localhost:5432/mktplace_dev" \
+pg_dump "postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev" \
   --clean --if-exists --create --format=plain \
   > mktplace_backup_manual.sql
 
@@ -123,7 +123,7 @@ psql mktplace_dev -c "SELECT COUNT(*) FROM products;"
 ./importar_banco_completo.sh -d mktplace_data_20241231.sql
 
 # OU manualmente
-psql "postgresql://mktplace_user:123456@localhost:5432/mktplace_dev" \
+psql "postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev" \
   -f mktplace_data_20241231.sql
 ```
 
@@ -144,7 +144,7 @@ Para compartilhar via banco na nuvem.
 DATABASE_URL_NEON="postgresql://user:pass@ep-xxx.neon.tech/mktplace"
 
 # Export local
-pg_dump "postgresql://mktplace_user:123456@localhost:5432/mktplace_dev" \
+pg_dump "postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev" \
   | psql "$DATABASE_URL_NEON"
 ```
 

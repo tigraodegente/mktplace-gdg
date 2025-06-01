@@ -222,37 +222,35 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
             console.log(`🔍 Debug: Quantity: ${item.quantity}`);
             
-            // Atualizar estoque mantendo padrão do site
+            // NOVA ABORDAGEM: UPDATE de estoque com query segura
             try {
-              console.log(`🔍 Debug: Executando UPDATE do estoque...`);
-              console.log(`🔍 Debug: ProductId: ${item.productId}`);
-              console.log(`🔍 Debug: Quantity: ${item.quantity}`);
+              console.log(`🔍 Debug: Usando nova abordagem para UPDATE do estoque...`);
               
-              // Primeira verificação: estrutura da tabela
-              console.log(`🔍 Debug: Verificando produto antes do UPDATE...`);
-              const productCheck = await sql`
-                SELECT id, quantity FROM products WHERE id = ${item.productId} LIMIT 1
-              `;
-              console.log(`🔍 Debug: Produto encontrado:`, productCheck[0]);
-              
-              // Calcular novo estoque fora da query para evitar problemas aritméticos
-              const currentStock = productCheck[0]?.quantity || 0;
-              const newStock = currentStock - item.quantity;
-              console.log(`🔍 Debug: Estoque atual: ${currentStock}, Novo estoque: ${newStock}`);
-              
-              await sql`
-                UPDATE products 
-                SET quantity = ${newStock}
-                WHERE id = ${item.productId}
+              // Buscar estoque atual primeiro
+              const currentStockResult = await sql`
+                SELECT quantity FROM products WHERE id = ${item.productId}
               `;
               
-              console.log(`🔍 Debug: UPDATE executado com sucesso`);
-              console.log(`✅ Debug: Estoque atualizado para produto ${index + 1}!`);
-              
-            } catch (updateError) {
-              console.log(`⚠️ Debug: Erro no UPDATE do estoque (não crítico):`, updateError);
-              console.log(`🔍 Debug: Error details:`, updateError instanceof Error ? updateError.message : 'Unknown error', updateError instanceof Error ? updateError.stack : '');
-              console.log(`🔍 Debug: Continuando sem atualizar estoque...`);
+              if (!currentStockResult[0]) {
+                console.log(`⚠️ Debug: Produto não encontrado para atualização de estoque`);
+              } else {
+                const currentStock = parseInt(currentStockResult[0].quantity, 10);
+                const newStock = Math.max(0, currentStock - item.quantity); // Nunca deixar negativo
+                
+                console.log(`🔍 Debug: Estoque atual: ${currentStock}, Novo estoque: ${newStock}`);
+                
+                // UPDATE simples e direto
+                await sql`
+                  UPDATE products 
+                  SET quantity = ${newStock}
+                  WHERE id = ${item.productId}
+                `;
+                
+                console.log(`✅ Debug: Estoque atualizado com sucesso!`);
+              }
+            } catch (stockError) {
+              console.log(`⚠️ Debug: Erro ao atualizar estoque (não crítico):`, stockError);
+              console.log(`🔍 Debug: Continuando sem atualizar estoque para produto ${item.productId}`);
               // Não falhar a transação por causa do estoque
             }
           }

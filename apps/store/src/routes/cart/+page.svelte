@@ -62,6 +62,7 @@
   // Estado de verificação de sessão
   let sessionExpiredWarning = $state(false);
   let processingOrder = $state(false);
+  let checkoutInProgress = $state(false); // FLAG PARA DESABILITAR VERIFICAÇÕES DURANTE CHECKOUT
   
   // Auto-scroll inteligente com contexto específico
   function scrollToStep(step: CheckoutStep, delay: number = 150) {
@@ -321,6 +322,10 @@
       return;
     }
     
+    // MARCAR QUE O CHECKOUT ESTÁ EM PROGRESSO
+    checkoutInProgress = true;
+    console.log('🛒 Checkout iniciado - verificações de sessão desabilitadas');
+    
     // Verificar se já está autenticado
     if ($isAuthenticated) {
       console.log('✅ Usuário autenticado, indo direto para endereços');
@@ -364,45 +369,16 @@
   async function processOrder() {
     // Iniciar estado de processamento
     processingOrder = true;
+    checkoutInProgress = true; // MANTER FLAG ATIVO
     
     // Visual feedback de processamento
     scrollToWizardTop(50);
     
     try {
-      // ✅ VERIFICAÇÃO SIMPLIFICADA DE AUTENTICAÇÃO
-      console.log('🔍 Verificando autenticação para processamento...');
+      // REMOVER VERIFICAÇÕES EXCESSIVAS - Confiar apenas na resposta do backend
+      console.log('🔍 Processando pedido com verificações desabilitadas...');
       
-      // 1. Verificar store local primeiro
-      if (!$isAuthenticated || !$user) {
-        processingOrder = false;
-        console.log('❌ Store indica usuário não autenticado');
-        toastStore.add({
-          type: 'error',
-          title: 'Login Necessário',
-          message: 'Você precisa estar logado para finalizar o pedido',
-          duration: 4000
-        });
-        window.location.href = '/login?redirect=/cart';
-        return;
-      }
-      
-      // 2. Verificar dados do checkout
-      if (!checkoutData.user || checkoutData.isGuest) {
-        processingOrder = false;
-        console.log('❌ Dados do checkout indicam problema de autenticação');
-        toastStore.add({
-          type: 'error',
-          title: 'Erro de Autenticação',
-          message: 'Erro na autenticação. Redirecionando para login...',
-          duration: 3000
-        });
-        window.location.href = '/login?redirect=/cart';
-        return;
-      }
-      
-      console.log('✅ Verificações básicas passaram, criando pedido...');
-      
-      // 3. Criar o pedido diretamente (sem verificação adicional)
+      // Criar o pedido diretamente (o backend verificará a sessão)
       const cartItems = $sellerGroups.flatMap(group => group.items);
       const createOrderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',
@@ -430,7 +406,7 @@
         
         // Se for erro 401, problema de autenticação
         if (createOrderResponse.status === 401) {
-          console.log('🔒 Erro 401 - Sessão realmente expirou');
+          console.log('🔒 Erro 401 - Sessão expirou durante o processamento');
           
           // Salvar contexto para recuperação
           try {
@@ -472,13 +448,19 @@
       clearCart();
       cartStore.clearCart();
       
+      // LIMPAR FLAGS ANTES DE REDIRECIONAR
+      checkoutInProgress = false;
+      processingOrder = false;
+      
       // Redirecionar para página de sucesso
       await goto(`/pedido/sucesso?order=${orderResult.data.order.orderNumber}`, { 
         replaceState: true 
       });
       
     } catch (error) {
+      // LIMPAR FLAGS EM CASO DE ERRO
       processingOrder = false;
+      checkoutInProgress = false;
       console.error('❌ Erro ao processar pedido:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -532,78 +514,27 @@
       }))
     );
   });
-  
-  // 🔄 Verificação periódica de sessão (a cada 5 minutos)
-  $effect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const checkSession = async () => {
-      try {
-        const response = await fetch('/api/auth/check', { credentials: 'include' });
-        const data = await response.json();
-        
-        // Se o backend diz que não está autenticado, mas o store diz que sim
-        if (!data.authenticated && $isAuthenticated) {
-          sessionExpiredWarning = true;
-          console.log('⚠️ Sessão expirou - inconsistência detectada, forçando logout');
-          
-          // Forçar logout no store para sincronizar estados
-          try {
-            await fetch('/api/auth/logout', {
-              method: 'POST',
-              credentials: 'include'
-            });
-          } catch (logoutError) {
-            console.log('Erro no logout forçado:', logoutError);
-          }
-          
-          // Limpar qualquer estado local
-          if (typeof window !== 'undefined') {
-            window.location.reload(); // Força reload para limpar store
-          }
-        }
-        
-        // Se backend autenticado mas store não, atualizar store
-        if (data.authenticated && !$isAuthenticated) {
-          console.log('🔄 Backend autenticado mas store não - recarregando página');
-          if (typeof window !== 'undefined') {
-            window.location.reload();
-          }
-        }
-        
-      } catch (error) {
-        if ($isAuthenticated) {
-          sessionExpiredWarning = true;
-        }
+
+  onMount(() => {
+    // INTERCEPTAR E DESABILITAR ALERTS DURANTE CHECKOUT
+    const originalAlert = window.alert;
+    window.alert = function(message: string) {
+      console.warn('�� Alert interceptado:', message);
+      
+      // Se for sobre sessão e estamos em checkout, ignorar
+      if (checkoutInProgress && message.toLowerCase().includes('sessão')) {
+        console.log('🛡️ Alert de sessão bloqueado durante checkout');
+        return;
       }
+      
+      // Outros alerts passam normalmente
+      originalAlert.call(window, message);
     };
     
-    // Verificar imediatamente e depois a cada 2 minutos (mais frequente)
-    checkSession();
-    const interval = setInterval(checkSession, 2 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  });
-  
-  // 🔄 Limpar alerta de sessão quando usuário estiver REALMENTE autenticado
-  $effect(() => {
-    // Só limpar se AMBOS estiverem autenticados (frontend E backend)
-    if ($isAuthenticated && sessionExpiredWarning) {
-      // Verificar novamente com o backend antes de limpar
-      fetch('/api/auth/check', { credentials: 'include' })
-        .then(res => res.json())
-        .then(data => {
-          if (data.authenticated) {
-            sessionExpiredWarning = false;
-            console.log('✅ Sessão confirmada no backend, limpando alerta');
-          } else {
-            console.log('⚠️ Store autenticado mas backend não - mantendo alerta');
-          }
-        })
-        .catch(() => {
-          console.log('⚠️ Erro ao verificar backend - mantendo alerta');
-        });
-    }
+    // Restaurar alert original quando componente for destruído
+    return () => {
+      window.alert = originalAlert;
+    };
   });
 </script>
 

@@ -2,12 +2,23 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { fly, fade } from 'svelte/transition';
 	
-	export let isOpen = false;
-	export let title = '';
-	export let size: 'sm' | 'md' | 'lg' | 'xl' | 'full' = 'md';
-	export let closable = true;
-	export let persistent = false; // Se true, não fecha ao clicar fora
-	export let loading = false;
+	interface Props {
+		isOpen?: boolean;
+		title?: string;
+		size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+		closable?: boolean;
+		persistent?: boolean; // Se true, não fecha ao clicar fora
+		loading?: boolean;
+	}
+	
+	let { 
+		isOpen = false,
+		title = '',
+		size = 'md',
+		closable = true,
+		persistent = false,
+		loading = false
+	}: Props = $props();
 	
 	const dispatch = createEventDispatcher<{
 		close: void;
@@ -88,13 +99,13 @@
 	});
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen}
 	<!-- Backdrop -->
 	<div 
 		class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-		on:click={handleBackdropClick}
+		onclick={handleBackdropClick}
 		transition:fade={{ duration: 200 }}
 	>
 		<!-- Modal Container -->
@@ -102,7 +113,7 @@
 			bind:this={modalElement}
 			class="bg-white rounded-2xl shadow-2xl w-full {sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col"
 			transition:fly={{ y: 50, duration: 300 }}
-			on:click|stopPropagation
+			onclick={(e) => e.stopPropagation()}
 		>
 			
 			<!-- Header -->
@@ -118,7 +129,7 @@
 					
 					{#if closable}
 						<button 
-							on:click={close}
+							onclick={close}
 							disabled={loading}
 							class="ml-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
 							aria-label="Fechar modal"

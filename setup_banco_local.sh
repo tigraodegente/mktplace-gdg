@@ -71,7 +71,7 @@ setup_env() {
     if [ ! -f .env ]; then
         cat > .env << EOF
 # Configuração do banco de dados local
-DATABASE_URL="postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+DATABASE_URL="postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
 HYPERDRIVE_BINDING="false"
 
 # Configurações de desenvolvimento
@@ -156,7 +156,7 @@ EOF
     
     # Criar extensões necessárias
     log_info "Criando extensões PostgreSQL..."
-    psql postgresql://mktplace_user:123456@localhost:5432/mktplace_dev -c '
+    psql postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev -c '
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE EXTENSION IF NOT EXISTS "pg_trgm";
     ' 2>/dev/null || log_warning "Algumas extensões podem já existir"
@@ -181,7 +181,7 @@ install_dependencies() {
 setup_schema_and_data() {
     log_info "Criando estrutura do banco e populando dados..."
     
-    export DATABASE_URL="postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+    export DATABASE_URL="postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
     
     # 1. Estrutura básica
     log_info "Executando script principal de criação..."
@@ -226,7 +226,7 @@ setup_schema_and_data() {
 verify_setup() {
     log_info "Verificando instalação..."
     
-    export DATABASE_URL="postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+    export DATABASE_URL="postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
     
     # Testar conexão
     if psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM users;" &> /dev/null; then
@@ -255,7 +255,7 @@ show_final_info() {
     echo "📋 INFORMAÇÕES IMPORTANTES:"
     echo ""
     echo "🗄️  BANCO DE DADOS:"
-    echo "   URL: postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+    echo "   URL: postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
     echo "   Host: localhost"
     echo "   Porta: 5432"
     echo "   Banco: mktplace_dev"

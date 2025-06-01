@@ -40,7 +40,7 @@ source .env
 
 # Definir URL do banco se não estiver definida
 if [ -z "$DATABASE_URL" ]; then
-    DATABASE_URL="postgresql://mktplace_user:123456@localhost:5432/mktplace_dev"
+    DATABASE_URL="postgresql://mktplace_user:YOUR_PASSWORD@localhost:5432/mktplace_dev"
     log_warning "DATABASE_URL não encontrada, usando padrão local"
 fi
 

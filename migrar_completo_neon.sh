@@ -7,7 +7,7 @@ echo "🚀 Iniciando migração completa Local → Neon..."
 
 # Configurações
 LOCAL_DB="postgresql://postgres@localhost/mktplace_dev"
-NEON_DB="postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-dawn-field-acydf752-pooler.sa-east-1.aws.neon.tech/neondb"
+NEON_DB="postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME"
 
 # Função para log
 log() {
