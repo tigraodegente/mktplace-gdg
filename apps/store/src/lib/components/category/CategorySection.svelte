@@ -573,7 +573,7 @@
 		--letter-spacing-card-price: 0.26px;
 		
 		/* Dimensions */
-		--container-max-width: 1600px;
+		--container-max-width: 1440px; /* Alinhado com header */
 		--tab-width: 182.632px;
 		--tab-height: 41.351px;
 		--card-width-mobile: 280px;
@@ -623,7 +623,7 @@
 		width: 100%;
 		max-width: var(--container-max-width);
 		margin: 0 auto;
-		padding: 0 var(--spacing-md);
+		padding: 0 var(--spacing-xl); /* 32px - igual ao header px-8 */
 		overflow: visible;
 		box-sizing: border-box;
 	}

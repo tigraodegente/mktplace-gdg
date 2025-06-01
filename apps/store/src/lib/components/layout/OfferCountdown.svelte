@@ -348,14 +348,14 @@
 		}
 	}
 	
-	/* Desktop: 1024px+ */
+	/* Desktop: 1024px+ - ALINHADO COM HEADER */
 	@media (min-width: 1024px) {
 		.countdown {
 			position: relative;
 			margin-top: 48px;
 			margin-bottom: 0;
 			border-radius: 32px 32px 0 0;
-			max-width: 1200px;
+			max-width: calc(1440px - 64px); /* 1440px - 64px (32px padding cada lado) */
 			margin-left: auto;
 			margin-right: auto;
 			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -366,7 +366,7 @@
 	
 	.countdown__container {
 		width: 100%;
-		max-width: 1200px;
+		max-width: calc(1440px - 64px); /* Alinhado com banner-max-width */
 		height: var(--container-height);
 		display: flex;
 		align-items: center;
