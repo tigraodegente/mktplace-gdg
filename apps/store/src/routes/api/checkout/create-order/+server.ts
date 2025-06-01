@@ -150,11 +150,11 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             INSERT INTO orders (
               user_id, order_number, status, payment_status, payment_method,
               subtotal, shipping_cost, discount_amount, total, shipping_address,
-              coupon_code, notes
+              coupon_code, notes, created_at, updated_at
             ) VALUES (
               ${authResult.user!.id}, ${orderNumber}, 'pending', 'pending', ${orderData.paymentMethod},
               ${subtotal}, ${shippingCost}, ${discount}, ${total}, ${JSON.stringify(orderData.shippingAddress)},
-              ${orderData.couponCode || null}, ${orderData.notes || null}
+              ${orderData.couponCode || null}, ${orderData.notes || null}, NOW(), NOW()
             ) RETURNING id, order_number, total, created_at
           `;
           
