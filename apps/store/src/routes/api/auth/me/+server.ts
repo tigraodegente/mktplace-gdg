@@ -16,76 +16,42 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
       }, { status: 401 });
     }
     
-    // Tentar buscar dados do usuário com timeout
+    // Tentar buscar dados do usuário
     try {
       const db = getDatabase(platform);
       
-      // Promise com timeout de 3 segundos
-      const queryPromise = (async () => {
-        // STEP 1: Query SIMPLIFICADA - buscar sessão
-        const sessions = await db.query`
-          SELECT id, user_id, expires_at
-          FROM sessions 
-          WHERE token = ${sessionToken} AND expires_at > NOW()
-          LIMIT 1
-        `;
-        
-        const session = sessions[0];
-        if (!session) {
-          return null;
-        }
-        
-        // STEP 2: Query separada para usuário
-        const users = await db.query`
-          SELECT id, email, name, role, avatar_url, email_verified, status
-          FROM users
-          WHERE id = ${session.user_id} AND status = 'active'
-          LIMIT 1
-        `;
-        
-        const user = users[0];
-        if (!user) {
-          return null;
-        }
-        
-        // STEP 3: Update async (não travar resposta)
-        setTimeout(async () => {
-          try {
-            await db.query`UPDATE sessions SET updated_at = NOW() WHERE id = ${session.id}`;
-          } catch (e) {
-            console.log('Update session async failed:', e);
-          }
-        }, 100);
-        
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          avatar_url: user.avatar_url,
-          email_verified: user.email_verified
-        };
-      })();
+      // Query otimizada - sem timeout artificial
+      const result = await db.query`
+        SELECT u.id, u.email, u.name, u.role, u.avatar_url, u.email_verified, u.status
+        FROM sessions s
+        INNER JOIN users u ON s.user_id = u.id
+        WHERE s.token = ${sessionToken}
+          AND s.expires_at > NOW()
+          AND u.status = 'active'
+        LIMIT 1
+      `;
       
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 8000)
-      });
-      
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (!result) {
+      const user = result[0];
+      if (!user) {
         return json({
           success: false,
           error: { message: 'Sessão inválida ou expirada' }
         }, { status: 401 });
       }
       
-      console.log(`✅ Auth Me OK: ${result.email}`);
+      console.log(`✅ Auth Me OK: ${user.email}`);
       
       return json({
         success: true,
         data: {
-          user: result
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatar_url: user.avatar_url,
+            email_verified: user.email_verified
+          }
         },
         source: 'database'
       });
@@ -93,8 +59,7 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
     } catch (error) {
       console.log(`⚠️ Erro auth/me: ${error instanceof Error ? error.message : 'Erro'} - negando acesso`);
       
-      // FALLBACK SEGURO: sempre negar acesso em caso de timeout
-      // (melhor negar acesso do que permitir sem verificar)
+      // FALLBACK SEGURO: sempre negar acesso em caso de erro real
       return json({
         success: false,
         error: { message: 'Erro temporário na verificação. Tente novamente.' },

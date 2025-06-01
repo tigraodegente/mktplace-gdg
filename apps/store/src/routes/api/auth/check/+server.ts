@@ -5,60 +5,13 @@ import { getDatabase } from '$lib/db';
 // Esta rota sempre retorna 200, evitando o erro 401 no console
 export const GET: RequestHandler = async ({ cookies, platform }) => {
   try {
-    console.log('🔐 Auth Check - Estratégia híbrida iniciada');
+    console.log('🔐 Auth Check iniciado');
     
     // Verificar token da sessão
     const sessionToken = cookies.get('session_token');
     
     if (!sessionToken) {
-      // Tentar compatibilidade com sessão antiga
-      const oldSession = cookies.get('session');
-      if (oldSession) {
-        try {
-          const sessionData = JSON.parse(oldSession);
-          
-          // Tentar buscar usuário da sessão antiga com timeout
-          try {
-            const db = getDatabase(platform);
-            
-            const queryPromise = (async () => {
-              const user = await db.query`
-                SELECT id, email, name, role, status
-                FROM users
-                WHERE id = ${sessionData.userId}
-                LIMIT 1
-              `;
-              return user[0] || null;
-            })();
-            
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Timeout')), 8000)
-            });
-            
-            const user = await Promise.race([queryPromise, timeoutPromise]) as any;
-            
-            if (user && user.status === 'active') {
-              console.log('✅ Sessão antiga válida');
-              return json({
-                authenticated: true,
-                user: {
-                  id: user.id,
-                  email: user.email,
-                  name: user.name,
-                  role: user.role
-                },
-                source: 'database'
-              });
-            }
-          } catch (e) {
-            console.log('⚠️ Timeout/erro na sessão antiga');
-          }
-        } catch (e) {
-          // Sessão antiga inválida
-        }
-      }
-      
-      // Não autenticado, mas retorna 200
+      // Não autenticado, retorna 200
       return json({
         authenticated: false,
         user: null,
@@ -66,11 +19,11 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
       });
     }
     
-    // Buscar sessão no banco com timeout
+    // Buscar sessão no banco
     try {
       const db = getDatabase(platform);
       
-      // Query otimizada com JOIN
+      // Query otimizada com JOIN - sem timeout artificial
       const result = await db.query`
         SELECT u.id, u.email, u.name, u.role, u.status
         FROM sessions s
@@ -104,15 +57,14 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Auth timeout/erro: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Auth erro: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
       
-      // FALLBACK SEGURO: assumir não autenticado em caso de timeout
-      // (melhor negar acesso do que permitir sem verificar)
+      // FALLBACK SEGURO: assumir não autenticado em caso de erro real
       return json({
         authenticated: false,
         user: null,
         source: 'fallback',
-        reason: 'database_timeout'
+        reason: 'database_error'
       });
     }
     
