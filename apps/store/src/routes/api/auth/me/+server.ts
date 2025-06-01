@@ -68,7 +68,7 @@ export const GET: RequestHandler = async ({ cookies, platform }) => {
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 3000)
+        setTimeout(() => reject(new Error('Timeout')), 8000)
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
