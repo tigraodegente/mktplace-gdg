@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { withDatabase } from '$lib/db';
+import { getDatabase } from '$lib/db';
 import { requireAuth } from '$lib/utils/auth';
 
 interface CartItem {
@@ -31,6 +31,8 @@ interface ValidationResult {
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
+    console.log('✅ Checkout Validate - Estratégia híbrida iniciada');
+    
     // Verificar autenticação
     const authResult = await requireAuth(cookies, platform);
     if (!authResult.success) {
@@ -46,77 +48,76 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       }, { status: 400 });
     }
 
-    const result = await withDatabase(platform, async (db) => {
-      const validation: ValidationResult = {
-        isValid: true,
-        errors: [],
-        items: [],
-        totals: {
-          subtotal: 0,
-          shipping: 0,
-          discount: 0,
-          total: 0
+    // Tentar validação com timeout
+    try {
+      const db = getDatabase(platform);
+      
+      // Promise com timeout de 6 segundos para validação
+      const queryPromise = (async () => {
+        const validation: ValidationResult = {
+          isValid: true,
+          errors: [],
+          items: [],
+          totals: {
+            subtotal: 0,
+            shipping: 0,
+            discount: 0,
+            total: 0
+          }
+        };
+
+        // STEP 1: Validar cada item do carrinho
+        for (const item of items as CartItem[]) {
+          const products = await db.query`
+            SELECT id, name, price, quantity, is_active
+            FROM products 
+            WHERE id = ${item.productId}
+            LIMIT 1
+          `;
+
+          const product = products[0];
+          if (!product) {
+            validation.errors.push(`Produto ${item.productId} não encontrado`);
+            validation.isValid = false;
+            continue;
+          }
+
+          if (!product.is_active) {
+            validation.errors.push(`Produto ${product.name} não está disponível`);
+            validation.isValid = false;
+          }
+
+          const available = product.quantity || 0;
+          const isAvailable = available >= item.quantity;
+
+          if (!isAvailable) {
+            validation.errors.push(
+              `Produto ${product.name}: apenas ${available} unidade(s) disponível(is), solicitado ${item.quantity}`
+            );
+            validation.isValid = false;
+          }
+
+          const itemPrice = parseFloat(product.price);
+          const itemTotal = itemPrice * item.quantity;
+
+          validation.items.push({
+            productId: product.id,
+            name: product.name,
+            price: itemPrice,
+            quantity: item.quantity,
+            available,
+            isAvailable,
+            image: `/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`
+          });
+
+          if (isAvailable) {
+            validation.totals.subtotal += itemTotal;
+          }
         }
-      };
 
-      // Validar cada item do carrinho
-      for (const item of items as CartItem[]) {
-        const product = await db.queryOne`
-          SELECT 
-            id, 
-            name, 
-            price, 
-            stock_quantity,
-            status,
-            images
-          FROM products 
-          WHERE id = ${item.productId}
-        `;
-
-        if (!product) {
-          validation.errors.push(`Produto ${item.productId} não encontrado`);
-          validation.isValid = false;
-          continue;
-        }
-
-        if (product.status !== 'active') {
-          validation.errors.push(`Produto ${product.name} não está disponível`);
-          validation.isValid = false;
-        }
-
-        const available = product.stock_quantity || 0;
-        const isAvailable = available >= item.quantity;
-
-        if (!isAvailable) {
-          validation.errors.push(
-            `Produto ${product.name}: apenas ${available} unidade(s) disponível(is), solicitado ${item.quantity}`
-          );
-          validation.isValid = false;
-        }
-
-        const itemPrice = parseFloat(product.price);
-        const itemTotal = itemPrice * item.quantity;
-
-        validation.items.push({
-          productId: product.id,
-          name: product.name,
-          price: itemPrice,
-          quantity: item.quantity,
-          available,
-          isAvailable,
-          image: product.images?.[0] || null
-        });
-
-        if (isAvailable) {
-          validation.totals.subtotal += itemTotal;
-        }
-      }
-
-      // Calcular frete se CEP fornecido
-      if (zipCode && validation.isValid) {
-        try {
-          // Simulação de cálculo de frete (integração com Frenet)
-          const weight = validation.items.reduce((total, item) => total + (item.quantity * 0.5), 0); // 500g por item
+        // STEP 2: Calcular frete se CEP fornecido
+        if (zipCode && validation.isValid) {
+          const weight = validation.items.reduce((total, item) => total + (item.quantity * 0.5), 0);
           
           if (weight <= 2) {
             validation.totals.shipping = 15.90;
@@ -125,78 +126,103 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           } else {
             validation.totals.shipping = 35.90;
           }
-        } catch (error) {
-          console.error('Erro ao calcular frete:', error);
-          validation.totals.shipping = 15.90; // Valor padrão
         }
-      }
 
-      // Validar e aplicar cupom se fornecido
-      if (couponCode && validation.isValid) {
-        const coupon = await db.queryOne`
-          SELECT 
-            id, 
-            code, 
-            type, 
-            value, 
-            minimum_order_value,
-            max_uses,
-            used_count,
-            expires_at,
-            is_active
-          FROM coupons 
-          WHERE code = ${couponCode} 
-          AND is_active = true
-          AND (expires_at IS NULL OR expires_at > NOW())
-        `;
+        // STEP 3: Validar cupom se fornecido
+        if (couponCode && validation.isValid) {
+          const coupons = await db.query`
+            SELECT id, code, type, value, minimum_order_value, max_uses, used_count, is_active
+            FROM coupons 
+            WHERE code = ${couponCode} AND is_active = true
+            LIMIT 1
+          `;
 
-        if (!coupon) {
-          validation.errors.push('Cupom inválido ou expirado');
-        } else if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
-          validation.errors.push('Cupom esgotado');
-        } else if (coupon.minimum_order_value && validation.totals.subtotal < coupon.minimum_order_value) {
-          validation.errors.push(
-            `Valor mínimo para este cupom: R$ ${parseFloat(coupon.minimum_order_value).toFixed(2)}`
-          );
-        } else {
-          // Aplicar desconto
-          if (coupon.type === 'percentage') {
-            validation.totals.discount = (validation.totals.subtotal * parseFloat(coupon.value)) / 100;
-          } else if (coupon.type === 'fixed') {
-            validation.totals.discount = parseFloat(coupon.value);
-          } else if (coupon.type === 'free_shipping') {
-            validation.totals.discount = validation.totals.shipping;
+          const coupon = coupons[0];
+          if (!coupon) {
+            validation.errors.push('Cupom inválido ou expirado');
+          } else if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
+            validation.errors.push('Cupom esgotado');
+          } else if (coupon.minimum_order_value && validation.totals.subtotal < coupon.minimum_order_value) {
+            validation.errors.push(
+              `Valor mínimo para este cupom: R$ ${parseFloat(coupon.minimum_order_value).toFixed(2)}`
+            );
+          } else {
+            // Aplicar desconto
+            if (coupon.type === 'percentage') {
+              validation.totals.discount = (validation.totals.subtotal * parseFloat(coupon.value)) / 100;
+            } else if (coupon.type === 'fixed') {
+              validation.totals.discount = parseFloat(coupon.value);
+            } else if (coupon.type === 'free_shipping') {
+              validation.totals.discount = validation.totals.shipping;
+            }
+
+            validation.totals.discount = Math.min(
+              validation.totals.discount, 
+              validation.totals.subtotal + validation.totals.shipping
+            );
           }
-
-          // Garantir que desconto não seja maior que subtotal
-          validation.totals.discount = Math.min(
-            validation.totals.discount, 
-            validation.totals.subtotal + validation.totals.shipping
-          );
         }
-      }
 
-      // Calcular total final
-      validation.totals.total = validation.totals.subtotal + validation.totals.shipping - validation.totals.discount;
+        // STEP 4: Calcular total final
+        validation.totals.total = validation.totals.subtotal + validation.totals.shipping - validation.totals.discount;
 
-      // Verificar se ainda é válido após todos os cálculos
-      if (validation.errors.length > 0) {
-        validation.isValid = false;
-      }
+        if (validation.errors.length > 0) {
+          validation.isValid = false;
+        }
 
-      return validation;
-    });
-
-    return json({
-      success: true,
-      data: result
-    });
+        return validation;
+      })();
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 6000)
+      });
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
+      console.log(`✅ Validação OK: ${result.isValid ? 'Válido' : 'Inválido'} (${result.errors.length} erros)`);
+      
+      return json({
+        success: true,
+        data: result,
+        source: 'database'
+      });
+      
+    } catch (error) {
+      console.log(`⚠️ Erro na validação: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      
+      // FALLBACK: Validação básica sem banco (menos rigorosa mas funcional)
+      const fallbackValidation: ValidationResult = {
+        isValid: false,
+        errors: ['Erro temporário na validação. Tente novamente em alguns instantes.'],
+        items: items.map((item: CartItem) => ({
+          productId: item.productId,
+          name: `Produto ${item.productId}`,
+          price: 99.99,
+          quantity: item.quantity,
+          available: 10,
+          isAvailable: item.quantity <= 10,
+          image: `/api/placeholder/300/400?text=Produto`
+        })),
+        totals: {
+          subtotal: 0,
+          shipping: 15.90,
+          discount: 0,
+          total: 15.90
+        }
+      };
+      
+      return json({
+        success: true,
+        data: fallbackValidation,
+        source: 'fallback'
+      });
+    }
 
   } catch (error) {
-    console.error('Erro na validação do checkout:', error);
+    console.error('❌ Erro crítico checkout validate:', error);
     return json({
       success: false,
-      error: { message: 'Erro interno do servidor' }
+      error: { message: 'Erro na validação do checkout' }
     }, { status: 500 });
   }
 }; 
