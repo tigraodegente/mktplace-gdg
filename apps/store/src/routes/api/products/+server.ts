@@ -249,6 +249,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           image: '/api/placeholder/300/400?text=Xiaomi+Redmi+Note+13+Pro',
           category_id: '1',
           category_name: 'Smartphones',
+          category_slug: 'smartphones',
           brand_id: '1',
           brand_name: 'Xiaomi',
           seller_id: '1',
@@ -280,6 +281,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           image: '/api/placeholder/300/400?text=Samsung+Galaxy+S24+Ultra',
           category_id: '1',
           category_name: 'Smartphones',
+          category_slug: 'smartphones',
           brand_id: '2',
           brand_name: 'Samsung',
           seller_id: '2',
@@ -298,6 +300,38 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         },
         {
           id: '3',
+          name: 'iPhone 15 Pro Max 256GB',
+          slug: 'iphone-15-pro-max-256gb',
+          description: 'iPhone 15 Pro Max com chip A17 Pro, câmera de 48MP e tela Super Retina XDR de 6.7"',
+          price: 4299.99,
+          original_price: 4699.99,
+          discount: 9,
+          images: [
+            '/api/placeholder/300/400?text=iPhone+15+Pro+Max',
+            '/api/placeholder/300/400?text=iPhone+15+Pro+Max+2'
+          ],
+          image: '/api/placeholder/300/400?text=iPhone+15+Pro+Max',
+          category_id: '1',
+          category_name: 'Smartphones',
+          category_slug: 'smartphones',
+          brand_id: '4',
+          brand_name: 'Apple',
+          seller_id: '4',
+          seller_name: 'Apple Store',
+          is_active: true,
+          stock: 5,
+          rating: 4.9,
+          reviews_count: 203,
+          sold_count: 67,
+          tags: ['smartphone', 'iphone', 'apple', 'premium'],
+          is_featured: true,
+          sku: 'APL-IP15PM-256',
+          pieces: 1,
+          weight: 0.22,
+          has_fast_delivery: true
+        },
+        {
+          id: '4',
           name: 'Smart TV Samsung 55" 4K UHD',
           slug: 'smart-tv-samsung-55-4k-uhd',
           description: 'Smart TV Samsung 55 polegadas com resolução 4K, HDR10+ e sistema Tizen OS',
@@ -311,6 +345,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           image: '/api/placeholder/300/400?text=Samsung+Smart+TV+55',
           category_id: '2',
           category_name: 'TVs e Áudio',
+          category_slug: 'tvs-audio',
           brand_id: '2',
           brand_name: 'Samsung',
           seller_id: '2',
@@ -328,7 +363,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           has_fast_delivery: false
         },
         {
-          id: '4',
+          id: '5',
           name: 'Notebook Lenovo IdeaPad 3i Intel Core i5',
           slug: 'notebook-lenovo-ideapad-3i-intel-core-i5',
           description: 'Notebook Lenovo com processador Intel Core i5, 8GB RAM, SSD 256GB e tela 15.6"',
@@ -342,6 +377,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           image: '/api/placeholder/300/400?text=Lenovo+IdeaPad+3i',
           category_id: '3',
           category_name: 'Informática',
+          category_slug: 'informatica',
           brand_id: '3',
           brand_name: 'Lenovo',
           seller_id: '3',
@@ -357,31 +393,83 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           pieces: 1,
           weight: 2.1,
           has_fast_delivery: true
+        },
+        {
+          id: '6',
+          name: 'Tablet iPad Air 5ª Geração 64GB',
+          slug: 'tablet-ipad-air-5-geracao-64gb',
+          description: 'iPad Air com chip M1, tela Liquid Retina de 10.9" e suporte ao Apple Pencil',
+          price: 3199.99,
+          original_price: 3699.99,
+          discount: 14,
+          images: [
+            '/api/placeholder/300/400?text=iPad+Air+M1',
+            '/api/placeholder/300/400?text=iPad+Air+64GB'
+          ],
+          image: '/api/placeholder/300/400?text=iPad+Air+M1',
+          category_id: '4',
+          category_name: 'Tablets',
+          category_slug: 'tablets',
+          brand_id: '4',
+          brand_name: 'Apple',
+          seller_id: '4',
+          seller_name: 'Apple Store',
+          is_active: true,
+          stock: 9,
+          rating: 4.8,
+          reviews_count: 95,
+          sold_count: 52,
+          tags: ['tablet', 'ipad', 'apple', 'm1'],
+          is_featured: true,
+          sku: 'APL-IPAD-AIR5-64',
+          pieces: 1,
+          weight: 0.46,
+          has_fast_delivery: true
         }
       ];
       
-      // Aplicar filtros básicos no fallback
+      console.log(`📦 Fallback iniciado com ${mockProducts.length} produtos base`);
+      
+      // Aplicar filtros básicos no fallback com MAPEAMENTO INTELIGENTE
       if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
         mockProducts = mockProducts.filter(p => 
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase())
+          p.name.toLowerCase().includes(searchLower) ||
+          p.description.toLowerCase().includes(searchLower) ||
+          p.tags.some(tag => tag.toLowerCase().includes(searchLower))
         );
+        console.log(`🔍 Filtro search "${searchQuery}": ${mockProducts.length} produtos`);
       }
       
       if (categories.length > 0) {
-        mockProducts = mockProducts.filter(p => categories.includes(p.category_id));
+        // MAPEAMENTO INTELIGENTE: Por slug, nome ou ID
+        mockProducts = mockProducts.filter(p => {
+          return categories.some(cat => {
+            const catLower = cat.toLowerCase();
+            return (
+              p.category_id === cat || // Por ID
+              p.category_slug === catLower || // Por slug
+              p.category_name.toLowerCase() === catLower || // Por nome
+              p.category_name.toLowerCase().includes(catLower) // Por nome parcial
+            );
+          });
+        });
+        console.log(`📂 Filtro categorias ${JSON.stringify(categories)}: ${mockProducts.length} produtos`);
       }
       
       if (priceMin !== undefined) {
         mockProducts = mockProducts.filter(p => p.price >= priceMin);
+        console.log(`💰 Filtro preço mín ${priceMin}: ${mockProducts.length} produtos`);
       }
       
       if (priceMax !== undefined) {
         mockProducts = mockProducts.filter(p => p.price <= priceMax);
+        console.log(`💰 Filtro preço máx ${priceMax}: ${mockProducts.length} produtos`);
       }
       
       if (hasDiscount) {
         mockProducts = mockProducts.filter(p => p.discount && p.discount > 0);
+        console.log(`🏷️ Filtro promoção: ${mockProducts.length} produtos`);
       }
       
       if (!inStock) {
@@ -391,6 +479,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         });
       } else {
         mockProducts = mockProducts.filter(p => p.stock > 0);
+        console.log(`📦 Filtro em estoque: ${mockProducts.length} produtos`);
       }
       
       // Aplicar ordenação
