@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { fade, fly, scale } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
+	import { fade, fly, scale, slide, blur, crossfade } from 'svelte/transition';
+	import { cubicOut, backOut, elasticOut } from 'svelte/easing';
+	
+	// Crossfade para transições entre views
+	const [send, receive] = crossfade({
+		duration: 400,
+		fallback(node) {
+			return blur(node, { amount: 10, duration: 400 });
+		}
+	});
 	
 	// Interfaces
 	interface Product {
@@ -237,21 +245,21 @@
 		<div class="flex items-center gap-3">
 			<!-- View Mode -->
 			<div class="flex items-center bg-gray-100 rounded-lg p-1">
-				<button
+				<button 
 					onclick={() => viewMode = 'list'}
-					class="p-2 rounded {viewMode === 'list' ? 'bg-white shadow-sm' : ''} transition-all"
+					class="p-2 rounded {viewMode === 'list' ? 'bg-white shadow-sm' : ''} transition-all duration-300 hover:scale-105"
 					title="Visualização em lista"
 				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 transition-transform duration-300 {viewMode === 'list' ? 'scale-110' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
 					</svg>
 				</button>
-				<button
+				<button 
 					onclick={() => viewMode = 'grid'}
-					class="p-2 rounded {viewMode === 'grid' ? 'bg-white shadow-sm' : ''} transition-all"
+					class="p-2 rounded {viewMode === 'grid' ? 'bg-white shadow-sm' : ''} transition-all duration-300 hover:scale-105"
 					title="Visualização em grade"
 				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 transition-transform duration-300 {viewMode === 'grid' ? 'scale-110' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
 					</svg>
 				</button>
@@ -283,13 +291,13 @@
 	
 	<!-- Stats Cards -->
 	<div class="grid grid-cols-1 md:grid-cols-4 gap-4" in:fly={{ y: 20, duration: 500, delay: 100 }}>
-		<div class="stat-card">
+		<div class="stat-card" in:fly={{ y: 30, duration: 500, delay: 200, easing: backOut }}>
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm font-medium text-gray-600">Total de Produtos</p>
-					<p class="text-2xl font-bold text-gray-900">{stats.total}</p>
+					<p class="text-2xl font-bold text-gray-900 transition-all duration-300">{stats.total}</p>
 				</div>
-				<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+				<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center transition-transform duration-300 hover:scale-110">
 					<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 					</svg>
@@ -297,13 +305,13 @@
 			</div>
 		</div>
 		
-		<div class="stat-card">
+		<div class="stat-card" in:fly={{ y: 30, duration: 500, delay: 300, easing: backOut }}>
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm font-medium text-gray-600">Produtos Ativos</p>
-					<p class="text-2xl font-bold text-green-600">{stats.active}</p>
+					<p class="text-2xl font-bold text-green-600 transition-all duration-300">{stats.active}</p>
 				</div>
-				<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+				<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center transition-transform duration-300 hover:scale-110">
 					<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
@@ -311,27 +319,27 @@
 			</div>
 		</div>
 		
-		<div class="stat-card">
+		<div class="stat-card" in:fly={{ y: 30, duration: 500, delay: 400, easing: backOut }}>
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm font-medium text-gray-600">Aprovação Pendente</p>
-					<p class="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+					<p class="text-2xl font-bold text-yellow-600 transition-all duration-300">{stats.pending}</p>
 				</div>
-				<div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+				<div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center transition-transform duration-300 hover:scale-110">
 					<svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
 				</div>
 			</div>
 		</div>
-		
-		<div class="stat-card">
+
+		<div class="stat-card" in:fly={{ y: 30, duration: 500, delay: 500, easing: backOut }}>
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm font-medium text-gray-600">Estoque Baixo</p>
-					<p class="text-2xl font-bold text-red-600">{stats.lowStock}</p>
+					<p class="text-2xl font-bold text-red-600 transition-all duration-300">{stats.lowStock}</p>
 				</div>
-				<div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+				<div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center transition-transform duration-300 hover:scale-110">
 					<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 					</svg>
@@ -569,50 +577,52 @@
 	{:else}
 		<!-- Grid View -->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-			{#each paginatedProducts as product, i}
+			{#each paginatedProducts as product, i (product.id)}
 				<div 
-					class="card group hover:shadow-xl transition-all duration-300"
-					in:scale={{ duration: 400, delay: i * 50, easing: cubicOut }}
+					class="card group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+					in:scale={{ duration: 400, delay: i * 50, easing: elasticOut, start: 0.8 }}
+					out:fade={{ duration: 200 }}
 				>
 					<div class="relative overflow-hidden">
 						<img
 							src={product.image}
 							alt={product.name}
-							class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+							class="w-full h-48 object-cover group-hover:scale-125 transition-transform duration-700"
 						/>
-						<div class="absolute top-2 right-2">
-							<span class="badge {getStatusBadge(product.status)}">
+						<div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+						<div class="absolute top-2 right-2" in:fly={{ x: 20, duration: 300, delay: 100 + i * 50 }}>
+							<span class="badge {getStatusBadge(product.status)} transform transition-transform duration-300 group-hover:scale-110">
 								{getStatusLabel(product.status)}
 							</span>
 						</div>
 						{#if product.stock < 10}
-							<div class="absolute top-2 left-2">
-								<span class="badge badge-danger">
+							<div class="absolute top-2 left-2" in:fly={{ x: -20, duration: 300, delay: 100 + i * 50 }}>
+								<span class="badge badge-danger animate-pulse">
 									Estoque Baixo
 								</span>
 							</div>
 						{/if}
 					</div>
 					<div class="card-body">
-						<h3 class="font-semibold text-gray-900 line-clamp-2">{product.name}</h3>
-						<p class="text-sm text-gray-500">{product.category}</p>
+						<h3 class="font-semibold text-gray-900 line-clamp-2 group-hover:text-cyan-600 transition-colors duration-300">{product.name}</h3>
+						<p class="text-sm text-gray-500 transition-all duration-300 group-hover:text-gray-700">{product.category}</p>
 						<div class="flex items-center justify-between mt-2">
-							<p class="text-xl font-bold text-gray-900">{formatPrice(product.price)}</p>
-							<div class="flex items-center gap-1">
+							<p class="text-xl font-bold text-gray-900 transition-transform duration-300 group-hover:scale-110">{formatPrice(product.price)}</p>
+							<div class="flex items-center gap-1 transition-transform duration-300 group-hover:scale-110">
 								<span class="text-yellow-500">⭐</span>
 								<span class="text-sm font-medium">{product.rating}</span>
 							</div>
 						</div>
 						<div class="flex items-center justify-between mt-4 text-sm text-gray-600">
-							<span>Estoque: {product.stock}</span>
-							<span>Vendas: {product.sales}</span>
+							<span class="transition-opacity duration-300 group-hover:opacity-70">Estoque: {product.stock}</span>
+							<span class="transition-opacity duration-300 group-hover:opacity-70">Vendas: {product.sales}</span>
 						</div>
 					</div>
-					<div class="card-footer flex gap-2">
-						<button class="btn btn-sm btn-ghost flex-1">
+					<div class="card-footer flex gap-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+						<button class="btn btn-sm btn-ghost flex-1 hover:scale-105 transition-transform duration-200">
 							Editar
 						</button>
-						<button class="btn btn-sm btn-primary flex-1">
+						<button class="btn btn-sm btn-primary flex-1 hover:scale-105 transition-transform duration-200">
 							Detalhes
 						</button>
 					</div>

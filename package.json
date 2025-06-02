@@ -36,6 +36,7 @@
   "license": "MIT",
   "devDependencies": {
     "@sveltejs/enhanced-img": "^0.6.0",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.15.21",
     "dotenv": "^16.5.0",
     "node-fetch": "^2.7.0",

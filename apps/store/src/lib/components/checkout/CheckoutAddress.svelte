@@ -674,11 +674,19 @@
               
               {#each userAddresses as address, index}
                 <div 
+                  role="button"
+                  tabindex="0"
                   class="group p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-[#00BFB3]/50 hover:shadow-md
                          {selectedAddress?.id === address.id ? 'border-[#00BFB3] bg-[#00BFB3]/5 shadow-md' : 'border-gray-200'}"
                   onclick={() => {
                     selectAddress(address);
                     showAddressModal = false;
+                  }}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      selectAddress(address);
+                      showAddressModal = false;
+                    }
                   }}
                 >
                   <div class="flex items-start justify-between">

@@ -4,35 +4,46 @@
   import { formatCurrency } from '$lib/utils';
   import { cartStore } from '$lib/stores/cartStore';
   import { goto } from '$app/navigation';
-  import type { Product } from '@mktplace/shared-types';
   import { fade, fly } from 'svelte/transition';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
   
+  // Definição local do tipo Product
+  interface Product {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    price: number;
+    original_price?: number;
+    images: string[];
+    image?: string;
+    category_id: string;
+    category_name?: string;
+    seller_id: string;
+    seller_name?: string;
+    stock: number;
+    sku?: string;
+    brand?: string;
+    model?: string;
+    weight?: number;
+    is_active: boolean;
+    is_featured?: boolean;
+    has_free_shipping?: boolean;
+    rating?: number;
+    reviews_count?: number;
+    sold_count?: number;
+    sales_count?: number;
+    discount_percentage?: number;
+    delivery_days?: number;
+    questions_count?: number;
+    variations?: ProductVariation[];
+  }
+  
   // Props dos dados do servidor
   let { data }: { data: PageData } = $props();
   
-  // Estender o tipo Product com propriedades adicionais
-  interface ExtendedProduct extends Product {
-    seller_name?: string;
-    discount_percentage?: number;
-    rating?: number;
-    sales_count?: number;
-    original_price?: number;
-    brand?: string;
-    model?: string;
-    sku?: string;
-    weight?: number;
-    slug?: string;
-    has_free_shipping?: boolean;
-    delivery_days?: number;
-    reviews_count?: number;
-    variations?: ProductVariation[];
-    sold_count?: number;
-    category_name?: string;
-    questions_count?: number;
-  }
-  
+  // Interface para variações do produto
   interface ProductVariation {
     color?: string;
     size?: string;
@@ -45,7 +56,8 @@
   
   const { addItem } = cartStore;
   
-  let product = $state<ExtendedProduct | null>(data.product);
+  // Usar Product com tipo estendido
+  let product = $state<Product | null>(data.product);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let selectedImage = $state(0);
@@ -76,8 +88,8 @@
   // Função para obter cores únicas das variações
   function getUniqueColors(variations: ProductVariation[]): string[] {
     const colors = variations
-      .filter(v => v.color)
-      .map(v => v.color!)
+      .filter((v: ProductVariation) => v.color)
+      .map((v: ProductVariation) => v.color!)
       .filter((color, index, self) => self.indexOf(color) === index);
     return colors;
   }
@@ -85,8 +97,8 @@
   // Função para obter tamanhos únicos das variações
   function getUniqueSizes(variations: ProductVariation[]): string[] {
     const sizes = variations
-      .filter(v => v.size)
-      .map(v => v.size!)
+      .filter((v: ProductVariation) => v.size)
+      .map((v: ProductVariation) => v.size!)
       .filter((size, index, self) => self.indexOf(size) === index);
     return sizes;
   }
@@ -95,7 +107,7 @@
   function findCurrentVariation(): ProductVariation | null {
     if (!product?.variations || product.variations.length === 0) return null;
     
-    return product.variations.find(v => {
+    return product.variations.find((v: ProductVariation) => {
       const colorMatch = !selectedColor || v.color === selectedColor;
       const sizeMatch = !selectedSize || v.size === selectedSize;
       return colorMatch && sizeMatch;
@@ -242,7 +254,7 @@
       const response = await fetch(`/api/products?category=${categoryId}&limit=4`);
       const data = await response.json();
       if (data.success) {
-        relatedProducts = data.data.products.filter((p: ExtendedProduct) => p.slug !== $page.params.slug);
+        relatedProducts = data.data.products.filter((p: Product) => p.slug !== $page.params.slug);
       }
     } catch (err) {
       console.error('Erro ao buscar produtos relacionados:', err);
@@ -383,7 +395,7 @@
   function isCombinationAvailable(color?: string, size?: string): boolean {
     if (!product?.variations) return false;
     
-    return product.variations.some(v => {
+    return product.variations.some((v: ProductVariation) => {
       const colorMatch = !color || v.color === color;
       const sizeMatch = !size || v.size === size;
       return colorMatch && sizeMatch && v.stock > 0;
@@ -599,11 +611,13 @@
           
           <!-- Preço -->
           <div class="bg-gray-50 rounded-lg p-4">
-            {#if getCurrentOriginalPrice() && getCurrentOriginalPrice() > getCurrentPrice()}
+            {#if getCurrentOriginalPrice() !== undefined && getCurrentOriginalPrice()! > getCurrentPrice()}
               <div class="flex items-center gap-2">
-                <p class="text-gray-500 line-through text-sm">{formatCurrency(getCurrentOriginalPrice() || 0)}</p>
-                <span class="bg-[#00BFB3] text-white text-xs px-2 py-1 rounded-full">
-                  {Math.round(((getCurrentOriginalPrice() || 0 - getCurrentPrice()) / (getCurrentOriginalPrice() || 1)) * 100)}% OFF
+                <span class="text-sm text-gray-500 line-through">
+                  {formatCurrency(getCurrentOriginalPrice()!)}
+                </span>
+                <span class="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                  -{getDiscountPercentage(getCurrentPrice(), getCurrentOriginalPrice())}%
                 </span>
               </div>
             {/if}
@@ -624,13 +638,10 @@
             {/if}
             
             <!-- Indicador de Economia -->
-            {#if getCurrentOriginalPrice() && getCurrentOriginalPrice() > getCurrentPrice()}
+            {#if getCurrentOriginalPrice() !== undefined && getCurrentOriginalPrice()! > getCurrentPrice()}
               <div class="bg-[#00BFB3]/10 rounded-lg p-3 mt-3 border border-[#00BFB3]/20">
-                <p class="text-sm text-gray-800 flex items-center">
-                  <svg class="w-4 h-4 mr-2 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <strong>Você economiza: {formatCurrency((getCurrentOriginalPrice() || 0) - getCurrentPrice())}</strong>
+                <p class="text-sm text-[#00BFB3] font-medium">
+                  💰 Você economiza {formatCurrency(getCurrentOriginalPrice()! - getCurrentPrice())}
                 </p>
               </div>
             {/if}
@@ -1187,7 +1198,7 @@
           <h2 class="text-2xl font-bold text-gray-900 mb-6">Produtos Relacionados</h2>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             {#each relatedProducts as related}
-              <a href="/produto/{(related as ExtendedProduct).slug || related.id}" class="group">
+              <a href="/produto/{related.slug || related.id}" class="group">
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-lg transition-shadow">
                   <div class="aspect-square bg-gray-50">
                     <img 

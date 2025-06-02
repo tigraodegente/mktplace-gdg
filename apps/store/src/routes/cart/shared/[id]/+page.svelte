@@ -40,7 +40,7 @@
 				
 				if (product) {
 					// Adicionar ao carrinho
-					await cartStore.addItem(
+					await advancedCartStore.addItem(
 						product,
 						product.seller_id || 'default',
 						product.seller_name || 'Vendedor',

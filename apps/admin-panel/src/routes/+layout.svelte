@@ -347,7 +347,9 @@
 						</div>
 					</div>
 				{:else}
-					{@render children()}
+					<div in:fade={{ duration: 300, delay: 100 }} out:fade={{ duration: 200 }}>
+						{@render children()}
+					</div>
 				{/if}
 			</div>
 		</main>

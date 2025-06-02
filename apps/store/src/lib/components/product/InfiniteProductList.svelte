@@ -18,7 +18,7 @@
   let products = $state<any[]>([]);
   let loading = $state(false);
   let observer: IntersectionObserver;
-  let sentinel: HTMLDivElement;
+  let sentinel = $state<HTMLDivElement>();
 
   async function handleLoadMore() {
     if (loading || !hasMore) return;

@@ -110,10 +110,19 @@
 		onClose
 	}: FilterSidebarProps = $props();
 	
+	// DEBUG: Log categorias recebidas
+	$effect(() => {
+		if (categories.length > 0) {
+			console.log('🔍 FilterSidebar: Categorias recebidas:', categories);
+			console.log('🔍 Categorias principais:', categories.filter(c => !c.parent_id));
+			console.log('🔍 Subcategorias órfãs:', categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)));
+		}
+	});
+	
 	const dispatch = createEventDispatcher();
 	
-	// Estado dos grupos expandidos
-	let expandedGroups = $state<Set<string>>(new Set(['categories', 'price', 'brands', 'benefits']));
+	// Estado dos grupos expansíveis - ajustado para incluir mais grupos
+	let expandedGroups = $state<Set<string>>(new Set(['categories', 'price', 'brands', 'benefits', 'dynamic_armazenamento', 'dynamic_memoria-ram', 'dynamic_cor', 'dynamic_processador', 'dynamic_tamanho']));
 	
 	// Filtros selecionados - SIMPLIFICADO: usar diretamente as props ao invés de state interno
 	let selectedPrice = $state(priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 }));

@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { fade, fly, scale } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
+	import { fade, fly, scale, blur, crossfade } from 'svelte/transition';
+	import { cubicOut, backOut } from 'svelte/easing';
+	
+	// Crossfade para transições coordenadas
+	const [send, receive] = crossfade({
+		duration: 300,
+		fallback(node) {
+			return scale(node, { start: 0.5, duration: 300 });
+		}
+	});
 	
 	// Interfaces
 	interface StatCard {
@@ -225,15 +233,16 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-			{#each stats as stat, i}
+			{#each stats as stat, i (stat.title)}
 				<div 
 					class="stat-card group"
-					in:scale={{ duration: 500, delay: 200 + i * 100, easing: cubicOut }}
+					in:fly={{ y: 50, duration: 500, delay: 200 + i * 100, easing: backOut }}
+					out:scale={{ duration: 200 }}
 				>
 					<div class="relative z-10">
 						<div class="flex items-center justify-between mb-4">
-							<div class="text-2xl">{stat.icon}</div>
-							<div class="flex items-center gap-1">
+							<div class="text-2xl transform group-hover:scale-110 transition-transform duration-300">{stat.icon}</div>
+							<div class="flex items-center gap-1" in:fade={{ duration: 300, delay: 400 + i * 100 }}>
 								{#if stat.change > 0}
 									<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -248,11 +257,11 @@
 							</div>
 						</div>
 						<h3 class="text-sm font-medium text-gray-600 mb-1">{stat.title}</h3>
-						<p class="text-2xl font-bold text-gray-900">{stat.value}</p>
+						<p class="text-2xl font-bold text-gray-900 transition-all duration-300 group-hover:scale-105">{stat.value}</p>
 					</div>
 					
 					<!-- Background decoration -->
-					<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br {getColorClasses(stat.color)} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-300"></div>
+					<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br {getColorClasses(stat.color)} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500"></div>
 				</div>
 			{/each}
 		</div>
@@ -333,16 +342,20 @@
 						</div>
 					{:else}
 						<div class="space-y-4">
-							{#each recentActivities as activity, i}
+							{#each recentActivities as activity, i (activity.id)}
 								<div 
-									class="flex items-start gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors"
+									class="flex items-start gap-3 hover:bg-gray-50 p-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-[1.02] cursor-pointer"
 									in:fly={{ x: 20, duration: 400, delay: 500 + i * 50 }}
+									out:fade={{ duration: 200 }}
 								>
-									<div class="w-10 h-10 rounded-full flex items-center justify-center text-lg {getActivityIcon(activity.type)}">
+									<div 
+										class="w-10 h-10 rounded-full flex items-center justify-center text-lg {getActivityIcon(activity.type)} transition-transform duration-300 hover:scale-110"
+										in:scale={{ duration: 300, delay: 600 + i * 50 }}
+									>
 										{activity.icon}
 									</div>
 									<div class="flex-1">
-										<h4 class="text-sm font-semibold text-gray-900">{activity.title}</h4>
+										<h4 class="text-sm font-semibold text-gray-900 transition-colors duration-200 hover:text-cyan-600">{activity.title}</h4>
 										<p class="text-sm text-gray-600">{activity.description}</p>
 										<p class="text-xs text-gray-500 mt-1">{activity.time}</p>
 									</div>

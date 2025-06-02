@@ -22,6 +22,15 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const page = Math.max(1, Number(url.searchParams.get('pagina')) || 1);
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('itens')) || 20));
     
+    // Extrair filtros dinâmicos
+    const dynamicFilters: Record<string, string[]> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      if (key.startsWith('opcao_')) {
+        const optionSlug = key.replace('opcao_', '');
+        dynamicFilters[optionSlug] = value.split(',').filter(Boolean);
+      }
+    }
+    
     // Executar busca com timeout otimizado
     try {
       const db = getDatabase(platform);
@@ -83,6 +92,22 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           )`);
           params.push(`%${searchQuery}%`);
           paramIndex++;
+        }
+        
+        // Adicionar filtros dinâmicos
+        for (const [optionSlug, values] of Object.entries(dynamicFilters)) {
+          if (values.length > 0) {
+            conditions.push(`EXISTS (
+              SELECT 1 
+              FROM product_options po
+              INNER JOIN product_option_values pov ON pov.option_id = po.id
+              WHERE po.product_id = p.id 
+              AND LOWER(REPLACE(po.name, ' ', '-')) = $${paramIndex}
+              AND pov.value = ANY($${paramIndex + 1})
+            )`);
+            params.push(optionSlug, values);
+            paramIndex += 2;
+          }
         }
         
         const whereClause = conditions.join(' AND ');
@@ -296,33 +321,247 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 // Função auxiliar para buscar facets (pode ser cacheada)
 async function getFacets(db: any, searchQuery: string) {
   try {
-    // Query otimizada para facets
+    // Query otimizada para facets incluindo hierarquia e filtros dinâmicos
     const facetsQuery = `
-      WITH facet_data AS (
+      WITH 
+      -- Categorias com hierarquia
+      category_hierarchy AS (
         SELECT 
-          -- Categorias
-          (SELECT json_agg(DISTINCT jsonb_build_object(
-            'id', c.id,
-            'name', c.name,
-            'slug', c.slug,
-            'count', (SELECT COUNT(*) FROM products WHERE category_id = c.id AND is_active = true)
-          )) FROM categories c WHERE c.is_active = true) as categories,
-          
-          -- Marcas
-          (SELECT json_agg(DISTINCT jsonb_build_object(
-            'id', b.id,
-            'name', b.name,
-            'slug', b.slug,
-            'count', (SELECT COUNT(*) FROM products WHERE brand_id = b.id AND is_active = true)
-          )) FROM brands b WHERE b.is_active = true) as brands,
-          
-          -- Range de preços
-          (SELECT jsonb_build_object(
-            'min', COALESCE(MIN(price), 0),
-            'max', COALESCE(MAX(price), 10000)
-          ) FROM products WHERE is_active = true) as price_range
+          c.id,
+          c.name,
+          c.slug,
+          c.parent_id,
+          c.position,
+          (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = true) as count
+        FROM categories c
+        WHERE c.is_active = true
+      ),
+      
+      -- Marcas com contagem
+      brand_facets AS (
+        SELECT 
+          b.id,
+          b.name,
+          b.slug,
+          COUNT(DISTINCT p.id) as count
+        FROM brands b
+        INNER JOIN products p ON p.brand_id = b.id
+        WHERE b.is_active = true AND p.is_active = true
+        GROUP BY b.id, b.name, b.slug
+        HAVING COUNT(DISTINCT p.id) > 0
+      ),
+      
+      -- Opções dinâmicas (cores, tamanhos, etc)
+      dynamic_options AS (
+        SELECT 
+          po.name as option_name,
+          LOWER(REPLACE(po.name, ' ', '-')) as option_slug,
+          pov.value,
+          COUNT(DISTINCT p.id) as count
+        FROM product_options po
+        INNER JOIN product_option_values pov ON pov.option_id = po.id
+        INNER JOIN products p ON p.id = po.product_id
+        WHERE p.is_active = true
+        GROUP BY po.name, pov.value
+      ),
+      
+      -- Benefícios
+      benefits_count AS (
+        SELECT 
+          COUNT(CASE WHEN p.original_price > 0 AND p.price < p.original_price THEN 1 END) as discount_count,
+          COUNT(CASE WHEN p.has_free_shipping = true THEN 1 END) as free_shipping_count,
+          COUNT(CASE WHEN p.quantity = 0 THEN 1 END) as out_of_stock_count
+        FROM products p
+        WHERE p.is_active = true
+      ),
+      
+      -- Range de preços
+      price_stats AS (
+        SELECT 
+          COALESCE(MIN(price), 0) as min_price,
+          COALESCE(MAX(price), 10000) as max_price
+        FROM products 
+        WHERE is_active = true AND quantity > 0
+      ),
+      
+      -- Tags populares
+      tag_facets AS (
+        SELECT 
+          tag,
+          COUNT(*) as count
+        FROM (
+          SELECT unnest(tags) as tag
+          FROM products
+          WHERE is_active = true AND tags IS NOT NULL
+        ) t
+        GROUP BY tag
+        ORDER BY count DESC
+        LIMIT 20
+      ),
+      
+      -- Condições
+      condition_facets AS (
+        SELECT 
+          condition,
+          COUNT(*) as count
+        FROM products
+        WHERE is_active = true AND condition IS NOT NULL
+        GROUP BY condition
+      ),
+      
+      -- Avaliações
+      rating_facets AS (
+        SELECT 
+          FLOOR(rating_average) as rating,
+          COUNT(*) as count
+        FROM products
+        WHERE is_active = true AND rating_average IS NOT NULL
+        GROUP BY FLOOR(rating_average)
+      ),
+      
+      -- Vendedores
+      seller_facets AS (
+        SELECT 
+          s.id,
+          s.company_name as name,
+          s.slug,
+          COUNT(DISTINCT p.id) as count
+        FROM sellers s
+        INNER JOIN products p ON p.seller_id = s.id
+        WHERE s.is_active = true AND p.is_active = true
+        GROUP BY s.id, s.company_name, s.slug
+        HAVING COUNT(DISTINCT p.id) > 0
+        ORDER BY count DESC
+        LIMIT 50
       )
-      SELECT * FROM facet_data
+      
+      SELECT 
+        -- Categorias com subcategorias
+        (
+          SELECT json_agg(
+            jsonb_build_object(
+              'id', ch.id,
+              'name', ch.name,
+              'slug', ch.slug,
+              'count', ch.count,
+              'parent_id', ch.parent_id,
+              'subcategories', (
+                SELECT json_agg(
+                  jsonb_build_object(
+                    'id', sub.id,
+                    'name', sub.name,
+                    'slug', sub.slug,
+                    'count', sub.count,
+                    'parent_id', sub.parent_id
+                  ) ORDER BY sub.position, sub.name
+                )
+                FROM category_hierarchy sub
+                WHERE sub.parent_id = ch.id
+              )
+            ) ORDER BY ch.position, ch.name
+          )
+          FROM category_hierarchy ch
+          WHERE ch.parent_id IS NULL
+        ) as categories,
+        
+        -- Marcas
+        (SELECT json_agg(
+          jsonb_build_object(
+            'id', id,
+            'name', name,
+            'slug', slug,
+            'count', count
+          ) ORDER BY count DESC, name
+        ) FROM brand_facets) as brands,
+        
+        -- Opções dinâmicas agrupadas
+        (
+          SELECT json_agg(DISTINCT facet_group)
+          FROM (
+            SELECT jsonb_build_object(
+              'name', option_name,
+              'slug', option_slug,
+              'values', json_agg(
+                jsonb_build_object(
+                  'value', value,
+                  'count', count
+                ) ORDER BY count DESC, value
+              )
+            ) as facet_group
+            FROM dynamic_options
+            GROUP BY option_name, option_slug
+          ) grouped_options
+        ) as dynamic_options,
+        
+        -- Tags
+        (SELECT json_agg(
+          jsonb_build_object(
+            'id', tag,
+            'name', tag,
+            'count', count
+          )
+        ) FROM tag_facets) as tags,
+        
+        -- Condições
+        (SELECT json_agg(
+          jsonb_build_object(
+            'value', condition,
+            'label', CASE 
+              WHEN condition = 'new' THEN 'Novo'
+              WHEN condition = 'used' THEN 'Usado'
+              WHEN condition = 'refurbished' THEN 'Recondicionado'
+              ELSE condition
+            END,
+            'count', count
+          )
+        ) FROM condition_facets) as conditions,
+        
+        -- Avaliações
+        (SELECT json_agg(
+          jsonb_build_object(
+            'value', rating::int,
+            'count', count
+          ) ORDER BY rating DESC
+        ) FROM rating_facets) as ratings,
+        
+        -- Vendedores
+        (SELECT json_agg(
+          jsonb_build_object(
+            'id', id,
+            'name', name,
+            'slug', slug,
+            'count', count
+          )
+        ) FROM seller_facets) as sellers,
+        
+        -- Benefícios
+        (SELECT jsonb_build_object(
+          'discount', discount_count,
+          'freeShipping', free_shipping_count,
+          'outOfStock', out_of_stock_count
+        ) FROM benefits_count) as benefits,
+        
+        -- Range de preços
+        (SELECT jsonb_build_object(
+          'min', min_price,
+          'max', max_price
+        ) FROM price_stats) as price_range,
+        
+        -- Opções de entrega (estático por enquanto)
+        (SELECT json_agg(
+          jsonb_build_object(
+            'value', value,
+            'label', label,
+            'count', 0
+          )
+        ) FROM (
+          VALUES 
+            ('24h', 'Entrega em 24h'),
+            ('48h', 'Até 2 dias'),
+            ('3days', 'Até 3 dias úteis'),
+            ('7days', 'Até 7 dias úteis'),
+            ('15days', 'Até 15 dias')
+        ) AS t(value, label)) as delivery_options
     `;
     
     const result = await db.query(facetsQuery);
@@ -331,18 +570,36 @@ async function getFacets(db: any, searchQuery: string) {
     return {
       categories: facetData.categories || [],
       brands: facetData.brands || [],
+      tags: facetData.tags || [],
       priceRange: facetData.price_range || { min: 0, max: 10000 },
-      ratings: [],
-      benefits: { discount: 0, freeShipping: 0, outOfStock: 0 }
+      ratings: facetData.ratings || [],
+      conditions: facetData.conditions || [
+        { value: 'new', label: 'Novo', count: 0 },
+        { value: 'used', label: 'Usado', count: 0 },
+        { value: 'refurbished', label: 'Recondicionado', count: 0 }
+      ],
+      deliveryOptions: facetData.delivery_options || [],
+      sellers: facetData.sellers || [],
+      benefits: facetData.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 },
+      dynamicOptions: facetData.dynamic_options || []
     };
   } catch (error) {
     logger.warn('Failed to fetch facets, using defaults', { error });
     return {
       categories: [],
       brands: [],
+      tags: [],
       priceRange: { min: 0, max: 10000 },
       ratings: [],
-      benefits: { discount: 0, freeShipping: 0, outOfStock: 0 }
+      conditions: [
+        { value: 'new', label: 'Novo', count: 0 },
+        { value: 'used', label: 'Usado', count: 0 },
+        { value: 'refurbished', label: 'Recondicionado', count: 0 }
+      ],
+      deliveryOptions: [],
+      sellers: [],
+      benefits: { discount: 0, freeShipping: 0, outOfStock: 0 },
+      dynamicOptions: []
     };
   }
 } 

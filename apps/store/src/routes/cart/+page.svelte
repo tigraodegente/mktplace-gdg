@@ -1,12 +1,21 @@
+
 <!-- PROTEÇÕES IMEDIATAS -->
-<script module>
+<script module lang="ts">
+  // Estender a interface Window para incluir propriedades customizadas
+  declare global {
+    interface Window {
+      __cartUltraProtection?: boolean;
+      __checkoutInProgress?: boolean;
+    }
+  }
+  
   // EXECUTAR IMEDIATAMENTE NO CONTEXTO DO MÓDULO
   if (typeof window !== 'undefined') {
     console.log('🛡️🛡️🛡️ PROTEÇÕES ULTRA-IMEDIATAS ATIVADAS! 🛡️🛡️🛡️');
     
     // INTERCEPTAR ALERTS ANTES DE TUDO
     const originalAlert = window.alert;
-    window.alert = function(message: string) {
+    window.alert = function(message) {
       if (message && (message.toLowerCase().includes('sessão') || message.toLowerCase().includes('login') || message.toLowerCase().includes('expirou'))) {
         console.log('🛡️ Alert BLOQUEADO ULTRA-IMEDIATO!', message);
         return;
@@ -15,7 +24,7 @@
     };
     
     // MARCAR QUE PROTEÇÕES ESTÃO ATIVAS
-    (window as any).__cartUltraProtection = true;
+    window.__cartUltraProtection = true;
   }
 </script>
 

@@ -29,7 +29,7 @@ export { UnifiedShippingService } from '$lib/services/unifiedShippingService';
 export type { 
   UnifiedShippingQuote, 
   UnifiedShippingRequest,
-  ShippingItem,
+  UnifiedShippingItem,
   UnifiedShippingOption 
 } from '$lib/services/unifiedShippingService';
 

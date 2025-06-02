@@ -14,6 +14,8 @@ interface Product {
 // ENUMS & CONSTANTS
 // ============================================================================
 
+export type ShippingMode = 'grouped' | 'express';
+
 export const COUPON_TYPES = {
   PERCENTAGE: 'percentage',
   FIXED: 'fixed',
@@ -89,6 +91,14 @@ export interface SellerGroup {
   total: number;
   benefits?: AppliedBenefits;
   hasFreeShipping?: boolean;
+  groupedShipping?: {
+    estimatedDays: number;
+    cost: number;
+  };
+  expressShipping?: {
+    estimatedDays: number;
+    cost: number;
+  };
 }
 
 // Totais do carrinho

@@ -14,7 +14,7 @@
 	
 	function handleClearCart() {
 		if (confirm('Tem certeza que deseja remover todos os produtos do carrinho?')) {
-			cartStore.clearCart();
+			advancedCartStore.clearCart();
 		}
 	}
 </script>

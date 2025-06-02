@@ -3,7 +3,13 @@
   
   let { data }: { data: PageData } = $props();
   
-  const { posts, pagination, meta } = data;
+  const { posts, pagination } = data;
+  
+  // Definir meta localmente já que não vem do servidor
+  const meta = {
+    title: 'Blog Grão de Gente - Dicas e Novidades',
+    description: 'Dicas, novidades e tendências do universo infantil para você e sua família'
+  };
 </script>
 
 <svelte:head>
@@ -124,7 +130,7 @@
         <div class="mt-12 flex justify-center">
           <nav class="flex items-center space-x-2">
             <!-- Página anterior -->
-            {#if pagination.hasPrevPage}
+            {#if pagination.hasPrevious}
               <a 
                 href="/blog?page={pagination.currentPage - 1}"
                 class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
@@ -152,7 +158,7 @@
             {/each}
             
             <!-- Próxima página -->
-            {#if pagination.hasNextPage}
+            {#if pagination.hasNext}
               <a 
                 href="/blog?page={pagination.currentPage + 1}"
                 class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
@@ -166,7 +172,7 @@
         <!-- Info da paginação -->
         <div class="mt-4 text-center text-sm text-gray-600">
           Mostrando página {pagination.currentPage} de {pagination.totalPages} 
-          ({pagination.totalCount} {pagination.totalCount === 1 ? 'post' : 'posts'} no total)
+          ({pagination.totalPosts} {pagination.totalPosts === 1 ? 'post' : 'posts'} no total)
         </div>
       {/if}
     {/if}

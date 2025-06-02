@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { fly, fade, scale } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
+	import { cubicOut, backOut } from 'svelte/easing';
 	
 	// Estado
 	let email = $state('');
@@ -117,27 +117,30 @@
 		<div class="w-full max-w-md" in:fly={{ x: -50, duration: 800, delay: 200 }}>
 			<!-- Logo -->
 			<div class="text-center mb-8">
-				<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl mb-4 transform hover:scale-110 transition-transform">
+				<div 
+					class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl mb-4 transform hover:scale-110 transition-transform hover:rotate-3"
+					in:scale={{ duration: 600, delay: 200, easing: backOut, start: 0.5 }}
+				>
 					<span class="text-3xl text-white font-bold">G</span>
 				</div>
-				<h1 class="text-3xl font-bold text-gray-900">Bem-vindo de volta!</h1>
-				<p class="text-gray-600 mt-2">Faça login para acessar o painel</p>
+				<h1 class="text-3xl font-bold text-gray-900" in:fly={{ y: 20, duration: 600, delay: 300 }}>Bem-vindo de volta!</h1>
+				<p class="text-gray-600 mt-2" in:fly={{ y: 20, duration: 600, delay: 400 }}>Faça login para acessar o painel</p>
 			</div>
 			
 			<!-- Role Selector -->
-			<div class="flex bg-gray-100 rounded-lg p-1 mb-6">
+			<div class="flex bg-gray-100 rounded-lg p-1 mb-6" in:fly={{ y: 20, duration: 600, delay: 500 }}>
 				<button
 					onclick={() => switchRole('admin')}
-					class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all {role === 'admin' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}"
+					class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-300 {role === 'admin' ? 'bg-white text-gray-900 shadow-sm scale-105' : 'text-gray-600 hover:text-gray-900 hover:scale-[1.02]'}"
 				>
-					<span class="mr-2">👨‍💼</span>
+					<span class="mr-2 inline-block transition-transform duration-300 {role === 'admin' ? 'scale-125' : ''}">👨‍💼</span>
 					Administrador
 				</button>
 				<button
 					onclick={() => switchRole('vendor')}
-					class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all {role === 'vendor' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}"
+					class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-300 {role === 'vendor' ? 'bg-white text-gray-900 shadow-sm scale-105' : 'text-gray-600 hover:text-gray-900 hover:scale-[1.02]'}"
 				>
-					<span class="mr-2">🏪</span>
+					<span class="mr-2 inline-block transition-transform duration-300 {role === 'vendor' ? 'scale-125' : ''}">🏪</span>
 					Vendedor
 				</button>
 			</div>
@@ -145,7 +148,7 @@
 			<!-- Login Form -->
 			<form onsubmit={e => { e.preventDefault(); handleLogin(); }} class="space-y-5">
 				<!-- Email -->
-				<div>
+				<div in:fly={{ y: 20, duration: 600, delay: 600 }}>
 					<label for="email" class="label">
 						Email
 					</label>
@@ -156,17 +159,17 @@
 							bind:value={email}
 							onkeydown={handleKeydown}
 							placeholder={role === 'admin' ? 'admin@marketplace.com' : 'vendor@marketplace.com'}
-							class="input pl-10 {error ? 'input-error' : ''}"
+							class="input pl-10 {error ? 'input-error' : ''} transition-all duration-300 focus:scale-[1.02]"
 							disabled={isLoading}
 						/>
-						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
 						</svg>
 					</div>
 				</div>
 				
 				<!-- Password -->
-				<div>
+				<div in:fly={{ y: 20, duration: 600, delay: 700 }}>
 					<label for="password" class="label">
 						Senha
 					</label>
@@ -177,16 +180,16 @@
 							bind:value={password}
 							onkeydown={handleKeydown}
 							placeholder="••••••••"
-							class="input pl-10 pr-10 {error ? 'input-error' : ''}"
+							class="input pl-10 pr-10 {error ? 'input-error' : ''} transition-all duration-300 focus:scale-[1.02]"
 							disabled={isLoading}
 						/>
-						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
 						</svg>
 						<button
 							type="button"
 							onclick={() => showPassword = !showPassword}
-							class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+							class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-all duration-300 hover:scale-110"
 						>
 							{#if showPassword}
 								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

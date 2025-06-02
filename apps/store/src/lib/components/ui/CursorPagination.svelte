@@ -30,7 +30,7 @@
 	}: Props = $props();
 	
 	// Auto-load more no infinite scroll
-	let loadMoreButton: HTMLButtonElement;
+	let loadMoreButton = $state<HTMLButtonElement>();
 	let observer: IntersectionObserver;
 	
 	$effect(() => {

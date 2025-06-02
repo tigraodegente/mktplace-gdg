@@ -23,7 +23,7 @@
 			reviews_count?: number;
 			sold_count?: number;
 			tags?: string[];
-			seller_id: string;
+			seller_id?: string;
 			seller_name?: string;
 			is_black_friday?: boolean;
 			has_fast_delivery?: boolean;
@@ -105,7 +105,7 @@
 		try {
 			cartStore.addItem(
 				product,
-				product.seller_id,
+				product.seller_id || 'default-seller',
 				product.seller_name || 'Loja',
 				1
 			);

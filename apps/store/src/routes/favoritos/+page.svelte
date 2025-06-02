@@ -9,7 +9,7 @@
 		const itemCount = $wishlistStore.length;
 		
 		$wishlistStore.forEach(item => {
-			cartStore.addItem(
+			advancedCartStore.addItem(
 				item,
 				item.seller_id || 'seller-1',
 				item.seller_name || 'Loja Exemplo',
