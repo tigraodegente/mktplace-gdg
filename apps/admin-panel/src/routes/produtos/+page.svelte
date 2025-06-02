@@ -149,7 +149,11 @@
 		status: 'draft',
 		featured: false,
 		weight: undefined,
-		dimensions: undefined
+		dimensions: {
+			length: 0,
+			width: 0,
+			height: 0
+		}
 	});
 	
 	let activeTab = $state<'basic' | 'images' | 'inventory' | 'seo' | 'shipping'>('basic');
@@ -222,7 +226,11 @@
 			status: 'draft',
 			featured: false,
 			weight: undefined,
-			dimensions: undefined
+			dimensions: {
+				length: 0,
+				width: 0,
+				height: 0
+			}
 		};
 		editingProduct = null;
 		activeTab = 'basic';
@@ -252,7 +260,11 @@
 			status: product.stock > 0 ? 'active' : 'draft',
 			featured: product.badge === 'Destaque',
 			weight: undefined,
-			dimensions: undefined
+			dimensions: {
+				length: 0,
+				width: 0,
+				height: 0
+			}
 		};
 		editingProduct = product;
 		activeTab = 'basic';
@@ -1126,8 +1138,8 @@
 								class="file-input file-input-bordered file-input-primary w-full"
 							/>
 							<div class="mt-4">
-								{formData.images.map((image, index) => (
-									<div key={index} class="flex items-center gap-2">
+								{#each formData.images as image, index}
+									<div class="flex items-center gap-2">
 										<img
 											src={image}
 											alt={formData.name}
@@ -1140,7 +1152,7 @@
 											🗑️ Remover
 										</button>
 									</div>
-								))}
+								{/each}
 							</div>
 						</div>
 						
@@ -1238,8 +1250,8 @@
 							class="file-input file-input-bordered file-input-primary w-full"
 						/>
 						<div class="mt-4">
-							{formData.images.map((image, index) => (
-								<div key={index} class="flex items-center gap-2">
+							{#each formData.images as image, index}
+								<div class="flex items-center gap-2">
 									<img
 										src={image}
 										alt={formData.name}
@@ -1252,7 +1264,7 @@
 										🗑️ Remover
 									</button>
 								</div>
-							))}
+							{/each}
 						</div>
 					</div>
 				{:else if activeTab === 'inventory'}
@@ -1333,7 +1345,7 @@
 			</div>
 		</div>
 	</div>
-</main>
+{/if}
 
 <style>
 	/* Animação para hover nas imagens */

@@ -92,6 +92,9 @@
 	// Stats
 	let stats = $state<StatCard[]>([]);
 	
+	// Tab state para o modal
+	let activeTab = $state<'basic' | 'rules' | 'restrictions' | 'schedule'>('basic');
+	
 	// Verificar role
 	$effect(() => {
 		const userParam = $page.url.searchParams.get('user');
@@ -926,240 +929,433 @@
 	{/if}
 </div>
 
-<!-- Modal de criar/editar -->
+<!-- Modal de Criar/Editar Cupom -->
 {#if showCreateModal}
-	<div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" transition:fade={{ duration: 200 }}>
+	<div 
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		transition:fade={{ duration: 200 }}
+		onclick={closeModal}
+	>
 		<div 
-			class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-			in:scale={{ duration: 300, easing: backOut }}
+			class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+			transition:scale={{ duration: 300, easing: backOut }}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="p-6">
-				<div class="flex justify-between items-center mb-6">
-					<h2 class="text-xl font-bold text-gray-900">
-						{editingCoupon ? 'Editar' : 'Novo'} Cupom
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-yellow-500 to-orange-600 p-6 text-white">
+				<div class="flex items-center justify-between">
+					<h2 class="text-2xl font-bold flex items-center gap-3">
+						🎟️ {editingCoupon ? 'Editar' : 'Novo'} Cupom
 					</h2>
 					<button 
 						onclick={closeModal}
-						class="text-gray-400 hover:text-gray-600 transition-colors"
+						class="p-2 hover:bg-white/20 rounded-lg transition-colors"
 					>
-						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-						</svg>
+						✕
 					</button>
 				</div>
+			</div>
+			
+			<!-- Content with Tabs -->
+			<div>
+				<!-- Tabs -->
+				<div class="border-b border-gray-200">
+					<div class="flex">
+						{#each [
+							{ id: 'basic', label: 'Informações Básicas', icon: '📋' },
+							{ id: 'rules', label: 'Regras e Limites', icon: '📏' },
+							{ id: 'restrictions', label: 'Restrições', icon: '🚫' },
+							{ id: 'schedule', label: 'Agendamento', icon: '📅' }
+						] as tab}
+							<button
+								onclick={() => activeTab = tab.id as 'basic' | 'rules' | 'restrictions' | 'schedule'}
+								class="flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 {
+									activeTab === tab.id 
+										? 'text-orange-600 border-orange-500 bg-orange-50' 
+										: 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+								}"
+							>
+								<span class="mr-2">{tab.icon}</span>
+								{tab.label}
+							</button>
+						{/each}
+					</div>
+				</div>
 				
-				<form onsubmit={(e) => { e.preventDefault(); saveCoupon(); }} class="space-y-6">
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<!-- Código -->
-						<div>
-							<label class="label">Código do Cupom *</label>
-							<div class="flex gap-2">
-								<input 
-									type="text" 
-									bind:value={formData.code}
-									class="input flex-1 font-mono uppercase"
-									placeholder="DESCONTO10"
-									required
-								/>
-								<button 
-									type="button"
-									onclick={generateCode}
-									class="btn btn-ghost"
-									title="Gerar código"
-								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-									</svg>
-								</button>
-							</div>
-						</div>
-						
-						<!-- Tipo -->
-						<div>
-							<label class="label">Tipo de Desconto *</label>
-							<select bind:value={formData.type} class="input" required>
-								<option value="percentage">Porcentagem (%)</option>
-								<option value="fixed">Valor Fixo (R$)</option>
-								<option value="free_shipping">Frete Grátis</option>
-							</select>
-						</div>
-					</div>
-					
-					<!-- Descrição -->
-					<div>
-						<label class="label">Descrição *</label>
-						<input 
-							type="text" 
-							bind:value={formData.description}
-							class="input"
-							placeholder="Ex: Desconto de 10% em toda a loja"
-							required
-						/>
-					</div>
-					
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<!-- Valor -->
-						{#if formData.type !== 'free_shipping'}
-							<div>
-								<label class="label">
-									Valor do Desconto *
-									{formData.type === 'percentage' ? '(%)' : '(R$)'}
-								</label>
-								<input 
-									type="number" 
-									bind:value={formData.value}
-									step={formData.type === 'percentage' ? '1' : '0.01'}
-									min="0"
-									max={formData.type === 'percentage' ? '100' : undefined}
-									class="input"
-									required
-								/>
-							</div>
-						{/if}
-						
-						<!-- Compra Mínima -->
-						<div>
-							<label class="label">Compra Mínima (R$)</label>
-							<input 
-								type="number" 
-								bind:value={formData.minPurchase}
-								step="0.01"
-								min="0"
-								class="input"
-								placeholder="0.00"
-							/>
-						</div>
-						
-						<!-- Desconto Máximo -->
-						{#if formData.type === 'percentage'}
-							<div>
-								<label class="label">Desconto Máximo (R$)</label>
-								<input 
-									type="number" 
-									bind:value={formData.maxDiscount}
-									step="0.01"
-									min="0"
-									class="input"
-									placeholder="Sem limite"
-								/>
-							</div>
-						{/if}
-					</div>
-					
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<!-- Data Início -->
-						<div>
-							<label class="label">Data de Início *</label>
-							<input 
-								type="date" 
-								bind:value={formData.validFrom}
-								class="input"
-								required
-							/>
-						</div>
-						
-						<!-- Data Fim -->
-						<div>
-							<label class="label">Data de Término *</label>
-							<input 
-								type="date" 
-								bind:value={formData.validUntil}
-								min={formData.validFrom}
-								class="input"
-								required
-							/>
-						</div>
-					</div>
-					
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<!-- Limite de Uso Total -->
-						<div>
-							<label class="label">Limite de Uso Total</label>
-							<input 
-								type="number" 
-								bind:value={formData.usageLimit}
-								min="0"
-								class="input"
-								placeholder="Ilimitado"
-							/>
-						</div>
-						
-						<!-- Limite por Cliente -->
-						<div>
-							<label class="label">Limite por Cliente</label>
-							<input 
-								type="number" 
-								bind:value={formData.usagePerCustomer}
-								min="0"
-								class="input"
-								placeholder="1"
-							/>
-						</div>
-					</div>
-					
-					<!-- Ativo -->
-					<div class="flex items-center">
-						<input 
-							type="checkbox" 
-							bind:checked={formData.isActive}
-							id="is_active"
-							class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-						/>
-						<label for="is_active" class="ml-2 text-sm font-medium text-gray-700">
-							Cupom ativo (disponível para uso)
-						</label>
-					</div>
-					
-					<!-- Restrições -->
-					<div class="border-t pt-6">
-						<h3 class="font-medium text-gray-900 mb-4">Restrições (Opcional)</h3>
-						<p class="text-sm text-gray-600 mb-4">
-							Deixe em branco para aplicar o cupom em toda a loja
-						</p>
-						
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-							<!-- Categorias -->
-							<div>
-								<label class="label">Categorias Específicas</label>
-								<select multiple class="input min-h-[100px]">
-									<option>Eletrônicos</option>
-									<option>Moda</option>
-									<option>Casa e Decoração</option>
-									<option>Esportes</option>
-								</select>
-								<p class="text-xs text-gray-500 mt-1">Segure Ctrl/Cmd para selecionar múltiplas</p>
+				<!-- Tab Content -->
+				<div class="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
+					{#if activeTab === 'basic'}
+						<div class="space-y-6">
+							<!-- Código e Tipo -->
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2">
+										Código do Cupom *
+									</label>
+									<div class="flex gap-2">
+										<input
+											type="text"
+											bind:value={formData.code}
+											class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono uppercase"
+											placeholder="DESCONTO10"
+											required
+										/>
+										<button
+											onclick={generateCode}
+											class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+										>
+											🎲 Gerar
+										</button>
+									</div>
+								</div>
+								
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2">
+										Tipo de Desconto *
+									</label>
+									<select
+										bind:value={formData.type}
+										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+										required
+									>
+										<option value="percentage">Porcentagem (%)</option>
+										<option value="fixed">Valor Fixo (R$)</option>
+										<option value="free_shipping">Frete Grátis</option>
+									</select>
+								</div>
 							</div>
 							
-							<!-- Produtos -->
+							<!-- Descrição -->
 							<div>
-								<label class="label">Produtos Específicos</label>
-								<textarea 
-									rows="4"
-									class="input"
-									placeholder="IDs dos produtos separados por vírgula"
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Descrição *
+								</label>
+								<input
+									type="text"
+									bind:value={formData.description}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+									placeholder="Ex: Desconto de 10% em toda a loja"
+									required
+								/>
+							</div>
+							
+							<!-- Valor e Limites -->
+							{#if formData.type !== 'free_shipping'}
+								<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+									<div>
+										<label class="block text-sm font-medium text-gray-700 mb-2">
+											Valor do Desconto *
+											{formData.type === 'percentage' ? '(%)' : '(R$)'}
+										</label>
+										<input
+											type="number"
+											bind:value={formData.value}
+											step={formData.type === 'percentage' ? '1' : '0.01'}
+											min="0"
+											max={formData.type === 'percentage' ? '100' : undefined}
+											class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+											required
+										/>
+									</div>
+									
+									{#if formData.type === 'percentage'}
+										<div>
+											<label class="block text-sm font-medium text-gray-700 mb-2">
+												Desconto Máximo (R$)
+											</label>
+											<input
+												type="number"
+												bind:value={formData.maxDiscount}
+												step="0.01"
+												min="0"
+												class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+												placeholder="Deixe vazio para sem limite"
+											/>
+										</div>
+									{/if}
+								</div>
+							{/if}
+							
+							<!-- Preview -->
+							<div class="bg-orange-50 rounded-lg p-4">
+								<p class="text-sm text-gray-600 mb-2">Preview do cupom:</p>
+								<div class="bg-white rounded-lg border-2 border-dashed border-orange-300 p-4">
+									<div class="flex items-center justify-between">
+										<div>
+											<p class="font-mono text-lg font-bold text-orange-600">
+												{formData.code || 'CODIGO'}
+											</p>
+											<p class="text-sm text-gray-600 mt-1">
+												{formData.description || 'Descrição do cupom'}
+											</p>
+										</div>
+										<div class="text-2xl font-bold text-orange-600">
+											{#if formData.type === 'percentage'}
+												{formData.value}% OFF
+											{:else if formData.type === 'fixed'}
+												-{formatPrice(formData.value)}
+											{:else}
+												🚚 Frete Grátis
+											{/if}
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					{:else if activeTab === 'rules'}
+						<div class="space-y-6">
+							<!-- Valor Mínimo -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Valor Mínimo de Compra (R$)
+								</label>
+								<input
+									type="number"
+									bind:value={formData.minPurchase}
+									step="0.01"
+									min="0"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+									placeholder="0 para sem mínimo"
+								/>
+								<p class="text-xs text-gray-500 mt-1">
+									Cupom só será válido para compras acima deste valor
+								</p>
+							</div>
+							
+							<!-- Limites de Uso -->
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2">
+										Limite Total de Usos
+									</label>
+									<input
+										type="number"
+										bind:value={formData.usageLimit}
+										min="0"
+										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+										placeholder="0 para ilimitado"
+									/>
+									<p class="text-xs text-gray-500 mt-1">
+										Número máximo de vezes que o cupom pode ser usado
+									</p>
+								</div>
+								
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2">
+										Limite por Cliente
+									</label>
+									<input
+										type="number"
+										bind:value={formData.usagePerCustomer}
+										min="0"
+										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+										placeholder="1"
+									/>
+									<p class="text-xs text-gray-500 mt-1">
+										Quantas vezes cada cliente pode usar
+									</p>
+								</div>
+							</div>
+							
+							<!-- Grupos de Clientes -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Grupos de Clientes
+								</label>
+								<div class="space-y-2">
+									{#each ['Todos', 'Novos Clientes', 'Clientes VIP', 'Assinantes'] as group}
+										<label class="flex items-center">
+											<input
+												type="checkbox"
+												checked={formData.customerGroups.includes(group)}
+												onchange={(e) => {
+													if (e.currentTarget.checked) {
+														formData.customerGroups = [...formData.customerGroups, group];
+													} else {
+														formData.customerGroups = formData.customerGroups.filter(g => g !== group);
+													}
+												}}
+												class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+											/>
+											<span class="ml-2 text-sm text-gray-700">{group}</span>
+										</label>
+									{/each}
+								</div>
+							</div>
+						</div>
+					{:else if activeTab === 'restrictions'}
+						<div class="space-y-6">
+							<p class="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+								 Defina produtos ou categorias específicas onde o cupom será válido
+							</p>
+							
+							<!-- Categorias -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Categorias Válidas
+								</label>
+								<p class="text-xs text-gray-500 mb-2">
+									Deixe vazio para valer em todas as categorias
+								</p>
+								<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+									{#each ['Eletrônicos', 'Moda', 'Casa', 'Esportes', 'Livros', 'Beleza'] as category}
+										<label class="flex items-center">
+											<input
+												type="checkbox"
+												checked={formData.categories.includes(category)}
+												onchange={(e) => {
+													if (e.currentTarget.checked) {
+														formData.categories = [...formData.categories, category];
+													} else {
+														formData.categories = formData.categories.filter(c => c !== category);
+													}
+												}}
+												class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+											/>
+											<span class="ml-2 text-sm text-gray-700">{category}</span>
+										</label>
+									{/each}
+								</div>
+							</div>
+							
+							<!-- Produtos Incluídos -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Produtos Específicos
+								</label>
+								<textarea
+									value={formData.products.join(', ')}
+									onchange={(e) => formData.products = e.currentTarget.value.split(',').map(p => p.trim()).filter(Boolean)}
+									rows="2"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+									placeholder="SKU dos produtos separados por vírgula"
+								></textarea>
+							</div>
+							
+							<!-- Produtos Excluídos -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Produtos Excluídos
+								</label>
+								<textarea
+									value={formData.excludeProducts.join(', ')}
+									onchange={(e) => formData.excludeProducts = e.currentTarget.value.split(',').map(p => p.trim()).filter(Boolean)}
+									rows="2"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+									placeholder="SKU dos produtos que não terão desconto"
 								></textarea>
 							</div>
 						</div>
-					</div>
-					
-					<!-- Botões -->
-					<div class="flex justify-end gap-3 pt-6 border-t">
-						<button 
-							type="button"
-							onclick={closeModal}
-							class="btn btn-ghost"
-						>
-							Cancelar
-						</button>
-						<button 
-							type="submit"
-							class="btn btn-primary"
+					{:else if activeTab === 'schedule'}
+						<div class="space-y-6">
+							<!-- Período de Validade -->
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2">
+										Data de Início *
+									</label>
+									<input
+										type="date"
+										bind:value={formData.validFrom}
+										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+										required
+									/>
+								</div>
+								
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2">
+										Data de Término *
+									</label>
+									<input
+										type="date"
+										bind:value={formData.validUntil}
+										min={formData.validFrom}
+										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+										required
+									/>
+								</div>
+							</div>
+							
+							<!-- Status -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Status do Cupom
+								</label>
+								<div class="flex items-center gap-4">
+									<label class="flex items-center">
+										<input
+											type="radio"
+											bind:group={formData.isActive}
+											value={true}
+											class="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
+										/>
+										<span class="ml-2 text-sm font-medium text-gray-700">Ativo</span>
+									</label>
+									<label class="flex items-center">
+										<input
+											type="radio"
+											bind:group={formData.isActive}
+											value={false}
+											class="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
+										/>
+										<span class="ml-2 text-sm font-medium text-gray-700">Inativo</span>
+									</label>
+								</div>
+							</div>
+							
+							<!-- Resumo -->
+							<div class="bg-gray-50 rounded-lg p-4 space-y-2">
+								<h4 class="font-medium text-gray-900">📊 Resumo do Cupom</h4>
+								<div class="text-sm text-gray-600 space-y-1">
+									<p>• Código: <span class="font-medium">{formData.code || 'CODIGO'}</span></p>
+									<p>• Tipo: <span class="font-medium">{getTypeLabel(formData.type)}</span></p>
+									{#if formData.type !== 'free_shipping'}
+										<p>• Valor: <span class="font-medium">
+											{formData.type === 'percentage' ? formData.value + '%' : formatPrice(formData.value)}
+										</span></p>
+									{/if}
+									{#if formData.minPurchase > 0}
+										<p>• Compra mínima: <span class="font-medium">{formatPrice(formData.minPurchase)}</span></p>
+									{/if}
+									<p>• Validade: <span class="font-medium">
+										{new Date(formData.validFrom).toLocaleDateString('pt-BR')} até {new Date(formData.validUntil).toLocaleDateString('pt-BR')}
+									</span></p>
+									<p>• Status: <span class="font-medium {formData.isActive ? 'text-green-600' : 'text-red-600'}">
+										{formData.isActive ? 'Ativo' : 'Inativo'}
+									</span></p>
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			</div>
+			
+			<!-- Footer -->
+			<div class="border-t border-gray-200 p-6">
+				<div class="flex items-center justify-between">
+					<button
+						onclick={closeModal}
+						class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+					>
+						Cancelar
+					</button>
+					<div class="flex items-center gap-3">
+						{#if editingCoupon}
+							<button
+								onclick={() => editingCoupon && duplicateCoupon(editingCoupon)}
+								class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+							>
+								📋 Duplicar
+							</button>
+						{/if}
+						<button
+							onclick={saveCoupon}
+							class="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
 						>
 							{editingCoupon ? 'Atualizar' : 'Criar'} Cupom
 						</button>
 					</div>
-				</form>
+				</div>
 			</div>
 		</div>
 	</div>

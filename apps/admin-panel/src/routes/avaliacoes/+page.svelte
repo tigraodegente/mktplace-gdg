@@ -66,6 +66,7 @@
 	let showResponseModal = $state(false);
 	let respondingReview = $state<Review | null>(null);
 	let responseText = $state('');
+	let showFilters = $state(false);
 	let userRole = $state<'admin' | 'vendor'>('admin');
 	let activeTab = $state<'all' | 'pending' | 'flagged'>('all');
 	
@@ -87,6 +88,13 @@
 	// Stats
 	let stats = $state<StatCard[]>([]);
 	let ratingDistribution = $state<{ rating: number; count: number; percentage: number }[]>([]);
+	
+	// Modal states
+	let showReviewModal = $state(false);
+	let selectedReview = $state<Review | null>(null);
+	let replyText = $state('');
+	let moderationAction = $state<'approve' | 'reject' | 'flag'>('approve');
+	let moderationReason = $state('');
 	
 	// Verificar role
 	$effect(() => {
@@ -149,8 +157,8 @@
 		totalPages = Math.ceil(result.length / itemsPerPage);
 		currentPage = 1;
 		
-		// Update stats
 		updateStats(result);
+		updateRatingDistribution(result);
 	});
 	
 	onMount(() => {
@@ -255,6 +263,18 @@
 		ratingDistribution = distribution;
 	}
 	
+	function updateRatingDistribution(revs: Review[]) {
+		const distribution = [5, 4, 3, 2, 1].map(rating => {
+			const count = revs.filter(r => r.rating === rating).length;
+			return {
+				rating,
+				count,
+				percentage: revs.length > 0 ? (count / revs.length) * 100 : 0
+			};
+		});
+		ratingDistribution = distribution;
+	}
+	
 	function getRatingStars(rating: number) {
 		return Array(5).fill(0).map((_, i) => i < rating ? '⭐' : '☆').join('');
 	}
@@ -283,8 +303,11 @@
 		return new Date(date).toLocaleDateString('pt-BR');
 	}
 	
-	function formatDateTime(date: string) {
-		return new Date(date).toLocaleString('pt-BR');
+	function formatTime(date: string) {
+		return new Date(date).toLocaleTimeString('pt-BR', {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
 	}
 	
 	function getColorClasses(color: string) {
@@ -388,6 +411,84 @@
 			console.log('Rejeitando', selectedReviews.size, 'avaliações');
 			selectedReviews = new Set();
 		}
+	}
+	
+	// Funções do modal
+	function openReviewModal(review: Review) {
+		selectedReview = review;
+		replyText = '';
+		moderationAction = review.status === 'pending' ? 'approve' : 'flag';
+		moderationReason = '';
+		showReviewModal = true;
+	}
+	
+	function closeReviewModal() {
+		selectedReview = null;
+		replyText = '';
+		moderationAction = 'approve';
+		moderationReason = '';
+		showReviewModal = false;
+	}
+	
+	async function saveReply() {
+		if (!selectedReview) return;
+		
+		if (!replyText.trim()) {
+			alert('Digite uma resposta');
+			return;
+		}
+		
+		console.log('Salvando resposta:', {
+			reviewId: selectedReview.id,
+			reply: replyText
+		});
+		
+		// Simular salvamento
+		setTimeout(() => {
+			alert('Resposta enviada com sucesso!');
+			if (selectedReview) {
+				selectedReview.response = {
+					text: replyText,
+					created_at: new Date().toISOString(),
+					author: userRole === 'admin' ? 'Admin' : 'Vendedor'
+				};
+			}
+			reviews = [...reviews];
+			closeReviewModal();
+		}, 500);
+	}
+	
+	async function moderateReview() {
+		if (!selectedReview) return;
+		
+		if (moderationAction === 'reject' && !moderationReason.trim()) {
+			alert('Informe o motivo da rejeição');
+			return;
+		}
+		
+		console.log('Moderando avaliação:', {
+			reviewId: selectedReview.id,
+			action: moderationAction,
+			reason: moderationReason
+		});
+		
+		// Simular moderação
+		setTimeout(() => {
+			if (selectedReview) {
+				if (moderationAction === 'approve') {
+					selectedReview.status = 'approved';
+					alert('Avaliação aprovada!');
+				} else if (moderationAction === 'reject') {
+					selectedReview.status = 'rejected';
+					alert('Avaliação rejeitada!');
+				} else if (moderationAction === 'flag') {
+					selectedReview.status = 'flagged';
+					alert('Avaliação marcada para revisão!');
+				}
+			}
+			reviews = [...reviews];
+			closeReviewModal();
+		}, 500);
 	}
 </script>
 
@@ -677,44 +778,28 @@
 									</div>
 									
 									<!-- Actions -->
-									<div class="flex items-center gap-1">
+									<div class="flex justify-end gap-1">
 										{#if review.status === 'pending'}
 											<button
-												onclick={() => approveReview(review)}
-												class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
-												title="Aprovar"
+												onclick={() => openReviewModal(review)}
+												class="btn btn-sm btn-success"
 											>
-												<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-												</svg>
+												✓ Aprovar
 											</button>
+										{/if}
+										{#if !review.response}
 											<button
-												onclick={() => rejectReview(review)}
-												class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
-												title="Rejeitar"
+												onclick={() => openReviewModal(review)}
+												class="btn btn-sm btn-primary"
 											>
-												<svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-												</svg>
+												💬 Responder
 											</button>
 										{/if}
 										<button
-											onclick={() => flagReview(review)}
-											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
-											title="Denunciar"
+											onclick={() => openReviewModal(review)}
+											class="btn btn-sm btn-ghost"
 										>
-											<svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-											</svg>
-										</button>
-										<button
-											onclick={() => openResponseModal(review)}
-											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
-											title="Responder"
-										>
-											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-											</svg>
+											👁️ Ver
 										</button>
 									</div>
 								</div>
@@ -943,6 +1028,264 @@
 						</button>
 					</div>
 				</form>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Modal de Avaliação -->
+{#if showReviewModal && selectedReview}
+	<div 
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		transition:fade={{ duration: 200 }}
+		onclick={closeReviewModal}
+	>
+		<div 
+			class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
+			transition:scale={{ duration: 300, easing: backOut }}
+			onclick={(e) => e.stopPropagation()}
+		>
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+				<div class="flex items-center justify-between">
+					<h2 class="text-2xl font-bold flex items-center gap-3">
+						⭐ Detalhes da Avaliação
+					</h2>
+					<button 
+						onclick={closeReviewModal}
+						class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+					>
+						✕
+					</button>
+				</div>
+			</div>
+			
+			<!-- Content -->
+			<div class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+				<!-- Review Details -->
+				<div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
+					<div class="flex items-start gap-4">
+						<img
+							src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedReview.customer_name)}&background=6366f1&color=fff`}
+							alt={selectedReview.customer_name}
+							class="w-16 h-16 rounded-full"
+						/>
+						<div class="flex-1">
+							<div class="flex items-start justify-between">
+								<div>
+									<h3 class="text-lg font-semibold text-gray-900">{selectedReview.customer_name}</h3>
+									<p class="text-sm text-gray-600">
+										{formatDate(selectedReview.created_at)} às {formatTime(selectedReview.created_at)}
+									</p>
+								</div>
+								<div class="flex items-center gap-2">
+									<div class="text-2xl">
+										{getRatingStars(selectedReview.rating)}
+									</div>
+									<span class="badge {getStatusBadge(selectedReview.status)}">
+										{getStatusLabel(selectedReview.status)}
+									</span>
+								</div>
+							</div>
+							
+							<!-- Product Info -->
+							<div class="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+								<p class="text-sm text-gray-600">Produto:</p>
+								<p class="font-medium">{selectedReview.product_name}</p>
+							</div>
+							
+							<!-- Review Comment -->
+							<div class="mt-4">
+								<p class="text-gray-800 leading-relaxed">{selectedReview.comment}</p>
+							</div>
+							
+							<!-- Photos -->
+							{#if selectedReview.images && selectedReview.images.length > 0}
+								<div class="mt-4">
+									<p class="text-sm text-gray-600 mb-2">Fotos enviadas:</p>
+									<div class="flex gap-2">
+										{#each selectedReview.images as image}
+											<img
+												src={image}
+												alt="Foto da avaliação"
+												class="w-20 h-20 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform"
+											/>
+										{/each}
+									</div>
+								</div>
+							{/if}
+							
+							<!-- Verified Purchase Badge -->
+							{#if selectedReview.verified_purchase}
+								<div class="mt-4 inline-flex items-center gap-2 text-green-600 text-sm">
+									<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+										<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+									</svg>
+									Compra Verificada
+								</div>
+							{/if}
+						</div>
+					</div>
+				</div>
+				
+				<!-- Current Response -->
+				{#if selectedReview.response}
+					<div class="bg-blue-50 rounded-xl p-6">
+						<div class="flex items-start gap-3">
+							<div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+								R
+							</div>
+							<div class="flex-1">
+								<div class="flex items-center gap-2 mb-2">
+									<span class="font-medium text-gray-900">{selectedReview.response.author}</span>
+									<span class="text-sm text-gray-600">
+										{formatDate(selectedReview.response.created_at)}
+									</span>
+								</div>
+								<p class="text-gray-700">{selectedReview.response.text}</p>
+							</div>
+						</div>
+					</div>
+				{/if}
+				
+				<!-- Response Form -->
+				{#if !selectedReview.response}
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+							💬 Responder Avaliação
+						</h3>
+						<textarea
+							bind:value={replyText}
+							rows="4"
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							placeholder="Digite sua resposta aqui. Seja profissional e cortês..."
+						></textarea>
+						<p class="text-xs text-gray-500 mt-1">
+							Esta resposta será visível publicamente junto com a avaliação.
+						</p>
+					</div>
+				{/if}
+				
+				<!-- Moderation Actions -->
+				{#if userRole === 'admin' && selectedReview.status !== 'approved'}
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+							🛡️ Ações de Moderação
+						</h3>
+						<div class="space-y-3">
+							<label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 {moderationAction === 'approve' ? 'border-green-500 bg-green-50' : 'border-gray-300'}">
+								<input
+									type="radio"
+									bind:group={moderationAction}
+									value="approve"
+									class="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+								/>
+								<div class="ml-3">
+									<span class="font-medium text-gray-900">✅ Aprovar</span>
+									<p class="text-sm text-gray-600">Tornar a avaliação visível publicamente</p>
+								</div>
+							</label>
+							
+							<label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 {moderationAction === 'reject' ? 'border-red-500 bg-red-50' : 'border-gray-300'}">
+								<input
+									type="radio"
+									bind:group={moderationAction}
+									value="reject"
+									class="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+								/>
+								<div class="ml-3">
+									<span class="font-medium text-gray-900">❌ Rejeitar</span>
+									<p class="text-sm text-gray-600">Ocultar a avaliação por violar políticas</p>
+								</div>
+							</label>
+							
+							<label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 {moderationAction === 'flag' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'}">
+								<input
+									type="radio"
+									bind:group={moderationAction}
+									value="flag"
+									class="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
+								/>
+								<div class="ml-3">
+									<span class="font-medium text-gray-900">🚩 Sinalizar</span>
+									<p class="text-sm text-gray-600">Marcar para revisão adicional</p>
+								</div>
+							</label>
+						</div>
+						
+						{#if moderationAction === 'reject'}
+							<div class="mt-4">
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Motivo da Rejeição *
+								</label>
+								<select
+									bind:value={moderationReason}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+									required
+								>
+									<option value="">Selecione um motivo</option>
+									<option value="spam">Spam ou conteúdo irrelevante</option>
+									<option value="offensive">Linguagem ofensiva ou inadequada</option>
+									<option value="fake">Avaliação falsa ou fraudulenta</option>
+									<option value="other">Outro motivo</option>
+								</select>
+							</div>
+						{/if}
+					</div>
+				{/if}
+				
+				<!-- Statistics -->
+				<div class="bg-gray-50 rounded-lg p-4">
+					<h4 class="text-sm font-medium text-gray-700 mb-3">📊 Informações Adicionais</h4>
+					<div class="grid grid-cols-2 gap-4 text-sm">
+						<div>
+							<span class="text-gray-600">ID da Avaliação:</span>
+							<span class="font-mono text-gray-900 ml-2">{selectedReview.id}</span>
+						</div>
+						<div>
+							<span class="text-gray-600">Nota:</span>
+							<span class="font-medium text-gray-900 ml-2">{selectedReview.rating}/5</span>
+						</div>
+						<div>
+							<span class="text-gray-600">Útil para:</span>
+							<span class="font-medium text-gray-900 ml-2">{selectedReview.helpful_count} pessoas</span>
+						</div>
+						<div>
+							<span class="text-gray-600">Denúncias:</span>
+							<span class="font-medium text-gray-900 ml-2">{selectedReview.not_helpful_count} pessoas</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Footer -->
+			<div class="border-t border-gray-200 p-6">
+				<div class="flex items-center justify-between">
+					<button
+						onclick={closeReviewModal}
+						class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+					>
+						Cancelar
+					</button>
+					<div class="flex items-center gap-3">
+						{#if !selectedReview.response && replyText.trim()}
+							<button
+								onclick={saveReply}
+								class="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+							>
+								💬 Enviar Resposta
+							</button>
+						{/if}
+						{#if userRole === 'admin' && selectedReview.status !== 'approved'}
+							<button
+								onclick={moderateReview}
+								class="px-6 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+							>
+								🛡️ Aplicar Moderação
+							</button>
+						{/if}
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

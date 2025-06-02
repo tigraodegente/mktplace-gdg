@@ -18,13 +18,22 @@
 		title: string;
 		slug: string;
 		content: string;
+		author: string;
+		type: 'page' | 'blog';
+		status: 'published' | 'draft' | 'scheduled';
+		views: number;
+		createdAt: string;
+		updatedAt: string;
+		is_published?: boolean;
 		meta_title?: string;
 		meta_description?: string;
-		is_published: boolean;
-		type: 'page' | 'blog';
-		created_at: string;
-		updated_at: string;
-		views?: number;
+		visibility?: 'public' | 'private' | 'password';
+		excerpt?: string;
+		featuredImage?: string;
+		template?: string;
+		allowComments?: boolean;
+		showInMenu?: boolean;
+		menuOrder?: number;
 	}
 	
 	interface StatCard {
@@ -47,11 +56,11 @@
 	let loading = $state(true);
 	let selectedPages = $state<Set<string>>(new Set());
 	let viewMode = $state<'list' | 'grid'>('list');
-	let showFilters = $state(true);
+	let showFilters = $state(false);
 	let showCreateModal = $state(false);
 	let editingPage = $state<Page | null>(null);
 	let userRole = $state<'admin' | 'vendor'>('admin');
-	let activeTab = $state<'pages' | 'blog'>('pages');
+	let activeTab = $state<'content' | 'seo' | 'settings'>('content');
 	
 	// Filtros
 	let filters = $state<Filter>({
@@ -69,15 +78,34 @@
 	let stats = $state<StatCard[]>([]);
   
   // Formulário
-	let form = $state({
-    title: '',
-    slug: '',
-    content: '',
-    meta_title: '',
-    meta_description: '',
+	let formData = $state({
+		title: '',
+		slug: '',
+		content: '',
+		excerpt: '',
+		type: 'page' as 'page' | 'blog',
+		status: 'draft' as Page['status'],
+		visibility: 'public' as 'public' | 'private' | 'password',
+		password: '',
+		template: 'default',
+		featuredImage: '',
+		meta_title: '',
+		meta_description: '',
 		is_published: false,
-		type: 'page' as 'page' | 'blog'
+		seo: {
+			title: '',
+			description: '',
+			keywords: '',
+			canonical: ''
+		},
+		publishedAt: new Date().toISOString().split('T')[0],
+		allowComments: true,
+		showInMenu: true,
+		menuOrder: 0
 	});
+	
+	// Editor state
+	let editorMode = $state<'visual' | 'code'>('visual');
 	
 	// Verificar role
 	$effect(() => {
@@ -128,20 +156,31 @@
 		// Simular carregamento
 		setTimeout(() => {
 			// Dados mock
-			pages = Array.from({ length: 20 }, (_, i) => ({
+			const pageTitles = [
+				'Sobre Nós', 'Política de Privacidade', 'Termos de Uso', 'FAQ', 'Contato',
+				'Como Funciona', 'Garantia', 'Trocas e Devoluções', 'Formas de Pagamento', 'Frete e Entrega',
+				'Black Friday: Guia Completo', '10 Melhores Smartphones 2024', 'Como Escolher um Notebook',
+				'Decoração de Natal', 'Presentes para o Dia das Mães', 'Volta às Aulas 2024',
+				'Tendências de Moda Verão', 'Cuidados com a Pele', 'Receitas Práticas', 'Organização da Casa'
+			];
+			
+			const pagesData = Array.from({ length: 30 }, (_, i) => ({
 				id: `page-${i + 1}`,
-				title: i < 5 ? `Página ${i + 1}` : `Post do Blog ${i - 4}`,
-				slug: i < 5 ? `pagina-${i + 1}` : `post-${i - 4}`,
+				title: pageTitles[i % pageTitles.length],
+				slug: pageTitles[i % pageTitles.length].toLowerCase().replace(/\s+/g, '-'),
 				content: '<p>Conteúdo da página...</p>',
-				meta_title: `Meta Title ${i + 1}`,
-				meta_description: `Meta description da página ${i + 1}`,
-				is_published: Math.random() > 0.3,
-				type: i < 5 ? 'page' : 'blog',
-				created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-				updated_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-				views: Math.floor(Math.random() * 5000)
+				author: ['Admin', 'João Silva', 'Maria Santos'][i % 3],
+				type: i < 15 ? 'page' : 'blog' as 'page' | 'blog',
+				status: ['published', 'draft', 'scheduled'][i % 3] as Page['status'],
+				views: Math.floor(Math.random() * 10000),
+				createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
+				updatedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+				is_published: i % 3 !== 1,
+				meta_title: pageTitles[i % pageTitles.length] + ' - Minha Loja',
+				meta_description: 'Descrição da página para SEO'
 			}));
 			
+			pages = pagesData;
 			loading = false;
 		}, 1000);
 	}
@@ -231,58 +270,128 @@
 	
 	// Modal functions
 	function openCreateModal(type: 'page' | 'blog' = 'page') {
-    form = {
-      title: '',
+		formData = {
+			title: '',
 			slug: type === 'blog' ? 'blog/' : '',
-      content: '',
-      meta_title: '',
-      meta_description: '',
+			content: '',
+			excerpt: '',
+			type: type,
+			status: 'draft',
+			visibility: 'public',
+			password: '',
+			template: 'default',
+			featuredImage: '',
+			meta_title: '',
+			meta_description: '',
 			is_published: false,
-			type
-    };
-    editingPage = null;
-    showCreateModal = true;
-  }
-  
+			seo: {
+				title: '',
+				description: '',
+				keywords: '',
+				canonical: ''
+			},
+			publishedAt: new Date().toISOString().split('T')[0],
+			allowComments: type === 'blog',
+			showInMenu: type === 'page',
+			menuOrder: 0
+		};
+		editingPage = null;
+		activeTab = 'content';
+		showCreateModal = true;
+	}
+	
 	function openEditModal(pageToEdit: Page) {
-		form = { 
+		formData = { 
 			title: pageToEdit.title,
 			slug: pageToEdit.slug,
-			content: pageToEdit.content,
+			content: pageToEdit.content || '',
+			excerpt: pageToEdit.excerpt || '',
+			type: pageToEdit.type,
+			status: pageToEdit.status,
+			visibility: pageToEdit.visibility || 'public',
+			password: '',
+			template: pageToEdit.template || 'default',
+			featuredImage: pageToEdit.featuredImage || '',
 			meta_title: pageToEdit.meta_title || '',
 			meta_description: pageToEdit.meta_description || '',
-			is_published: pageToEdit.is_published,
-			type: pageToEdit.type
+			is_published: pageToEdit.is_published || false,
+			seo: {
+				title: pageToEdit.meta_title || '',
+				description: pageToEdit.meta_description || '',
+				keywords: '',
+				canonical: ''
+			},
+			publishedAt: new Date().toISOString().split('T')[0],
+			allowComments: pageToEdit.allowComments ?? true,
+			showInMenu: pageToEdit.showInMenu ?? true,
+			menuOrder: pageToEdit.menuOrder || 0
 		};
 		editingPage = pageToEdit;
-    showCreateModal = true;
-  }
-  
-  function closeModal() {
-    showCreateModal = false;
-    editingPage = null;
-  }
-  
-  function generateSlug() {
-    if (!form.title) return;
-    
-		const baseSlug = form.title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-      .replace(/\s+/g, '-') // Substitui espaços por hifens
-      .replace(/-+/g, '-') // Remove hifens duplicados
-      .trim();
+		activeTab = 'content';
+		showCreateModal = true;
+	}
+	
+	function closeModal() {
+		showCreateModal = false;
+		editingPage = null;
+		activeTab = 'content';
+		editorMode = 'visual';
+		// Reset form
+		formData = {
+			title: '',
+			slug: '',
+			content: '',
+			excerpt: '',
+			type: 'page',
+			status: 'draft',
+			visibility: 'public',
+			password: '',
+			template: 'default',
+			featuredImage: '',
+			meta_title: '',
+			meta_description: '',
+			is_published: false,
+			seo: {
+				title: '',
+				description: '',
+				keywords: '',
+				canonical: ''
+			},
+			publishedAt: new Date().toISOString().split('T')[0],
+			allowComments: true,
+			showInMenu: true,
+			menuOrder: 0
+		};
+	}
+	
+	function generateSlug() {
+		if (!formData.title) return;
 		
-		form.slug = form.type === 'blog' ? `blog/${baseSlug}` : baseSlug;
+		const baseSlug = formData.title
+			.toLowerCase()
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '')
+			.trim();
+		
+		formData.slug = formData.type === 'blog' ? `blog/${baseSlug}` : baseSlug;
 	}
 	
 	async function savePage() {
-		console.log('Salvando página:', form);
-		// Implementar salvamento
-		loadPages();
-		closeModal();
+		// Validações
+		if (!formData.title.trim() || !formData.slug.trim()) {
+			alert('Título e slug são obrigatórios');
+			return;
+		}
+		
+		console.log('Salvando página:', formData);
+		// Simular salvamento
+		setTimeout(() => {
+			alert(editingPage ? 'Página atualizada!' : 'Página criada!');
+			loadPages();
+			closeModal();
+		}, 500);
 	}
 	
 	async function deletePage(pageToDelete: Page) {
@@ -304,6 +413,22 @@
 			selectedPages = new Set();
 		}
   }
+	
+	// Insert simple toolbar
+	function insertTag(tag: string) {
+		const textarea = document.querySelector('textarea[name="content"]') as HTMLTextAreaElement;
+		if (!textarea) return;
+		
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		const selectedText = textarea.value.substring(start, end);
+		const newText = `<${tag}>${selectedText}</${tag}>`;
+		
+		textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+		textarea.focus();
+		textarea.selectionStart = start + tag.length + 2;
+		textarea.selectionEnd = start + tag.length + 2 + selectedText.length;
+	}
 </script>
 
 <div class="space-y-6">
@@ -595,7 +720,7 @@
 									</span>
 								</td>
 								<td class="text-gray-600">{page.views?.toLocaleString('pt-BR') || 0}</td>
-								<td class="text-sm text-gray-600">{formatDate(page.updated_at)}</td>
+								<td class="text-sm text-gray-600">{formatDate(page.updatedAt)}</td>
 								<td>
 									<div class="flex items-center justify-end gap-1">
                 {#if page.is_published}
@@ -707,7 +832,7 @@
 							</div>
 							<div class="flex justify-between">
 								<span class="text-gray-600">Atualizado:</span>
-								<span class="font-medium">{formatDate(page.updated_at)}</span>
+								<span class="font-medium">{formatDate(page.updatedAt)}</span>
 							</div>
 						</div>
 						
@@ -732,127 +857,435 @@
   {/if}
 </div>
 
-<!-- Modal de criar/editar -->
+<!-- Modal de Criar/Editar Página -->
 {#if showCreateModal}
-	<div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" transition:fade={{ duration: 200 }}>
+	<div 
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		transition:fade={{ duration: 200 }}
+		onclick={closeModal}
+	>
 		<div 
-			class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-			in:scale={{ duration: 300, easing: backOut }}
+			class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
+			transition:scale={{ duration: 300, easing: backOut }}
+			onclick={(e) => e.stopPropagation()}
 		>
-      <div class="p-6">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-bold text-gray-900">
-						{editingPage ? 'Editar' : 'Nova'} {form.type === 'page' ? 'Página' : 'Post do Blog'}
-          </h2>
-          <button 
-            onclick={closeModal}
-						class="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <form onsubmit={(e) => { e.preventDefault(); savePage(); }} class="space-y-6">
-          <!-- Título -->
-          <div>
-						<label class="label">Título *</label>
-            <input 
-              type="text" 
-              bind:value={form.title}
-              onblur={generateSlug}
-							class="input"
-              required
-            />
-          </div>
-          
-          <!-- Slug -->
-          <div>
-						<label class="label">URL (Slug) *</label>
-            <div class="flex">
-              <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                /
-              </span>
-              <input 
-                type="text" 
-                bind:value={form.slug}
-								class="flex-1 rounded-l-none input"
-                required
-              />
-            </div>
-          </div>
-          
-          <!-- Meta Title -->
-          <div>
-						<label class="label">Meta Title (SEO)</label>
-            <input 
-              type="text" 
-              bind:value={form.meta_title}
-							class="input"
-              placeholder="Se vazio, será usado o título da página"
-            />
-          </div>
-          
-          <!-- Meta Description -->
-          <div>
-						<label class="label">Meta Description (SEO)</label>
-            <textarea 
-              bind:value={form.meta_description}
-              rows="3"
-							class="input"
-              placeholder="Descrição para aparecer nos resultados de busca"
-            ></textarea>
-          </div>
-          
-          <!-- Conteúdo -->
-          <div>
-						<label class="label">Conteúdo (HTML) *</label>
-            <textarea 
-              bind:value={form.content}
-              rows="15"
-							class="input font-mono text-sm"
-              placeholder="Cole aqui o conteúdo HTML da página..."
-              required
-            ></textarea>
-						<p class="help-text">
-              Você pode usar HTML completo. Use classes do Tailwind CSS para estilização.
-            </p>
-          </div>
-          
-          <!-- Publicado -->
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              bind:checked={form.is_published}
-              id="is_published"
-							class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-            />
-            <label for="is_published" class="ml-2 text-sm font-medium text-gray-700">
-              Publicar página (tornar visível no site)
-            </label>
-          </div>
-          
-          <!-- Botões -->
-					<div class="flex justify-end gap-3 pt-6">
-            <button 
-              type="button"
-              onclick={closeModal}
-							class="btn btn-ghost"
-            >
-              Cancelar
-            </button>
-            <button 
-              type="submit"
-							class="btn btn-primary"
-            >
-							{editingPage ? 'Atualizar' : 'Criar'} {form.type === 'page' ? 'Página' : 'Post'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-purple-500 to-pink-600 p-6 text-white">
+				<div class="flex items-center justify-between">
+					<h2 class="text-2xl font-bold flex items-center gap-3">
+						📄 {editingPage ? 'Editar' : 'Nova'} {formData.type === 'page' ? 'Página' : 'Post do Blog'}
+					</h2>
+					<button 
+						onclick={closeModal}
+						class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+					>
+						✕
+					</button>
+				</div>
+			</div>
+			
+			<!-- Tabs -->
+			<div class="border-b border-gray-200">
+				<div class="flex">
+					{#each [
+						{ id: 'content', label: 'Conteúdo', icon: '✏️' },
+						{ id: 'seo', label: 'SEO', icon: '🔍' },
+						{ id: 'settings', label: 'Configurações', icon: '⚙️' }
+					] as tab}
+						<button
+							onclick={() => activeTab = tab.id as 'content' | 'seo' | 'settings'}
+							class="flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 {
+								activeTab === tab.id 
+									? 'text-purple-600 border-purple-500 bg-purple-50' 
+									: 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+							}"
+						>
+							<span class="mr-2">{tab.icon}</span>
+							{tab.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+			
+			<!-- Tab Content -->
+			<div class="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
+				{#if activeTab === 'content'}
+					<div class="space-y-6">
+						<!-- Título e Slug -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Título *
+								</label>
+								<input
+									type="text"
+									bind:value={formData.title}
+									onblur={generateSlug}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+									placeholder={formData.type === 'page' ? 'Ex: Sobre Nós' : 'Ex: 10 Dicas para...'}
+									required
+								/>
+							</div>
+							
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Slug (URL) *
+								</label>
+								<div class="flex">
+									<span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+										/
+									</span>
+									<input
+										type="text"
+										bind:value={formData.slug}
+										class="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+										placeholder={formData.type === 'page' ? 'sobre-nos' : 'blog/meu-post'}
+										required
+									/>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Resumo -->
+						{#if formData.type === 'blog'}
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Resumo
+								</label>
+								<textarea
+									bind:value={formData.excerpt}
+									rows="3"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+									placeholder="Breve descrição do post..."
+								></textarea>
+							</div>
+						{/if}
+						
+						<!-- Editor -->
+						<div>
+							<div class="flex items-center justify-between mb-2">
+								<label class="block text-sm font-medium text-gray-700">
+									Conteúdo *
+								</label>
+								<div class="flex items-center gap-2">
+									<button
+										onclick={() => editorMode = 'visual'}
+										class="px-3 py-1 text-sm rounded {editorMode === 'visual' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}"
+									>
+										Visual
+									</button>
+									<button
+										onclick={() => editorMode = 'code'}
+										class="px-3 py-1 text-sm rounded {editorMode === 'code' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}"
+									>
+										HTML
+									</button>
+								</div>
+							</div>
+							
+							{#if editorMode === 'code'}
+								<!-- Toolbar -->
+								<div class="flex items-center gap-1 p-2 bg-gray-100 rounded-t-lg">
+									{#each [
+										{ tag: 'h2', label: 'H2' },
+										{ tag: 'h3', label: 'H3' },
+										{ tag: 'p', label: 'P' },
+										{ tag: 'strong', label: 'B' },
+										{ tag: 'em', label: 'I' },
+										{ tag: 'ul', label: 'UL' },
+										{ tag: 'ol', label: 'OL' },
+										{ tag: 'blockquote', label: 'Quote' }
+									] as btn}
+										<button
+											onclick={() => insertTag(btn.tag)}
+											class="px-3 py-1 text-sm font-mono bg-white border border-gray-300 rounded hover:bg-gray-50"
+										>
+											{btn.label}
+										</button>
+									{/each}
+								</div>
+								
+								<textarea
+									name="content"
+									bind:value={formData.content}
+									rows="15"
+									class="w-full px-4 py-2 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+									placeholder="<h2>Título da seção</h2>&#10;<p>Conteúdo do parágrafo...</p>"
+									required
+								></textarea>
+							{:else}
+								<!-- Visual Editor Placeholder -->
+								<div class="border border-gray-300 rounded-lg p-4 min-h-[400px] bg-gray-50">
+									<p class="text-gray-500 text-center">
+										Editor visual não implementado. Use o modo HTML por enquanto.
+									</p>
+								</div>
+							{/if}
+						</div>
+						
+						<!-- Imagem Destacada -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Imagem Destacada
+							</label>
+							<div class="flex items-center gap-4">
+								{#if formData.featuredImage}
+									<img
+										src={formData.featuredImage}
+										alt="Preview"
+										class="w-32 h-32 object-cover rounded-lg border border-gray-300"
+									/>
+								{:else}
+									<div class="w-32 h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+										<span class="text-gray-400 text-4xl">📷</span>
+									</div>
+								{/if}
+								<div class="flex-1">
+									<input
+										type="url"
+										bind:value={formData.featuredImage}
+										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+										placeholder="URL da imagem"
+									/>
+									<p class="text-xs text-gray-500 mt-1">
+										Recomendado: 1200x630px para melhor visualização
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				{:else if activeTab === 'seo'}
+					<div class="space-y-6">
+						<!-- SEO Preview -->
+						<div class="bg-gray-50 rounded-lg p-4">
+							<p class="text-sm text-gray-600 mb-2">Preview nos resultados de busca:</p>
+							<div class="bg-white rounded border border-gray-200 p-3">
+								<h3 class="text-blue-600 text-lg hover:underline cursor-pointer">
+									{formData.seo.title || formData.title || 'Título da Página'}
+								</h3>
+								<p class="text-green-700 text-sm">
+									{window.location.origin}/{formData.slug || 'url-da-pagina'}
+								</p>
+								<p class="text-gray-600 text-sm mt-1">
+									{formData.seo.description || formData.excerpt || 'Descrição da página que aparecerá nos resultados de busca...'}
+								</p>
+							</div>
+						</div>
+						
+						<!-- Meta Title -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Título SEO
+							</label>
+							<input
+								type="text"
+								bind:value={formData.seo.title}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="Deixe vazio para usar o título da página"
+							/>
+							<p class="text-xs text-gray-500 mt-1">
+								{formData.seo.title.length}/60 caracteres
+							</p>
+						</div>
+						
+						<!-- Meta Description -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Descrição SEO
+							</label>
+							<textarea
+								bind:value={formData.seo.description}
+								rows="3"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="Descrição para mecanismos de busca"
+							></textarea>
+							<p class="text-xs text-gray-500 mt-1">
+								{formData.seo.description.length}/160 caracteres
+							</p>
+						</div>
+						
+						<!-- Keywords -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Palavras-chave
+							</label>
+							<input
+								type="text"
+								bind:value={formData.seo.keywords}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="palavra1, palavra2, palavra3"
+							/>
+						</div>
+						
+						<!-- Canonical URL -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								URL Canônica
+							</label>
+							<input
+								type="url"
+								bind:value={formData.seo.canonical}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="Deixe vazio para usar a URL padrão"
+							/>
+						</div>
+					</div>
+				{:else if activeTab === 'settings'}
+					<div class="space-y-6">
+						<!-- Status e Visibilidade -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Status
+								</label>
+								<select
+									bind:value={formData.status}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								>
+									<option value="draft">Rascunho</option>
+									<option value="published">Publicado</option>
+									<option value="scheduled">Agendado</option>
+								</select>
+							</div>
+							
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Visibilidade
+								</label>
+								<select
+									bind:value={formData.visibility}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								>
+									<option value="public">Público</option>
+									<option value="private">Privado</option>
+									<option value="password">Protegido por senha</option>
+								</select>
+							</div>
+						</div>
+						
+						<!-- Senha (se protegido) -->
+						{#if formData.visibility === 'password'}
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Senha de Acesso
+								</label>
+								<input
+									type="password"
+									bind:value={formData.password}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+									placeholder="Digite a senha"
+									required
+								/>
+							</div>
+						{/if}
+						
+						<!-- Data de Publicação -->
+						{#if formData.status === 'scheduled'}
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Data de Publicação
+								</label>
+								<input
+									type="date"
+									bind:value={formData.publishedAt}
+									min={new Date().toISOString().split('T')[0]}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								/>
+							</div>
+						{/if}
+						
+						<!-- Template -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Template
+							</label>
+							<select
+								bind:value={formData.template}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+							>
+								<option value="default">Padrão</option>
+								<option value="fullwidth">Largura Total</option>
+								<option value="sidebar">Com Sidebar</option>
+								<option value="landing">Landing Page</option>
+							</select>
+						</div>
+						
+						<!-- Opções -->
+						<div class="space-y-3">
+							{#if formData.type === 'blog'}
+								<label class="flex items-center">
+									<input
+										type="checkbox"
+										bind:checked={formData.allowComments}
+										class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">Permitir comentários</span>
+								</label>
+							{/if}
+							
+							{#if formData.type === 'page'}
+								<label class="flex items-center">
+									<input
+										type="checkbox"
+										bind:checked={formData.showInMenu}
+										class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">Exibir no menu</span>
+								</label>
+								
+								{#if formData.showInMenu}
+									<div class="ml-6">
+										<label class="block text-sm font-medium text-gray-700 mb-2">
+											Ordem no Menu
+										</label>
+										<input
+											type="number"
+											bind:value={formData.menuOrder}
+											min="0"
+											class="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+										/>
+									</div>
+								{/if}
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+			
+			<!-- Footer -->
+			<div class="border-t border-gray-200 p-6">
+				<div class="flex items-center justify-between">
+					<button
+						onclick={closeModal}
+						class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+					>
+						Cancelar
+					</button>
+					<div class="flex items-center gap-3">
+						<button
+							onclick={() => {
+								formData.status = 'draft';
+								savePage();
+							}}
+							class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+						>
+							Salvar como Rascunho
+						</button>
+						<button
+							onclick={() => {
+								formData.status = 'published';
+								formData.is_published = true;
+								savePage();
+							}}
+							class="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+						>
+							{editingPage ? 'Atualizar' : 'Publicar'} {formData.type === 'page' ? 'Página' : 'Post'}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 {/if} 
 
 <style>
