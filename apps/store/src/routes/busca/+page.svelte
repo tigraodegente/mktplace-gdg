@@ -315,15 +315,6 @@
 		
 		return pages;
 	}
-	
-	// DEBUG: Log facets
-	$effect(() => {
-		if (searchResult?.facets) {
-			console.log('📊 Facets recebidos na página busca:', searchResult.facets);
-			console.log('📊 Categorias:', searchResult.facets.categories);
-			console.log('📊 Filtros dinâmicos:', searchResult.facets.dynamicOptions);
-		}
-	});
 </script>
 
 <svelte:head>
@@ -383,112 +374,90 @@
 								</div>
 								
 		<div class="flex gap-6">
-			<!-- DEBUG: Botão temporário para testar sidebar -->
-			<button 
-				onclick={() => showDesktopFilters = !showDesktopFilters}
-				class="fixed bottom-4 right-4 z-50 px-4 py-2 bg-purple-600 text-white rounded-lg shadow-lg"
-			>
-				Toggle Sidebar ({showDesktopFilters ? 'ON' : 'OFF'})
-			</button>
-			
 			<!-- Filtros Desktop -->
-			<aside class="w-64 flex-shrink-0 {showDesktopFilters ? 'block' : 'hidden'}" use:useStableUpdates>
-				{#if true}
-					{@const categoriesData = (stableFacets || searchResult?.facets)?.categories.map(c => {
+			<aside class="w-64 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
+				<FilterSidebar
+					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
 						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
 						return {
 							...c,
 							selected: isSelected
 						};
 					}) || []}
-					{@const brandsData = (stableFacets || searchResult?.facets)?.brands?.map(b => ({
+					brands={(stableFacets || searchResult?.facets)?.brands?.map(b => ({
 						...b,
 						selected: urlParams.selectedBrands.includes(b.slug || b.id)
 					})) || []}
-					{@const dynamicOptionsData = (stableFacets || searchResult?.facets)?.dynamicOptions || []}
-					
-					{#if categoriesData.length > 0}
-						<div class="mb-4 p-2 bg-blue-100 text-xs rounded">
-							<p>✅ Categorias: {categoriesData.length}</p>
-							<p>✅ Marcas: {brandsData.length}</p>
-							<p>✅ Filtros dinâmicos: {dynamicOptionsData.length}</p>
-						</div>
-					{/if}
-					
-					<FilterSidebar
-						categories={categoriesData}
-						brands={brandsData}
-						priceRange={searchResult && searchResult.products.length > 0 ? {
-							min: 0,
-							max: Math.max(...searchResult.products.map(p => p.price), 10000),
-							current: { 
-								min: urlParams.priceMin !== undefined ? urlParams.priceMin : 0, 
-								max: urlParams.priceMax !== undefined ? urlParams.priceMax : Math.max(...searchResult.products.map(p => p.price), 10000)
-							}
-						} : undefined}
-						ratingCounts={(stableFacets || searchResult?.facets)?.ratings?.reduce<Record<number, number>>((acc, r) => ({ ...acc, [r.value]: r.count }), {}) || {}}
-						currentRating={urlParams.minRating}
-						conditions={(stableFacets || searchResult?.facets)?.conditions || [
-							{ value: 'new', label: 'Novo', count: 0 },
-							{ value: 'used', label: 'Usado', count: 0 },
-							{ value: 'refurbished', label: 'Recondicionado', count: 0 }
-						]}
-						selectedConditions={urlParams.condition ? [urlParams.condition] : []}
-						deliveryOptions={(stableFacets || searchResult?.facets)?.deliveryOptions || [
-							{ value: '24h', label: 'Entrega em 24h', count: 0 },
-							{ value: '48h', label: 'Até 2 dias', count: 0 },
-							{ value: '3days', label: 'Até 3 dias úteis', count: 0 },
-							{ value: '7days', label: 'Até 7 dias úteis', count: 0 },
-							{ value: '15days', label: 'Até 15 dias', count: 0 }
-						]}
-						selectedDeliveryTime={urlParams.deliveryTime}
-						sellers={(stableFacets || searchResult?.facets)?.sellers || []}
-						selectedSellers={urlParams.selectedSellers}
-						states={(stableFacets || searchResult?.facets)?.locations?.states || []}
-						cities={(stableFacets || searchResult?.facets)?.locations?.cities || []}
-						selectedLocation={{ state: urlParams.selectedState, city: urlParams.selectedCity }}
-						hasDiscount={urlParams.hasDiscount}
-						hasFreeShipping={urlParams.hasFreeShipping}
-						showOutOfStock={!urlParams.inStock}
-						benefitsCounts={(stableFacets || searchResult?.facets)?.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 }}
-						tags={(stableFacets || searchResult?.facets)?.tags || []}
-						selectedTags={urlParams.selectedTags}
-						dynamicOptions={dynamicOptionsData}
-						selectedDynamicOptions={dynamicOptions}
-						loading={isLoading}
-						showCloseButton={true}
-						onClose={() => showDesktopFilters = false}
-						on:filterChange={(e) => {
-							updateURL({
-								categoria: e.detail.categories,
-								marca: e.detail.brands,
-								preco_min: e.detail.priceRange?.min,
-								preco_max: e.detail.priceRange?.max
-							});
-						}}
-						on:ratingChange={(e) => updateURL({ avaliacao: e.detail.rating })}
-						on:conditionChange={(e) => updateURL({ condicao: e.detail.conditions[0] })}
-						on:deliveryChange={(e) => updateURL({ entrega: e.detail.deliveryTime })}
-						on:sellerChange={(e) => updateURL({ vendedor: e.detail.sellers })}
-						on:locationChange={(e) => updateURL({ estado: e.detail.state, cidade: e.detail.city })}
-						on:tagChange={(e) => updateURL({ tag: e.detail.tags })}
-						on:dynamicOptionChange={(e) => updateURL({ [`opcao_${e.detail.optionSlug}`]: e.detail.values })}
-						on:benefitChange={(e) => {
-							switch (e.detail.benefit) {
-								case 'discount':
-									updateURL({ promocao: e.detail.value || undefined });
-									break;
-								case 'freeShipping':
-									updateURL({ frete_gratis: e.detail.value || undefined });
-									break;
-								case 'outOfStock':
-									updateURL({ disponivel: !e.detail.value || undefined });
-									break;
-							}
-						}}
-						on:clearAll={clearAllFilters}
-					/>
-				{/if}
+					priceRange={searchResult && searchResult.products.length > 0 ? {
+						min: 0,
+						max: Math.max(...searchResult.products.map(p => p.price), 10000),
+						current: { 
+							min: urlParams.priceMin !== undefined ? urlParams.priceMin : 0, 
+							max: urlParams.priceMax !== undefined ? urlParams.priceMax : Math.max(...searchResult.products.map(p => p.price), 10000)
+						}
+					} : undefined}
+					ratingCounts={(stableFacets || searchResult?.facets)?.ratings?.reduce<Record<number, number>>((acc, r) => ({ ...acc, [r.value]: r.count }), {}) || {}}
+					currentRating={urlParams.minRating}
+					conditions={(stableFacets || searchResult?.facets)?.conditions || [
+						{ value: 'new', label: 'Novo', count: 0 },
+						{ value: 'used', label: 'Usado', count: 0 },
+						{ value: 'refurbished', label: 'Recondicionado', count: 0 }
+					]}
+					selectedConditions={urlParams.condition ? [urlParams.condition] : []}
+					deliveryOptions={(stableFacets || searchResult?.facets)?.deliveryOptions || [
+						{ value: '24h', label: 'Entrega em 24h', count: 0 },
+						{ value: '48h', label: 'Até 2 dias', count: 0 },
+						{ value: '3days', label: 'Até 3 dias úteis', count: 0 },
+						{ value: '7days', label: 'Até 7 dias úteis', count: 0 },
+						{ value: '15days', label: 'Até 15 dias', count: 0 }
+					]}
+					selectedDeliveryTime={urlParams.deliveryTime}
+					sellers={(stableFacets || searchResult?.facets)?.sellers || []}
+					selectedSellers={urlParams.selectedSellers}
+					states={(stableFacets || searchResult?.facets)?.locations?.states || []}
+					cities={(stableFacets || searchResult?.facets)?.locations?.cities || []}
+					selectedLocation={{ state: urlParams.selectedState, city: urlParams.selectedCity }}
+					hasDiscount={urlParams.hasDiscount}
+					hasFreeShipping={urlParams.hasFreeShipping}
+					showOutOfStock={!urlParams.inStock}
+					benefitsCounts={(stableFacets || searchResult?.facets)?.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 }}
+					tags={(stableFacets || searchResult?.facets)?.tags || []}
+					selectedTags={urlParams.selectedTags}
+					dynamicOptions={(stableFacets || searchResult?.facets)?.dynamicOptions || []}
+					selectedDynamicOptions={dynamicOptions}
+					loading={isLoading}
+					showCloseButton={true}
+					onClose={() => showDesktopFilters = false}
+					on:filterChange={(e) => {
+						updateURL({
+							categoria: e.detail.categories,
+							marca: e.detail.brands,
+							preco_min: e.detail.priceRange?.min,
+							preco_max: e.detail.priceRange?.max
+						});
+					}}
+					on:ratingChange={(e) => updateURL({ avaliacao: e.detail.rating })}
+					on:conditionChange={(e) => updateURL({ condicao: e.detail.conditions[0] })}
+					on:deliveryChange={(e) => updateURL({ entrega: e.detail.deliveryTime })}
+					on:sellerChange={(e) => updateURL({ vendedor: e.detail.sellers })}
+					on:locationChange={(e) => updateURL({ estado: e.detail.state, cidade: e.detail.city })}
+					on:tagChange={(e) => updateURL({ tag: e.detail.tags })}
+					on:dynamicOptionChange={(e) => updateURL({ [`opcao_${e.detail.optionSlug}`]: e.detail.values })}
+					on:benefitChange={(e) => {
+						switch (e.detail.benefit) {
+							case 'discount':
+								updateURL({ promocao: e.detail.value || undefined });
+								break;
+							case 'freeShipping':
+								updateURL({ frete_gratis: e.detail.value || undefined });
+								break;
+							case 'outOfStock':
+								updateURL({ disponivel: !e.detail.value || undefined });
+								break;
+						}
+					}}
+					on:clearAll={clearAllFilters}
+				/>
 			</aside>
 			
 			<!-- Produtos -->

@@ -110,15 +110,6 @@
 		onClose
 	}: FilterSidebarProps = $props();
 	
-	// DEBUG: Log categorias recebidas
-	$effect(() => {
-		if (categories.length > 0) {
-			console.log('🔍 FilterSidebar: Categorias recebidas:', categories);
-			console.log('🔍 Categorias principais:', categories.filter(c => !c.parent_id));
-			console.log('🔍 Subcategorias órfãs:', categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)));
-		}
-	});
-	
 	const dispatch = createEventDispatcher();
 	
 	// Estado dos grupos expansíveis - ajustado para incluir mais grupos
@@ -130,10 +121,6 @@
 	// NOVO: Usar computed derivado das props ao invés de state interno
 	let selectedCategories = $derived.by(() => {
 		const result = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
-		// Log apenas se houver categorias selecionadas
-		if (result.size > 0) {
-			console.log('✅ FilterSidebar: Categorias selecionadas:', Array.from(result));
-		}
 		return result;
 	});
 	
@@ -169,11 +156,9 @@
 		if (currentSelected.has(filterValue)) {
 			// Remover filtro
 			newSelected = Array.from(currentSelected).filter(id => id !== filterValue);
-			console.log(`🗑️ Removendo filtro: ${filter.name}`);
 		} else {
 			// Adicionar filtro
 			newSelected = [...Array.from(currentSelected), filterValue];
-			console.log(`✅ Adicionando filtro: ${filter.name}`);
 		}
 		
 		// Emitir mudança imediatamente
@@ -608,7 +593,7 @@
 			{/if}
 			
 			<!-- 8. FILTROS DINÂMICOS (Cor, Tamanho, etc) - Específicos por categoria -->
-			{#each dynamicOptions as option (option.slug)}
+			{#each dynamicOptions as option, index (`${option.name}-${option.slug}-${index}`)}
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup(`dynamic_${option.slug}`)}

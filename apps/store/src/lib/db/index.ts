@@ -44,32 +44,32 @@ function createDatabaseConnection(platform?: App.Platform): Database {
   // EM DESENVOLVIMENTO: Usar variável de ambiente se disponível
   // Para desenvolvimento, a URL deve ser configurada no script use-local-db.sh ou use-neon-db.sh
   const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
-  
+      
   console.log('🔌 Dev:', dbUrl.includes('neon.tech') ? 'NEON' : 'LOCAL')
-  
-  // Detectar provider pela URL
-  const isNeon = dbUrl.includes('neon.tech')
-  const provider = isNeon ? 'neon' : 'postgres'
-  
+      
+      // Detectar provider pela URL
+      const isNeon = dbUrl.includes('neon.tech')
+      const provider = isNeon ? 'neon' : 'postgres'
+      
   return new Database({
-    provider: provider,
-    connectionString: dbUrl,
-    options: {
-      postgres: {
+        provider: provider,
+        connectionString: dbUrl,
+        options: {
+          postgres: {
         max: 1,                        // 1 conexão por request
         idleTimeout: 30000,            // 30 segundos idle
         connectTimeout: 60000,         // 1 minuto para conectar em dev
         ssl: isNeon ? 'require' : false // SSL para Neon
-      }
-    }
-  })
+          }
+        }
+      })
 }
 
 export function getDatabase(platform?: App.Platform) {
   // Proteção contra uso no cliente
   if (!isServer) {
     throw new Error('Database não pode ser usado no browser');
-  }
+            }
   
   // SEMPRE criar nova conexão para cada request (Workers requirement)
   return createDatabaseConnection(platform);
@@ -150,7 +150,7 @@ async function executeWithRetry<T>(
 // Função para limpar cache por padrão
 export function invalidateCache(pattern: string) {
   dbCache.invalidate(pattern);
-}
+    }
 
 // Função para ver status do cache
 export function getCacheStats() {

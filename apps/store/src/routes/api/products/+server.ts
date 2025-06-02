@@ -354,7 +354,7 @@ async function getFacets(db: any, searchQuery: string) {
       -- Opções dinâmicas (cores, tamanhos, etc)
       dynamic_options AS (
         SELECT 
-          po.name as option_name,
+          MAX(po.name) as option_name, -- Pega o primeiro nome encontrado
           LOWER(REPLACE(po.name, ' ', '-')) as option_slug,
           pov.value,
           COUNT(DISTINCT p.id) as count
@@ -362,7 +362,22 @@ async function getFacets(db: any, searchQuery: string) {
         INNER JOIN product_option_values pov ON pov.option_id = po.id
         INNER JOIN products p ON p.id = po.product_id
         WHERE p.is_active = true
-        GROUP BY po.name, pov.value
+        GROUP BY LOWER(REPLACE(po.name, ' ', '-')), pov.value
+      ),
+      
+      -- Agrupar opções dinâmicas
+      grouped_dynamic_options AS (
+        SELECT 
+          option_name,
+          option_slug,
+          json_agg(
+            jsonb_build_object(
+              'value', value,
+              'count', count
+            ) ORDER BY count DESC, value
+          ) as values
+        FROM dynamic_options
+        GROUP BY option_name, option_slug
       ),
       
       -- Benefícios
@@ -476,21 +491,14 @@ async function getFacets(db: any, searchQuery: string) {
         
         -- Opções dinâmicas agrupadas
         (
-          SELECT json_agg(DISTINCT facet_group)
-          FROM (
-            SELECT jsonb_build_object(
+          SELECT json_agg(
+            jsonb_build_object(
               'name', option_name,
               'slug', option_slug,
-              'values', json_agg(
-                jsonb_build_object(
-                  'value', value,
-                  'count', count
-                ) ORDER BY count DESC, value
-              )
-            ) as facet_group
-            FROM dynamic_options
-            GROUP BY option_name, option_slug
-          ) grouped_options
+              'values', values
+            ) ORDER BY option_name
+          )
+          FROM grouped_dynamic_options
         ) as dynamic_options,
         
         -- Tags

@@ -1,0 +1,115 @@
+                                                                              List of relations
+ Schema |               Name                | Type  |  Owner   | Persistence | Access method |    Size    |                            Description                            
+--------+-----------------------------------+-------+----------+-------------+---------------+------------+-------------------------------------------------------------------
+ public | ab_test_assignments               | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | ab_test_events                    | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | ab_test_variants                  | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | ab_tests                          | table | postgres | permanent   | heap          | 8192 bytes | Sistema de testes A/B para otimização
+ public | abandoned_carts                   | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | addresses                         | table | postgres | permanent   | heap          | 16 kB      | 
+ public | audit_logs                        | table | postgres | permanent   | heap          | 8192 bytes | Sistema de auditoria completo para rastreamento de todas as ações
+ public | banners                           | table | postgres | permanent   | heap          | 16 kB      | 
+ public | brands                            | table | postgres | permanent   | heap          | 16 kB      | 
+ public | campaign_analytics                | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | campaign_recipients               | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | cart_items                        | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | carts                             | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | categories                        | table | postgres | permanent   | heap          | 16 kB      | 
+ public | chat_conversations                | table | postgres | permanent   | heap          | 16 kB      | 
+ public | chat_message_reads                | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | chat_messages                     | table | postgres | permanent   | heap          | 16 kB      | 
+ public | chat_presence                     | table | postgres | permanent   | heap          | 16 kB      | 
+ public | chat_settings                     | table | postgres | permanent   | heap          | 16 kB      | 
+ public | consent_records                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | coupon_categories                 | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | coupon_conditions                 | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | coupon_products                   | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | coupon_usage                      | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | coupons                           | table | postgres | permanent   | heap          | 16 kB      | 
+ public | data_processing_activities        | table | postgres | permanent   | heap          | 16 kB      | 
+ public | email_queue                       | table | postgres | permanent   | heap          | 16 kB      | 
+ public | facet_cache                       | table | postgres | permanent   | heap          | 16 kB      | 
+ public | faq                               | table | postgres | permanent   | heap          | 16 kB      | 
+ public | faqs                              | table | postgres | permanent   | heap          | 16 kB      | 
+ public | gdpr_requests                     | table | postgres | permanent   | heap          | 8192 bytes | Sistema de conformidade LGPD/GDPR
+ public | gift_contributions                | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | gift_list_analytics               | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | gift_list_comments                | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | gift_list_favorites               | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | gift_list_invites                 | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | gift_list_items                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | gift_list_templates               | table | postgres | permanent   | heap          | 16 kB      | 
+ public | gift_lists                        | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | integration_environments          | table | postgres | permanent   | heap          | 16 kB      | 
+ public | integration_logs                  | table | postgres | permanent   | heap          | 16 kB      | 
+ public | integration_metrics               | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | integration_provider_environments | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | integration_providers             | table | postgres | permanent   | heap          | 16 kB      | 
+ public | integration_retry_queue           | table | postgres | permanent   | heap          | 16 kB      | 
+ public | kb_articles                       | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | maintenance_log                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | marketing_campaigns               | table | postgres | permanent   | heap          | 8192 bytes | Sistema de campanhas de marketing automatizadas
+ public | notification_settings             | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | notification_templates            | table | postgres | permanent   | heap          | 16 kB      | 
+ public | notifications                     | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | order_items                       | table | postgres | permanent   | heap          | 40 kB      | 
+ public | order_status_history              | table | postgres | permanent   | heap          | 16 kB      | 
+ public | order_tracking                    | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | orders                            | table | postgres | permanent   | heap          | 48 kB      | 
+ public | pages                             | table | postgres | permanent   | heap          | 16 kB      | 
+ public | password_resets                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | payment_gateways                  | table | postgres | permanent   | heap          | 16 kB      | Configurações dos gateways de pagamento disponíveis
+ public | payment_gateways_metadata         | table | postgres | permanent   | heap          | 8192 bytes | Metadados dos usuários em cada gateway (IDs externos, etc)
+ public | payment_methods                   | table | postgres | permanent   | heap          | 16 kB      | 
+ public | payment_queue                     | table | postgres | permanent   | heap          | 16 kB      | 
+ public | payment_transactions              | table | postgres | permanent   | heap          | 8192 bytes | Histórico de todas as transações de pagamento
+ public | payments                          | table | postgres | permanent   | heap          | 16 kB      | 
+ public | pending_refreshes                 | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | popular_searches                  | table | postgres | permanent   | heap          | 48 kB      | 
+ public | product_analytics                 | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | product_categories                | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | product_coupons                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | product_images                    | table | postgres | permanent   | heap          | 80 kB      | 
+ public | product_option_values             | table | postgres | permanent   | heap          | 56 kB      | 
+ public | product_options                   | table | postgres | permanent   | heap          | 40 kB      | 
+ public | product_price_history             | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | product_rankings                  | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | product_variants                  | table | postgres | permanent   | heap          | 40 kB      | 
+ public | products                          | table | postgres | permanent   | heap          | 176 kB     | 
+ public | query_cache                       | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | return_items                      | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | return_reasons                    | table | postgres | permanent   | heap          | 16 kB      | 
+ public | returns                           | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | reviews                           | table | postgres | permanent   | heap          | 64 kB      | 
+ public | search_history                    | table | postgres | permanent   | heap          | 288 kB     | 
+ public | search_index                      | table | postgres | permanent   | heap          | 120 kB     | 
+ public | search_suggestions                | table | postgres | permanent   | heap          | 16 kB      | 
+ public | seller_shipping_configs           | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | sellers                           | table | postgres | permanent   | heap          | 16 kB      | 
+ public | sessions                          | table | postgres | permanent   | heap          | 16 kB      | 
+ public | shipping_base_rates               | table | postgres | permanent   | heap          | 6576 kB    | 
+ public | shipping_calculated_options       | table | postgres | permanent   | heap          | 15 MB      | 
+ public | shipping_carriers                 | table | postgres | permanent   | heap          | 16 kB      | 
+ public | shipping_modalities               | table | postgres | permanent   | heap          | 16 kB      | 
+ public | shipping_modality_configs         | table | postgres | permanent   | heap          | 16 kB      | 
+ public | shipping_quotes                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | shipping_rates                    | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | shipping_zones                    | table | postgres | permanent   | heap          | 1320 kB    | 
+ public | stock_movements                   | table | postgres | permanent   | heap          | 16 kB      | 
+ public | stock_reservation_items           | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | stock_reservations                | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | store_credits                     | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | support_categories                | table | postgres | permanent   | heap          | 16 kB      | 
+ public | support_messages                  | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | support_tickets                   | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | system_settings                   | table | postgres | permanent   | heap          | 16 kB      | 
+ public | tracking_consents                 | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | user_sessions_multi_role          | table | postgres | permanent   | heap          | 16 kB      | 
+ public | users                             | table | postgres | permanent   | heap          | 16 kB      | 
+ public | users_backup_roles                | table | postgres | permanent   | heap          | 16 kB      | 
+ public | variant_option_values             | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | webhook_events                    | table | postgres | permanent   | heap          | 8192 bytes | Sistema de webhooks para integrações externas
+ public | webhook_logs                      | table | postgres | permanent   | heap          | 8192 bytes | Logs de todos os webhooks recebidos dos gateways
+ public | wishlists                         | table | postgres | permanent   | heap          | 0 bytes    | 
+(110 rows)
+
