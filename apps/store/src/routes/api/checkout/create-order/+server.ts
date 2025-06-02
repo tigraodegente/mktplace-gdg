@@ -283,7 +283,8 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                 
                 await sql`
                   UPDATE products 
-                  SET quantity = ${newQuantity}
+                  SET quantity = ${newQuantity},
+                      updated_at = NOW()
                   WHERE id = ${item.productId}
                 `;
               }
