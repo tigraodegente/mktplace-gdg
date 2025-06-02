@@ -35,18 +35,36 @@
 	
 	// Menu items com roles
 	const menuItems: MenuItem[] = [
+		// Principal
 		{ label: 'Dashboard', href: '/', icon: '🏠', roles: ['admin', 'vendor'] },
+		
+		// E-commerce
 		{ label: 'Produtos', href: '/produtos', icon: '📦', roles: ['admin', 'vendor'], badge: 3 },
 		{ label: 'Pedidos', href: '/pedidos', icon: '📋', roles: ['admin', 'vendor'], badge: 7 },
+		{ label: 'Categorias', href: '/categorias', icon: '📁', roles: ['admin'] },
+		{ label: 'Cupons', href: '/cupons', icon: '🎟️', roles: ['admin', 'vendor'] },
+		
+		// Clientes
 		{ label: 'Usuários', href: '/usuarios', icon: '👥', roles: ['admin'] },
-		{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin', 'vendor'] },
-		{ label: 'Páginas', href: '/paginas', icon: '📄', roles: ['admin'] },
+		{ label: 'Avaliações', href: '/avaliacoes', icon: '⭐', roles: ['admin', 'vendor'], badge: 5 },
 		{ label: 'Listas de Presentes', href: '/listas-presentes', icon: '🎁', roles: ['admin'] },
+		
+		// Operações
+		{ label: 'Devoluções', href: '/devolucoes', icon: '📦', roles: ['admin', 'vendor'], badge: 2 },
+		{ label: 'Frete', href: '/frete', icon: '🚚', roles: ['admin'] },
+		
+		// Gestão
+		{ label: 'Financeiro', href: '/financeiro', icon: '💰', roles: ['admin', 'vendor'] },
+		{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin', 'vendor'] },
+		
+		// Sistema
+		{ label: 'Integrações', href: '/integracoes', icon: '🔗', roles: ['admin'] },
+		{ label: 'Páginas', href: '/paginas', icon: '📄', roles: ['admin'] },
 		{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin', 'vendor'] }
 	];
 	
 	// Filtrar menu items baseado no role
-	const filteredMenuItems = $derived(user ? menuItems.filter(item => item.roles.includes(user.role)) : []);
+	const filteredMenuItems = $derived(user ? menuItems.filter(item => item.roles.includes(user!.role)) : []);
 	
 	// Atualizar path atual
 	$effect(() => {
