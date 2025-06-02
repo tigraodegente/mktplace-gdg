@@ -1,7 +1,8 @@
 // Database client otimizado para Cloudflare Workers
-// Usando import estático mas com lazy loading
+// Usando import condicional para evitar problemas no browser
 
-import type { Sql } from 'postgres'
+// IMPORTANTE: Não importar postgres diretamente para evitar erro no build do cliente
+// import type { Sql } from 'postgres' - removido
 
 export interface DatabaseConfig {
   provider: 'neon' | 'postgres';
@@ -19,9 +20,6 @@ export interface DatabaseConfig {
 export interface DatabaseEnv {
   DATABASE_URL?: string;
 }
-
-// Lazy import global
-let postgresLib: any = null;
 
 export class Database {
   private sql: any = null;
@@ -48,11 +46,13 @@ export class Database {
     if (this.sql) return this.sql;
 
     try {
-      // Lazy load do postgres apenas quando necessário
-      if (!postgresLib) {
-        postgresLib = await import('postgres');
+      // APENAS no servidor: import dinâmico do postgres
+      if (typeof window !== 'undefined') {
+        throw new Error('Database não pode ser usado no browser');
       }
       
+      // Lazy load do postgres apenas quando necessário e apenas no servidor
+      const postgresLib = await import('postgres');
       const postgres = postgresLib.default || postgresLib;
 
       // Configurações otimizadas para Cloudflare Workers

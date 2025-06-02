@@ -1,11 +1,23 @@
+// Database module - Safe for client/server
+// IMPORTANTE: Este arquivo pode ser analisado pelo Vite no build do cliente
+// Não fazer imports que dependem de Node.js diretamente
+
 import { Database } from './database'
 import { dev } from '$app/environment'
 // Removido import de $env/dynamic/private que não pode ser usado no cliente
 import { dbCache } from './cache'
 
+// Verificação de ambiente para evitar execução no cliente
+const isServer = typeof window === 'undefined';
+
 // CORREÇÃO: Não usar singleton, criar nova conexão por request
 // Função para criar conexão otimizada por request
 function createDatabaseConnection(platform?: App.Platform): Database {
+  // Proteção contra uso no cliente
+  if (!isServer) {
+    throw new Error('Database não pode ser usado no browser');
+  }
+  
   // EM PRODUÇÃO: Usar DATABASE_URL do platform.env (Cloudflare)
   if (!dev) {
     // PRIORIDADE 1: platform.env.DATABASE_URL (configurado no Cloudflare Dashboard)
@@ -54,6 +66,11 @@ function createDatabaseConnection(platform?: App.Platform): Database {
 }
 
 export function getDatabase(platform?: App.Platform) {
+  // Proteção contra uso no cliente
+  if (!isServer) {
+    throw new Error('Database não pode ser usado no browser');
+  }
+  
   // SEMPRE criar nova conexão para cada request (Workers requirement)
   return createDatabaseConnection(platform);
 }
