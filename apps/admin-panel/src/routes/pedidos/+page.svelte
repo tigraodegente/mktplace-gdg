@@ -20,17 +20,18 @@
 	// Interface
 	interface Order {
 		id: string;
-		orderNumber: string;
-		customer: {
-			name: string;
-			email: string;
-			avatar?: string;
-		};
+		number: string;
+		date: string;
+		customer: string;
 		items: number;
 		total: number;
 		status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-		paymentMethod: 'credit_card' | 'pix' | 'boleto';
-		createdAt: string;
+		payment: string;
+		shipping: string;
+		// Propriedades extras quando selectedOrder
+		orderNumber?: string;
+		createdAt?: string;
+		paymentMethod?: 'credit_card' | 'pix' | 'boleto';
 		vendor?: string;
 	}
 	
@@ -47,6 +48,9 @@
 		status: string;
 		payment: string;
 		dateRange: string;
+		startDate?: string;
+		endDate?: string;
+		vendor?: string;
 	}
 	
 	// Estado
@@ -114,8 +118,7 @@
 		// Busca
 		if (filters.search) {
 			result = result.filter(order => 
-				order.customer.name.toLowerCase().includes(filters.search.toLowerCase()) || 
-				order.customer.email.toLowerCase().includes(filters.search.toLowerCase()) ||
+				order.customer.toLowerCase().includes(filters.search.toLowerCase()) || 
 				order.id.includes(filters.search)
 			);
 		}
@@ -127,7 +130,7 @@
 		
 		// Pagamento
 		if (filters.payment !== 'all') {
-			result = result.filter(order => order.paymentMethod === filters.payment);
+			result = result.filter(order => order.payment === filters.payment);
 		}
 		
 		filteredOrders = result;
@@ -223,66 +226,83 @@
 	async function loadOrders() {
 		loading = true;
 		
-		// Simular carregamento
-		setTimeout(() => {
-			// Dados mock
-			orders = Array.from({ length: 50 }, (_, i) => ({
-				id: `${12345 + i}`,
-				orderNumber: `Pedido ${i + 1}`,
-				customer: {
-					name: `Cliente ${i + 1}`,
-					email: `cliente${i + 1}@email.com`,
-					avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(`Cliente ${i + 1}`)}`
-				},
-				items: Math.floor(Math.random() * 5) + 1,
-				total: Math.floor(Math.random() * 5000) + 100,
-				status: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'][Math.floor(Math.random() * 5)] as any,
-				paymentMethod: ['credit_card', 'pix', 'boleto'][Math.floor(Math.random() * 3)] as any,
-				createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-				vendor: userRole === 'vendor' ? 'Minha Loja' : `Vendedor ${Math.floor(Math.random() * 10) + 1}`
-			}));
+		try {
+			// Construir query params
+			const params = new URLSearchParams({
+				page: currentPage.toString(),
+				limit: itemsPerPage.toString()
+			});
 			
-			if (userRole === 'vendor') {
-				orders = orders.filter(o => o.vendor === 'Minha Loja');
+			if (filters.search) params.append('search', filters.search);
+			if (filters.status !== 'all') params.append('status', filters.status);
+			if (filters.payment !== 'all') params.append('payment', filters.payment);
+			if (filters.dateRange === 'custom' && filters.startDate) {
+				params.append('dateFrom', filters.startDate);
+			}
+			if (filters.dateRange === 'custom' && filters.endDate) {
+				params.append('dateTo', filters.endDate);
 			}
 			
+			// Buscar pedidos da API
+			const response = await fetch(`/api/orders?${params}`);
+			const result = await response.json();
+			
+			if (result.success) {
+				orders = result.data.orders.map((order: any) => ({
+					id: order.id,
+					number: order.orderNumber,
+					date: order.createdAt,
+					customer: order.customer.name,
+					items: order.itemCount,
+					total: order.total,
+					status: order.status,
+					payment: order.paymentStatus,
+					shipping: order.shippingAddress || 'Não informado'
+				}));
+				
+				totalPages = result.data.pagination.totalPages;
+				
+				// Atualizar estatísticas
+				updateStats(result.data.stats);
+			} else {
+				console.error('Erro ao carregar pedidos:', result.error);
+			}
+		} catch (error) {
+			console.error('Erro ao carregar pedidos:', error);
+			orders = [];
+		} finally {
 			loading = false;
-		}, 1000);
+		}
 	}
 	
-	function updateStats(ords: Order[]) {
-		const today = new Date().setHours(0, 0, 0, 0);
-		const ordersToday = ords.filter(o => new Date(o.createdAt).setHours(0, 0, 0, 0) === today).length;
-		const processing = ords.filter(o => o.status === 'processing').length;
-		const delivered = ords.filter(o => o.status === 'delivered').length;
-		const revenue = ords.reduce((sum, o) => sum + o.total, 0);
-		
+	function updateStats(apiStats: any) {
 		stats = [
 			{
-				title: 'Pedidos Hoje',
-				value: ordersToday,
-				change: 25,
-				icon: '📋',
+				title: 'Total de Pedidos',
+				value: apiStats.total.toLocaleString('pt-BR'),
+				change: 15,
+				icon: '📦',
 				color: 'primary'
 			},
 			{
-				title: 'Processando',
-				value: processing,
+				title: 'Pedidos Pendentes',
+				value: apiStats.pending.toLocaleString('pt-BR'),
+				change: -5,
 				icon: '⏳',
 				color: 'warning'
 			},
 			{
-				title: 'Entregues',
-				value: delivered.toLocaleString('pt-BR'),
+				title: 'Faturamento Total',
+				value: `R$ ${apiStats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
 				change: 12,
-				icon: '✅',
+				icon: '💰',
 				color: 'success'
 			},
 			{
-				title: 'Faturamento',
-				value: formatPrice(revenue),
-				change: 32,
-				icon: '💰',
+				title: 'Taxa de Conversão',
+				value: '2.5%',
+				change: 8,
+				icon: '📈',
 				color: 'info'
 			}
 		];
@@ -643,8 +663,7 @@
 								</td>
 								<td>
 									<div>
-										<p class="font-medium text-gray-900">{order.customer.name}</p>
-										<p class="text-sm text-gray-500">{order.customer.email}</p>
+										<p class="font-medium text-gray-900">{order.customer}</p>
 									</div>
 								</td>
 								<td>
@@ -653,11 +672,11 @@
 									</span>
 								</td>
 								<td class="font-medium">{formatPrice(order.total)}</td>
-								<td>{order.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : order.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}</td>
+								<td>{order.payment}</td>
 								{#if userRole === 'admin'}
 									<td>{order.vendor}</td>
 								{/if}
-								<td>{formatDate(order.createdAt)}</td>
+								<td>{formatDate(order.date)}</td>
 								<td>
 									<div class="flex items-center justify-end gap-1">
 				<button
@@ -751,7 +770,7 @@
 								</div>
 								<div>
 									<p class="font-semibold text-gray-900">Pedido #{order.id}</p>
-									<p class="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
+									<p class="text-sm text-gray-500">{formatDate(order.date)}</p>
 								</div>
 							</div>
 							<span class="badge {getStatusBadge(order.status)}">
@@ -762,8 +781,7 @@
 						<div class="space-y-3">
 							<div>
 								<p class="text-sm text-gray-600">Cliente</p>
-								<p class="font-medium">{order.customer.name}</p>
-								<p class="text-sm text-gray-500">{order.customer.email}</p>
+								<p class="font-medium">{order.customer}</p>
 							</div>
 							
 							<div class="flex justify-between items-center">
@@ -773,7 +791,7 @@
 								</div>
 								<div class="text-right">
 									<p class="text-sm text-gray-600">{order.items} {order.items > 1 ? 'itens' : 'item'}</p>
-									<p class="text-sm font-medium">{order.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : order.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}</p>
+									<p class="text-sm font-medium">{order.payment}</p>
 								</div>
 							</div>
 						</div>
@@ -817,7 +835,7 @@
 							<h2 class="text-2xl font-bold flex items-center gap-3">
 								📦 Pedido #{selectedOrder.id}
 							</h2>
-							<p class="text-cyan-100 mt-1">Criado em {formatDate(selectedOrder.createdAt)}</p>
+							<p class="text-cyan-100 mt-1">Criado em {formatDate(selectedOrder.date)}</p>
 						</div>
 						<button 
 							onclick={closeOrderModal}
@@ -880,11 +898,11 @@
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div>
 								<p class="text-sm text-gray-600">Nome</p>
-								<p class="font-medium">{selectedOrder.customer.name}</p>
+								<p class="font-medium">{selectedOrder.customer}</p>
 							</div>
 							<div>
 								<p class="text-sm text-gray-600">Email</p>
-								<p class="font-medium">{selectedOrder.customer.email}</p>
+								<p class="font-medium">{selectedOrder.orderNumber}</p>
 							</div>
 						</div>
 					</div>
@@ -966,7 +984,7 @@
 								</div>
 								<div class="pb-4">
 									<p class="font-medium">Pedido Criado</p>
-									<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 10:30</p>
+									<p class="text-sm text-gray-600">{formatDate(selectedOrder.date)} às 10:30</p>
 								</div>
 							</div>
 							{#if selectedOrder.status !== 'pending'}
@@ -977,7 +995,7 @@
 									</div>
 									<div class="pb-4">
 										<p class="font-medium">Pagamento Aprovado</p>
-										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 10:35</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.date)} às 10:35</p>
 									</div>
 								</div>
 							{/if}
@@ -989,7 +1007,7 @@
 									</div>
 									<div class="pb-4">
 										<p class="font-medium">Em Processamento</p>
-										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 11:00</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.date)} às 11:00</p>
 									</div>
 								</div>
 							{/if}
@@ -1001,7 +1019,7 @@
 									</div>
 									<div class="pb-4">
 										<p class="font-medium">Enviado</p>
-										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 14:00</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.date)} às 14:00</p>
 									</div>
 								</div>
 							{/if}
@@ -1012,7 +1030,7 @@
 									</div>
 									<div>
 										<p class="font-medium">Entregue</p>
-										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 16:30</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.date)} às 16:30</p>
 									</div>
 								</div>
 							{/if}
@@ -1023,7 +1041,7 @@
 									</div>
 									<div>
 										<p class="font-medium text-red-600">Cancelado</p>
-										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 12:00</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.date)} às 12:00</p>
 									</div>
 								</div>
 							{/if}

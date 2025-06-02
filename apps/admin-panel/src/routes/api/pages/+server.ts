@@ -1,139 +1,258 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getDatabase } from '$lib/db';
 
-// TODO: Importar withDatabase do store quando disponível
-// Por enquanto, simulando a mesma estrutura
-async function withDatabase(platform: any, callback: (db: any) => Promise<any>) {
-  // Mock temporário - substituir por conexão real
-  const mockDb = {
-    query: async (strings: TemplateStringsArray, ...values: any[]) => {
-      // Simular query SQL - substituir por implementação real
-      console.log('SQL Mock:', strings.join('?'), values);
-      return [];
-    },
-    queryOne: async (strings: TemplateStringsArray, ...values: any[]) => {
-      console.log('SQL Mock (One):', strings.join('?'), values);
-      return null;
-    }
-  };
-  
-  return await callback(mockDb);
-}
-
+// GET - Listar páginas
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
-    const result = await withDatabase(platform, async (db) => {
-      // Buscar todas as páginas publicadas
-      const pages = await db.query`
-        SELECT 
-          id,
-          title,
-          slug,
-          content,
-          meta_title,
-          meta_description,
-          is_published,
-          created_at,
-          updated_at
-        FROM pages 
-        ORDER BY updated_at DESC
-      `;
-      
-      return pages;
-    });
-
-    // Por enquanto, retornar mock + estrutura real
-    const mockPages = [
-      {
-        id: '1',
-        title: 'Sobre a Empresa',
-        slug: 'a-empresa',
-        content: '<h1>Sobre a Grão de Gente</h1>\n<p>A Grão de Gente é uma empresa familiar brasileira que nasceu do sonho de oferecer produtos de qualidade para bebês e crianças. Fundada em 2010, crescemos e nos tornamos referência no mercado infantil.</p>\n\n<h2>Nossa História</h2>\n<p>Tudo começou quando nossos fundadores, pais de primeira viagem, sentiram dificuldade em encontrar produtos que unissem qualidade, segurança e preço justo para seus filhos. Foi assim que surgiu a ideia de criar uma empresa que oferecesse exatamente o que eles gostariam de ter encontrado.</p>\n\n<h2>Nossa Missão</h2>\n<p>Proporcionar aos pais produtos seguros, confortáveis e de qualidade para o desenvolvimento saudável e feliz de seus filhos, sempre com o melhor custo-benefício do mercado.</p>\n\n<h2>Nossos Valores</h2>\n<ul>\n<li><strong>Qualidade:</strong> Todos os nossos produtos passam por rigorosos testes de qualidade</li>\n<li><strong>Segurança:</strong> A segurança das crianças é nossa prioridade absoluta</li>\n<li><strong>Sustentabilidade:</strong> Utilizamos materiais eco-friendly sempre que possível</li>\n<li><strong>Família:</strong> Entendemos as necessidades das famílias brasileiras</li>\n</ul>',
-        meta_title: 'Sobre a Grão de Gente - Nossa História e Missão',
-        meta_description: 'Conheça a história da Grão de Gente, empresa brasileira especializada em produtos infantis de qualidade. Saiba mais sobre nossa missão e valores.',
-        is_published: true,
-        created_at: new Date('2024-01-15').toISOString(),
-        updated_at: new Date('2024-01-15').toISOString()
-      },
-      {
-        id: '2',
-        title: 'Política de Privacidade',
-        slug: 'central-de-atendimento/politica-de-privacidade',
-        content: '<h1>Política de Privacidade</h1>\n<p>Esta Política de Privacidade descreve como a Grão de Gente coleta, usa e protege suas informações pessoais quando você utiliza nosso site e serviços.</p>\n\n<h2>Informações que Coletamos</h2>\n<p>Coletamos informações que você nos fornece diretamente, como:</p>\n<ul>\n<li>Nome completo</li>\n<li>E-mail</li>\n<li>Telefone</li>\n<li>Endereço de entrega</li>\n<li>Informações de pagamento</li>\n</ul>\n\n<h2>Como Utilizamos suas Informações</h2>\n<p>Utilizamos suas informações para:</p>\n<ul>\n<li>Processar e entregar seus pedidos</li>\n<li>Fornecer suporte ao cliente</li>\n<li>Melhorar nossos produtos e serviços</li>\n<li>Enviar comunicações marketing (com seu consentimento)</li>\n</ul>\n\n<h2>Proteção de Dados</h2>\n<p>Implementamos medidas de segurança técnicas e organizacionais adequadas para proteger suas informações pessoais contra acesso não autorizado, alteração, divulgação ou destruição.</p>\n\n<h2>Seus Direitos</h2>\n<p>Você tem o direito de:</p>\n<ul>\n<li>Acessar suas informações pessoais</li>\n<li>Corrigir informações incorretas</li>\n<li>Solicitar a exclusão de seus dados</li>\n<li>Retirar seu consentimento a qualquer momento</li>\n</ul>\n\n<h2>Contato</h2>\n<p>Para questões sobre esta política, entre em contato conosco em: <a href="mailto:privacidade@graodegente.com.br">privacidade@graodegente.com.br</a></p>',
-        meta_title: 'Política de Privacidade - Grão de Gente',
-        meta_description: 'Conheça nossa política de privacidade e como protegemos seus dados pessoais. Transparência e segurança em primeiro lugar.',
-        is_published: true,
-        created_at: new Date('2024-01-10').toISOString(),
-        updated_at: new Date('2024-01-10').toISOString()
-      },
-      {
-        id: '3',
-        title: 'Como Cuidar das Roupinhas do Bebê',
-        slug: 'blog/como-cuidar-roupinhas-bebe',
-        content: '<h1>Como Cuidar das Roupinhas do Bebê</h1>\n<p>As roupinhas do bebê merecem cuidados especiais para garantir que sejam seguras, macias e duráveis. Aqui estão nossas dicas essenciais para manter as peças do seu pequeno sempre perfeitas.</p>\n\n<h2>Antes da Primeira Lavagem</h2>\n<p>Sempre lave as roupas novas antes do primeiro uso, mesmo que pareçam limpas. Isso remove possíveis resíduos de fabricação e torna as peças mais macias para a pele sensível do bebê.</p>\n\n<h2>Escolha do Sabão</h2>\n<p>Use sabões neutros e hipoalergênicos, específicos para roupas de bebê. Evite amaciantes convencionais e prefira produtos naturais como vinagre branco diluído.</p>\n\n<h2>Temperatura da Água</h2>\n<p>Lave sempre com água morna (máximo 40°C). Água muito quente pode danificar as fibras e causar encolhimento.</p>\n\n<h2>Secagem</h2>\n<p>Prefira secar à sombra para preservar as cores e evitar que o sol ressaque o tecido. Se usar secadora, use temperatura baixa.</p>\n\n<h2>Manchas Difíceis</h2>\n<p>Para manchas de leite ou papinha, deixe de molho em água fria antes de lavar. Bicarbonato de sódio é um excelente removedor natural de odores.</p>\n\n<h2>Armazenamento</h2>\n<p>Guarde as roupas em local seco e arejado. Use sachês de lavanda natural para manter o cheiro agradável.</p>\n\n<p><em>Lembre-se: roupas bem cuidadas duram mais e proporcionam maior conforto para seu bebê!</em></p>',
-        meta_title: 'Como Cuidar das Roupinhas do Bebê - Dicas Essenciais',
-        meta_description: 'Aprenda como lavar, secar e conservar as roupinhas do seu bebê de forma segura e eficiente. Dicas práticas para o dia a dia.',
-        is_published: true,
-        created_at: new Date('2024-05-20').toISOString(),
-        updated_at: new Date('2024-05-20').toISOString()
-      }
-    ];
-
+    const db = getDatabase(platform);
+    
+    // Parâmetros
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+    const search = url.searchParams.get('search') || '';
+    const status = url.searchParams.get('status') || 'all';
+    
+    // Construir query
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+    
+    if (search) {
+      conditions.push(`(title ILIKE $${paramIndex} OR slug ILIKE $${paramIndex} OR content ILIKE $${paramIndex})`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+    
+    if (status !== 'all') {
+      conditions.push(`status = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+    
+    // Query principal
+    const query = `
+      SELECT 
+        id, title, slug, content, 
+        status, meta_title, meta_description, meta_keywords,
+        created_at, updated_at,
+        COUNT(*) OVER() as total_count
+      FROM pages
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    params.push(limit, offset);
+    
+    const pages = await db.query(query, ...params);
+    const totalCount = pages[0]?.total_count || 0;
+    
+    // Buscar estatísticas
+    const [stats] = await db.query`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'published') as published,
+        COUNT(*) FILTER (WHERE status = 'draft') as draft,
+        COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '7 days') as recently_updated
+      FROM pages
+    `;
+    
+    await db.close();
+    
     return json({
       success: true,
-      data: mockPages
+      data: {
+        pages: pages.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          content: p.content,
+          status: p.status,
+          seo: {
+            title: p.meta_title || p.title,
+            description: p.meta_description,
+            keywords: p.meta_keywords
+          },
+          createdAt: p.created_at,
+          updatedAt: p.updated_at
+        })),
+        pagination: {
+          page,
+          limit,
+          total: parseInt(totalCount),
+          totalPages: Math.ceil(totalCount / limit)
+        },
+        stats: {
+          total: stats.total || 0,
+          published: stats.published || 0,
+          draft: stats.draft || 0,
+          recentlyUpdated: stats.recently_updated || 0
+        }
+      }
     });
-
+    
   } catch (error) {
-    console.error('Erro ao listar páginas:', error);
+    console.error('Error fetching pages:', error);
     return json({
       success: false,
-      error: {
-        code: 'FETCH_ERROR',
-        message: 'Erro ao buscar páginas'
-      }
+      error: 'Erro ao buscar páginas'
     }, { status: 500 });
   }
 };
 
+// POST - Criar página
 export const POST: RequestHandler = async ({ request, platform }) => {
   try {
+    const db = getDatabase(platform);
     const data = await request.json();
     
-    const result = await withDatabase(platform, async (db) => {
-      // Inserir nova página
-      const [newPage] = await db.query`
-        INSERT INTO pages (title, slug, content, meta_title, meta_description, is_published, created_at, updated_at)
-        VALUES (${data.title}, ${data.slug}, ${data.content}, ${data.meta_title}, ${data.meta_description}, ${data.is_published}, NOW(), NOW())
-        RETURNING *
-      `;
-      
-      return newPage;
-    });
+    // Validações
+    if (!data.title || !data.slug) {
+      return json({
+        success: false,
+        error: 'Título e slug são obrigatórios'
+      }, { status: 400 });
+    }
     
-    // Por enquanto, simular criação
-    const newPage = {
-      id: Math.random().toString(36),
-      ...data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    // Verificar slug duplicado
+    const [existing] = await db.query`
+      SELECT id FROM pages WHERE slug = ${data.slug}
+    `;
     
-    console.log('📝 Nova página criada:', newPage);
+    if (existing) {
+      await db.close();
+      return json({
+        success: false,
+        error: 'Slug já existe'
+      }, { status: 400 });
+    }
+    
+    // Inserir página
+    const [pageData] = await db.query`
+      INSERT INTO pages (
+        title, slug, content,
+        status, meta_title, meta_description, meta_keywords
+      ) VALUES (
+        ${data.title}, ${data.slug}, ${data.content || ''},
+        ${data.status || 'draft'}, 
+        ${data.seo?.title || data.title},
+        ${data.seo?.description || null},
+        ${data.seo?.keywords || null}
+      ) RETURNING id
+    `;
+    
+    await db.close();
     
     return json({
       success: true,
-      data: newPage
+      data: {
+        id: pageData.id,
+        message: 'Página criada com sucesso'
+      }
     });
-
+    
   } catch (error) {
-    console.error('Erro ao criar página:', error);
+    console.error('Error creating page:', error);
     return json({
       success: false,
-      error: {
-        code: 'CREATE_ERROR',
-        message: 'Erro ao criar página'
+      error: 'Erro ao criar página'
+    }, { status: 500 });
+  }
+};
+
+// PUT - Atualizar página
+export const PUT: RequestHandler = async ({ request, platform }) => {
+  try {
+    const db = getDatabase(platform);
+    const data = await request.json();
+    
+    if (!data.id) {
+      return json({
+        success: false,
+        error: 'ID da página é obrigatório'
+      }, { status: 400 });
+    }
+    
+    // Atualizar página
+    await db.query`
+      UPDATE pages SET
+        title = ${data.title},
+        slug = ${data.slug},
+        content = ${data.content || ''},
+        status = ${data.status || 'draft'},
+        meta_title = ${data.seo?.title || data.title},
+        meta_description = ${data.seo?.description || null},
+        meta_keywords = ${data.seo?.keywords || null},
+        updated_at = NOW()
+      WHERE id = ${data.id}
+    `;
+    
+    await db.close();
+    
+    return json({
+      success: true,
+      data: {
+        message: 'Página atualizada com sucesso'
       }
+    });
+    
+  } catch (error) {
+    console.error('Error updating page:', error);
+    return json({
+      success: false,
+      error: 'Erro ao atualizar página'
+    }, { status: 500 });
+  }
+};
+
+// DELETE - Excluir página
+export const DELETE: RequestHandler = async ({ request, platform }) => {
+  try {
+    const db = getDatabase(platform);
+    const { id } = await request.json();
+    
+    if (!id) {
+      return json({
+        success: false,
+        error: 'ID da página é obrigatório'
+      }, { status: 400 });
+    }
+    
+    // Páginas protegidas que não podem ser excluídas
+    const protectedSlugs = ['terms', 'privacy', 'about', 'contact'];
+    const [pageData] = await db.query`
+      SELECT slug FROM pages WHERE id = ${id}
+    `;
+    
+    if (pageData && protectedSlugs.includes(pageData.slug)) {
+      await db.close();
+      return json({
+        success: false,
+        error: 'Esta página é protegida e não pode ser excluída'
+      }, { status: 400 });
+    }
+    
+    // Excluir página
+    await db.query`DELETE FROM pages WHERE id = ${id}`;
+    
+    await db.close();
+    
+    return json({
+      success: true,
+      data: {
+        message: 'Página excluída com sucesso'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error deleting page:', error);
+    return json({
+      success: false,
+      error: 'Erro ao excluir página'
     }, { status: 500 });
   }
 }; 

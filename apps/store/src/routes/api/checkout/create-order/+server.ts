@@ -102,19 +102,12 @@ async function selectPaymentGateway(
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
-    console.log('🛒 Create Order v2.0 - Query SQL corrigida definitivamente');
-    console.log('🛒 Create Order - Estratégia híbrida com integração de transportadoras iniciada');
-    
     // Verificar autenticação
-    console.log('🔐 Verificando autenticação...');
     const authResult = await requireAuth(cookies, platform);
     
     if (!authResult.success) {
-      console.log('❌ Autenticação falhou:', authResult.error);
       return json({ success: false, error: authResult.error }, { status: 401 });
     }
-    
-    console.log('✅ Autenticação OK para:', authResult.user?.email);
 
     const orderData: CreateOrderRequest = await request.json();
 
@@ -141,7 +134,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       const queryPromise = (async () => {
         // Usar transação para manter integridade
         return await db.transaction(async (sql) => {
-          console.log('🔄 Iniciando transação...');
           
           // STEP 1: Validar produtos e calcular totais
           let subtotal = 0;
@@ -218,18 +210,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           // STEP 4: Gerar número do pedido
           const orderNumber = `MP${Date.now()}${Math.random().toString(36).substr(2, 3).toUpperCase()}`;
 
-          console.log('📦 Criando pedido:', orderNumber);
-
-          // STEP 5: Criar pedido - Query simplificada para debug
-          console.log('🔍 Debug: Iniciando criação do pedido...');
-          console.log('🔍 Debug: user_id:', authResult.user!.id);
-          console.log('🔍 Debug: orderNumber:', orderNumber);
-          console.log('🔍 Debug: paymentMethod:', orderData.paymentMethod);
-          console.log('🔍 Debug: subtotal:', subtotal);
-          console.log('🔍 Debug: shippingCost:', shippingCost);
-          console.log('🔍 Debug: discount:', discount);
-          console.log('🔍 Debug: total:', total);
-          
+          // STEP 5: Criar pedido
           const orders = await sql`
             INSERT INTO orders (
               user_id, 
@@ -260,19 +241,12 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             ) RETURNING id, order_number, total, created_at
           `;
           
-          console.log('✅ Debug: Pedido criado com sucesso!');
           const order = orders[0];
 
           // STEP 6: Adicionar itens e reduzir estoque
-          console.log('🔍 Debug: STEP 6 - Iniciando criação de order_items...');
-          console.log('🔍 Debug: orderItems.length:', orderItems.length);
-          
           for (const [index, item] of orderItems.entries()) {
-            console.log(`🔍 Debug: Processando item ${index + 1}/${orderItems.length}: ${item.productName}`);
             
             // Buscar seller_id do produto para o order_item
-            console.log(`🔍 Debug: Buscando seller_id para produto ${item.productId}...`);
-            
             let sellerId = '0c882099-6a71-4f35-88b3-a467322be13b'; // Fallback padrão
             
             try {
@@ -282,101 +256,46 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               
               if (productSeller[0]?.seller_id) {
                 sellerId = productSeller[0].seller_id;
-                console.log(`🔍 Debug: Seller encontrado: ${sellerId}`);
-              } else {
-                console.log(`⚠️ Debug: Seller não encontrado, usando fallback: ${sellerId}`);
               }
             } catch (sellerError) {
-              console.log(`⚠️ Debug: Erro ao buscar seller_id (usando fallback):`, sellerError);
-              console.log(`🔍 Debug: Detalhes do erro:`, {
-                errorMessage: sellerError instanceof Error ? sellerError.message : 'Unknown error',
-                productId: item.productId
-              });
+              // Usar fallback silenciosamente
             }
-            
-            console.log(`🔍 Debug: Inserindo order_item...`);
-            console.log(`🔍 Debug: order.id: ${order.id}`);
-            console.log(`🔍 Debug: productId: ${item.productId}`);
-            console.log(`🔍 Debug: sellerId: ${sellerId}`);
-            console.log(`🔍 Debug: quantity: ${item.quantity}`);
-            console.log(`🔍 Debug: unitPrice: ${item.unitPrice}`);
-            console.log(`🔍 Debug: totalPrice: ${item.totalPrice}`);
             
             await sql`
               INSERT INTO order_items (order_id, product_id, seller_id, quantity, price, total, status)
               VALUES (${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, ${item.unitPrice}, ${item.totalPrice}, 'pending')
             `;
-            console.log(`✅ Debug: Order_item ${index + 1} criado com sucesso!`);
 
-            console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
-            console.log(`🔍 Debug: Quantity: ${item.quantity}`);
-            
-            // TEMPORARIAMENTE DESABILITADO PARA DEBUG
-            console.log(`⚠️ Debug: Atualização de estoque temporariamente desabilitada para debug`);
-            /*
-            // NOVA ABORDAGEM: UPDATE de estoque com query segura
+            // Atualizar estoque - abordagem simplificada
             try {
-              console.log(`🔍 Debug: Usando nova abordagem para UPDATE do estoque...`);
-              
-              // Buscar estoque atual primeiro
-              const currentStockResult = await sql`
-                SELECT quantity FROM products WHERE id = ${item.productId}
+              await sql`
+                UPDATE products 
+                SET quantity = GREATEST(0, quantity - ${item.quantity})
+                WHERE id = ${item.productId}
               `;
-              
-              if (!currentStockResult[0]) {
-                console.log(`⚠️ Debug: Produto não encontrado para atualização de estoque`);
-              } else {
-                const currentStock = parseInt(currentStockResult[0].quantity, 10);
-                const newStock = Math.max(0, currentStock - item.quantity); // Nunca deixar negativo
-                
-                console.log(`🔍 Debug: Estoque atual: ${currentStock}, Novo estoque: ${newStock}`);
-                
-                // UPDATE usando template literal normal do postgres-js
-                const updateResult = await sql`
-                  UPDATE products 
-                  SET quantity = ${newStock}, updated_at = ${new Date()}
-                  WHERE id = ${item.productId}
-                  RETURNING quantity
-                `;
-                
-                console.log(`✅ Debug: Estoque atualizado com sucesso! Novo estoque: ${updateResult[0]?.quantity}`);
-              }
             } catch (stockError) {
-              console.log(`⚠️ Debug: Erro ao atualizar estoque (não crítico):`, stockError);
-              console.log(`🔍 Debug: Continuando sem atualizar estoque para produto ${item.productId}`);
-              // Não falhar a transação por causa do estoque
+              // Continuar sem falhar a transação
             }
-            */
           }
-          
-          console.log('✅ Debug: STEP 6 concluído - Todos os order_items criados!');
 
           // STEP 7: Incrementar uso do cupom
           if (orderData.couponCode) {
-            console.log('🔍 Debug: STEP 7 - Incrementando uso do cupom...');
             await sql`
               UPDATE coupons 
               SET used_count = used_count + 1
               WHERE code = ${orderData.couponCode}
             `;
-            console.log('✅ Debug: STEP 7 concluído - Cupom atualizado!');
-          } else {
-            console.log('🔍 Debug: STEP 7 - Sem cupom para atualizar');
           }
 
-          // STEP 8: Adicionar log de histórico (simplificado)
-          console.log('🔍 Debug: STEP 8 - Criando histórico...');
+          // STEP 8: Adicionar log de histórico
           try {
             await sql`
               INSERT INTO order_status_history (order_id, new_status, created_by, created_by_type, notes)
               VALUES (${order.id}, 'pending', ${authResult.user!.id}, 'user', 'Pedido criado')
             `;
-            console.log('✅ Debug: STEP 8 concluído - Histórico criado!');
           } catch (historyError) {
-            console.log('⚠️ Debug: Erro ao criar histórico (não crítico):', historyError);
+            // Não crítico
           }
-
-          console.log('✅ Pedido criado com sucesso!');
 
           // Retornar dados do pedido e itens para integração
           return {
@@ -418,8 +337,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       });
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      console.log(`✅ Pedido criado: ${result.order.orderNumber}`);
       
       // Variável para armazenar o gateway selecionado
       let selectedGateway: string | null = null;
@@ -492,8 +409,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       // =====================================================
       
       if (ShippingIntegration.isEnabled()) {
-        console.log(`🚚 Iniciando integração com transportadoras para pedido ${result.order.orderNumber}...`);
-        
         try {
           // Enviar para transportadora de forma assíncrona (não bloqueia resposta)
           ShippingIntegration.sendOrder(
@@ -504,19 +419,26 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             platform
           ).then((shippingResult) => {
             if (shippingResult.success) {
-              console.log(`🚚 ✅ Pedido ${result.order.orderNumber} enviado para transportadora ${shippingResult.provider}`);
+              logger.info('Order sent to shipping provider', {
+                orderId: result.order.orderNumber,
+                provider: shippingResult.provider
+              });
             } else {
-              console.warn(`🚚 ⚠️ Falha na integração para pedido ${result.order.orderNumber}: ${shippingResult.error}`);
+              logger.warn('Shipping integration failed', {
+                orderId: result.order.orderNumber,
+                error: shippingResult.error
+              });
             }
           }).catch((error) => {
-            console.error(`🚚 ❌ Erro crítico na integração para pedido ${result.order.orderNumber}:`, error);
+            logger.error('Critical shipping integration error', {
+              orderId: result.order.orderNumber,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
           });
           
         } catch (error) {
-          console.error(`🚚 ❌ Erro ao iniciar integração:`, error);
+          logger.error('Failed to start shipping integration', { error });
         }
-      } else {
-        console.log(`🚚 ⚠️ Sistema de integração de transportadoras desabilitado`);
       }
       
       // =====================================================
@@ -536,12 +458,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro na criação: ${error instanceof Error ? error.message : 'Erro'}`);
-      
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      
-      // FALLBACK SEGURO: NUNCA criar pedido inválido
-      // Em caso de timeout ou erro crítico, sempre falhar
       
       // Retornar erro específico se for validação
       if (errorMessage.includes('Produto') || errorMessage.includes('Cupom') || errorMessage.includes('Estoque') || errorMessage.includes('Timeout')) {

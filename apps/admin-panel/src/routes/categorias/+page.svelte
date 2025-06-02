@@ -85,106 +85,53 @@
 	async function loadCategories() {
 		loading = true;
 		
-		// Simular carregamento
-		setTimeout(() => {
-			// Dados mock com hierarquia
-			const mockCategories: Category[] = [
-				{
-					id: 'cat-1',
-					name: 'Eletrônicos',
-					slug: 'eletronicos',
-					icon: '📱',
-					product_count: 1234,
-					is_active: true,
-					order: 1,
-					children: [
-						{
-							id: 'cat-1-1',
-							name: 'Smartphones',
-							slug: 'smartphones',
-							parent_id: 'cat-1',
-							icon: '📱',
-							product_count: 456,
-							is_active: true,
-							order: 1
-						},
-						{
-							id: 'cat-1-2',
-							name: 'Notebooks',
-							slug: 'notebooks',
-							parent_id: 'cat-1',
-							icon: '💻',
-							product_count: 234,
-							is_active: true,
-							order: 2
-						},
-						{
-							id: 'cat-1-3',
-							name: 'Acessórios',
-							slug: 'acessorios-eletronicos',
-							parent_id: 'cat-1',
-							icon: '🎧',
-							product_count: 544,
-							is_active: true,
-							order: 3
-						}
-					]
-				},
-				{
-					id: 'cat-2',
-					name: 'Moda',
-					slug: 'moda',
-					icon: '👕',
-					product_count: 2345,
-					is_active: true,
-					order: 2,
-					children: [
-						{
-							id: 'cat-2-1',
-							name: 'Masculino',
-							slug: 'moda-masculina',
-							parent_id: 'cat-2',
-							icon: '👔',
-							product_count: 890,
-							is_active: true,
-							order: 1
-						},
-						{
-							id: 'cat-2-2',
-							name: 'Feminino',
-							slug: 'moda-feminina',
-							parent_id: 'cat-2',
-							icon: '👗',
-							product_count: 1455,
-							is_active: true,
-							order: 2
-						}
-					]
-				},
-				{
-					id: 'cat-3',
-					name: 'Casa e Decoração',
-					slug: 'casa-decoracao',
-					icon: '🏠',
-					product_count: 987,
-					is_active: true,
-					order: 3
-				},
-				{
-					id: 'cat-4',
-					name: 'Esportes',
-					slug: 'esportes',
-					icon: '⚽',
-					product_count: 567,
-					is_active: false,
-					order: 4
-				}
-			];
+		try {
+			// Buscar categorias da API
+			const response = await fetch('/api/categories?tree=true');
+			const result = await response.json();
 			
-			categories = buildCategoryTree(mockCategories);
-			updateStats();
+			if (result.success) {
+				categories = result.data.categories;
+				
+				// Atualizar estatísticas
+				stats = [
+					{
+						title: 'Total de Categorias',
+						value: result.data.stats.total,
+						change: 8,
+						icon: '📁',
+						color: 'primary'
+					},
+					{
+						title: 'Categorias Ativas',
+						value: result.data.stats.active,
+						change: 5,
+						icon: '✅',
+						color: 'success'
+					},
+					{
+						title: 'Categorias Principais',
+						value: result.data.stats.root,
+						icon: '🏠',
+						color: 'warning'
+					},
+					{
+						title: 'Em Destaque',
+						value: result.data.stats.featured,
+						change: 10,
+						icon: '⭐',
+						color: 'info'
+					}
+				];
+			} else {
+				console.error('Erro ao carregar categorias:', result.error);
+			}
+		} catch (error) {
+			console.error('Erro ao carregar categorias:', error);
+			categories = [];
+		} finally {
 			loading = false;
-		}, 1000);
+		}
 	}
 	
 	function buildCategoryTree(cats: Category[]): Category[] {
@@ -406,18 +353,50 @@
 	
 	async function saveCategory() {
 		// Validações
-		if (!formData.name.trim() || !formData.slug.trim()) {
+		if (!formData.name || !formData.slug) {
 			alert('Nome e slug são obrigatórios');
 			return;
 		}
 		
-		console.log('Salvando categoria:', formData);
-		// Simular salvamento
-		setTimeout(() => {
-			alert(editingCategory ? 'Categoria atualizada!' : 'Categoria criada!');
-			loadCategories();
-			closeModal();
-		}, 500);
+		try {
+			const url = '/api/categories';
+			const method = editingCategory ? 'PUT' : 'POST';
+			
+			const payload = {
+				...(editingCategory && { id: editingCategory.id }),
+				name: formData.name,
+				slug: formData.slug,
+				description: formData.description,
+				parentId: formData.parentId,
+				icon: formData.icon,
+				color: formData.color,
+				position: formData.position,
+				isActive: formData.isActive,
+				featured: formData.featured,
+				seo: formData.seo
+			};
+			
+			const response = await fetch(url, {
+				method,
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				alert(editingCategory ? 'Categoria atualizada!' : 'Categoria criada!');
+				closeModal();
+				loadCategories();
+			} else {
+				alert(result.error || 'Erro ao salvar categoria');
+			}
+		} catch (error) {
+			console.error('Erro ao salvar categoria:', error);
+			alert('Erro ao salvar categoria');
+		}
 	}
 	
 	function getCategoryIcon(category: Category): string {
@@ -458,20 +437,31 @@
 		return category.icon || iconMap[category.name] || '📁';
 	}
 	
-	async function deleteCategory(category: Category) {
-		if (category.children?.length) {
-			alert('Não é possível excluir uma categoria que possui subcategorias.');
+	async function deleteCategory(id: string) {
+		if (!confirm('Tem certeza que deseja excluir esta categoria?')) {
 			return;
 		}
 		
-		if (category.product_count > 0) {
-			alert('Não é possível excluir uma categoria que possui produtos.');
-			return;
-		}
-		
-		if (confirm(`Tem certeza que deseja excluir a categoria "${category.name}"?`)) {
-			console.log('Excluindo categoria:', category);
-			loadCategories();
+		try {
+			const response = await fetch('/api/categories', {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ id })
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				alert('Categoria excluída com sucesso');
+				loadCategories();
+			} else {
+				alert(result.error || 'Erro ao excluir categoria');
+			}
+		} catch (error) {
+			console.error('Erro ao excluir categoria:', error);
+			alert('Erro ao excluir categoria');
 		}
 	}
 	
@@ -715,7 +705,7 @@
 										</svg>
 									</button>
 									<button
-										onclick={() => deleteCategory(category)}
+										onclick={() => deleteCategory(category.id)}
 										class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
 										title="Excluir"
 									>
@@ -786,7 +776,7 @@
 													</svg>
 												</button>
 												<button
-													onclick={() => deleteCategory(child)}
+													onclick={() => deleteCategory(child.id)}
 													class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
 													title="Excluir"
 												>

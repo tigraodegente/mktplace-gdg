@@ -18,22 +18,22 @@
 		title: string;
 		slug: string;
 		content: string;
-		author: string;
-		type: 'page' | 'blog';
+		author?: string;
+		type?: 'page' | 'blog';
 		status: 'published' | 'draft' | 'scheduled';
-		views: number;
-		createdAt: string;
-		updatedAt: string;
-		is_published?: boolean;
-		meta_title?: string;
-		meta_description?: string;
-		visibility?: 'public' | 'private' | 'password';
-		excerpt?: string;
-		featuredImage?: string;
+		views?: number;
+		createdAt?: string;
+		updatedAt?: string;
+		lastModified?: string;
+		publishedAt?: string;
 		template?: string;
-		allowComments?: boolean;
 		showInMenu?: boolean;
 		menuOrder?: number;
+		seo: {
+			title: string;
+			description: string;
+			keywords: string;
+		};
 	}
 	
 	interface StatCard {
@@ -153,36 +153,73 @@
   async function loadPages() {
 		loading = true;
 		
-		// Simular carregamento
-		setTimeout(() => {
-			// Dados mock
-			const pageTitles = [
-				'Sobre Nós', 'Política de Privacidade', 'Termos de Uso', 'FAQ', 'Contato',
-				'Como Funciona', 'Garantia', 'Trocas e Devoluções', 'Formas de Pagamento', 'Frete e Entrega',
-				'Black Friday: Guia Completo', '10 Melhores Smartphones 2024', 'Como Escolher um Notebook',
-				'Decoração de Natal', 'Presentes para o Dia das Mães', 'Volta às Aulas 2024',
-				'Tendências de Moda Verão', 'Cuidados com a Pele', 'Receitas Práticas', 'Organização da Casa'
-			];
+		try {
+			// Buscar páginas da API
+			const params = new URLSearchParams({
+				page: currentPage.toString(),
+				limit: itemsPerPage.toString()
+			});
 			
-			const pagesData = Array.from({ length: 30 }, (_, i) => ({
-				id: `page-${i + 1}`,
-				title: pageTitles[i % pageTitles.length],
-				slug: pageTitles[i % pageTitles.length].toLowerCase().replace(/\s+/g, '-'),
-				content: '<p>Conteúdo da página...</p>',
-				author: ['Admin', 'João Silva', 'Maria Santos'][i % 3],
-				type: i < 15 ? 'page' : 'blog' as 'page' | 'blog',
-				status: ['published', 'draft', 'scheduled'][i % 3] as Page['status'],
-				views: Math.floor(Math.random() * 10000),
-				createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
-				updatedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-				is_published: i % 3 !== 1,
-				meta_title: pageTitles[i % pageTitles.length] + ' - Minha Loja',
-				meta_description: 'Descrição da página para SEO'
-			}));
+			if (filters.search) params.append('search', filters.search);
+			if (filters.type !== 'all') params.append('status', filters.type);
 			
-			pages = pagesData;
+			const response = await fetch(`/api/pages?${params}`);
+			const result = await response.json();
+			
+			if (result.success) {
+				pages = result.data.pages.map((page: any) => ({
+					id: page.id,
+					title: page.title,
+					slug: page.slug,
+					content: page.content,
+					status: page.status,
+					lastModified: page.updatedAt,
+					views: Math.floor(Math.random() * 10000), // Temporário
+					author: 'Admin', // Temporário
+					seo: page.seo
+				}));
+				
+				totalPages = result.data.pagination.totalPages;
+				
+				// Atualizar estatísticas
+				stats = [
+					{
+						title: 'Total de Páginas',
+						value: result.data.stats.total,
+						change: 12,
+						icon: '📄',
+						color: 'primary'
+					},
+					{
+						title: 'Publicadas',
+						value: result.data.stats.published,
+						change: 5,
+						icon: '✅',
+						color: 'success'
+					},
+					{
+						title: 'Rascunhos',
+						value: result.data.stats.draft,
+						icon: '📝',
+						color: 'warning'
+					},
+					{
+						title: 'Atualizadas Recentemente',
+						value: result.data.stats.recentlyUpdated,
+						change: 20,
+						icon: '🔄',
+						color: 'info'
+					}
+				];
+			} else {
+				console.error('Erro ao carregar páginas:', result.error);
+			}
+		} catch (error) {
+			console.error('Erro ao carregar páginas:', error);
+			pages = [];
+		} finally {
 			loading = false;
-		}, 1000);
+		}
 	}
 	
 	function updateStats(pgs: Page[]) {
@@ -380,25 +417,70 @@
 	
 	async function savePage() {
 		// Validações
-		if (!formData.title.trim() || !formData.slug.trim()) {
+		if (!formData.title || !formData.slug) {
 			alert('Título e slug são obrigatórios');
 			return;
 		}
 		
-		console.log('Salvando página:', formData);
-		// Simular salvamento
-		setTimeout(() => {
-			alert(editingPage ? 'Página atualizada!' : 'Página criada!');
-			loadPages();
-			closeModal();
-		}, 500);
+		try {
+			const url = '/api/pages';
+			const method = editingPage ? 'PUT' : 'POST';
+			
+			const payload = {
+				...(editingPage && { id: editingPage.id }),
+				title: formData.title,
+				slug: formData.slug,
+				content: formData.content,
+				status: formData.status,
+				seo: formData.seo
+			};
+			
+			const response = await fetch(url, {
+				method,
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				alert(editingPage ? 'Página atualizada!' : 'Página criada!');
+				closeModal();
+				loadPages();
+			} else {
+				alert(result.error || 'Erro ao salvar página');
+			}
+		} catch (error) {
+			console.error('Erro ao salvar página:', error);
+			alert('Erro ao salvar página');
+		}
 	}
 	
-	async function deletePage(pageToDelete: Page) {
-		if (confirm(`Tem certeza que deseja excluir "${pageToDelete.title}"?`)) {
-			console.log('Excluindo página:', pageToDelete);
-			// Implementar exclusão
-			loadPages();
+	async function deletePage(id: string) {
+		if (confirm('Tem certeza que deseja excluir esta página?')) {
+			try {
+				const response = await fetch('/api/pages', {
+					method: 'DELETE',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ id })
+				});
+				
+				const result = await response.json();
+				
+				if (result.success) {
+					alert('Página excluída com sucesso');
+					loadPages();
+				} else {
+					alert(result.error || 'Erro ao excluir página');
+				}
+			} catch (error) {
+				console.error('Erro ao excluir página:', error);
+				alert('Erro ao excluir página');
+			}
 		}
 	}
 	
@@ -745,7 +827,7 @@
 											</svg>
                 </button>
                 <button 
-                  onclick={() => deletePage(page)}
+                  onclick={() => deletePage(page.id)}
 											class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
 											title="Excluir"
 										>
