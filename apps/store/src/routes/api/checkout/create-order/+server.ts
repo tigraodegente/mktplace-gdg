@@ -298,6 +298,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             console.log(`🔍 Debug: Atualizando estoque do produto ${item.productId}...`);
             console.log(`🔍 Debug: Quantity: ${item.quantity}`);
             
+            // TEMPORARIAMENTE DESABILITADO PARA DEBUG
+            console.log(`⚠️ Debug: Atualização de estoque temporariamente desabilitada para debug`);
+            /*
             // NOVA ABORDAGEM: UPDATE de estoque com query segura
             try {
               console.log(`🔍 Debug: Usando nova abordagem para UPDATE do estoque...`);
@@ -330,6 +333,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               console.log(`🔍 Debug: Continuando sem atualizar estoque para produto ${item.productId}`);
               // Não falhar a transação por causa do estoque
             }
+            */
           }
           
           console.log('✅ Debug: STEP 6 concluído - Todos os order_items criados!');

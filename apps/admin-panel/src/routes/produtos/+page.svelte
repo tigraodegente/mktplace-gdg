@@ -116,15 +116,8 @@
 		lowStock: 0
 	});
 	
-	// Categorias mock
-	const categories = [
-		'Eletrônicos',
-		'Roupas',
-		'Casa e Jardim',
-		'Esportes',
-		'Livros',
-		'Brinquedos'
-	];
+	// Categorias do banco
+	let categories = $state<Array<{id: string, name: string, slug: string}>>([]);
 	
 	// Formulário
 	let formData = $state<ProductFormData>({
@@ -407,7 +400,25 @@
 	
 	onMount(() => {
 		loadProducts();
+		loadCategories();
 	});
+	
+	async function loadCategories() {
+		try {
+			const response = await fetch('/api/categories?active=true');
+			const result = await response.json();
+			
+			if (result.success) {
+				categories = result.data.categories.map((cat: any) => ({
+					id: cat.id,
+					name: cat.name,
+					slug: cat.slug
+				}));
+			}
+		} catch (error) {
+			console.error('Erro ao carregar categorias:', error);
+		}
+	}
 	
 	async function loadProducts() {
 		loading = true;
@@ -713,7 +724,7 @@
 						<select bind:value={filters.category} class="input">
 							<option value="all">Todas</option>
 							{#each categories as cat}
-								<option value={cat}>{cat}</option>
+								<option value={cat.id}>{cat.name}</option>
 							{/each}
 						</select>
 					</div>
@@ -1144,7 +1155,7 @@
 								>
 									<option value="">Selecione uma categoria</option>
 									{#each categories as cat}
-										<option value={cat}>{cat}</option>
+										<option value={cat.id}>{cat.name}</option>
 									{/each}
 								</select>
 							</div>
