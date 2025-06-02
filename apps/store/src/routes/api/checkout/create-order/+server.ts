@@ -152,7 +152,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               SELECT id, name, price, quantity, is_active
               FROM products 
               WHERE id = ${item.productId} AND is_active = true
-              LIMIT 1
             `;
             
             const product = products[0];
@@ -187,7 +186,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               SELECT id, code, type, value, minimum_order_value, max_uses, used_count, is_active
               FROM coupons 
               WHERE code = ${orderData.couponCode} AND is_active = true
-              LIMIT 1
             `;
             
             const coupon = coupons[0];
@@ -274,12 +272,27 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             
             // Buscar seller_id do produto para o order_item
             console.log(`🔍 Debug: Buscando seller_id para produto ${item.productId}...`);
-            const productSeller = await sql`
-              SELECT seller_id FROM products WHERE id = ${item.productId} LIMIT 1
-            `;
             
-            const sellerId = productSeller[0]?.seller_id || '0c882099-6a71-4f35-88b3-a467322be13b'; // Fallback para seller padrão
-            console.log(`🔍 Debug: Seller encontrado: ${sellerId}`);
+            let sellerId = '0c882099-6a71-4f35-88b3-a467322be13b'; // Fallback padrão
+            
+            try {
+              const productSeller = await sql`
+                SELECT seller_id FROM products WHERE id = ${item.productId}
+              `;
+              
+              if (productSeller[0]?.seller_id) {
+                sellerId = productSeller[0].seller_id;
+                console.log(`🔍 Debug: Seller encontrado: ${sellerId}`);
+              } else {
+                console.log(`⚠️ Debug: Seller não encontrado, usando fallback: ${sellerId}`);
+              }
+            } catch (sellerError) {
+              console.log(`⚠️ Debug: Erro ao buscar seller_id (usando fallback):`, sellerError);
+              console.log(`🔍 Debug: Detalhes do erro:`, {
+                errorMessage: sellerError instanceof Error ? sellerError.message : 'Unknown error',
+                productId: item.productId
+              });
+            }
             
             console.log(`🔍 Debug: Inserindo order_item...`);
             console.log(`🔍 Debug: order.id: ${order.id}`);

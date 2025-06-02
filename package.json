@@ -55,6 +55,7 @@
     ]
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "mongodb": "^6.16.0",
     "pg": "^8.16.0",
     "postgres": "^3.4.7",

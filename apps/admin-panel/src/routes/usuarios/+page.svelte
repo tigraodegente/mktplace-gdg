@@ -162,53 +162,126 @@
 		editingUser = null;
 	}
 	
+	async function loadUsers() {
+		loading = true;
+		
+		try {
+			// Construir query params
+			const params = new URLSearchParams({
+				page: currentPage.toString(),
+				limit: itemsPerPage.toString()
+			});
+			
+			if (filters.search) params.append('search', filters.search);
+			if (filters.role !== 'all') params.append('role', filters.role);
+			if (filters.status !== 'all') params.append('status', filters.status);
+			
+			// Buscar usuários da API
+			const response = await fetch(`/api/users?${params}`);
+			const result = await response.json();
+			
+			if (result.success) {
+				users = result.data.users;
+				totalPages = result.data.pagination.totalPages;
+				
+				// Atualizar estatísticas
+				stats = result.data.stats;
+			} else {
+				console.error('Erro ao carregar usuários:', result.error);
+			}
+		} catch (error) {
+			console.error('Erro ao carregar usuários:', error);
+			users = [];
+		} finally {
+			loading = false;
+		}
+	}
+	
 	async function saveUser() {
 		// Validações
-		if (!formData.name.trim() || !formData.email.trim()) {
-			alert('Nome e email são obrigatórios');
+		if (!formData.name || !formData.email || !formData.role) {
+			alert('Nome, email e perfil são obrigatórios');
 			return;
 		}
 		
-		if (!editingUser && (!formData.password || formData.password !== formData.confirmPassword)) {
-			alert('As senhas não coincidem');
+		if (!editingUser && !formData.password) {
+			alert('Senha é obrigatória para novos usuários');
 			return;
 		}
 		
-		console.log('Salvando usuário:', formData);
-		// Simular salvamento
-		setTimeout(() => {
-			alert(editingUser ? 'Usuário atualizado!' : 'Usuário criado!');
-			closeModal();
-			loadUsers();
-		}, 500);
+		try {
+			const url = '/api/users';
+			const method = editingUser ? 'PUT' : 'POST';
+			
+			const payload = {
+				...(editingUser && { id: editingUser.id }),
+				name: formData.name,
+				email: formData.email,
+				phone: formData.phone,
+				role: formData.role,
+				status: formData.status,
+				password: formData.password,
+				permissions: formData.permissions,
+				...(formData.role === 'vendor' && {
+					sellerInfo: {
+						companyName: formData.name,
+						commissionRate: 15
+					}
+				})
+			};
+			
+			const response = await fetch(url, {
+				method,
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				alert(editingUser ? 'Usuário atualizado!' : 'Usuário criado!');
+				closeModal();
+				loadUsers();
+			} else {
+				alert(result.error || 'Erro ao salvar usuário');
+			}
+		} catch (error) {
+			console.error('Erro ao salvar usuário:', error);
+			alert('Erro ao salvar usuário');
+		}
+	}
+	
+	async function deleteUser(id: string) {
+		if (confirm('Tem certeza que deseja desativar este usuário?')) {
+			try {
+				const response = await fetch('/api/users', {
+					method: 'DELETE',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ id })
+				});
+				
+				const result = await response.json();
+				
+				if (result.success) {
+					alert('Usuário desativado com sucesso');
+					loadUsers();
+				} else {
+					alert(result.error || 'Erro ao desativar usuário');
+				}
+			} catch (error) {
+				console.error('Erro ao desativar usuário:', error);
+				alert('Erro ao desativar usuário');
+			}
+		}
 	}
 	
 	onMount(() => {
 		loadUsers();
 	});
-	
-	async function loadUsers() {
-		loading = true;
-		
-		// Simular carregamento
-		setTimeout(() => {
-			// Dados mock
-			users = Array.from({ length: 50 }, (_, i) => ({
-				id: `user-${i + 1}`,
-				name: `Usuário ${i + 1}`,
-				email: `usuario${i + 1}@email.com`,
-				role: ['customer', 'vendor', 'admin'][Math.floor(Math.random() * 3)] as any,
-				status: ['active', 'inactive', 'pending'][Math.floor(Math.random() * 3)] as any,
-				createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
-				avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=User${i}`,
-				lastLogin: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-				totalOrders: Math.floor(Math.random() * 50),
-				totalSpent: Math.floor(Math.random() * 10000)
-			}));
-			
-			loading = false;
-		}, 1000);
-	}
 	
 	function updateStats(usrs: User[]) {
 		const totalUsers = usrs.length;
@@ -753,7 +826,7 @@
 			{/each}
 		</div>
 	{/if}
-</div> 
+</div>
 
 <!-- Modal de Criar/Editar Usuário -->
 {#if showCreateModal}
@@ -972,7 +1045,7 @@
 			</div>
 		</div>
 	</div>
-	{/if}
+{/if}
 </div>
 
 <style>
