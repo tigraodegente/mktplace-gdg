@@ -105,7 +105,7 @@
 	
 	// Paginação
 	let currentPage = $state(1);
-	let itemsPerPage = $state(10);
+	let itemsPerPage = $state(20);
 	let totalPages = $state(1);
 	
 	// Estatísticas
@@ -959,13 +959,36 @@
 	
 	<!-- Pagination -->
 	{#if totalPages > 1}
-		<div class="flex items-center justify-between">
-			<p class="text-sm text-gray-600">
-				Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, filteredProducts.length)} de {filteredProducts.length} produtos
-			</p>
+		<div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+			<div class="flex items-center gap-4">
+				<p class="text-sm text-gray-600">
+					Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, filteredProducts.length)} de {filteredProducts.length} produtos
+				</p>
+				<div class="flex items-center gap-2">
+					<label for="itemsPerPage" class="text-sm text-gray-600">Itens por página:</label>
+					<select 
+						id="itemsPerPage"
+						bind:value={itemsPerPage}
+						onchange={() => {
+							currentPage = 1; // Reset para primeira página ao mudar quantidade
+							loadProducts();
+						}}
+						class="select select-sm select-bordered"
+					>
+						<option value={10}>10</option>
+						<option value={20}>20</option>
+						<option value={50}>50</option>
+						<option value={100}>100</option>
+						<option value={999}>Todos</option>
+					</select>
+				</div>
+			</div>
 			<div class="flex items-center gap-2">
 				<button
-					onclick={() => currentPage = Math.max(1, currentPage - 1)}
+					onclick={() => {
+						currentPage = Math.max(1, currentPage - 1);
+						loadProducts();
+					}}
 					disabled={currentPage === 1}
 					class="btn btn-ghost btn-sm"
 				>
@@ -974,7 +997,10 @@
 				{#each Array(totalPages) as _, i}
 					{#if i + 1 === 1 || i + 1 === totalPages || (i + 1 >= currentPage - 1 && i + 1 <= currentPage + 1)}
 						<button
-							onclick={() => currentPage = i + 1}
+							onclick={() => {
+								currentPage = i + 1;
+								loadProducts();
+							}}
 							class="btn btn-sm {currentPage === i + 1 ? 'btn-primary' : 'btn-ghost'}"
 						>
 							{i + 1}
@@ -984,12 +1010,40 @@
 					{/if}
 				{/each}
 				<button
-					onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
+					onclick={() => {
+						currentPage = Math.min(totalPages, currentPage + 1);
+						loadProducts();
+					}}
 					disabled={currentPage === totalPages}
 					class="btn btn-ghost btn-sm"
 				>
 					Próximo
 				</button>
+			</div>
+		</div>
+	{:else if filteredProducts.length > 0}
+		<!-- Mostrar seletor mesmo quando só tem 1 página -->
+		<div class="flex items-center gap-4">
+			<p class="text-sm text-gray-600">
+				Mostrando todos os {filteredProducts.length} produtos
+			</p>
+			<div class="flex items-center gap-2">
+				<label for="itemsPerPage" class="text-sm text-gray-600">Itens por página:</label>
+				<select 
+					id="itemsPerPage"
+					bind:value={itemsPerPage}
+					onchange={() => {
+						currentPage = 1;
+						loadProducts();
+					}}
+					class="select select-sm select-bordered"
+				>
+					<option value={10}>10</option>
+					<option value={20}>20</option>
+					<option value={50}>50</option>
+					<option value={100}>100</option>
+					<option value={999}>Todos</option>
+				</select>
 			</div>
 		</div>
 	{/if}

@@ -272,29 +272,65 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               VALUES (${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, ${item.unitPrice}, ${item.totalPrice}, 'pending')
             `;
 
-            // Atualizar estoque - TEMPORARIAMENTE DESABILITADO
-            // TODO: Reativar após resolver problema de sintaxe SQL em produção
-            /*
+            // Atualizar estoque - REABILITADO com abordagem compatível
             try {
-              const currentStock = await sql`
+              // Buscar estoque atual
+              const stockResult = await sql`
                 SELECT quantity FROM products WHERE id = ${item.productId}
               `;
               
-              if (currentStock[0]) {
-                const newQuantity = Math.max(0, currentStock[0].quantity - item.quantity);
+              if (stockResult && stockResult.length > 0) {
+                const currentQuantity = parseInt(stockResult[0].quantity) || 0;
+                const newQuantity = Math.max(0, currentQuantity - item.quantity);
                 
+                // UPDATE simples e compatível
                 await sql`
                   UPDATE products 
-                  SET quantity = ${newQuantity},
-                      updated_at = NOW()
+                  SET quantity = ${newQuantity}
                   WHERE id = ${item.productId}
                 `;
+                
+                console.log(`[CREATE-ORDER] Estoque atualizado: produto ${item.productId}, de ${currentQuantity} para ${newQuantity}`);
+                
+                // Criar movimento de estoque para rastreabilidade
+                try {
+                  await sql`
+                    INSERT INTO stock_movements (
+                      product_id,
+                      type,
+                      quantity,
+                      reason,
+                      reference_id,
+                      notes,
+                      created_by
+                    ) VALUES (
+                      ${item.productId},
+                      'out',
+                      ${item.quantity},
+                      'Venda',
+                      ${order.id},
+                      ${`Pedido ${order.order_number}`},
+                      ${authResult.user!.id}
+                    )
+                  `;
+                  console.log(`[CREATE-ORDER] Movimento de estoque registrado para produto ${item.productId}`);
+                } catch (movementError) {
+                  console.log(`[CREATE-ORDER] Erro ao criar movimento de estoque (não crítico): ${movementError}`);
+                  // Continuar sem falhar - o importante é que o estoque foi atualizado
+                }
               }
             } catch (stockError) {
-              console.log(`[CREATE-ORDER] Erro ao atualizar estoque (não crítico): ${stockError}`);
-              // Continuar sem falhar a transação
+              console.error(`[CREATE-ORDER] Erro crítico ao atualizar estoque: ${stockError}`);
+              // Log detalhado para debug em produção
+              console.error('[CREATE-ORDER] Detalhes do erro:', {
+                productId: item.productId,
+                orderId: order.id,
+                errorMessage: stockError instanceof Error ? stockError.message : String(stockError),
+                errorStack: stockError instanceof Error ? stockError.stack : undefined
+              });
+              // Não falhar a transação - pedido já foi criado
+              // Administrador pode ajustar estoque manualmente se necessário
             }
-            */
           }
 
           console.log('[CREATE-ORDER] Itens criados com sucesso');
