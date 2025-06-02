@@ -272,7 +272,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               VALUES (${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, ${item.unitPrice}, ${item.totalPrice}, 'pending')
             `;
 
-            // Atualizar estoque - sem usar GREATEST para compatibilidade
+            // Atualizar estoque - TEMPORARIAMENTE DESABILITADO
+            // TODO: Reativar após resolver problema de sintaxe SQL em produção
+            /*
             try {
               const currentStock = await sql`
                 SELECT quantity FROM products WHERE id = ${item.productId}
@@ -292,6 +294,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               console.log(`[CREATE-ORDER] Erro ao atualizar estoque (não crítico): ${stockError}`);
               // Continuar sem falhar a transação
             }
+            */
           }
 
           console.log('[CREATE-ORDER] Itens criados com sucesso');
