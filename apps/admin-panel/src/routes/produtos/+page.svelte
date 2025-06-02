@@ -356,15 +356,53 @@
 			return;
 		}
 		
-		console.log('Salvando produto:', formData);
-		// Aqui faria a chamada para API
-		
-		// Simular salvamento
-		setTimeout(() => {
-			alert(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
-			closeModal();
-			loadProducts();
-		}, 500);
+		try {
+			const url = editingProduct ? '/api/products' : '/api/products';
+			const method = editingProduct ? 'PUT' : 'POST';
+			
+			const payload = {
+				...(editingProduct && { id: editingProduct.id }),
+				name: formData.name,
+				slug: formData.slug,
+				sku: formData.sku,
+				description: formData.description,
+				price: formData.price,
+				comparePrice: formData.comparePrice,
+				cost: formData.cost,
+				stock: formData.stock,
+				categoryId: formData.category,
+				tags: formData.tags,
+				images: formData.images,
+				seo: formData.seo,
+				variations: formData.variations,
+				status: formData.status,
+				featured: formData.featured,
+				weight: formData.weight,
+				dimensions: formData.dimensions,
+				barcode: formData.barcode
+			};
+			
+			const response = await fetch(url, {
+				method,
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				alert(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
+				closeModal();
+				loadProducts();
+			} else {
+				alert(result.error || 'Erro ao salvar produto');
+			}
+		} catch (error) {
+			console.error('Erro ao salvar produto:', error);
+			alert('Erro ao salvar produto');
+		}
 	}
 	
 	onMount(() => {
@@ -374,30 +412,38 @@
 	async function loadProducts() {
 		loading = true;
 		
-		// Simular carregamento
-		setTimeout(() => {
-			// Dados mock
-			products = Array.from({ length: 50 }, (_, i) => ({
-				id: `prod-${i + 1}`,
-				name: `Produto ${i + 1}`,
-				sku: `SKU-${1000 + i}`,
-				price: Math.floor(Math.random() * 5000) + 100,
-				stock: Math.floor(Math.random() * 100),
-				category: categories[Math.floor(Math.random() * categories.length)],
-				status: ['active', 'inactive', 'pending', 'draft'][Math.floor(Math.random() * 4)] as any,
-				vendor: userRole === 'vendor' ? 'Minha Loja' : `Vendedor ${Math.floor(Math.random() * 10) + 1}`,
-				image: `https://source.unsplash.com/200x200/?product,${i}`,
-				createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-				sales: Math.floor(Math.random() * 1000),
-				rating: (Math.random() * 2 + 3).toFixed(1) as any
-			}));
+		try {
+			// Construir query params
+			const params = new URLSearchParams({
+				page: currentPage.toString(),
+				limit: itemsPerPage.toString()
+			});
 			
-			if (userRole === 'vendor') {
-				products = products.filter(p => p.vendor === 'Minha Loja');
+			if (filters.search) params.append('search', filters.search);
+			if (filters.status !== 'all') params.append('status', filters.status);
+			if (filters.category !== 'all') params.append('category', filters.category);
+			
+			// Buscar produtos da API
+			const response = await fetch(`/api/products?${params}`);
+			const result = await response.json();
+			
+			if (result.success) {
+				products = result.data.products;
+				totalPages = result.data.pagination.totalPages;
+				
+				// Atualizar estatísticas
+				stats = result.data.stats;
+			} else {
+				console.error('Erro ao carregar produtos:', result.error);
+				// Mostrar mensagem de erro para o usuário
 			}
-			
+		} catch (error) {
+			console.error('Erro ao carregar produtos:', error);
+			// Fallback para lista vazia
+			products = [];
+		} finally {
 			loading = false;
-		}, 1000);
+		}
 	}
 	
 	function updateStats(prods: Product[]) {
@@ -468,14 +514,54 @@
 	
 	// Ações em lote
 	async function bulkUpdateStatus(status: Product['status']) {
-		console.log('Atualizando status de', selectedProducts.size, 'produtos para', status);
-		selectedProducts = new Set();
+		try {
+			const ids = Array.from(selectedProducts);
+			
+			// Por enquanto, fazer uma requisição por produto
+			// TODO: Criar endpoint para atualização em lote
+			for (const id of ids) {
+				await fetch('/api/products', {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ id, status })
+				});
+			}
+			
+			alert(`${ids.length} produtos atualizados`);
+			selectedProducts = new Set();
+			loadProducts();
+		} catch (error) {
+			console.error('Erro ao atualizar produtos:', error);
+			alert('Erro ao atualizar produtos');
+		}
 	}
 	
 	async function bulkDelete() {
 		if (confirm(`Tem certeza que deseja excluir ${selectedProducts.size} produtos?`)) {
-			console.log('Excluindo', selectedProducts.size, 'produtos');
-			selectedProducts = new Set();
+			try {
+				const response = await fetch('/api/products', {
+					method: 'DELETE',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ ids: Array.from(selectedProducts) })
+				});
+				
+				const result = await response.json();
+				
+				if (result.success) {
+					alert(result.data.message);
+					selectedProducts = new Set();
+					loadProducts();
+				} else {
+					alert(result.error || 'Erro ao excluir produtos');
+				}
+			} catch (error) {
+				console.error('Erro ao excluir produtos:', error);
+				alert('Erro ao excluir produtos');
+			}
 		}
 	}
 </script>
@@ -1087,7 +1173,6 @@
 							<input
 								type="text"
 								bind:value={newTag}
-								oninput={(e) => newTag = e.target.value}
 								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
 								placeholder="Digite uma nova tag"
 							/>
@@ -1107,14 +1192,12 @@
 							<input
 								type="text"
 								bind:value={newVariation.name}
-								oninput={(e) => newVariation.name = e.target.value}
 								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
 								placeholder="Nome da Variation"
 							/>
 							<input
 								type="text"
 								bind:value={newVariation.options}
-								oninput={(e) => newVariation.options = e.target.value}
 								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
 								placeholder="Opções da Variation"
 							/>
@@ -1212,7 +1295,11 @@
 								<div class="flex items-center gap-2">
 									<input
 										type="number"
-										bind:value={formData.dimensions?.length}
+										value={formData.dimensions?.length || 0}
+										oninput={(e) => {
+											if (!formData.dimensions) formData.dimensions = { length: 0, width: 0, height: 0 };
+											formData.dimensions.length = Number((e.target as HTMLInputElement).value);
+										}}
 										step="0.01"
 										min="0"
 										class="w-16 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -1220,7 +1307,11 @@
 									/>
 									<input
 										type="number"
-										bind:value={formData.dimensions?.width}
+										value={formData.dimensions?.width || 0}
+										oninput={(e) => {
+											if (!formData.dimensions) formData.dimensions = { length: 0, width: 0, height: 0 };
+											formData.dimensions.width = Number((e.target as HTMLInputElement).value);
+										}}
 										step="0.01"
 										min="0"
 										class="w-16 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -1228,7 +1319,11 @@
 									/>
 									<input
 										type="number"
-										bind:value={formData.dimensions?.height}
+										value={formData.dimensions?.height || 0}
+										oninput={(e) => {
+											if (!formData.dimensions) formData.dimensions = { length: 0, width: 0, height: 0 };
+											formData.dimensions.height = Number((e.target as HTMLInputElement).value);
+										}}
 										step="0.01"
 										min="0"
 										class="w-16 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -1314,14 +1409,19 @@
 				{:else if activeTab === 'shipping'}
 					<div class="space-y-4">
 						<label class="block text-sm font-medium text-gray-700 mb-2">
-							Frete
+							Informações de Frete
 						</label>
-						<input
-							type="text"
-							bind:value={formData.shipping}
-							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-							placeholder="Informações de frete"
-						/>
+						<p class="text-sm text-gray-500">
+							As informações de frete são calculadas automaticamente com base no peso e dimensões do produto.
+						</p>
+						{#if formData.weight}
+							<p class="text-sm">Peso: {formData.weight} kg</p>
+						{/if}
+						{#if formData.dimensions}
+							<p class="text-sm">
+								Dimensões: {formData.dimensions.length} x {formData.dimensions.width} x {formData.dimensions.height} cm
+							</p>
+						{/if}
 					</div>
 				{/if}
 			</div>

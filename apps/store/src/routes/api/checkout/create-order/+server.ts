@@ -318,7 +318,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                 // UPDATE usando template literal normal do postgres-js
                 const updateResult = await sql`
                   UPDATE products 
-                  SET quantity = ${newStock}, updated_at = NOW()
+                  SET quantity = ${newStock}, updated_at = ${new Date()}
                   WHERE id = ${item.productId}
                   RETURNING quantity
                 `;

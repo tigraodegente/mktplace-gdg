@@ -3,10 +3,26 @@
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			user?: {
+				id: string;
+				email: string;
+				name: string;
+				role: 'admin' | 'vendor' | 'customer';
+				seller_id?: string;
+				permissions?: string[];
+			};
+		}
 		// interface PageData {}
 		// interface PageState {}
-		// interface Platform {}
+		interface Platform {
+			env?: {
+				DATABASE_URL?: string;
+				[key: string]: any;
+			};
+			context?: any;
+			caches?: any;
+		}
 	}
 }
 
