@@ -315,14 +315,17 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                 
                 console.log(`🔍 Debug: Estoque atual: ${currentStock}, Novo estoque: ${newStock}`);
                 
-                // UPDATE usando sintaxe padrão do postgres
-                await sql`
+                // UPDATE usando sql.unsafe para evitar problemas com template literals
+                const updateQuery = `
                   UPDATE products 
-                  SET quantity = ${newStock}
-                  WHERE id = ${item.productId}
+                  SET quantity = $1, updated_at = NOW()
+                  WHERE id = $2
+                  RETURNING quantity
                 `;
                 
-                console.log(`✅ Debug: Estoque atualizado com sucesso!`);
+                const updateResult = await sql.unsafe(updateQuery, [newStock, item.productId]);
+                
+                console.log(`✅ Debug: Estoque atualizado com sucesso! Novo estoque: ${updateResult[0]?.quantity}`);
               }
             } catch (stockError) {
               console.log(`⚠️ Debug: Erro ao atualizar estoque (não crítico):`, stockError);
