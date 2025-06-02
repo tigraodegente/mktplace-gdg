@@ -6,6 +6,7 @@ import { DataMapper } from '../utils/data-mapper.mjs'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs/promises'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -50,17 +51,39 @@ export async function syncProducts(options = {}) {
     const db = connector.getMongoDb()
     const collection = db.collection('m_product_typesense')
     
+    // Determinar filtro de produtos
+    let filter = {}
+    let validSkus = null
+    
+    if (options.onlyValid) {
+      // Carregar SKUs do arquivo de candidatos
+      await logger.info('📄 Carregando produtos válidos de migration-candidates.json...')
+      try {
+        const candidatesFile = await fs.readFile('migration-candidates.json', 'utf8')
+        const candidates = JSON.parse(candidatesFile)
+        validSkus = new Set(candidates.candidateSkus)
+        
+        // Converter SKUs para número para corresponder ao productid do MongoDB
+        const numericSkus = Array.from(validSkus).map(sku => parseInt(sku)).filter(n => !isNaN(n))
+        filter = { productid: { $in: numericSkus } }
+        
+        await logger.info(`✅ ${validSkus.size} SKUs válidos carregados`)
+      } catch (error) {
+        throw new Error(`Erro ao carregar migration-candidates.json: ${error.message}`)
+      }
+    }
+    
     // Contar total de produtos
-    const totalCount = await collection.countDocuments()
-    await logger.info(`📊 Total de produtos no MongoDB: ${totalCount}`)
+    const totalCount = await collection.countDocuments(filter)
+    await logger.info(`📊 Total de produtos para sincronizar: ${totalCount}`)
     
     if (totalCount === 0) {
-      await logger.warn('Nenhum produto encontrado no MongoDB')
+      await logger.warn('Nenhum produto encontrado para sincronizar')
       return stats
     }
     
     // Configurações de processamento
-    const batchSize = options.batchSize || parseInt(process.env.SYNC_BATCH_SIZE) || 1000
+    const batchSize = options.batchSize || parseInt(process.env.SYNC_BATCH_SIZE) || 100
     const delayMs = options.delayMs || parseInt(process.env.SYNC_DELAY_MS) || 100
     const dryRun = options.dryRun || false
     
@@ -74,7 +97,7 @@ export async function syncProducts(options = {}) {
     
     while (skip < totalCount) {
       const batch = await collection
-        .find({})
+        .find(filter)
         .skip(skip)
         .limit(batchSize)
         .toArray()
@@ -90,9 +113,15 @@ export async function syncProducts(options = {}) {
             throw new Error('SKU não pode ser vazio')
           }
           
+          // Se estamos filtrando por SKUs válidos, verificar
+          if (validSkus && !validSkus.has(neonProduct.sku)) {
+            stats.skipped++
+            continue
+          }
+          
           // Verificar se produto existe no Neon
           const existingResult = await connector.queryNeon(
-            'SELECT id, updated_at, metadata FROM products WHERE sku = $1',
+            'SELECT id, updated_at, attributes FROM products WHERE sku = $1',
             [neonProduct.sku]
           )
           
@@ -121,8 +150,8 @@ export async function syncProducts(options = {}) {
           
           stats.total++
           
-          // Atualizar progresso a cada 100 produtos
-          if (stats.total % 100 === 0) {
+          // Atualizar progresso a cada 50 produtos (reduzido para melhor feedback)
+          if (stats.total % 50 === 0) {
             await logger.syncProgress('products', stats.total, totalCount, {
               created: stats.created,
               updated: stats.updated,
@@ -134,12 +163,14 @@ export async function syncProducts(options = {}) {
         } catch (error) {
           stats.errors++
           stats.errorDetails.push({
-            product: mongoProduct.name || mongoProduct._id,
+            product: mongoProduct.productname || mongoProduct._id,
+            sku: mongoProduct.productid,
             error: error.message
           })
           await logger.error(`❌ Erro ao processar produto: ${error.message}`, {
-            product: mongoProduct.name,
+            product: mongoProduct.productname,
             productId: mongoProduct._id,
+            sku: mongoProduct.productid,
             error
           })
           
@@ -171,6 +202,12 @@ export async function syncProducts(options = {}) {
     
     if (stats.errors > 0) {
       await logger.warn(`⚠️  ${stats.errors} produtos com erro. Verifique os logs para detalhes.`)
+      
+      // Mostrar primeiros 10 erros
+      await logger.info('\nPrimeiros erros:')
+      stats.errorDetails.slice(0, 10).forEach(err => {
+        logger.info(`  - [${err.sku}] ${err.product}: ${err.error}`)
+      })
     }
     
     return stats
@@ -194,8 +231,8 @@ function shouldUpdate(existing, mongoProduct, options) {
   // Se forçar atualização
   if (options.force) return true
   
-  // Se não tem metadata de sincronização
-  if (!existing.metadata?.imported_from) return true
+  // Se não tem atributos de sincronização
+  if (!existing.attributes?.imported_from) return true
   
   // Verificar por timestamp de atualização do MongoDB
   if (mongoProduct.updatedAt || mongoProduct.updated) {
@@ -213,18 +250,24 @@ function shouldUpdate(existing, mongoProduct, options) {
  * Criar produto no Neon
  */
 async function createProduct(connector, product) {
+  // Ajustar metadata para attributes
+  const attributes = {
+    ...product.metadata,
+    ...(product.attributes || {})
+  }
+  
   // Primeiro, criar na tabela principal
   const result = await connector.queryNeon(`
     INSERT INTO products (
       sku, barcode, name, slug, description, short_description,
-      price, compare_at_price, cost,
+      price, original_price, cost,
       quantity, track_inventory, allow_backorder,
       weight, width, height, length,
-      is_active, is_featured,
+      is_active, featured,
       meta_title, meta_description, meta_keywords,
-      category_id, brand, video_url,
-      tags, metadata,
-      created_at, updated_at
+      category_id, brand, 
+      tags, attributes,
+      created_at, updated_at, status, currency, view_count, sales_count, rating_count
     ) VALUES (
       $1, $2, $3, $4, $5, $6,
       $7, $8, $9,
@@ -232,9 +275,9 @@ async function createProduct(connector, product) {
       $13, $14, $15, $16,
       $17, $18,
       $19, $20, $21,
-      $22, $23, $24,
-      $25, $26,
-      NOW(), NOW()
+      $22, $23,
+      $24, $25,
+      NOW(), NOW(), 'published', 'BRL', 0, 0, 0
     ) RETURNING id
   `, [
     product.sku, product.barcode, product.name, product.slug, 
@@ -243,9 +286,9 @@ async function createProduct(connector, product) {
     product.quantity, product.track_inventory, product.allow_backorder,
     product.weight, product.width, product.height, product.length,
     product.is_active, product.is_featured,
-    product.meta_title, product.meta_description, product.meta_keywords,
-    product.category_id, product.brand, product.video_url,
-    JSON.stringify(product.tags), JSON.stringify(product.metadata)
+    product.meta_title, product.meta_description, product.meta_keywords || [],
+    product.category_id, product.brand,
+    product.tags || [], JSON.stringify(attributes)
   ])
   
   const productId = result.rows[0].id
@@ -256,9 +299,9 @@ async function createProduct(connector, product) {
       const img = product.images[i]
       await connector.queryNeon(`
         INSERT INTO product_images (
-          product_id, url, alt, position, is_primary
-        ) VALUES ($1, $2, $3, $4, $5)
-      `, [productId, img.url, img.alt, i, img.is_primary || false])
+          product_id, url, alt_text, position, is_primary, created_at
+        ) VALUES ($1, $2, $3, $4, $5, NOW())
+      `, [productId, img.url, img.alt_text || img.alt || 'Imagem do produto', i, img.is_primary || false])
     }
   }
   
@@ -269,6 +312,12 @@ async function createProduct(connector, product) {
  * Atualizar produto no Neon
  */
 async function updateProduct(connector, productId, product) {
+  // Ajustar metadata para attributes
+  const attributes = {
+    ...product.metadata,
+    ...(product.attributes || {})
+  }
+  
   // Atualizar produto principal
   await connector.queryNeon(`
     UPDATE products SET
@@ -278,7 +327,7 @@ async function updateProduct(connector, productId, product) {
       description = $5,
       short_description = $6,
       price = $7,
-      compare_at_price = $8,
+      original_price = $8,
       cost = $9,
       quantity = $10,
       track_inventory = $11,
@@ -288,14 +337,13 @@ async function updateProduct(connector, productId, product) {
       height = $15,
       length = $16,
       is_active = $17,
-      is_featured = $18,
+      featured = $18,
       meta_title = $19,
       meta_description = $20,
       meta_keywords = $21,
       brand = $22,
-      video_url = $23,
-      tags = $24,
-      metadata = metadata || $25,
+      tags = $23,
+      attributes = COALESCE(attributes, '{}'::jsonb) || $24::jsonb,
       updated_at = NOW()
     WHERE id = $1
   `, [
@@ -306,9 +354,9 @@ async function updateProduct(connector, productId, product) {
     product.quantity, product.track_inventory, product.allow_backorder,
     product.weight, product.width, product.height, product.length,
     product.is_active, product.is_featured,
-    product.meta_title, product.meta_description, product.meta_keywords,
-    product.brand, product.video_url,
-    JSON.stringify(product.tags), JSON.stringify(product.metadata)
+    product.meta_title, product.meta_description, product.meta_keywords || [],
+    product.brand,
+    product.tags || [], JSON.stringify(attributes)
   ])
   
   // Atualizar imagens (remover antigas e inserir novas)
@@ -319,9 +367,9 @@ async function updateProduct(connector, productId, product) {
       const img = product.images[i]
       await connector.queryNeon(`
         INSERT INTO product_images (
-          product_id, url, alt, position, is_primary
-        ) VALUES ($1, $2, $3, $4, $5)
-      `, [productId, img.url, img.alt, i, img.is_primary || false])
+          product_id, url, alt_text, position, is_primary, created_at
+        ) VALUES ($1, $2, $3, $4, $5, NOW())
+      `, [productId, img.url, img.alt_text || img.alt || 'Imagem do produto', i, img.is_primary || false])
     }
   }
 }
@@ -334,7 +382,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     batchSize: process.argv.includes('--batch-size') ? 
       parseInt(process.argv[process.argv.indexOf('--batch-size') + 1]) : undefined,
     limit: process.argv.includes('--limit') ? 
-      parseInt(process.argv[process.argv.indexOf('--limit') + 1]) : undefined
+      parseInt(process.argv[process.argv.indexOf('--limit') + 1]) : undefined,
+    onlyValid: process.argv.includes('--only-valid')
   }
   
   console.log('🚀 Iniciando sincronização de produtos...\n')
