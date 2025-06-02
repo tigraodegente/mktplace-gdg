@@ -20,13 +20,17 @@
 	// Interface
 	interface Order {
 		id: string;
-		customer: string;
-		email: string;
-		status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
-		total: number;
+		orderNumber: string;
+		customer: {
+			name: string;
+			email: string;
+			avatar?: string;
+		};
 		items: number;
-		created: string;
-		payment: string;
+		total: number;
+		status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+		paymentMethod: 'credit_card' | 'pix' | 'boleto';
+		createdAt: string;
 		vendor?: string;
 	}
 	
@@ -51,8 +55,34 @@
 	let loading = $state(true);
 	let selectedOrders = $state<Set<string>>(new Set());
 	let viewMode = $state<'list' | 'grid'>('list');
-	let showFilters = $state(true);
+	let showFilters = $state(false);
 	let userRole = $state<'admin' | 'vendor'>('admin');
+	
+	// Modal states
+	let showOrderModal = $state(false);
+	let selectedOrder = $state<Order | null>(null);
+	let showCreateModal = $state(false);
+	let orderFormData = $state({
+		customerName: '',
+		customerEmail: '',
+		customerPhone: '',
+		items: [] as Array<{
+			id: string;
+			name: string;
+			quantity: number;
+			price: number;
+		}>,
+		shippingAddress: {
+			street: '',
+			city: '',
+			state: '',
+			zipCode: '',
+			country: 'Brasil'
+		},
+		paymentMethod: 'credit_card' as 'credit_card' | 'pix' | 'boleto',
+		notes: '',
+		status: 'pending' as Order['status']
+	});
 	
 	// Filtros
 	let filters = $state<Filter>({
@@ -84,8 +114,8 @@
 		// Busca
 		if (filters.search) {
 			result = result.filter(order => 
-				order.customer.toLowerCase().includes(filters.search.toLowerCase()) || 
-				order.email.toLowerCase().includes(filters.search.toLowerCase()) ||
+				order.customer.name.toLowerCase().includes(filters.search.toLowerCase()) || 
+				order.customer.email.toLowerCase().includes(filters.search.toLowerCase()) ||
 				order.id.includes(filters.search)
 			);
 		}
@@ -97,7 +127,7 @@
 		
 		// Pagamento
 		if (filters.payment !== 'all') {
-			result = result.filter(order => order.payment === filters.payment);
+			result = result.filter(order => order.paymentMethod === filters.payment);
 		}
 		
 		filteredOrders = result;
@@ -107,6 +137,84 @@
 		// Atualizar estatísticas
 		updateStats(result);
 	});
+	
+	// Funções do modal
+	function openOrderDetails(order: Order) {
+		selectedOrder = order;
+		showOrderModal = true;
+	}
+	
+	function closeOrderModal() {
+		selectedOrder = null;
+		showOrderModal = false;
+	}
+	
+	function openCreateModal() {
+		orderFormData = {
+			customerName: '',
+			customerEmail: '',
+			customerPhone: '',
+			items: [],
+			shippingAddress: {
+				street: '',
+				city: '',
+				state: '',
+				zipCode: '',
+				country: 'Brasil'
+			},
+			paymentMethod: 'credit_card',
+			notes: '',
+			status: 'pending'
+		};
+		showCreateModal = true;
+	}
+	
+	function closeCreateModal() {
+		showCreateModal = false;
+	}
+	
+	function addItem() {
+		orderFormData.items = [...orderFormData.items, {
+			id: crypto.randomUUID(),
+			name: '',
+			quantity: 1,
+			price: 0
+		}];
+	}
+	
+	function removeItem(id: string) {
+		orderFormData.items = orderFormData.items.filter(item => item.id !== id);
+	}
+	
+	function updateOrderStatus(orderId: string, newStatus: Order['status']) {
+		const order = orders.find(o => o.id === orderId);
+		if (order) {
+			order.status = newStatus;
+			// Aqui faria a chamada para API
+			console.log(`Atualizando pedido ${orderId} para status ${newStatus}`);
+		}
+	}
+	
+	async function saveOrder() {
+		// Validações
+		if (!orderFormData.customerName || !orderFormData.customerEmail) {
+			alert('Nome e email do cliente são obrigatórios');
+			return;
+		}
+		
+		if (orderFormData.items.length === 0) {
+			alert('Adicione pelo menos um item ao pedido');
+			return;
+		}
+		
+		console.log('Salvando pedido:', orderFormData);
+		// Simular salvamento
+		setTimeout(() => {
+			alert('Pedido criado com sucesso!');
+			closeCreateModal();
+			loadOrders();
+		}, 500);
+	}
 	
 	onMount(() => {
 		loadOrders();
@@ -120,13 +228,17 @@
 			// Dados mock
 			orders = Array.from({ length: 50 }, (_, i) => ({
 				id: `${12345 + i}`,
-				customer: `Cliente ${i + 1}`,
-				email: `cliente${i + 1}@email.com`,
-				status: ['processing', 'shipped', 'delivered', 'cancelled'][Math.floor(Math.random() * 4)] as any,
-				total: Math.floor(Math.random() * 5000) + 100,
+				orderNumber: `Pedido ${i + 1}`,
+				customer: {
+					name: `Cliente ${i + 1}`,
+					email: `cliente${i + 1}@email.com`,
+					avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(`Cliente ${i + 1}`)}`
+				},
 				items: Math.floor(Math.random() * 5) + 1,
-				created: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-				payment: ['Cartão de Crédito', 'PIX', 'Boleto', 'Cartão de Débito'][Math.floor(Math.random() * 4)],
+				total: Math.floor(Math.random() * 5000) + 100,
+				status: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'][Math.floor(Math.random() * 5)] as any,
+				paymentMethod: ['credit_card', 'pix', 'boleto'][Math.floor(Math.random() * 3)] as any,
+				createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
 				vendor: userRole === 'vendor' ? 'Minha Loja' : `Vendedor ${Math.floor(Math.random() * 10) + 1}`
 			}));
 			
@@ -140,7 +252,7 @@
 	
 	function updateStats(ords: Order[]) {
 		const today = new Date().setHours(0, 0, 0, 0);
-		const ordersToday = ords.filter(o => new Date(o.created).setHours(0, 0, 0, 0) === today).length;
+		const ordersToday = ords.filter(o => new Date(o.createdAt).setHours(0, 0, 0, 0) === today).length;
 		const processing = ords.filter(o => o.status === 'processing').length;
 		const delivered = ords.filter(o => o.status === 'delivered').length;
 		const revenue = ords.reduce((sum, o) => sum + o.total, 0);
@@ -196,6 +308,7 @@
 	
 	function getStatusBadge(status: string) {
 		const badges = {
+			pending: 'badge-warning',
 			processing: 'badge-warning',
 			shipped: 'badge-info',
 			delivered: 'badge-success',
@@ -203,9 +316,10 @@
 		};
 		return badges[status as keyof typeof badges] || 'badge';
 	}
-	
+		
 	function getStatusLabel(status: string) {
 		const labels = {
+			pending: 'Pendente',
 			processing: 'Processando',
 			shipped: 'Enviado',
 			delivered: 'Entregue',
@@ -269,30 +383,38 @@
 		</div>
 		
 		<div class="flex items-center gap-3">
-			<!-- View Mode -->
-			<div class="flex items-center bg-gray-100 rounded-lg p-1">
-				<button 
+			<!-- View Toggle -->
+			<div class="flex items-center gap-2">
+				<button
 					onclick={() => viewMode = 'list'}
-					class="p-2 rounded {viewMode === 'list' ? 'bg-white shadow-sm' : ''} transition-all duration-300 hover:scale-105"
+					class="p-2 rounded-lg transition-colors {viewMode === 'list' ? 'bg-cyan-100 text-cyan-600' : 'text-gray-500 hover:bg-gray-100'}"
 					title="Visualização em lista"
 				>
-					<svg class="w-5 h-5 transition-transform duration-300 {viewMode === 'list' ? 'scale-110' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
 					</svg>
 				</button>
-				<button 
+				<button
 					onclick={() => viewMode = 'grid'}
-					class="p-2 rounded {viewMode === 'grid' ? 'bg-white shadow-sm' : ''} transition-all duration-300 hover:scale-105"
+					class="p-2 rounded-lg transition-colors {viewMode === 'grid' ? 'bg-cyan-100 text-cyan-600' : 'text-gray-500 hover:bg-gray-100'}"
 					title="Visualização em grade"
 				>
-					<svg class="w-5 h-5 transition-transform duration-300 {viewMode === 'grid' ? 'scale-110' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
 					</svg>
 				</button>
 			</div>
 			
+			<!-- Add Order Button -->
+			<button 
+				onclick={() => openCreateModal()}
+				class="btn btn-primary"
+			>
+				➕ Novo Pedido
+			</button>
+			
 			<!-- Toggle Filters -->
-			<button
+			<button 
 				onclick={() => showFilters = !showFilters}
 				class="btn btn-ghost"
 			>
@@ -324,7 +446,7 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 			{#each stats as stat, i (stat.title)}
 				<div 
 					class="stat-card group"
@@ -357,8 +479,8 @@
 					<!-- Background decoration -->
 					<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br {getColorClasses(stat.color)} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500"></div>
 				</div>
-			{/each}
-		</div>
+		{/each}
+	</div>
 	{/if}
 	
 	<!-- Filters -->
@@ -382,6 +504,7 @@
 						<label class="label">Status</label>
 						<select bind:value={filters.status} class="input">
 							<option value="all">Todos</option>
+							<option value="pending">Pendente</option>
 							<option value="processing">Processando</option>
 							<option value="shipped">Enviado</option>
 							<option value="delivered">Entregue</option>
@@ -394,10 +517,9 @@
 						<label class="label">Pagamento</label>
 						<select bind:value={filters.payment} class="input">
 							<option value="all">Todos</option>
-							<option value="Cartão de Crédito">Cartão de Crédito</option>
-							<option value="Cartão de Débito">Cartão de Débito</option>
-							<option value="PIX">PIX</option>
-							<option value="Boleto">Boleto</option>
+							<option value="credit_card">Cartão de Crédito</option>
+							<option value="pix">PIX</option>
+							<option value="boleto">Boleto</option>
 						</select>
 					</div>
 					
@@ -425,13 +547,13 @@
 						{selectedOrders.size} {selectedOrders.size === 1 ? 'pedido selecionado' : 'pedidos selecionados'}
 					</p>
 					<div class="flex items-center gap-2">
-						<button 
+			<button 
 							onclick={() => bulkUpdateStatus('shipped')}
-							class="btn btn-sm btn-ghost text-blue-600"
-						>
-							Marcar como Enviado
-						</button>
-						<button 
+				class="btn btn-sm btn-ghost text-blue-600"
+			>
+				Marcar como Enviado
+			</button>
+			<button 
 							onclick={() => bulkUpdateStatus('delivered')}
 							class="btn btn-sm btn-ghost text-green-600"
 						>
@@ -439,16 +561,16 @@
 						</button>
 						<button 
 							onclick={() => bulkUpdateStatus('cancelled')}
-							class="btn btn-sm btn-ghost text-red-600"
-						>
-							Cancelar
-						</button>
-						<button 
-							onclick={() => selectedOrders = new Set()}
-							class="btn btn-sm btn-ghost"
-						>
-							Limpar Seleção
-						</button>
+				class="btn btn-sm btn-ghost text-red-600"
+			>
+				Cancelar
+			</button>
+			<button 
+				onclick={() => selectedOrders = new Set()}
+				class="btn btn-sm btn-ghost"
+			>
+				Limpar Seleção
+			</button>
 					</div>
 				</div>
 			</div>
@@ -521,8 +643,8 @@
 								</td>
 								<td>
 									<div>
-										<p class="font-medium text-gray-900">{order.customer}</p>
-										<p class="text-sm text-gray-500">{order.email}</p>
+										<p class="font-medium text-gray-900">{order.customer.name}</p>
+										<p class="text-sm text-gray-500">{order.customer.email}</p>
 									</div>
 								</td>
 								<td>
@@ -531,40 +653,41 @@
 									</span>
 								</td>
 								<td class="font-medium">{formatPrice(order.total)}</td>
-								<td>{order.payment}</td>
+								<td>{order.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : order.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}</td>
 								{#if userRole === 'admin'}
 									<td>{order.vendor}</td>
 								{/if}
-								<td>{formatDate(order.created)}</td>
+								<td>{formatDate(order.createdAt)}</td>
 								<td>
 									<div class="flex items-center justify-end gap-1">
-										<button
-											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
+				<button
+											onclick={() => openOrderDetails(order)}
+											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
 											title="Ver detalhes"
 										>
-											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
 											</svg>
 										</button>
-										<button
+				<button
 											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
-											title="Editar"
-										>
+					title="Editar"
+				>
 											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
 											</svg>
-										</button>
+				</button>
 										{#if order.status !== 'cancelled' && order.status !== 'delivered'}
-											<button
+					<button
 												class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
-												title="Cancelar"
-											>
+						title="Cancelar"
+					>
 												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 												</svg>
-											</button>
-										{/if}
+					</button>
+				{/if}
 									</div>
 								</td>
 							</tr>
@@ -628,7 +751,7 @@
 								</div>
 								<div>
 									<p class="font-semibold text-gray-900">Pedido #{order.id}</p>
-									<p class="text-sm text-gray-500">{formatDate(order.created)}</p>
+									<p class="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
 								</div>
 							</div>
 							<span class="badge {getStatusBadge(order.status)}">
@@ -639,8 +762,8 @@
 						<div class="space-y-3">
 							<div>
 								<p class="text-sm text-gray-600">Cliente</p>
-								<p class="font-medium">{order.customer}</p>
-								<p class="text-sm text-gray-500">{order.email}</p>
+								<p class="font-medium">{order.customer.name}</p>
+								<p class="text-sm text-gray-500">{order.customer.email}</p>
 							</div>
 							
 							<div class="flex justify-between items-center">
@@ -650,16 +773,22 @@
 								</div>
 								<div class="text-right">
 									<p class="text-sm text-gray-600">{order.items} {order.items > 1 ? 'itens' : 'item'}</p>
-									<p class="text-sm font-medium">{order.payment}</p>
+									<p class="text-sm font-medium">{order.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : order.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}</p>
 								</div>
 							</div>
 						</div>
 						
 						<div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-							<button class="btn btn-sm btn-ghost flex-1">
+							<button 
+								onclick={() => openOrderDetails(order)}
+								class="btn btn-sm btn-ghost flex-1"
+							>
 								Ver Detalhes
 							</button>
-							<button class="btn btn-sm btn-primary flex-1">
+							<button 
+								onclick={() => updateOrderStatus(order.id, 'processing')}
+								class="btn btn-sm btn-primary flex-1"
+							>
 								Gerenciar
 							</button>
 						</div>
@@ -668,7 +797,523 @@
 			{/each}
 		</div>
 	{/if}
-</div>
+	
+	<!-- Modal de Detalhes do Pedido -->
+	{#if showOrderModal && selectedOrder}
+		<div 
+			class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+			transition:fade={{ duration: 200 }}
+			onclick={closeOrderModal}
+		>
+			<div 
+				class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+				transition:scale={{ duration: 300, easing: backOut }}
+				onclick={(e) => e.stopPropagation()}
+			>
+				<!-- Header -->
+				<div class="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 text-white">
+					<div class="flex items-center justify-between">
+						<div>
+							<h2 class="text-2xl font-bold flex items-center gap-3">
+								📦 Pedido #{selectedOrder.id}
+							</h2>
+							<p class="text-cyan-100 mt-1">Criado em {formatDate(selectedOrder.createdAt)}</p>
+						</div>
+						<button 
+							onclick={closeOrderModal}
+							class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+						>
+							✕
+						</button>
+					</div>
+				</div>
+				
+				<!-- Content -->
+				<div class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+					<!-- Status e Ações -->
+					<div class="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+						<div class="flex items-center gap-4">
+							<span class="text-lg font-semibold">Status:</span>
+							<span class="badge badge-lg {getStatusBadge(selectedOrder.status)}">
+								{getStatusLabel(selectedOrder.status)}
+							</span>
+						</div>
+						<div class="flex items-center gap-2">
+							{#if selectedOrder.status === 'pending'}
+								<button 
+									onclick={() => updateOrderStatus(selectedOrder.id, 'processing')}
+									class="btn btn-sm btn-primary"
+								>
+									Processar Pedido
+								</button>
+							{:else if selectedOrder.status === 'processing'}
+								<button 
+									onclick={() => updateOrderStatus(selectedOrder.id, 'shipped')}
+									class="btn btn-sm btn-info"
+								>
+									Marcar como Enviado
+								</button>
+							{:else if selectedOrder.status === 'shipped'}
+								<button 
+									onclick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
+									class="btn btn-sm btn-success"
+								>
+									Marcar como Entregue
+								</button>
+							{/if}
+							{#if selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'delivered'}
+								<button 
+									onclick={() => updateOrderStatus(selectedOrder.id, 'cancelled')}
+									class="btn btn-sm btn-danger"
+								>
+									Cancelar Pedido
+								</button>
+							{/if}
+						</div>
+					</div>
+					
+					<!-- Informações do Cliente -->
+					<div class="bg-white border border-gray-200 rounded-lg p-4">
+						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+							👤 Informações do Cliente
+						</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<p class="text-sm text-gray-600">Nome</p>
+								<p class="font-medium">{selectedOrder.customer.name}</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Email</p>
+								<p class="font-medium">{selectedOrder.customer.email}</p>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Itens do Pedido -->
+					<div class="bg-white border border-gray-200 rounded-lg p-4">
+						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+							🛍️ Itens do Pedido
+						</h3>
+						<div class="space-y-3">
+							{#each Array(selectedOrder.items) as _, i}
+								<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+									<div class="flex items-center gap-3">
+										<div class="w-12 h-12 bg-gray-200 rounded-lg"></div>
+										<div>
+											<p class="font-medium">Produto {i + 1}</p>
+											<p class="text-sm text-gray-600">SKU: PROD-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+										</div>
+									</div>
+									<div class="text-right">
+										<p class="font-medium">{formatPrice(Math.random() * 500 + 50)}</p>
+										<p class="text-sm text-gray-600">Qtd: {Math.floor(Math.random() * 3) + 1}</p>
+									</div>
+								</div>
+							{/each}
+						</div>
+						
+						<!-- Resumo -->
+						<div class="mt-4 pt-4 border-t border-gray-200 space-y-2">
+							<div class="flex justify-between text-sm">
+								<span class="text-gray-600">Subtotal</span>
+								<span>{formatPrice(selectedOrder.total * 0.85)}</span>
+							</div>
+							<div class="flex justify-between text-sm">
+								<span class="text-gray-600">Frete</span>
+								<span>{formatPrice(selectedOrder.total * 0.1)}</span>
+							</div>
+							<div class="flex justify-between text-sm">
+								<span class="text-gray-600">Impostos</span>
+								<span>{formatPrice(selectedOrder.total * 0.05)}</span>
+							</div>
+							<div class="flex justify-between font-semibold text-lg pt-2 border-t">
+								<span>Total</span>
+								<span>{formatPrice(selectedOrder.total)}</span>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Informações de Pagamento -->
+					<div class="bg-white border border-gray-200 rounded-lg p-4">
+						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+							💳 Informações de Pagamento
+						</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<p class="text-sm text-gray-600">Método</p>
+								<p class="font-medium">
+									{selectedOrder.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : 
+									 selectedOrder.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}
+								</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Status do Pagamento</p>
+								<p class="font-medium text-green-600">Aprovado</p>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Timeline -->
+					<div class="bg-white border border-gray-200 rounded-lg p-4">
+						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+							📍 Histórico do Pedido
+						</h3>
+						<div class="space-y-4">
+							<div class="flex gap-4">
+								<div class="flex flex-col items-center">
+									<div class="w-3 h-3 bg-green-500 rounded-full"></div>
+									<div class="w-0.5 h-full bg-gray-200"></div>
+								</div>
+								<div class="pb-4">
+									<p class="font-medium">Pedido Criado</p>
+									<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 10:30</p>
+								</div>
+							</div>
+							{#if selectedOrder.status !== 'pending'}
+								<div class="flex gap-4">
+									<div class="flex flex-col items-center">
+										<div class="w-3 h-3 bg-green-500 rounded-full"></div>
+										<div class="w-0.5 h-full bg-gray-200"></div>
+									</div>
+									<div class="pb-4">
+										<p class="font-medium">Pagamento Aprovado</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 10:35</p>
+									</div>
+								</div>
+							{/if}
+							{#if ['processing', 'shipped', 'delivered'].includes(selectedOrder.status)}
+								<div class="flex gap-4">
+									<div class="flex flex-col items-center">
+										<div class="w-3 h-3 bg-green-500 rounded-full"></div>
+										<div class="w-0.5 h-full bg-gray-200"></div>
+									</div>
+									<div class="pb-4">
+										<p class="font-medium">Em Processamento</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 11:00</p>
+									</div>
+								</div>
+							{/if}
+							{#if ['shipped', 'delivered'].includes(selectedOrder.status)}
+								<div class="flex gap-4">
+									<div class="flex flex-col items-center">
+										<div class="w-3 h-3 bg-green-500 rounded-full"></div>
+										<div class="w-0.5 h-full bg-gray-200"></div>
+									</div>
+									<div class="pb-4">
+										<p class="font-medium">Enviado</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 14:00</p>
+									</div>
+								</div>
+							{/if}
+							{#if selectedOrder.status === 'delivered'}
+								<div class="flex gap-4">
+									<div class="flex flex-col items-center">
+										<div class="w-3 h-3 bg-green-500 rounded-full"></div>
+									</div>
+									<div>
+										<p class="font-medium">Entregue</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 16:30</p>
+									</div>
+								</div>
+							{/if}
+							{#if selectedOrder.status === 'cancelled'}
+								<div class="flex gap-4">
+									<div class="flex flex-col items-center">
+										<div class="w-3 h-3 bg-red-500 rounded-full"></div>
+									</div>
+									<div>
+										<p class="font-medium text-red-600">Cancelado</p>
+										<p class="text-sm text-gray-600">{formatDate(selectedOrder.createdAt)} às 12:00</p>
+									</div>
+								</div>
+							{/if}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+	
+	<!-- Modal de Criar Pedido -->
+	{#if showCreateModal}
+		<div 
+			class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+			transition:fade={{ duration: 200 }}
+			onclick={closeCreateModal}
+		>
+			<div 
+				class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+				transition:scale={{ duration: 300, easing: backOut }}
+				onclick={(e) => e.stopPropagation()}
+			>
+				<!-- Header -->
+				<div class="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 text-white">
+					<div class="flex items-center justify-between">
+						<h2 class="text-2xl font-bold flex items-center gap-3">
+							📦 Novo Pedido
+						</h2>
+						<button 
+							onclick={closeCreateModal}
+							class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+						>
+							✕
+						</button>
+					</div>
+				</div>
+				
+				<!-- Content -->
+				<div class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+					<!-- Cliente -->
+					<div class="space-y-4">
+						<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+							👤 Informações do Cliente
+						</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Nome *
+								</label>
+								<input
+									type="text"
+									bind:value={orderFormData.customerName}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="João Silva"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Email *
+								</label>
+								<input
+									type="email"
+									bind:value={orderFormData.customerEmail}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="joao@email.com"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Telefone
+								</label>
+								<input
+									type="tel"
+									bind:value={orderFormData.customerPhone}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="(11) 98765-4321"
+								/>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Itens -->
+					<div class="space-y-4">
+						<div class="flex items-center justify-between">
+							<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+								🛍️ Itens do Pedido
+							</h3>
+							<button
+								onclick={addItem}
+								class="btn btn-sm btn-primary"
+							>
+								➕ Adicionar Item
+							</button>
+						</div>
+						
+						{#if orderFormData.items.length === 0}
+							<div class="text-center py-8 bg-gray-50 rounded-lg">
+								<p class="text-gray-500">Nenhum item adicionado</p>
+								<button
+									onclick={addItem}
+									class="mt-2 text-cyan-600 hover:text-cyan-700"
+								>
+									Adicionar primeiro item
+								</button>
+							</div>
+						{:else}
+							<div class="space-y-3">
+								{#each orderFormData.items as item, index}
+									<div class="bg-gray-50 rounded-lg p-4">
+										<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+											<div class="md:col-span-2">
+												<label class="block text-sm font-medium text-gray-700 mb-1">
+													Produto
+												</label>
+												<input
+													type="text"
+													bind:value={item.name}
+													class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+													placeholder="Nome do produto"
+												/>
+											</div>
+											<div>
+												<label class="block text-sm font-medium text-gray-700 mb-1">
+													Quantidade
+												</label>
+												<input
+													type="number"
+													bind:value={item.quantity}
+													min="1"
+													class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+												/>
+											</div>
+											<div>
+												<label class="block text-sm font-medium text-gray-700 mb-1">
+													Preço
+												</label>
+												<div class="relative">
+													<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+													<input
+														type="number"
+														bind:value={item.price}
+														step="0.01"
+														min="0"
+														class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+													/>
+												</div>
+											</div>
+										</div>
+										<div class="mt-3 flex items-center justify-between">
+											<p class="text-sm text-gray-600">
+												Subtotal: {formatPrice(item.quantity * item.price)}
+											</p>
+											<button
+												onclick={() => removeItem(item.id)}
+												class="text-red-600 hover:text-red-700"
+											>
+												🗑️ Remover
+											</button>
+										</div>
+									</div>
+								{/each}
+							</div>
+							
+							<!-- Total -->
+							<div class="bg-cyan-50 rounded-lg p-4 text-right">
+								<p class="text-lg font-semibold">
+									Total: {formatPrice(orderFormData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0))}
+								</p>
+							</div>
+						{/if}
+					</div>
+					
+					<!-- Endereço -->
+					<div class="space-y-4">
+						<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+							📍 Endereço de Entrega
+						</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div class="md:col-span-2">
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Endereço
+								</label>
+								<input
+									type="text"
+									bind:value={orderFormData.shippingAddress.street}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="Rua das Flores, 123"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Cidade
+								</label>
+								<input
+									type="text"
+									bind:value={orderFormData.shippingAddress.city}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="São Paulo"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Estado
+								</label>
+								<input
+									type="text"
+									bind:value={orderFormData.shippingAddress.state}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="SP"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									CEP
+								</label>
+								<input
+									type="text"
+									bind:value={orderFormData.shippingAddress.zipCode}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="01234-567"
+								/>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Pagamento e Observações -->
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Método de Pagamento
+							</label>
+							<select
+								bind:value={orderFormData.paymentMethod}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							>
+								<option value="credit_card">Cartão de Crédito</option>
+								<option value="pix">PIX</option>
+								<option value="boleto">Boleto</option>
+							</select>
+						</div>
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Status do Pedido
+							</label>
+							<select
+								bind:value={orderFormData.status}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							>
+								<option value="pending">Pendente</option>
+								<option value="processing">Processando</option>
+								<option value="shipped">Enviado</option>
+								<option value="delivered">Entregue</option>
+							</select>
+						</div>
+					</div>
+					
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Observações
+						</label>
+						<textarea
+							bind:value={orderFormData.notes}
+							rows="3"
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							placeholder="Observações sobre o pedido..."
+						></textarea>
+					</div>
+				</div>
+				
+				<!-- Footer -->
+				<div class="border-t border-gray-200 p-6">
+					<div class="flex items-center justify-between">
+						<button
+							onclick={closeCreateModal}
+							class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+						>
+							Cancelar
+						</button>
+						<button
+							onclick={saveOrder}
+							class="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+						>
+							Criar Pedido
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+</div> 
 
 <style>
 	/* Animações customizadas para os cards */

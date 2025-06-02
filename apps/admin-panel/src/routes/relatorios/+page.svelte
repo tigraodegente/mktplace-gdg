@@ -91,30 +91,30 @@
 		// Simular carregamento
 		setTimeout(() => {
 			stats = [
-				{
-					title: 'Vendas Este Mês',
-					value: 'R$ 124,5K',
+    { 
+      title: 'Vendas Este Mês', 
+      value: 'R$ 124,5K', 
 					change: 26.8,
 					icon: '💰',
 					color: 'primary'
-				},
-				{
-					title: 'Pedidos Totais',
-					value: '1,543',
+    },
+    { 
+      title: 'Pedidos Totais', 
+      value: '1,543', 
 					change: 18,
 					icon: '📋',
 					color: 'info'
-				},
-				{
-					title: 'Produtos Ativos',
-					value: '2,234',
+    },
+    { 
+      title: 'Produtos Ativos', 
+      value: '2,234', 
 					change: 12,
 					icon: '📦',
 					color: 'success'
-				},
-				{
-					title: 'Usuários Ativos',
-					value: '1,234',
+    },
+    { 
+      title: 'Usuários Ativos', 
+      value: '1,234', 
 					change: 8,
 					icon: '👥',
 					color: 'warning'
@@ -124,8 +124,8 @@
 			loading = false;
 		}, 1000);
 	}
-	
-	function formatPrice(price: number): string {
+
+  function formatPrice(price: number): string {
 		return new Intl.NumberFormat('pt-BR', {
 			style: 'currency',
 			currency: 'BRL'
@@ -141,22 +141,22 @@
 			info: 'from-blue-500 to-blue-600'
 		};
 		return colors[color as keyof typeof colors] || colors.primary;
-	}
-	
+  }
+
 	function handleGenerateReport(type: string) {
-		console.log('Gerar relatório:', type);
+    console.log('Gerar relatório:', type);
 		// Implementar geração de relatório
-	}
-	
+  }
+
 	function handleExportPDF() {
-		console.log('Exportar relatório PDF');
+    console.log('Exportar relatório PDF');
 		// Implementar exportação
-	}
-	
+  }
+
 	function handleCustomPeriod() {
 		showCustomPeriod = true;
 		// Implementar seleção de período personalizado
-	}
+  }
 </script>
 
 <div class="space-y-6">
@@ -168,7 +168,7 @@
 			</h1>
 			<p class="text-gray-600 mt-1">Análise completa de performance e vendas</p>
 		</div>
-		
+
 		<div class="flex items-center gap-3">
 			<!-- Period Selector -->
 			<select 
@@ -181,39 +181,39 @@
 				<option value="year">Este Ano</option>
 			</select>
 			
-			<button
+        <button 
 				onclick={handleCustomPeriod}
 				class="btn btn-ghost"
-			>
-				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-				</svg>
-				Período Personalizado
-			</button>
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          Período Personalizado
+        </button>
 			
-			<button
+        <button 
 				onclick={handleExportPDF}
 				class="btn btn-primary"
-			>
-				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-				</svg>
-				Exportar PDF
-			</button>
-		</div>
-	</div>
-	
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Exportar PDF
+        </button>
+  </div>
+</div>
+
 	<!-- Stats Cards -->
 	{#if loading}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 			{#each Array(4) as _, i}
 				<div class="stat-card animate-pulse">
 					<div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
 					<div class="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
 					<div class="h-3 bg-gray-200 rounded w-1/3"></div>
-				</div>
+        </div>
 			{/each}
-		</div>
+        </div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 			{#each stats as stat, i (stat.title)}
@@ -223,61 +223,61 @@
 					out:scale={{ duration: 200 }}
 				>
 					<div class="relative z-10">
-						<div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between mb-4">
 							<div class="text-2xl transform group-hover:scale-110 transition-transform duration-300">{stat.icon}</div>
 							{#if stat.change}
 								<div class="flex items-center gap-1" in:fade={{ duration: 300, delay: 400 + i * 100 }}>
 									{#if stat.change > 0}
 										<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-										</svg>
+          </svg>
 										<span class="text-sm font-semibold text-green-500">+{stat.change}%</span>
 									{:else}
 										<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-										</svg>
+        </svg>
 										<span class="text-sm font-semibold text-red-500">{stat.change}%</span>
 									{/if}
-								</div>
+      </div>
 							{/if}
-						</div>
+    </div>
 						<h3 class="text-sm font-medium text-gray-600 mb-1">{stat.title}</h3>
 						<p class="text-2xl font-bold text-gray-900 transition-all duration-300 group-hover:scale-105">{stat.value}</p>
-					</div>
-					
+    </div>
+
 					<!-- Background decoration -->
 					<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br {getColorClasses(stat.color)} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500"></div>
-				</div>
+        </div>
 			{/each}
-		</div>
+        </div>
 	{/if}
-	
-	<!-- Charts Section -->
-	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-		<!-- Sales Chart -->
+
+  <!-- Charts Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Sales Chart -->
 		<div class="card" in:fly={{ x: -20, duration: 600, delay: 400 }}>
 			<div class="card-header">
 				<h2 class="text-lg font-semibold text-gray-900">Vendas por Período</h2>
-			</div>
+      </div>
 			<div class="card-body">
 				{#if loading}
 					<div class="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
 				{:else}
 					<!-- Chart placeholder -->
 					<div class="h-64 flex items-center justify-center bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg">
-						<div class="text-center">
+          <div class="text-center">
 							<svg class="w-16 h-16 text-cyan-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-							</svg>
+            </svg>
 							<p class="text-cyan-700 font-medium">Gráfico de vendas aqui</p>
 							<p class="text-cyan-600 text-sm mt-1">Integração com biblioteca de gráficos</p>
-						</div>
-					</div>
+          </div>
+        </div>
 				{/if}
-			</div>
-		</div>
-		
-		<!-- Top Products -->
+      </div>
+    </div>
+    
+    <!-- Top Products -->
 		<div class="card" in:fly={{ x: 20, duration: 600, delay: 400 }}>
 			<div class="card-header">
 				<h2 class="text-lg font-semibold text-gray-900">Produtos Mais Vendidos</h2>
@@ -298,9 +298,9 @@
 								</div>
 							</div>
 						{/each}
-					</div>
+      </div>
 				{:else}
-					<div class="space-y-4">
+        <div class="space-y-4">
 						{#each topProducts as product, i}
 							<div 
 								class="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-[1.02] cursor-pointer"
@@ -308,55 +308,55 @@
 							>
 								<div class="flex items-center gap-3">
 									<div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center text-lg transform hover:scale-110 transition-transform">
-										{product.image}
-									</div>
-									<div>
+                  {product.image}
+                </div>
+                <div>
 										<p class="font-medium text-gray-900">{product.name}</p>
 										<p class="text-sm text-gray-500">{product.sales} vendas</p>
-									</div>
-								</div>
-								<div class="text-right">
+                </div>
+              </div>
+              <div class="text-right">
 									<p class="font-medium text-gray-900">{formatPrice(product.revenue)}</p>
 									<p class="text-sm text-green-600">+{product.growth}%</p>
-								</div>
-							</div>
-						{/each}
-					</div>
+              </div>
+            </div>
+          {/each}
+        </div>
 				{/if}
-			</div>
-		</div>
-	</div>
-	
-	<!-- Reports Grid -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 		{#each reportData as report, i}
 			<div 
 				class="card text-center hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
 				in:scale={{ duration: 400, delay: 600 + i * 50, easing: backOut }}
 			>
 				<div class="card-body">
-					<h4 class="text-lg font-semibold text-gray-900 mb-3">{report.name}</h4>
+        <h4 class="text-lg font-semibold text-gray-900 mb-3">{report.name}</h4>
 					<p class="text-3xl font-bold text-cyan-600 mb-3">{report.value}</p>
-					<div class="flex items-center justify-center text-sm">
-						{#if report.type === 'positive'}
-							<svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
-							</svg>
-							<span class="text-green-600 font-semibold">{report.change}</span>
-						{:else}
-							<svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"/>
-							</svg>
-							<span class="text-red-600 font-semibold">{report.change}</span>
-						{/if}
+        <div class="flex items-center justify-center text-sm">
+          {#if report.type === 'positive'}
+            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+            </svg>
+            <span class="text-green-600 font-semibold">{report.change}</span>
+          {:else}
+            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"/>
+            </svg>
+            <span class="text-red-600 font-semibold">{report.change}</span>
+          {/if}
 					</div>
-				</div>
-			</div>
-		{/each}
-	</div>
-	
-	<!-- Detailed Reports -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+      </div>
+    {/each}
+  </div>
+
+  <!-- Detailed Reports -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 		<div 
 			class="card group hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
 			in:fly={{ y: 20, duration: 600, delay: 800 }}
@@ -364,20 +364,20 @@
 			<div class="card-body">
 				<div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
 					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-					</svg>
-				</div>
-				<h4 class="text-lg font-semibold text-gray-900 mb-2">Relatório Financeiro</h4>
-				<p class="text-gray-600 text-sm mb-4">Análise completa de receitas, despesas e lucros</p>
-				<button 
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <h4 class="text-lg font-semibold text-gray-900 mb-2">Relatório Financeiro</h4>
+      <p class="text-gray-600 text-sm mb-4">Análise completa de receitas, despesas e lucros</p>
+      <button 
 					onclick={() => handleGenerateReport('financeiro')}
 					class="btn btn-primary w-full"
-				>
-					Gerar Relatório
-				</button>
+      >
+        Gerar Relatório
+      </button>
 			</div>
-		</div>
-		
+    </div>
+    
 		<div 
 			class="card group hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
 			in:fly={{ y: 20, duration: 600, delay: 900 }}
@@ -385,20 +385,20 @@
 			<div class="card-body">
 				<div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
 					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
-					</svg>
-				</div>
-				<h4 class="text-lg font-semibold text-gray-900 mb-2">Análise de Usuários</h4>
-				<p class="text-gray-600 text-sm mb-4">Comportamento, engajamento e segmentação</p>
-				<button 
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+        </svg>
+      </div>
+      <h4 class="text-lg font-semibold text-gray-900 mb-2">Análise de Usuários</h4>
+      <p class="text-gray-600 text-sm mb-4">Comportamento, engajamento e segmentação</p>
+      <button 
 					onclick={() => handleGenerateReport('usuarios')}
 					class="btn btn-primary w-full"
-				>
-					Ver Análise
-				</button>
+      >
+        Ver Análise
+      </button>
 			</div>
-		</div>
-		
+    </div>
+    
 		<div 
 			class="card group hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
 			in:fly={{ y: 20, duration: 600, delay: 1000 }}
@@ -406,17 +406,17 @@
 			<div class="card-body">
 				<div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
 					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-					</svg>
-				</div>
-				<h4 class="text-lg font-semibold text-gray-900 mb-2">Performance de Produtos</h4>
-				<p class="text-gray-600 text-sm mb-4">Ranking de vendas e análise de estoque</p>
-				<button 
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
+      </div>
+      <h4 class="text-lg font-semibold text-gray-900 mb-2">Performance de Produtos</h4>
+      <p class="text-gray-600 text-sm mb-4">Ranking de vendas e análise de estoque</p>
+      <button 
 					onclick={() => handleGenerateReport('produtos')}
 					class="btn btn-primary w-full"
-				>
-					Ver Performance
-				</button>
+      >
+        Ver Performance
+      </button>
 			</div>
 		</div>
 	</div>
@@ -445,8 +445,8 @@
 					<p class="text-sm font-medium text-gray-700">Configurar</p>
 				</button>
 			</div>
-		</div>
-	</div>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -458,5 +458,5 @@
 	:global(.stat-card:hover) {
 		transform: translateY(-4px) scale(1.02);
 		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-	}
+  }
 </style> 

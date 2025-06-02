@@ -232,7 +232,7 @@
 			cancelled: 'Cancelada'
 		};
 		return labels[status as keyof typeof labels] || status;
-	}
+			}
 	
 	function formatPrice(price: number) {
 		return new Intl.NumberFormat('pt-BR', {
@@ -343,7 +343,7 @@
 			</button>
 		</div>
 	</div>
-	
+
 	<!-- Stats Cards -->
 	{#if loading}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -379,20 +379,20 @@
 										</svg>
 										<span class="text-sm font-semibold text-red-500">{stat.change}%</span>
 									{/if}
-								</div>
+						</div>
 							{/if}
 						</div>
 						<h3 class="text-sm font-medium text-gray-600 mb-1">{stat.title}</h3>
 						<p class="text-2xl font-bold text-gray-900 transition-all duration-300 group-hover:scale-105">{stat.value}</p>
-					</div>
-					
+		</div>
+
 					<!-- Background decoration -->
 					<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br {getColorClasses(stat.color)} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500"></div>
 				</div>
 			{/each}
 		</div>
 	{/if}
-	
+
 	<!-- Filters -->
 	{#if showFilters}
 		<div class="card" transition:slide={{ duration: 300 }}>
@@ -401,36 +401,36 @@
 					<!-- Search -->
 					<div>
 						<label class="label">Buscar</label>
-						<input
-							type="text"
+					<input
+						type="text"
 							bind:value={filters.search}
 							placeholder="Título ou proprietário..."
 							class="input"
-						/>
-					</div>
+					/>
+				</div>
 					
 					<!-- Type -->
-					<div>
+				<div>
 						<label class="label">Tipo</label>
 						<select bind:value={filters.type} class="input">
 							<option value="all">Todos os tipos</option>
-							<option value="baby_shower">Chá de Bebê</option>
-							<option value="wedding">Casamento</option>
-							<option value="birthday">Aniversário</option>
-							<option value="custom">Personalizado</option>
-						</select>
-					</div>
+						<option value="baby_shower">Chá de Bebê</option>
+						<option value="wedding">Casamento</option>
+						<option value="birthday">Aniversário</option>
+						<option value="custom">Personalizado</option>
+					</select>
+				</div>
 					
 					<!-- Status -->
-					<div>
+				<div>
 						<label class="label">Status</label>
 						<select bind:value={filters.status} class="input">
 							<option value="all">Todos os status</option>
-							<option value="active">Ativa</option>
-							<option value="completed">Completa</option>
-							<option value="expired">Expirada</option>
-							<option value="cancelled">Cancelada</option>
-						</select>
+						<option value="active">Ativa</option>
+						<option value="completed">Completa</option>
+						<option value="expired">Expirada</option>
+						<option value="cancelled">Cancelada</option>
+					</select>
 					</div>
 					
 					<!-- Date Range -->
@@ -447,7 +447,7 @@
 			</div>
 		</div>
 	{/if}
-	
+
 	<!-- Bulk Actions -->
 	{#if selectedLists.size > 0}
 		<div class="card bg-cyan-50 border-cyan-200" transition:slide={{ duration: 300 }}>
@@ -480,9 +480,9 @@
 			</div>
 		</div>
 	{/if}
-	
+		
 	<!-- Lists Table/Grid -->
-	{#if loading}
+		{#if loading}
 		<div class="card">
 			<div class="card-body">
 				<div class="flex items-center justify-center py-12">
@@ -568,7 +568,7 @@
 												class="bg-gradient-to-r from-cyan-500 to-cyan-600 h-2 rounded-full transition-all duration-300"
 												style="width: {list.completion_percentage}%"
 											></div>
-										</div>
+								</div>
 										<span class="text-sm font-medium text-gray-700">{list.completion_percentage}%</span>
 									</div>
 								</td>
@@ -612,7 +612,7 @@
 						{/each}
 					</tbody>
 				</table>
-			</div>
+								</div>
 			
 			<!-- Pagination -->
 			{#if totalPages > 1}
@@ -707,15 +707,15 @@
 								Ver Detalhes
 							</button>
 							<button onclick={() => suspendList(list)} class="btn btn-sm btn-danger flex-1">
-								Suspender
-							</button>
+										Suspender
+									</button>
+								</div>
+							</div>
 						</div>
-					</div>
-				</div>
-			{/each}
+				{/each}
 		</div>
-	{/if}
-</div>
+		{/if}
+	</div>
 
 <style>
 	/* Animações customizadas para os cards */

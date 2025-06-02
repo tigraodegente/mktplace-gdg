@@ -58,6 +58,23 @@
 	let showCreateModal = $state(false);
 	let editingCoupon = $state<Coupon | null>(null);
 	let userRole = $state<'admin' | 'vendor'>('admin');
+	let formData = $state({
+		code: '',
+		description: '',
+		type: 'percentage' as 'percentage' | 'fixed' | 'free_shipping',
+		value: 0,
+		minPurchase: 0,
+		maxDiscount: 0,
+		usageLimit: 0,
+		usagePerCustomer: 1,
+		validFrom: new Date().toISOString().split('T')[0],
+		validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+		isActive: true,
+		categories: [] as string[],
+		products: [] as string[],
+		excludeProducts: [] as string[],
+		customerGroups: [] as string[]
+	});
 	
 	// Filtros
 	let filters = $state<Filter>({
@@ -74,23 +91,6 @@
 	
 	// Stats
 	let stats = $state<StatCard[]>([]);
-	
-	// Formulário
-	let form = $state({
-		code: '',
-		description: '',
-		type: 'percentage' as 'percentage' | 'fixed' | 'free_shipping',
-		value: 0,
-		min_purchase: 0,
-		max_discount: 0,
-		usage_limit: 0,
-		user_limit: 1,
-		start_date: new Date().toISOString().split('T')[0],
-		end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-		is_active: true,
-		categories: [] as string[],
-		products: [] as string[]
-	});
 	
 	// Verificar role
 	$effect(() => {
@@ -320,7 +320,7 @@
 		const prefixes = ['DESC', 'PROMO', 'OFF', 'SAVE'];
 		const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
 		const number = Math.floor(Math.random() * 9999) + 1000;
-		form.code = `${prefix}${number}`;
+		formData.code = `${prefix}${number}`;
 	}
 	
 	// Cupons paginados
@@ -333,40 +333,44 @@
 	
 	// Modal functions
 	function openCreateModal() {
-		form = {
+		formData = {
 			code: '',
 			description: '',
 			type: 'percentage',
 			value: 0,
-			min_purchase: 0,
-			max_discount: 0,
-			usage_limit: 0,
-			user_limit: 1,
-			start_date: new Date().toISOString().split('T')[0],
-			end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-			is_active: true,
+			minPurchase: 0,
+			maxDiscount: 0,
+			usageLimit: 0,
+			usagePerCustomer: 1,
+			validFrom: new Date().toISOString().split('T')[0],
+			validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			isActive: true,
 			categories: [],
-			products: []
+			products: [],
+			excludeProducts: [],
+			customerGroups: []
 		};
 		editingCoupon = null;
 		showCreateModal = true;
 	}
 	
 	function openEditModal(coupon: Coupon) {
-		form = {
+		formData = {
 			code: coupon.code,
 			description: coupon.description,
 			type: coupon.type,
 			value: coupon.value,
-			min_purchase: coupon.min_purchase || 0,
-			max_discount: coupon.max_discount || 0,
-			usage_limit: coupon.usage_limit || 0,
-			user_limit: coupon.user_limit || 1,
-			start_date: new Date(coupon.start_date).toISOString().split('T')[0],
-			end_date: new Date(coupon.end_date).toISOString().split('T')[0],
-			is_active: coupon.is_active,
+			minPurchase: coupon.min_purchase || 0,
+			maxDiscount: coupon.max_discount || 0,
+			usageLimit: coupon.usage_limit || 0,
+			usagePerCustomer: coupon.user_limit || 1,
+			validFrom: new Date(coupon.start_date).toISOString().split('T')[0],
+			validUntil: new Date(coupon.end_date).toISOString().split('T')[0],
+			isActive: coupon.is_active,
 			categories: coupon.categories || [],
-			products: coupon.products || []
+			products: coupon.products || [],
+			excludeProducts: [],
+			customerGroups: []
 		};
 		editingCoupon = coupon;
 		showCreateModal = true;
@@ -378,7 +382,7 @@
 	}
 	
 	async function saveCoupon() {
-		console.log('Salvando cupom:', form);
+		console.log('Salvando cupom:', formData);
 		loadCoupons();
 		closeModal();
 	}
@@ -397,20 +401,22 @@
 	}
 	
 	async function duplicateCoupon(coupon: Coupon) {
-		form = {
+		formData = {
 			code: coupon.code + '_COPY',
 			description: coupon.description + ' (Cópia)',
 			type: coupon.type,
 			value: coupon.value,
-			min_purchase: coupon.min_purchase || 0,
-			max_discount: coupon.max_discount || 0,
-			usage_limit: coupon.usage_limit || 0,
-			user_limit: coupon.user_limit || 1,
-			start_date: new Date().toISOString().split('T')[0],
-			end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-			is_active: false,
+			minPurchase: coupon.min_purchase || 0,
+			maxDiscount: coupon.max_discount || 0,
+			usageLimit: coupon.usage_limit || 0,
+			usagePerCustomer: coupon.user_limit || 1,
+			validFrom: new Date().toISOString().split('T')[0],
+			validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			isActive: false,
 			categories: coupon.categories || [],
-			products: coupon.products || []
+			products: coupon.products || [],
+			excludeProducts: [],
+			customerGroups: []
 		};
 		editingCoupon = null;
 		showCreateModal = true;
@@ -951,7 +957,7 @@
 							<div class="flex gap-2">
 								<input 
 									type="text" 
-									bind:value={form.code}
+									bind:value={formData.code}
 									class="input flex-1 font-mono uppercase"
 									placeholder="DESCONTO10"
 									required
@@ -972,7 +978,7 @@
 						<!-- Tipo -->
 						<div>
 							<label class="label">Tipo de Desconto *</label>
-							<select bind:value={form.type} class="input" required>
+							<select bind:value={formData.type} class="input" required>
 								<option value="percentage">Porcentagem (%)</option>
 								<option value="fixed">Valor Fixo (R$)</option>
 								<option value="free_shipping">Frete Grátis</option>
@@ -985,7 +991,7 @@
 						<label class="label">Descrição *</label>
 						<input 
 							type="text" 
-							bind:value={form.description}
+							bind:value={formData.description}
 							class="input"
 							placeholder="Ex: Desconto de 10% em toda a loja"
 							required
@@ -994,18 +1000,18 @@
 					
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<!-- Valor -->
-						{#if form.type !== 'free_shipping'}
+						{#if formData.type !== 'free_shipping'}
 							<div>
 								<label class="label">
 									Valor do Desconto *
-									{form.type === 'percentage' ? '(%)' : '(R$)'}
+									{formData.type === 'percentage' ? '(%)' : '(R$)'}
 								</label>
 								<input 
 									type="number" 
-									bind:value={form.value}
-									step={form.type === 'percentage' ? '1' : '0.01'}
+									bind:value={formData.value}
+									step={formData.type === 'percentage' ? '1' : '0.01'}
 									min="0"
-									max={form.type === 'percentage' ? '100' : undefined}
+									max={formData.type === 'percentage' ? '100' : undefined}
 									class="input"
 									required
 								/>
@@ -1017,7 +1023,7 @@
 							<label class="label">Compra Mínima (R$)</label>
 							<input 
 								type="number" 
-								bind:value={form.min_purchase}
+								bind:value={formData.minPurchase}
 								step="0.01"
 								min="0"
 								class="input"
@@ -1026,12 +1032,12 @@
 						</div>
 						
 						<!-- Desconto Máximo -->
-						{#if form.type === 'percentage'}
+						{#if formData.type === 'percentage'}
 							<div>
 								<label class="label">Desconto Máximo (R$)</label>
 								<input 
 									type="number" 
-									bind:value={form.max_discount}
+									bind:value={formData.maxDiscount}
 									step="0.01"
 									min="0"
 									class="input"
@@ -1047,7 +1053,7 @@
 							<label class="label">Data de Início *</label>
 							<input 
 								type="date" 
-								bind:value={form.start_date}
+								bind:value={formData.validFrom}
 								class="input"
 								required
 							/>
@@ -1058,8 +1064,8 @@
 							<label class="label">Data de Término *</label>
 							<input 
 								type="date" 
-								bind:value={form.end_date}
-								min={form.start_date}
+								bind:value={formData.validUntil}
+								min={formData.validFrom}
 								class="input"
 								required
 							/>
@@ -1072,7 +1078,7 @@
 							<label class="label">Limite de Uso Total</label>
 							<input 
 								type="number" 
-								bind:value={form.usage_limit}
+								bind:value={formData.usageLimit}
 								min="0"
 								class="input"
 								placeholder="Ilimitado"
@@ -1084,7 +1090,7 @@
 							<label class="label">Limite por Cliente</label>
 							<input 
 								type="number" 
-								bind:value={form.user_limit}
+								bind:value={formData.usagePerCustomer}
 								min="0"
 								class="input"
 								placeholder="1"
@@ -1096,7 +1102,7 @@
 					<div class="flex items-center">
 						<input 
 							type="checkbox" 
-							bind:checked={form.is_active}
+							bind:checked={formData.isActive}
 							id="is_active"
 							class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
 						/>

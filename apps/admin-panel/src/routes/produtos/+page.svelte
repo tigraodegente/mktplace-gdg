@@ -16,16 +16,22 @@
 	interface Product {
 		id: string;
 		name: string;
-		sku: string;
 		price: number;
+		originalPrice?: number;
+		description?: string;
 		stock: number;
 		category: string;
-		status: 'active' | 'inactive' | 'pending' | 'draft';
-		vendor?: string;
 		image: string;
+		sku: string;
+		rating?: number;
+		reviews?: number;
+		vendor?: string;
+		badge?: string;
+		discount?: number;
+		status: 'active' | 'draft' | 'archived' | 'inactive' | 'pending';
 		createdAt: string;
+		updatedAt?: string;
 		sales: number;
-		rating: number;
 	}
 	
 	interface Filter {
@@ -36,14 +42,56 @@
 		maxPrice: number;
 	}
 	
+	interface StatCard {
+		title: string;
+		value: string | number;
+		change?: number;
+		icon: string;
+		color: 'primary' | 'success' | 'warning' | 'danger' | 'info';
+	}
+	
+	interface ProductFormData {
+		name: string;
+		slug: string;
+		description: string;
+		price: number;
+		comparePrice?: number;
+		cost?: number;
+		sku: string;
+		barcode?: string;
+		stock: number;
+		category?: string;
+		tags: string[];
+		images: string[];
+		seo: {
+			title: string;
+			description: string;
+			keywords: string;
+		};
+		variations: Array<{
+			id: string;
+			name: string;
+			options: string[];
+		}>;
+		status: 'active' | 'draft' | 'archived';
+		featured: boolean;
+		weight?: number;
+		dimensions?: {
+			length: number;
+			width: number;
+			height: number;
+		};
+	}
+	
 	// Estado
 	let products = $state<Product[]>([]);
 	let filteredProducts = $state<Product[]>([]);
 	let loading = $state(true);
 	let selectedProducts = $state<Set<string>>(new Set());
-	let viewMode = $state<'grid' | 'list'>('list');
-	let showFilters = $state(true);
-	let showAddModal = $state(false);
+	let viewMode = $state<'list' | 'grid'>('list');
+	let showFilters = $state(false);
+	let showCreateModal = $state(false);
+	let editingProduct = $state<Product | null>(null);
 	let userRole = $state<'admin' | 'vendor'>('admin');
 	
 	// Filtros
@@ -77,6 +125,37 @@
 		'Livros',
 		'Brinquedos'
 	];
+	
+	// Formulário
+	let formData = $state<ProductFormData>({
+		name: '',
+		slug: '',
+		description: '',
+		price: 0,
+		comparePrice: undefined,
+		cost: undefined,
+		sku: '',
+		barcode: '',
+		stock: 0,
+		category: '',
+		tags: [],
+		images: [],
+		seo: {
+			title: '',
+			description: '',
+			keywords: ''
+		},
+		variations: [],
+		status: 'draft',
+		featured: false,
+		weight: undefined,
+		dimensions: undefined
+	});
+	
+	let activeTab = $state<'basic' | 'images' | 'inventory' | 'seo' | 'shipping'>('basic');
+	let uploadingImages = $state(false);
+	let newTag = $state('');
+	let newVariation = $state({ name: '', options: '' });
 	
 	// Verificar role
 	$effect(() => {
@@ -118,6 +197,163 @@
 		// Atualizar estatísticas
 		updateStats(result);
 	});
+	
+	// Funções do formulário
+	function openCreateModal() {
+		formData = {
+			name: '',
+			slug: '',
+			description: '',
+			price: 0,
+			comparePrice: undefined,
+			cost: undefined,
+			sku: '',
+			barcode: '',
+			stock: 0,
+			category: '',
+			tags: [],
+			images: [],
+			seo: {
+				title: '',
+				description: '',
+				keywords: ''
+			},
+			variations: [],
+			status: 'draft',
+			featured: false,
+			weight: undefined,
+			dimensions: undefined
+		};
+		editingProduct = null;
+		activeTab = 'basic';
+		showCreateModal = true;
+	}
+	
+	function openEditModal(product: Product) {
+		formData = {
+			name: product.name,
+			slug: product.name.toLowerCase().replace(/\s+/g, '-'),
+			description: product.description || '',
+			price: product.price,
+			comparePrice: product.originalPrice,
+			cost: undefined,
+			sku: product.sku || '',
+			barcode: '',
+			stock: product.stock,
+			category: product.category,
+			tags: [],
+			images: [product.image],
+			seo: {
+				title: product.name,
+				description: product.description || '',
+				keywords: ''
+			},
+			variations: [],
+			status: product.stock > 0 ? 'active' : 'draft',
+			featured: product.badge === 'Destaque',
+			weight: undefined,
+			dimensions: undefined
+		};
+		editingProduct = product;
+		activeTab = 'basic';
+		showCreateModal = true;
+	}
+	
+	function closeModal() {
+		showCreateModal = false;
+		editingProduct = null;
+		activeTab = 'basic';
+	}
+	
+	function generateSlug() {
+		if (!formData.name) return;
+		formData.slug = formData.name
+			.toLowerCase()
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-z0-9\s-]/g, '')
+			.replace(/\s+/g, '-')
+			.replace(/-+/g, '-')
+			.trim();
+	}
+	
+	function addTag() {
+		if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+			formData.tags = [...formData.tags, newTag.trim()];
+			newTag = '';
+		}
+	}
+	
+	function removeTag(tag: string) {
+		formData.tags = formData.tags.filter(t => t !== tag);
+	}
+	
+	function addVariation() {
+		if (newVariation.name.trim() && newVariation.options.trim()) {
+			formData.variations = [...formData.variations, {
+				id: crypto.randomUUID(),
+				name: newVariation.name.trim(),
+				options: newVariation.options.split(',').map(o => o.trim()).filter(Boolean)
+			}];
+			newVariation = { name: '', options: '' };
+		}
+	}
+	
+	function removeVariation(id: string) {
+		formData.variations = formData.variations.filter(v => v.id !== id);
+	}
+	
+	async function handleImageUpload(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (!input.files?.length) return;
+		
+		uploadingImages = true;
+		// Simular upload
+		setTimeout(() => {
+			for (const file of input.files!) {
+				const url = URL.createObjectURL(file);
+				formData.images = [...formData.images, url];
+			}
+			uploadingImages = false;
+		}, 1000);
+	}
+	
+	function removeImage(index: number) {
+		formData.images = formData.images.filter((_, i) => i !== index);
+	}
+	
+	function moveImage(index: number, direction: 'up' | 'down') {
+		const newImages = [...formData.images];
+		const newIndex = direction === 'up' ? index - 1 : index + 1;
+		[newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]];
+		formData.images = newImages;
+	}
+	
+	async function saveProduct() {
+		// Validações básicas
+		if (!formData.name.trim()) {
+			alert('Nome do produto é obrigatório');
+			return;
+		}
+		if (!formData.price || formData.price <= 0) {
+			alert('Preço deve ser maior que zero');
+			return;
+		}
+		if (!formData.sku.trim()) {
+			alert('SKU é obrigatório');
+			return;
+		}
+		
+		console.log('Salvando produto:', formData);
+		// Aqui faria a chamada para API
+		
+		// Simular salvamento
+		setTimeout(() => {
+			alert(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
+			closeModal();
+			loadProducts();
+		}, 500);
+	}
 	
 	onMount(() => {
 		loadProducts();
@@ -278,13 +514,10 @@
 			
 			<!-- Add Product -->
 			<button 
-				onclick={() => showAddModal = true}
+				onclick={() => openCreateModal()}
 				class="btn btn-primary"
 			>
-				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-				</svg>
-				Adicionar Produto
+				➕ Novo Produto
 			</button>
 		</div>
 	</div>
@@ -539,32 +772,16 @@
 										<span class="text-sm font-medium">{product.rating}</span>
 									</div>
 								</td>
-								<td>
-									<div class="flex items-center justify-end gap-1">
+								<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+									<div class="flex items-center justify-end gap-2">
 										<button
-											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-											title="Editar"
+											onclick={() => openEditModal(product)}
+											class="text-indigo-600 hover:text-indigo-900 transition-colors"
 										>
-											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-											</svg>
+											✏️ Editar
 										</button>
-										<button
-											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-											title="Visualizar"
-										>
-											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-											</svg>
-										</button>
-										<button
-											class="p-2 hover:bg-red-50 rounded-lg transition-colors"
-											title="Excluir"
-										>
-											<svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-											</svg>
+										<button class="text-red-600 hover:text-red-900 transition-colors">
+											🗑️ Excluir
 										</button>
 									</div>
 								</td>
@@ -668,6 +885,455 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Modal de Criar/Editar Produto -->
+{#if showCreateModal}
+	<div 
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		transition:fade={{ duration: 200 }}
+		onclick={closeModal}
+	>
+		<div 
+			class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+			transition:scale={{ duration: 300, easing: backOut }}
+			onclick={(e) => e.stopPropagation()}
+		>
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 text-white">
+				<div class="flex items-center justify-between">
+					<h2 class="text-2xl font-bold flex items-center gap-3">
+						📦 {editingProduct ? 'Editar' : 'Novo'} Produto
+					</h2>
+					<button 
+						onclick={closeModal}
+						class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+					>
+						✕
+					</button>
+				</div>
+			</div>
+			
+			<!-- Tabs -->
+			<div class="border-b border-gray-200">
+				<div class="flex">
+					{#each [
+						{ id: 'basic', label: 'Informações Básicas', icon: '📋' },
+						{ id: 'images', label: 'Imagens', icon: '🖼️' },
+						{ id: 'inventory', label: 'Estoque', icon: '📦' },
+						{ id: 'seo', label: 'SEO', icon: '🔍' },
+						{ id: 'shipping', label: 'Frete', icon: '🚚' }
+					] as tab}
+						<button
+							onclick={() => activeTab = tab.id as typeof activeTab}
+							class="flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 {
+								activeTab === tab.id 
+									? 'text-cyan-600 border-cyan-500 bg-cyan-50' 
+									: 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+							}"
+						>
+							<span class="mr-2">{tab.icon}</span>
+							{tab.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+			
+			<!-- Content -->
+			<div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+				{#if activeTab === 'basic'}
+					<div class="space-y-6">
+						<!-- Nome e Slug -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Nome do Produto *
+								</label>
+								<input
+									type="text"
+									bind:value={formData.name}
+									onblur={generateSlug}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="Ex: Notebook Dell Inspiron"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Slug (URL)
+								</label>
+								<input
+									type="text"
+									bind:value={formData.slug}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									placeholder="notebook-dell-inspiron"
+								/>
+							</div>
+						</div>
+						
+						<!-- Descrição -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Descrição
+							</label>
+							<textarea
+								bind:value={formData.description}
+								rows="4"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Descreva o produto em detalhes..."
+							></textarea>
+						</div>
+						
+						<!-- Preços -->
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Preço de Venda *
+								</label>
+								<div class="relative">
+									<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+									<input
+										type="number"
+										bind:value={formData.price}
+										step="0.01"
+										min="0"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="0,00"
+									/>
+								</div>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Preço Comparativo
+								</label>
+								<div class="relative">
+									<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+									<input
+										type="number"
+										bind:value={formData.comparePrice}
+										step="0.01"
+										min="0"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="0,00"
+									/>
+								</div>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Custo
+								</label>
+								<div class="relative">
+									<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+									<input
+										type="number"
+										bind:value={formData.cost}
+										step="0.01"
+										min="0"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="0,00"
+									/>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Categoria e Status -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Categoria
+								</label>
+								<select
+									bind:value={formData.category}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								>
+									<option value="">Selecione uma categoria</option>
+									{#each categories as cat}
+										<option value={cat}>{cat}</option>
+									{/each}
+								</select>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Status
+								</label>
+								<select
+									bind:value={formData.status}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								>
+									<option value="draft">Rascunho</option>
+									<option value="active">Ativo</option>
+									<option value="inactive">Inativo</option>
+									<option value="pending">Pendente</option>
+									<option value="archived">Arquivado</option>
+								</select>
+							</div>
+						</div>
+						
+						<!-- Tags -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Tags
+							</label>
+							<input
+								type="text"
+								bind:value={newTag}
+								oninput={(e) => newTag = e.target.value}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Digite uma nova tag"
+							/>
+							<button
+								onclick={addTag}
+								class="btn btn-sm btn-ghost text-cyan-600"
+							>
+								➕ Adicionar Tag
+							</button>
+						</div>
+						
+						<!-- Variations -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Variations
+							</label>
+							<input
+								type="text"
+								bind:value={newVariation.name}
+								oninput={(e) => newVariation.name = e.target.value}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Nome da Variation"
+							/>
+							<input
+								type="text"
+								bind:value={newVariation.options}
+								oninput={(e) => newVariation.options = e.target.value}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Opções da Variation"
+							/>
+							<button
+								onclick={addVariation}
+								class="btn btn-sm btn-ghost text-cyan-600"
+							>
+								➕ Adicionar Variation
+							</button>
+						</div>
+						
+						<!-- Imagens -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Imagens
+							</label>
+							<input
+								type="file"
+								multiple
+								onchange={handleImageUpload}
+								class="file-input file-input-bordered file-input-primary w-full"
+							/>
+							<div class="mt-4">
+								{formData.images.map((image, index) => (
+									<div key={index} class="flex items-center gap-2">
+										<img
+											src={image}
+											alt={formData.name}
+											class="w-20 h-20 rounded-lg object-cover"
+										/>
+										<button
+											onclick={() => removeImage(index)}
+											class="btn btn-sm btn-ghost text-red-600"
+										>
+											🗑️ Remover
+										</button>
+									</div>
+								))}
+							</div>
+						</div>
+						
+						<!-- SEO -->
+						<div class="space-y-4">
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Título
+							</label>
+							<input
+								type="text"
+								bind:value={formData.seo.title}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Título do produto"
+							/>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Descrição
+							</label>
+							<textarea
+								bind:value={formData.seo.description}
+								rows="4"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Descrição do produto"
+							></textarea>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Palavras-chave
+							</label>
+							<input
+								type="text"
+								bind:value={formData.seo.keywords}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								placeholder="Palavras-chave do produto"
+							/>
+						</div>
+						
+						<!-- Peso e Dimensões -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Peso
+								</label>
+								<div class="relative">
+									<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">Kg</span>
+									<input
+										type="number"
+										bind:value={formData.weight}
+										step="0.01"
+										min="0"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="0,00"
+									/>
+								</div>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Dimensões
+								</label>
+								<div class="flex items-center gap-2">
+									<input
+										type="number"
+										bind:value={formData.dimensions?.length}
+										step="0.01"
+										min="0"
+										class="w-16 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="Comprimento"
+									/>
+									<input
+										type="number"
+										bind:value={formData.dimensions?.width}
+										step="0.01"
+										min="0"
+										class="w-16 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="Largura"
+									/>
+									<input
+										type="number"
+										bind:value={formData.dimensions?.height}
+										step="0.01"
+										min="0"
+										class="w-16 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										placeholder="Altura"
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+				{:else if activeTab === 'images'}
+					<div class="space-y-4">
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Imagens
+						</label>
+						<input
+							type="file"
+							multiple
+							onchange={handleImageUpload}
+							class="file-input file-input-bordered file-input-primary w-full"
+						/>
+						<div class="mt-4">
+							{formData.images.map((image, index) => (
+								<div key={index} class="flex items-center gap-2">
+									<img
+										src={image}
+										alt={formData.name}
+										class="w-20 h-20 rounded-lg object-cover"
+									/>
+									<button
+										onclick={() => removeImage(index)}
+										class="btn btn-sm btn-ghost text-red-600"
+									>
+										🗑️ Remover
+									</button>
+								</div>
+							))}
+						</div>
+					</div>
+				{:else if activeTab === 'inventory'}
+					<div class="space-y-4">
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Estoque
+						</label>
+						<input
+							type="number"
+							bind:value={formData.stock}
+							step="1"
+							min="0"
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							placeholder="Quantidade em estoque"
+						/>
+					</div>
+				{:else if activeTab === 'seo'}
+					<div class="space-y-4">
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Título
+						</label>
+						<input
+							type="text"
+							bind:value={formData.seo.title}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							placeholder="Título do produto"
+						/>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Descrição
+						</label>
+						<textarea
+							bind:value={formData.seo.description}
+							rows="4"
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							placeholder="Descrição do produto"
+						></textarea>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Palavras-chave
+						</label>
+						<input
+							type="text"
+							bind:value={formData.seo.keywords}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							placeholder="Palavras-chave do produto"
+						/>
+					</div>
+				{:else if activeTab === 'shipping'}
+					<div class="space-y-4">
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Frete
+						</label>
+						<input
+							type="text"
+							bind:value={formData.shipping}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+							placeholder="Informações de frete"
+						/>
+					</div>
+				{/if}
+			</div>
+			
+			<!-- Footer -->
+			<div class="bg-gray-100 p-6">
+				<div class="flex items-center justify-between">
+					<button 
+						onclick={saveProduct}
+						class="btn btn-primary"
+					>
+						Salvar
+					</button>
+					<button 
+						onclick={closeModal}
+						class="btn btn-ghost"
+					>
+						Cancelar
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</main>
 
 <style>
 	/* Animação para hover nas imagens */

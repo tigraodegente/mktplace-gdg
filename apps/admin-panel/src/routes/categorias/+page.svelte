@@ -43,10 +43,9 @@
 	let flatCategories = $state<Category[]>([]);
 	let loading = $state(true);
 	let selectedCategories = $state<Set<string>>(new Set());
-	let showCreateModal = $state(false);
-	let editingCategory = $state<Category | null>(null);
+	let expandedCategories = $state<Set<string>>(new Set());
 	let draggedCategory = $state<Category | null>(null);
-	let dragOverCategory = $state<Category | null>(null);
+	let dragOverCategory = $state<string | null>(null);
 	let userRole = $state<'admin' | 'vendor'>('admin');
 	let searchQuery = $state('');
 	let showInactive = $state(false);
@@ -54,14 +53,22 @@
 	// Stats
 	let stats = $state<StatCard[]>([]);
 	
-	// Formulário
-	let form = $state({
+	// Modal states
+	let showCreateModal = $state(false);
+	let editingCategory = $state<Category | null>(null);
+	let formData = $state({
 		name: '',
 		slug: '',
 		description: '',
-		parent_id: null as string | null,
-		icon: '',
-		is_active: true
+		parentId: null as string | null,
+		icon: '📁',
+		color: '#3B82F6',
+		isActive: true,
+		seo: {
+			title: '',
+			description: '',
+			keywords: ''
+		}
 	});
 	
 	// Verificar role
@@ -293,7 +300,7 @@
 	
 	function handleDragOver(event: DragEvent, category: Category) {
 		event.preventDefault();
-		dragOverCategory = category;
+		dragOverCategory = category.id;
 		if (event.dataTransfer) {
 			event.dataTransfer.dropEffect = 'move';
 		}
@@ -327,9 +334,9 @@
 	}
 	
 	function generateSlug() {
-		if (!form.name) return;
+		if (!formData.name) return;
 		
-		form.slug = form.name
+		formData.slug = formData.name
 			.toLowerCase()
 			.normalize('NFD')
 			.replace(/[\u0300-\u036f]/g, '')
@@ -340,26 +347,38 @@
 	}
 	
 	function openCreateModal(parent?: Category) {
-		form = {
+		formData = {
 			name: '',
 			slug: '',
 			description: '',
-			parent_id: parent?.id || null,
-			icon: '',
-			is_active: true
+			parentId: parent?.id || null,
+			icon: '📁',
+			color: '#3B82F6',
+			isActive: true,
+			seo: {
+				title: '',
+				description: '',
+				keywords: ''
+			}
 		};
 		editingCategory = null;
 		showCreateModal = true;
 	}
 	
 	function openEditModal(category: Category) {
-		form = {
+		formData = {
 			name: category.name,
 			slug: category.slug,
 			description: category.description || '',
-			parent_id: category.parent_id || null,
-			icon: category.icon || '',
-			is_active: category.is_active
+			parentId: category.parent_id || null,
+			icon: category.icon || '📁',
+			color: '#3B82F6',
+			isActive: category.is_active,
+			seo: {
+				title: '',
+				description: '',
+				keywords: ''
+			}
 		};
 		editingCategory = category;
 		showCreateModal = true;
@@ -368,12 +387,75 @@
 	function closeModal() {
 		showCreateModal = false;
 		editingCategory = null;
+		// Reset form
+		formData = {
+			name: '',
+			slug: '',
+			description: '',
+			parentId: null,
+			icon: '📁',
+			color: '#3B82F6',
+			isActive: true,
+			seo: {
+				title: '',
+				description: '',
+				keywords: ''
+			}
+		};
 	}
 	
 	async function saveCategory() {
-		console.log('Salvando categoria:', form);
-		loadCategories();
-		closeModal();
+		// Validações
+		if (!formData.name.trim() || !formData.slug.trim()) {
+			alert('Nome e slug são obrigatórios');
+			return;
+		}
+		
+		console.log('Salvando categoria:', formData);
+		// Simular salvamento
+		setTimeout(() => {
+			alert(editingCategory ? 'Categoria atualizada!' : 'Categoria criada!');
+			loadCategories();
+			closeModal();
+		}, 500);
+	}
+	
+	function getCategoryIcon(category: Category): string {
+		// Mapa de ícones por categoria
+		const iconMap: Record<string, string> = {
+			'Eletrônicos': '📱',
+			'Smartphones': '📱', 
+			'Notebooks': '💻',
+			'Tablets': '📱',
+			'Acessórios': '🎧',
+			'Fones de Ouvido': '🎧',
+			'Capas': '📱',
+			'Cabos': '🔌',
+			'Casa e Decoração': '🏠',
+			'Móveis': '🪑',
+			'Sofás': '🛋️',
+			'Mesas': '🪑',
+			'Cadeiras': '🪑',
+			'Decoração': '🖼️',
+			'Quadros': '🖼️',
+			'Vasos': '🏺',
+			'Luminárias': '💡',
+			'Moda': '👕',
+			'Roupas': '👔',
+			'Masculino': '👔',
+			'Feminino': '👗',
+			'Infantil': '👶',
+			'Calçados': '👟',
+			'Tênis': '👟',
+			'Sapatos': '👞',
+			'Sandálias': '🩴',
+			'Beleza e Saúde': '💄',
+			'Maquiagem': '💄',
+			'Perfumes': '🌸',
+			'Cuidados': '🧴'
+		};
+		
+		return category.icon || iconMap[category.name] || '📁';
 	}
 	
 	async function deleteCategory(category: Category) {
@@ -553,7 +635,7 @@
 					{#each filteredCategories() as category (category.id)}
 						<div animate:flip={{ duration: 300 }}>
 							<div
-								class="group flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-all duration-200 {dragOverCategory?.id === category.id ? 'bg-cyan-50 ring-2 ring-cyan-500' : ''}"
+								class="group flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-all duration-200 {dragOverCategory === category.id ? 'bg-cyan-50 ring-2 ring-cyan-500' : ''}"
 								draggable="true"
 								ondragstart={(e) => handleDragStart(e, category)}
 								ondragover={(e) => handleDragOver(e, category)}
@@ -739,121 +821,261 @@
 	</div>
 </div>
 
-<!-- Modal de criar/editar -->
+<!-- Modal de Criar/Editar Categoria -->
 {#if showCreateModal}
-	<div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" transition:fade={{ duration: 200 }}>
+	<div 
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		transition:fade={{ duration: 200 }}
+		onclick={closeModal}
+	>
 		<div 
-			class="bg-white rounded-xl shadow-xl max-w-lg w-full"
-			in:scale={{ duration: 300, easing: backOut }}
+			class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+			transition:scale={{ duration: 300, easing: backOut }}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="p-6">
-				<div class="flex justify-between items-center mb-6">
-					<h2 class="text-xl font-bold text-gray-900">
-						{editingCategory ? 'Editar' : 'Nova'} Categoria
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white">
+				<div class="flex items-center justify-between">
+					<h2 class="text-2xl font-bold flex items-center gap-3">
+						📁 {editingCategory ? 'Editar' : 'Nova'} Categoria
 					</h2>
 					<button 
 						onclick={closeModal}
-						class="text-gray-400 hover:text-gray-600 transition-colors"
+						class="p-2 hover:bg-white/20 rounded-lg transition-colors"
 					>
-						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-						</svg>
+						✕
 					</button>
 				</div>
-				
-				<form onsubmit={(e) => { e.preventDefault(); saveCategory(); }} class="space-y-4">
-					<!-- Nome -->
-					<div>
-						<label class="label">Nome *</label>
-						<input 
-							type="text" 
-							bind:value={form.name}
-							onblur={generateSlug}
-							class="input"
-							required
-						/>
+			</div>
+			
+			<!-- Content -->
+			<div class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+				<!-- Informações Básicas -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+						📋 Informações Básicas
+					</h3>
+					
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Nome da Categoria *
+							</label>
+							<input
+								type="text"
+								bind:value={formData.name}
+								onblur={generateSlug}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+								placeholder="Ex: Eletrônicos"
+							/>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Slug (URL) *
+							</label>
+							<input
+								type="text"
+								bind:value={formData.slug}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+								placeholder="eletronicos"
+							/>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Categoria Pai
+							</label>
+							<select
+								bind:value={formData.parentId}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							>
+								<option value={null}>Nenhuma (categoria principal)</option>
+								{#each flatCategories as cat}
+									{#if cat.id !== editingCategory?.id}
+										<option value={cat.id}>
+											{cat.parent_id ? '└─ ' : ''}{cat.name}
+										</option>
+									{/if}
+								{/each}
+							</select>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Status
+							</label>
+							<div class="flex items-center gap-4">
+								<label class="flex items-center gap-2">
+									<input
+										type="radio"
+										bind:group={formData.isActive}
+										value={true}
+										class="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+									/>
+									<span class="text-sm font-medium text-gray-700">Ativa</span>
+								</label>
+								<label class="flex items-center gap-2">
+									<input
+										type="radio"
+										bind:group={formData.isActive}
+										value={false}
+										class="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+									/>
+									<span class="text-sm font-medium text-gray-700">Inativa</span>
+								</label>
+							</div>
+						</div>
 					</div>
 					
-					<!-- Slug -->
 					<div>
-						<label class="label">URL (Slug) *</label>
-						<input 
-							type="text" 
-							bind:value={form.slug}
-							class="input"
-							required
-						/>
-					</div>
-					
-					<!-- Categoria Pai -->
-					<div>
-						<label class="label">Categoria Pai</label>
-						<select bind:value={form.parent_id} class="input">
-							<option value={null}>Nenhuma (categoria principal)</option>
-							{#each flatCategories as cat}
-								{#if cat.id !== editingCategory?.id}
-									<option value={cat.id}>
-										{cat.level ? '— '.repeat(cat.level) : ''}{cat.name}
-									</option>
-								{/if}
-							{/each}
-						</select>
-					</div>
-					
-					<!-- Ícone -->
-					<div>
-						<label class="label">Ícone (Emoji)</label>
-						<input 
-							type="text" 
-							bind:value={form.icon}
-							class="input"
-							placeholder="Ex: 📱"
-							maxlength="2"
-						/>
-					</div>
-					
-					<!-- Descrição -->
-					<div>
-						<label class="label">Descrição</label>
-						<textarea 
-							bind:value={form.description}
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Descrição
+						</label>
+						<textarea
+							bind:value={formData.description}
 							rows="3"
-							class="input"
-							placeholder="Descrição da categoria (opcional)"
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							placeholder="Descreva a categoria..."
 						></textarea>
 					</div>
+				</div>
+				
+				<!-- Visual -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+						�� Aparência
+					</h3>
 					
-					<!-- Ativa -->
-					<div class="flex items-center">
-						<input 
-							type="checkbox" 
-							bind:checked={form.is_active}
-							id="is_active"
-							class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-						/>
-						<label for="is_active" class="ml-2 text-sm font-medium text-gray-700">
-							Categoria ativa
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Ícone
+							</label>
+							<div class="flex gap-2">
+								<input
+									type="text"
+									bind:value={formData.icon}
+									class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="📁"
+								/>
+								<div class="flex gap-1">
+									{#each ['📁', '📱', '💻', '🏠', '👕', '🎮', '📚', '🍔', '🏃', '🎨'] as emoji}
+										<button
+											onclick={() => formData.icon = emoji}
+											class="w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors {formData.icon === emoji ? 'bg-green-100 border-green-500' : ''}"
+										>
+											{emoji}
+										</button>
+									{/each}
+								</div>
+							</div>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Cor de Destaque
+							</label>
+							<div class="flex gap-2 items-center">
+								<input
+									type="color"
+									bind:value={formData.color}
+									class="w-20 h-10 border border-gray-300 rounded-lg cursor-pointer"
+								/>
+								<input
+									type="text"
+									bind:value={formData.color}
+									class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="#3B82F6"
+								/>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Preview -->
+					<div class="bg-gray-50 rounded-lg p-4">
+						<p class="text-sm text-gray-600 mb-2">Preview:</p>
+						<div class="flex items-center gap-3">
+							<div 
+								class="w-12 h-12 rounded-lg flex items-center justify-center text-xl"
+								style="background-color: {formData.color}20; color: {formData.color}"
+							>
+								{formData.icon || '📁'}
+							</div>
+							<div>
+								<p class="font-medium text-gray-900">{formData.name || 'Nome da Categoria'}</p>
+								<p class="text-sm text-gray-500">/{formData.slug || 'slug-da-categoria'}</p>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<!-- SEO -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+						🔍 Otimização para Buscadores (SEO)
+					</h3>
+					
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Título SEO
 						</label>
+						<input
+							type="text"
+							bind:value={formData.seo.title}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							placeholder="Deixe em branco para usar o nome da categoria"
+						/>
+						<p class="text-xs text-gray-500 mt-1">
+							{formData.seo.title.length}/60 caracteres
+						</p>
 					</div>
 					
-					<!-- Botões -->
-					<div class="flex justify-end gap-3 pt-4">
-						<button 
-							type="button"
-							onclick={closeModal}
-							class="btn btn-ghost"
-						>
-							Cancelar
-						</button>
-						<button 
-							type="submit"
-							class="btn btn-primary"
-						>
-							{editingCategory ? 'Atualizar' : 'Criar'} Categoria
-						</button>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Descrição SEO
+						</label>
+						<textarea
+							bind:value={formData.seo.description}
+							rows="2"
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							placeholder="Descrição para mecanismos de busca"
+						></textarea>
+						<p class="text-xs text-gray-500 mt-1">
+							{formData.seo.description.length}/160 caracteres
+						</p>
 					</div>
-				</form>
+					
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Palavras-chave
+						</label>
+						<input
+							type="text"
+							bind:value={formData.seo.keywords}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							placeholder="palavra1, palavra2, palavra3"
+						/>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Footer -->
+			<div class="border-t border-gray-200 p-6">
+				<div class="flex items-center justify-between">
+					<button
+						onclick={closeModal}
+						class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+					>
+						Cancelar
+					</button>
+					<button
+						onclick={saveCategory}
+						class="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+					>
+						{editingCategory ? 'Atualizar' : 'Criar'} Categoria
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

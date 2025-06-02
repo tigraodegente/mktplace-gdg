@@ -22,13 +22,14 @@
 		id: string;
 		name: string;
 		email: string;
-		role: 'customer' | 'vendor' | 'admin';
-		status: 'active' | 'inactive' | 'pending';
-		created: string;
+		phone?: string;
 		avatar: string;
+		role: 'admin' | 'vendor' | 'customer';
+		status: 'active' | 'inactive' | 'pending' | 'suspended';
 		lastLogin?: string;
-		orders?: number;
-		revenue?: number;
+		createdAt: string;
+		totalOrders?: number;
+		totalSpent?: number;
 	}
 	
 	interface StatCard {
@@ -72,6 +73,21 @@
 	// Stats
 	let stats = $state<StatCard[]>([]);
 	
+	// Handlers para o formulário
+	let showCreateModal = $state(false);
+	let editingUser = $state<User | null>(null);
+	let formData = $state({
+		name: '',
+		email: '',
+		phone: '',
+		role: 'customer' as 'admin' | 'vendor' | 'customer',
+		status: 'active' as 'active' | 'inactive' | 'suspended' | 'pending',
+		password: '',
+		confirmPassword: '',
+		sendWelcomeEmail: true,
+		permissions: [] as string[]
+	});
+	
 	// Verificar role
 	$effect(() => {
 		const userParam = $page.url.searchParams.get('user');
@@ -109,6 +125,64 @@
 		updateStats(result);
 	});
 	
+	function openCreateModal() {
+		formData = {
+			name: '',
+			email: '',
+			phone: '',
+			role: 'customer',
+			status: 'active',
+			password: '',
+			confirmPassword: '',
+			sendWelcomeEmail: true,
+			permissions: []
+		};
+		editingUser = null;
+		showCreateModal = true;
+	}
+	
+	function openEditModal(user: User) {
+		formData = {
+			name: user.name,
+			email: user.email,
+			phone: user.phone || '',
+			role: user.role,
+			status: user.status,
+			password: '',
+			confirmPassword: '',
+			sendWelcomeEmail: false,
+			permissions: []
+		};
+		editingUser = user;
+		showCreateModal = true;
+	}
+	
+	function closeModal() {
+		showCreateModal = false;
+		editingUser = null;
+	}
+	
+	async function saveUser() {
+		// Validações
+		if (!formData.name.trim() || !formData.email.trim()) {
+			alert('Nome e email são obrigatórios');
+			return;
+		}
+		
+		if (!editingUser && (!formData.password || formData.password !== formData.confirmPassword)) {
+			alert('As senhas não coincidem');
+			return;
+		}
+		
+		console.log('Salvando usuário:', formData);
+		// Simular salvamento
+		setTimeout(() => {
+			alert(editingUser ? 'Usuário atualizado!' : 'Usuário criado!');
+			closeModal();
+			loadUsers();
+		}, 500);
+	}
+	
 	onMount(() => {
 		loadUsers();
 	});
@@ -125,11 +199,11 @@
 				email: `usuario${i + 1}@email.com`,
 				role: ['customer', 'vendor', 'admin'][Math.floor(Math.random() * 3)] as any,
 				status: ['active', 'inactive', 'pending'][Math.floor(Math.random() * 3)] as any,
-				created: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
+				createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
 				avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=User${i}`,
 				lastLogin: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-				orders: Math.floor(Math.random() * 50),
-				revenue: Math.floor(Math.random() * 10000)
+				totalOrders: Math.floor(Math.random() * 50),
+				totalSpent: Math.floor(Math.random() * 10000)
 			}));
 			
 			loading = false;
@@ -142,7 +216,7 @@
 		const vendors = usrs.filter(u => u.role === 'vendor').length;
 		const newToday = usrs.filter(u => {
 			const today = new Date().setHours(0, 0, 0, 0);
-			return new Date(u.created).setHours(0, 0, 0, 0) === today;
+			return new Date(u.createdAt).setHours(0, 0, 0, 0) === today;
 		}).length;
 		
 		stats = [
@@ -203,7 +277,7 @@
 		};
 		return badges[role as keyof typeof badges] || 'badge';
 	}
-	
+		
 	function getRoleLabel(role: string) {
 		const labels = {
 			admin: 'Admin',
@@ -221,7 +295,7 @@
 		};
 		return badges[status as keyof typeof badges] || 'badge';
 	}
-	
+		
 	function getStatusLabel(status: string) {
 		const labels = {
 			active: 'Ativo',
@@ -311,7 +385,7 @@
 			</div>
 			
 			<!-- Toggle Filters -->
-			<button
+			<button 
 				onclick={() => showFilters = !showFilters}
 				class="btn btn-ghost"
 			>
@@ -323,13 +397,10 @@
 			
 			<!-- Add User -->
 			<button 
-				onclick={() => showAddModal = true}
+				onclick={() => openCreateModal()}
 				class="btn btn-primary"
 			>
-				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-				</svg>
-				Novo Usuário
+				➕ Novo Usuário
 			</button>
 		</div>
 	</div>
@@ -346,7 +417,7 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 			{#each stats as stat, i (stat.title)}
 				<div 
 					class="stat-card group"
@@ -379,8 +450,8 @@
 					<!-- Background decoration -->
 					<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br {getColorClasses(stat.color)} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500"></div>
 				</div>
-			{/each}
-		</div>
+		{/each}
+	</div>
 	{/if}
 	
 	<!-- Filters -->
@@ -445,30 +516,30 @@
 						{selectedUsers.size} {selectedUsers.size === 1 ? 'usuário selecionado' : 'usuários selecionados'}
 					</p>
 					<div class="flex items-center gap-2">
-						<button 
+			<button 
 							onclick={() => bulkUpdateStatus('active')}
-							class="btn btn-sm btn-ghost text-green-600"
-						>
-							Ativar
-						</button>
-						<button 
+				class="btn btn-sm btn-ghost text-green-600"
+			>
+				Ativar
+			</button>
+			<button 
 							onclick={() => bulkUpdateStatus('inactive')}
-							class="btn btn-sm btn-ghost text-yellow-600"
-						>
-							Desativar
-						</button>
-						<button 
+				class="btn btn-sm btn-ghost text-yellow-600"
+			>
+				Desativar
+			</button>
+			<button 
 							onclick={bulkDelete}
-							class="btn btn-sm btn-ghost text-red-600"
-						>
-							Excluir
-						</button>
-						<button 
-							onclick={() => selectedUsers = new Set()}
-							class="btn btn-sm btn-ghost"
-						>
+				class="btn btn-sm btn-ghost text-red-600"
+			>
+				Excluir
+			</button>
+			<button 
+				onclick={() => selectedUsers = new Set()}
+				class="btn btn-sm btn-ghost"
+			>
 							Cancelar
-						</button>
+			</button>
 					</div>
 				</div>
 			</div>
@@ -548,11 +619,11 @@
 										{getStatusLabel(user.status)}
 									</span>
 								</td>
-								<td class="text-gray-600">{user.orders || 0}</td>
+								<td class="text-gray-600">{user.totalOrders || 0}</td>
 								<td class="text-sm text-gray-600">
 									{user.lastLogin ? formatDateTime(user.lastLogin) : 'Nunca'}
 								</td>
-								<td class="text-sm text-gray-600">{formatDate(user.created)}</td>
+								<td class="text-sm text-gray-600">{formatDate(user.createdAt)}</td>
 								<td>
 									<div class="flex items-center justify-end gap-1">
 										<button
@@ -565,10 +636,11 @@
 											</svg>
 										</button>
 										<button
-											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
+											onclick={() => openEditModal(user)}
+											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
 											title="Editar"
 										>
-											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
 											</svg>
 										</button>
@@ -656,26 +728,250 @@
 						<div class="space-y-2 text-sm">
 							<div class="flex justify-between">
 								<span class="text-gray-600">Pedidos:</span>
-								<span class="font-medium">{user.orders || 0}</span>
+								<span class="font-medium">{user.totalOrders || 0}</span>
 							</div>
 							<div class="flex justify-between">
 								<span class="text-gray-600">Membro desde:</span>
-								<span class="font-medium">{formatDate(user.created)}</span>
+								<span class="font-medium">{formatDate(user.createdAt)}</span>
 							</div>
 						</div>
 						
-						<div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-							<button class="btn btn-sm btn-ghost flex-1">
-								Ver Perfil
+						<!-- Actions -->
+						<div class="mt-4 pt-4 border-t border-gray-200 flex gap-2">
+							<button
+								onclick={() => openEditModal(user)}
+								class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+							>
+								✏️ Editar
 							</button>
-							<button class="btn btn-sm btn-primary flex-1">
-								Editar
+							<button class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium">
+								🗑️ Excluir
 							</button>
 						</div>
 					</div>
 				</div>
 			{/each}
 		</div>
+	{/if}
+</div> 
+
+<!-- Modal de Criar/Editar Usuário -->
+{#if showCreateModal}
+	<div 
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		transition:fade={{ duration: 200 }}
+		onclick={closeModal}
+	>
+		<div 
+			class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+			transition:scale={{ duration: 300, easing: backOut }}
+			onclick={(e) => e.stopPropagation()}
+		>
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-purple-500 to-pink-600 p-6 text-white">
+				<div class="flex items-center justify-between">
+					<h2 class="text-2xl font-bold flex items-center gap-3">
+						👤 {editingUser ? 'Editar' : 'Novo'} Usuário
+					</h2>
+					<button 
+						onclick={closeModal}
+						class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+					>
+						✕
+					</button>
+				</div>
+			</div>
+			
+			<!-- Content -->
+			<div class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+				<!-- Informações Básicas -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+						📋 Informações Básicas
+					</h3>
+					
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Nome Completo *
+							</label>
+							<input
+								type="text"
+								bind:value={formData.name}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="João Silva"
+							/>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Email *
+							</label>
+							<input
+								type="email"
+								bind:value={formData.email}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="joao@email.com"
+							/>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Telefone
+							</label>
+							<input
+								type="tel"
+								bind:value={formData.phone}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+								placeholder="(11) 98765-4321"
+							/>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Perfil *
+							</label>
+							<select
+								bind:value={formData.role}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+							>
+								<option value="customer">Cliente</option>
+								<option value="vendor">Vendedor</option>
+								<option value="admin">Administrador</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				
+				<!-- Segurança -->
+				{#if !editingUser}
+					<div class="space-y-4">
+						<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+							🔐 Segurança
+						</h3>
+						
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Senha *
+								</label>
+								<input
+									type="password"
+									bind:value={formData.password}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+									placeholder="••••••••"
+								/>
+							</div>
+							
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Confirmar Senha *
+								</label>
+								<input
+									type="password"
+									bind:value={formData.confirmPassword}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+									placeholder="••••••••"
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
+				
+				<!-- Status e Configurações -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+						⚙️ Configurações
+					</h3>
+					
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Status
+							</label>
+							<select
+								bind:value={formData.status}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+							>
+								<option value="active">Ativo</option>
+								<option value="inactive">Inativo</option>
+								<option value="pending">Pendente</option>
+								<option value="suspended">Suspenso</option>
+							</select>
+						</div>
+						
+						{#if !editingUser}
+							<div class="flex items-center">
+								<input
+									type="checkbox"
+									bind:checked={formData.sendWelcomeEmail}
+									id="welcome-email"
+									class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+								/>
+								<label for="welcome-email" class="ml-2 text-sm font-medium text-gray-700">
+									Enviar email de boas-vindas
+								</label>
+							</div>
+						{/if}
+					</div>
+				</div>
+				
+				<!-- Permissões (se admin) -->
+				{#if formData.role === 'admin'}
+					<div class="space-y-4">
+						<h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+							🛡️ Permissões Administrativas
+						</h3>
+						
+						<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+							{#each [
+								'Gerenciar Produtos',
+								'Gerenciar Pedidos',
+								'Gerenciar Usuários',
+								'Acessar Relatórios',
+								'Configurações do Sistema',
+								'Gerenciar Finanças'
+							] as permission}
+								<label class="flex items-center gap-2 text-sm">
+									<input
+										type="checkbox"
+										checked={formData.permissions.includes(permission)}
+										onchange={(e) => {
+											if (e.currentTarget.checked) {
+												formData.permissions = [...formData.permissions, permission];
+											} else {
+												formData.permissions = formData.permissions.filter(p => p !== permission);
+											}
+										}}
+										class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+									/>
+									{permission}
+								</label>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
+			
+			<!-- Footer -->
+			<div class="border-t border-gray-200 p-6">
+				<div class="flex items-center justify-between">
+					<button
+						onclick={closeModal}
+						class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+					>
+						Cancelar
+					</button>
+					<button
+						onclick={saveUser}
+						class="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+					>
+						{editingUser ? 'Atualizar' : 'Criar'} Usuário
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 	{/if}
 </div>
 

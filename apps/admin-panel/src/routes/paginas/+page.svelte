@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+  import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { fade, fly, scale, slide, blur, crossfade } from 'svelte/transition';
 	import { cubicOut, backOut, elasticOut } from 'svelte/easing';
@@ -67,14 +67,14 @@
 	
 	// Stats
 	let stats = $state<StatCard[]>([]);
-	
-	// Formulário
+  
+  // Formulário
 	let form = $state({
-		title: '',
-		slug: '',
-		content: '',
-		meta_title: '',
-		meta_description: '',
+    title: '',
+    slug: '',
+    content: '',
+    meta_title: '',
+    meta_description: '',
 		is_published: false,
 		type: 'page' as 'page' | 'blog'
 	});
@@ -120,9 +120,9 @@
 	
 	onMount(() => {
 		loadPages();
-	});
-	
-	async function loadPages() {
+  });
+  
+  async function loadPages() {
 		loading = true;
 		
 		// Simular carregamento
@@ -199,9 +199,9 @@
 			selectedPages = new Set();
 		} else {
 			selectedPages = new Set(paginatedPages.map(p => p.id));
-		}
-	}
-	
+    }
+  }
+  
 	function getColorClasses(color: string) {
 		const colors = {
 			primary: 'from-cyan-500 to-cyan-600',
@@ -231,19 +231,19 @@
 	
 	// Modal functions
 	function openCreateModal(type: 'page' | 'blog' = 'page') {
-		form = {
-			title: '',
+    form = {
+      title: '',
 			slug: type === 'blog' ? 'blog/' : '',
-			content: '',
-			meta_title: '',
-			meta_description: '',
+      content: '',
+      meta_title: '',
+      meta_description: '',
 			is_published: false,
 			type
-		};
-		editingPage = null;
-		showCreateModal = true;
-	}
-	
+    };
+    editingPage = null;
+    showCreateModal = true;
+  }
+  
 	function openEditModal(pageToEdit: Page) {
 		form = { 
 			title: pageToEdit.title,
@@ -255,25 +255,25 @@
 			type: pageToEdit.type
 		};
 		editingPage = pageToEdit;
-		showCreateModal = true;
-	}
-	
-	function closeModal() {
-		showCreateModal = false;
-		editingPage = null;
-	}
-	
-	function generateSlug() {
-		if (!form.title) return;
-		
+    showCreateModal = true;
+  }
+  
+  function closeModal() {
+    showCreateModal = false;
+    editingPage = null;
+  }
+  
+  function generateSlug() {
+    if (!form.title) return;
+    
 		const baseSlug = form.title
-			.toLowerCase()
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '') // Remove acentos
-			.replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-			.replace(/\s+/g, '-') // Substitui espaços por hifens
-			.replace(/-+/g, '-') // Remove hifens duplicados
-			.trim();
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
+      .replace(/\s+/g, '-') // Substitui espaços por hifens
+      .replace(/-+/g, '-') // Remove hifens duplicados
+      .trim();
 		
 		form.slug = form.type === 'blog' ? `blog/${baseSlug}` : baseSlug;
 	}
@@ -303,42 +303,42 @@
 			console.log('Excluindo', selectedPages.size, 'páginas');
 			selectedPages = new Set();
 		}
-	}
+  }
 </script>
 
 <div class="space-y-6">
-	<!-- Header -->
+  <!-- Header -->
 	<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4" in:fly={{ y: -20, duration: 500, delay: 100 }}>
-		<div>
+    <div>
 			<h1 class="text-3xl font-bold text-gray-900">
 				{userRole === 'admin' ? 'Gestão de Páginas' : 'Minhas Páginas'}
 			</h1>
 			<p class="text-gray-600 mt-1">Gerencie as páginas estáticas e posts do blog</p>
-		</div>
-		
+    </div>
+    
 		<div class="flex items-center gap-3">
 			<!-- View Mode -->
 			<div class="flex items-center bg-gray-100 rounded-lg p-1">
-				<button 
+    <button 
 					onclick={() => viewMode = 'list'}
 					class="p-2 rounded {viewMode === 'list' ? 'bg-white shadow-sm' : ''} transition-all duration-300 hover:scale-105"
 					title="Visualização em lista"
-				>
+    >
 					<svg class="w-5 h-5 transition-transform duration-300 {viewMode === 'list' ? 'scale-110' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
 					</svg>
-				</button>
-				<button 
+    </button>
+    <button 
 					onclick={() => viewMode = 'grid'}
 					class="p-2 rounded {viewMode === 'grid' ? 'bg-white shadow-sm' : ''} transition-all duration-300 hover:scale-105"
 					title="Visualização em grade"
-				>
+    >
 					<svg class="w-5 h-5 transition-transform duration-300 {viewMode === 'grid' ? 'scale-110' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
 					</svg>
-				</button>
-			</div>
-			
+    </button>
+  </div>
+
 			<!-- Toggle Filters -->
 			<button
 				onclick={() => showFilters = !showFilters}
@@ -497,7 +497,7 @@
 	{/if}
 	
 	<!-- Pages Table/Grid -->
-	{#if loading}
+  {#if loading}
 		<div class="card">
 			<div class="card-body">
 				<div class="flex items-center justify-center py-12">
@@ -507,12 +507,12 @@
 					</div>
 				</div>
 			</div>
-		</div>
+    </div>
 	{:else if filteredPages.length === 0}
 		<div class="card">
 			<div class="card-body text-center py-12">
-				<div class="text-4xl mb-4">📄</div>
-				<h3 class="text-lg font-medium text-gray-900 mb-2">Nenhuma página encontrada</h3>
+      <div class="text-4xl mb-4">📄</div>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">Nenhuma página encontrada</h3>
 				<p class="text-gray-600 mb-4">Crie sua primeira página estática ou post do blog.</p>
 				<div class="flex items-center justify-center gap-3">
 					<button 
@@ -524,16 +524,16 @@
 						</svg>
 						Criar Página
 					</button>
-					<button 
+      <button 
 						onclick={() => openCreateModal('blog')}
 						class="btn btn-success"
-					>
+      >
 						<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
 						</svg>
 						Criar Post
-					</button>
-				</div>
+      </button>
+    </div>
 			</div>
 		</div>
 	{:else if viewMode === 'list'}
@@ -577,12 +577,12 @@
 									<div class="flex items-center gap-3">
 										<div class="w-10 h-10 bg-gradient-to-br {page.type === 'page' ? 'from-cyan-500 to-cyan-600' : 'from-green-500 to-green-600'} rounded-lg flex items-center justify-center text-white">
 											{page.type === 'page' ? '📄' : '📝'}
-										</div>
+                </div>
 										<div>
 											<p class="font-medium text-gray-900">{page.title}</p>
 											<p class="text-sm text-gray-500">/{page.slug}</p>
-										</div>
-									</div>
+                </div>
+              </div>
 								</td>
 								<td>
 									<span class="badge {page.type === 'page' ? 'badge-info' : 'badge-success'}">
@@ -598,29 +598,29 @@
 								<td class="text-sm text-gray-600">{formatDate(page.updated_at)}</td>
 								<td>
 									<div class="flex items-center justify-end gap-1">
-										{#if page.is_published}
-											<a 
-												href="/{page.slug}" 
-												target="_blank"
+                {#if page.is_published}
+                  <a 
+                    href="/{page.slug}" 
+                    target="_blank"
 												class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
 												title="Ver página"
-											>
+                  >
 												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
 												</svg>
-											</a>
-										{/if}
-										<button
-											onclick={() => openEditModal(page)}
+                  </a>
+                {/if}
+                <button 
+                  onclick={() => openEditModal(page)}
 											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
 											title="Editar"
-										>
+                >
 											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
 											</svg>
-										</button>
-										<button
-											onclick={() => deletePage(page)}
+                </button>
+                <button 
+                  onclick={() => deletePage(page)}
 											class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
 											title="Excluir"
 										>
@@ -669,9 +669,9 @@
 								class="btn btn-sm btn-ghost"
 							>
 								Próximo
-							</button>
-						</div>
-					</div>
+                </button>
+              </div>
+            </div>
 				</div>
 			{/if}
 		</div>
@@ -727,9 +727,9 @@
 						</div>
 					</div>
 				</div>
-			{/each}
-		</div>
-	{/if}
+        {/each}
+    </div>
+  {/if}
 </div>
 
 <!-- Modal de criar/editar -->
@@ -739,121 +739,121 @@
 			class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
 			in:scale={{ duration: 300, easing: backOut }}
 		>
-			<div class="p-6">
-				<div class="flex justify-between items-center mb-6">
-					<h2 class="text-xl font-bold text-gray-900">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold text-gray-900">
 						{editingPage ? 'Editar' : 'Nova'} {form.type === 'page' ? 'Página' : 'Post do Blog'}
-					</h2>
-					<button 
-						onclick={closeModal}
+          </h2>
+          <button 
+            onclick={closeModal}
 						class="text-gray-400 hover:text-gray-600 transition-colors"
-					>
-						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-						</svg>
-					</button>
-				</div>
-				
-				<form onsubmit={(e) => { e.preventDefault(); savePage(); }} class="space-y-6">
-					<!-- Título -->
-					<div>
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form onsubmit={(e) => { e.preventDefault(); savePage(); }} class="space-y-6">
+          <!-- Título -->
+          <div>
 						<label class="label">Título *</label>
-						<input 
-							type="text" 
-							bind:value={form.title}
-							onblur={generateSlug}
+            <input 
+              type="text" 
+              bind:value={form.title}
+              onblur={generateSlug}
 							class="input"
-							required
-						/>
-					</div>
-					
-					<!-- Slug -->
-					<div>
+              required
+            />
+          </div>
+          
+          <!-- Slug -->
+          <div>
 						<label class="label">URL (Slug) *</label>
-						<div class="flex">
-							<span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-								/
-							</span>
-							<input 
-								type="text" 
-								bind:value={form.slug}
+            <div class="flex">
+              <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                /
+              </span>
+              <input 
+                type="text" 
+                bind:value={form.slug}
 								class="flex-1 rounded-l-none input"
-								required
-							/>
-						</div>
-					</div>
-					
-					<!-- Meta Title -->
-					<div>
+                required
+              />
+            </div>
+          </div>
+          
+          <!-- Meta Title -->
+          <div>
 						<label class="label">Meta Title (SEO)</label>
-						<input 
-							type="text" 
-							bind:value={form.meta_title}
+            <input 
+              type="text" 
+              bind:value={form.meta_title}
 							class="input"
-							placeholder="Se vazio, será usado o título da página"
-						/>
-					</div>
-					
-					<!-- Meta Description -->
-					<div>
+              placeholder="Se vazio, será usado o título da página"
+            />
+          </div>
+          
+          <!-- Meta Description -->
+          <div>
 						<label class="label">Meta Description (SEO)</label>
-						<textarea 
-							bind:value={form.meta_description}
-							rows="3"
+            <textarea 
+              bind:value={form.meta_description}
+              rows="3"
 							class="input"
-							placeholder="Descrição para aparecer nos resultados de busca"
-						></textarea>
-					</div>
-					
-					<!-- Conteúdo -->
-					<div>
+              placeholder="Descrição para aparecer nos resultados de busca"
+            ></textarea>
+          </div>
+          
+          <!-- Conteúdo -->
+          <div>
 						<label class="label">Conteúdo (HTML) *</label>
-						<textarea 
-							bind:value={form.content}
-							rows="15"
+            <textarea 
+              bind:value={form.content}
+              rows="15"
 							class="input font-mono text-sm"
-							placeholder="Cole aqui o conteúdo HTML da página..."
-							required
-						></textarea>
+              placeholder="Cole aqui o conteúdo HTML da página..."
+              required
+            ></textarea>
 						<p class="help-text">
-							Você pode usar HTML completo. Use classes do Tailwind CSS para estilização.
-						</p>
-					</div>
-					
-					<!-- Publicado -->
-					<div class="flex items-center">
-						<input 
-							type="checkbox" 
-							bind:checked={form.is_published}
-							id="is_published"
+              Você pode usar HTML completo. Use classes do Tailwind CSS para estilização.
+            </p>
+          </div>
+          
+          <!-- Publicado -->
+          <div class="flex items-center">
+            <input 
+              type="checkbox" 
+              bind:checked={form.is_published}
+              id="is_published"
 							class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-						/>
-						<label for="is_published" class="ml-2 text-sm font-medium text-gray-700">
-							Publicar página (tornar visível no site)
-						</label>
-					</div>
-					
-					<!-- Botões -->
+            />
+            <label for="is_published" class="ml-2 text-sm font-medium text-gray-700">
+              Publicar página (tornar visível no site)
+            </label>
+          </div>
+          
+          <!-- Botões -->
 					<div class="flex justify-end gap-3 pt-6">
-						<button 
-							type="button"
-							onclick={closeModal}
+            <button 
+              type="button"
+              onclick={closeModal}
 							class="btn btn-ghost"
-						>
-							Cancelar
-						</button>
-						<button 
-							type="submit"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit"
 							class="btn btn-primary"
-						>
+            >
 							{editingPage ? 'Atualizar' : 'Criar'} {form.type === 'page' ? 'Página' : 'Post'}
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-{/if}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{/if} 
 
 <style>
 	/* Animações customizadas para os cards */
