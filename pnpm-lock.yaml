@@ -8,12 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@types/bcryptjs':
-        specifier: ^3.0.0
-        version: 3.0.0
-      bcryptjs:
-        specifier: ^3.0.2
-        version: 3.0.2
       mongodb:
         specifier: ^6.16.0
         version: 6.16.0(socks@2.8.4)
