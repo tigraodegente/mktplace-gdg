@@ -24,7 +24,8 @@
     "db:migrate": "../../run_migration.sh",
     "db:seed": "../../insert_featured_products.sql",
     "cache:clear": "rm -rf .svelte-kit node_modules/.vite",
-    "type:check": "svelte-check --tsconfig ./tsconfig.json --output verbose"
+    "type:check": "svelte-check --tsconfig ./tsconfig.json --output verbose",
+    "analyze": "vite-bundle-visualizer"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.5",

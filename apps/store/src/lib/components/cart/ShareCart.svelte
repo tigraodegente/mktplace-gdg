@@ -274,7 +274,7 @@
 									src={qrCodeUrl} 
 									alt="QR Code do carrinho"
 									class="w-32 h-32 sm:w-48 sm:h-48"
-									loading="eager"
+									loading="lazy"
 								/>
 							{:else}
 								<div class="w-32 h-32 sm:w-48 sm:h-48 bg-gray-200 animate-pulse rounded"></div>

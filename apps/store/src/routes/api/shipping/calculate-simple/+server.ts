@@ -1,4 +1,5 @@
 /**
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
  * API Endpoint: Calcular Frete Simples
  * 
  * POST /api/shipping/calculate-simple

@@ -25,13 +25,13 @@ export { default as OrderSummary } from './OrderSummary.svelte';
 export { default as MiniCart } from './MiniCart.svelte';
 
 // Services
-export { ShippingCartService } from '$lib/services/shippingCartService';
+export { UnifiedShippingService } from '$lib/services/unifiedShippingService';
 export type { 
-  SellerShippingQuote, 
-  ShippingCalculationRequest,
+  UnifiedShippingQuote, 
+  UnifiedShippingRequest,
   ShippingItem,
-  AdvancedShippingOption 
-} from '$lib/services/shippingCartService';
+  UnifiedShippingOption 
+} from '$lib/services/unifiedShippingService';
 
 // Store - atualizado para o novo nome
 export { cartStore, advancedCartStore } from '$lib/stores/cartStore';

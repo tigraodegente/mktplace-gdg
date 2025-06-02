@@ -7,15 +7,24 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { UniversalShippingService } from '$lib/services/universalShippingService';
+import { UnifiedShippingService } from '$lib/services/unifiedShippingService';
+import type { CartItem } from '$lib/types/cart';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const body = await request.json();
     const { postalCode, items, sellerId } = body;
 
+    console.log('📬 Requisição de cálculo de frete:', {
+      postalCode,
+      itemsLength: items?.length,
+      sellerId,
+      itemsType: Array.isArray(items) ? 'array' : typeof items
+    });
+
     // Validações básicas
     if (!postalCode || !items || !Array.isArray(items)) {
+      console.error('❌ Dados inválidos:', { postalCode, items });
       return json(
         { 
           success: false, 
@@ -44,13 +53,46 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       );
     }
 
+    // Converter items da API para CartItem
+    const cartItems: CartItem[] = items.map((item: any) => ({
+      product: item.product,
+      sellerId: item.sellerId,
+      sellerName: item.sellerName,
+      quantity: item.quantity,
+      selectedColor: item.selectedColor,
+      selectedSize: item.selectedSize
+    }));
+
+    console.log('📦 CartItems convertidos:', {
+      length: cartItems.length,
+      isArray: Array.isArray(cartItems),
+      firstItem: cartItems[0]
+    });
+
     // Se for um seller específico, calcular apenas para ele
     if (sellerId) {
-      const quote = await UniversalShippingService.calculateShippingForSeller(
+      const sellerItems = cartItems.filter(item => item.sellerId === sellerId);
+      
+      const quote = await UnifiedShippingService.calculateShippingForSeller(
         platform,
-        sellerId,
-        cleanPostalCode,
-        items
+        {
+          postalCode: cleanPostalCode,
+          items: sellerItems.map(item => ({
+            product: item.product,
+            product_id: item.product.id,
+            quantity: item.quantity,
+            sellerId: item.sellerId,
+            sellerName: item.sellerName,
+            weight: (item.product as any).weight || 0.3,
+            price: item.product.price,
+            category_id: (item.product as any).category_id,
+            height: (item.product as any).height,
+            width: (item.product as any).width,
+            length: (item.product as any).length
+          })),
+          sellerId,
+          useCache: true
+        }
       );
 
       return json({
@@ -63,22 +105,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       });
     }
 
-    // Se não especificar seller, agrupar por seller automaticamente
-    const itemsBySeller: Record<string, any[]> = {};
-    
-    items.forEach((item: any) => {
-      const sellerKey = item.sellerId || 'default-seller';
-      if (!itemsBySeller[sellerKey]) {
-        itemsBySeller[sellerKey] = [];
-      }
-      itemsBySeller[sellerKey].push(item);
-    });
-
     // Calcular frete para todos os sellers
-    const quotes = await UniversalShippingService.calculateShippingForCart(
+    const quotes = await UnifiedShippingService.calculateShippingForCart(
       platform,
       cleanPostalCode,
-      itemsBySeller
+      cartItems
     );
 
     return json({

@@ -4,6 +4,8 @@ import { getDatabase } from '$lib/db';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { logAuth, logOperation, logPerformance, logger } from '$lib/utils/logger';
+import { queryWithTimeout } from '$lib/db/queryWithTimeout';
+import { TIMEOUT_CONFIG } from '$lib/config/timeouts';
 
 export const POST: RequestHandler = async ({ request, cookies, platform }) => {
   const startTime = performance.now();
@@ -28,12 +30,12 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       }, { status: 400 });
     }
     
-    // Tentar login com timeout
+    // Executar login com timeout otimizado
     try {
       const db = getDatabase(platform);
       
-      // Promise com timeout de 5 segundos para login
-      const queryPromise = (async () => {
+      // Usar helper com timeout configurado
+      const result = await queryWithTimeout(db, async (db) => {
         // STEP 1: Query simplificada - buscar usuário
         const users = await db.query`
           SELECT id, email, name, role, password_hash, is_active
@@ -127,27 +129,24 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
           },
           sessionToken
         };
-      })();
-      
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 10000)
+      }, {
+        operation: 'auth/login',
+        retryable: false // Não fazer retry em auth por segurança
       });
-      
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       // Se houve erro, retornar com o status apropriado
       if (!result.success) {
-        logOperation(false, 'Login failed', { reason: result.error.message });
+        logOperation(false, 'Login failed', { reason: result.error?.message });
         return json({
           success: false,
-          error: result.error
+          error: result.error || { message: 'Erro desconhecido' }
         }, { status: result.status || 500 });
       }
       
       logAuth('success', true, { 
-        email: result.user.email,
-        userId: result.user.id,
-        role: result.user.role
+        email: result.user?.email || email,
+        userId: result.user?.id || 'unknown',
+        role: result.user?.role || 'unknown'
       });
       
       // Configuração otimizada do cookie para remoto
@@ -188,7 +187,8 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
     } catch (error) {
       logger.warn('Login timeout or database error - denying access', { 
         error: error instanceof Error ? error.message : 'Unknown error',
-        email 
+        email,
+        timeout: TIMEOUT_CONFIG.api.auth.login
       });
       
       // FALLBACK SEGURO: sempre negar login em caso de timeout

@@ -5,7 +5,7 @@
 
 import type { ShippingOrderData, ShippingOperationResult } from '$lib/types/shipping';
 import { ShippingService } from './shipping-service';
-import { shippingConfig, logShippingConfiguration } from '$lib/config/shipping';
+import { shippingConfig, logShippingConfiguration } from '$lib/config/shipping.server';
 
 // =====================================================
 // SINGLETON INSTANCE (OTIMIZADO)

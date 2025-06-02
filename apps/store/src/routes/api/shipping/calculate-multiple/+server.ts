@@ -1,4 +1,5 @@
 /**
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
  * API Endpoint: Calcular Múltiplas Opções de Frete
  * 
  * POST /api/shipping/calculate-multiple

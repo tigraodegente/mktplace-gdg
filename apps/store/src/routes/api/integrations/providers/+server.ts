@@ -1,4 +1,5 @@
 /**
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
  * API de Gerenciamento de Providers de Integração
  * 
  * GET /api/integrations/providers - Listar providers

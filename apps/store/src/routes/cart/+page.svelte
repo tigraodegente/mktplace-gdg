@@ -1,5 +1,5 @@
 <!-- PROTEÇÕES IMEDIATAS -->
-<script context="module">
+<script module>
   // EXECUTAR IMEDIATAMENTE NO CONTEXTO DO MÓDULO
   if (typeof window !== 'undefined') {
     console.log('🛡️🛡️🛡️ PROTEÇÕES ULTRA-IMEDIATAS ATIVADAS! 🛡️🛡️🛡️');
@@ -32,7 +32,7 @@
   import BenefitBadge from '$lib/components/cart/BenefitBadge.svelte';
   import CartNotifications from '$lib/components/cart/CartNotifications.svelte';
   import OrderSummary from '$lib/components/cart/OrderSummary.svelte';
-  import { ShippingCartService, type SellerShippingQuote } from '$lib/services/shippingCartService';
+  import { UnifiedShippingService, type UnifiedShippingQuote } from '$lib/services/unifiedShippingService';
   import { goto } from '$app/navigation';
   import { writable } from 'svelte/store';
   import { get } from 'svelte/store';
@@ -62,7 +62,7 @@
   const zipCode = writable<string>('');
   
   // Estado para o sistema real de frete
-  let realShippingQuotes = $state<SellerShippingQuote[]>([]);
+  let realShippingQuotes = $state<UnifiedShippingQuote[]>([]);
   let calculatingRealShipping = $state(false);
   let realShippingError = $state('');
   let selectedShippingOptions = $state<Record<string, string>>({});
@@ -195,8 +195,8 @@
   const hasCartFreeShipping = $derived(
     realShippingQuotes.length > 0 && 
     realShippingQuotes.every(quote => 
-      quote.shippingResult.success && 
-      quote.shippingResult.options.some(opt => opt.price === 0)
+      quote.success && 
+      quote.options.some(opt => opt.price === 0)
     )
   );
   
@@ -205,7 +205,7 @@
     const cartSubtotal = $cartTotals.cartSubtotal;
     
     // Calcular frete total baseado nas opções selecionadas
-    const shippingCalculation = ShippingCartService.calculateCartShippingTotal(
+    const shippingCalculation = UnifiedShippingService.calculateCartShippingTotal(
       realShippingQuotes,
       selectedShippingOptions
     );
@@ -239,13 +239,13 @@
       cartTotal,
       installmentValue: cartTotal / 12,
       maxDeliveryDays: shippingCalculation.maxDeliveryDays,
-      hasExpressOptions: shippingCalculation.hasExpressOptions,
-      hasGroupedOptions: shippingCalculation.hasGroupedOptions
+      hasExpressOptions: false, // Não usado atualmente
+      hasGroupedOptions: false  // Não usado atualmente
     };
   });
   
   // Função para calcular frete real
-  async function handleRealShippingCalculate(newZipCode: string, quotes: SellerShippingQuote[]) {
+  async function handleRealShippingCalculate(newZipCode: string, quotes: UnifiedShippingQuote[] = []) {
     calculatingRealShipping = true;
     realShippingError = '';
     
@@ -257,8 +257,8 @@
         // Auto-selecionar a opção mais barata para cada seller
         const newSelectedOptions: Record<string, string> = {};
         quotes.forEach(quote => {
-          if (quote.shippingResult.success && quote.shippingResult.options.length > 0) {
-            const cheapest = ShippingCartService.getCheapestOption(quote.shippingResult.options);
+          if (quote.success && quote.options.length > 0) {
+            const cheapest = UnifiedShippingService.getCheapestOption(quote.options);
             if (cheapest) {
               newSelectedOptions[quote.sellerId] = cheapest.id;
             }
@@ -268,23 +268,58 @@
       } else {
         // Calcular manualmente se não foram fornecidas
         const cartItems = $sellerGroups.flatMap(group => group.items);
-        const calculatedQuotes = await ShippingCartService.calculateShippingForCart(
-          newZipCode,
-          cartItems
-        );
-        realShippingQuotes = calculatedQuotes;
         
-        // Auto-selecionar opções mais baratas
-        const newSelectedOptions: Record<string, string> = {};
-        calculatedQuotes.forEach(quote => {
-          if (quote.shippingResult.success && quote.shippingResult.options.length > 0) {
-            const cheapest = ShippingCartService.getCheapestOption(quote.shippingResult.options);
-            if (cheapest) {
-              newSelectedOptions[quote.sellerId] = cheapest.id;
-            }
-          }
+        // Converter CartItem para o formato esperado pela API
+        const items = cartItems.map(item => ({
+          product: item.product,
+          product_id: item.product.id,
+          quantity: item.quantity,
+          sellerId: item.sellerId,
+          sellerName: item.sellerName,
+          weight: (item.product as any).weight || 0.3,
+          price: item.product.price,
+          category_id: (item.product as any).category_id,
+          height: (item.product as any).height,
+          width: (item.product as any).width,
+          length: (item.product as any).length,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize
+        }));
+
+        const response = await fetch('/api/shipping/calculate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            postalCode: newZipCode,
+            items
+          })
         });
-        selectedShippingOptions = newSelectedOptions;
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+          realShippingQuotes = result.data.quotes;
+          
+          // Auto-selecionar opções mais baratas
+          const newSelectedOptions: Record<string, string> = {};
+          result.data.quotes.forEach((quote: UnifiedShippingQuote) => {
+            if (quote.success && quote.options.length > 0) {
+              const cheapest = UnifiedShippingService.getCheapestOption(quote.options);
+              if (cheapest) {
+                newSelectedOptions[quote.sellerId] = cheapest.id;
+              }
+            }
+          });
+          selectedShippingOptions = newSelectedOptions;
+        } else {
+          throw new Error(result.error?.message || 'Erro ao calcular frete');
+        }
       }
       
       // Atualizar store do CEP
@@ -309,7 +344,7 @@
   // 🔄 RECÁLCULO AUTOMÁTICO quando muda seleção de frete com cupom ativo
   $effect(() => {
     if ($appliedCoupon && $appliedCoupon.type === 'free_shipping' && realShippingQuotes.length > 0) {
-      const shippingCost = ShippingCartService.calculateCartShippingTotal(
+      const shippingCost = UnifiedShippingService.calculateCartShippingTotal(
         realShippingQuotes,
         selectedShippingOptions
       ).totalShipping;
@@ -342,7 +377,7 @@
     
     // Verificar se todas as opções de frete foram selecionadas
     const missingShipping = realShippingQuotes.some(quote => 
-      quote.shippingResult.success && !selectedShippingOptions[quote.sellerId]
+      quote.success && !selectedShippingOptions[quote.sellerId]
     );
     
     if (missingShipping) {
@@ -587,58 +622,9 @@
       return originalFetch.apply(window, args);
     };
     
-    // INTERCEPTAR TODOS OS MÉTODOS DE REDIRECIONAMENTO
-    // 1. window.location.href
-    const originalHref = Object.getOwnPropertyDescriptor(window.location, 'href');
-    Object.defineProperty(window.location, 'href', {
-      get() {
-        return originalHref?.get?.call(window.location);
-      },
-      set(value) {
-        if (value && value.toString().includes('/login')) {
-          console.warn('🛡️ REDIRECIONAMENTO BLOQUEADO!');
-          return;
-        }
-        originalHref?.set?.call(window.location, value);
-      }
-    });
-    
-    // 2. window.location.assign
-    const originalAssign = window.location.assign;
-    window.location.assign = function(url: string) {
-      if (url && url.includes('/login')) {
-        console.warn('🛡️ location.assign BLOQUEADO!');
-        return;
-      }
-      originalAssign.call(window.location, url);
-    };
-    
-    // 3. window.location.replace
-    const originalReplace = window.location.replace;
-    window.location.replace = function(url: string) {
-      if (url && url.includes('/login')) {
-        console.warn('🛡️ location.replace BLOQUEADO!');
-        return;
-      }
-      originalReplace.call(window.location, url);
-    };
-    
-    // 4. Interceptar o próprio goto do SvelteKit
-    const originalGotoSymbol = Symbol.for('svelte.goto');
-    const originalGoto = (window as any)[originalGotoSymbol] || goto;
-    
-    // Sobrescrever o goto global
-    (window as any)[originalGotoSymbol] = async function(url: string, ...args: any[]) {
-      if (url && url.includes('/login')) {
-        console.warn('🛡️ goto() PARA LOGIN BLOQUEADO!');
-        return Promise.resolve();
-      }
-      return originalGoto(url, ...args);
-    };
-    
     // Marcar globalmente que proteções estão ativas
     (window as any).__cartProtectionsActive = true;
-    console.log('✅ TODAS AS PROTEÇÕES ATIVADAS!');
+    console.log('✅ PROTEÇÕES BÁSICAS ATIVADAS!');
   }
 </script>
 
@@ -790,12 +776,12 @@
                       const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
                       const selectedOptionId = selectedShippingOptions[group.sellerId];
                       if (sellerQuote && selectedOptionId) {
-                        const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                        const option = sellerQuote.options?.find(opt => opt.id === selectedOptionId);
                         return option ? {
                           name: option.name,
                           price: option.price,
-                          delivery_days: option.delivery_days,
-                          modality_name: option.modality_name
+                          delivery_days: option.deliveryDays,
+                          modality_name: option.modalityName
                         } : null;
                       }
                       return null;
@@ -834,7 +820,7 @@
                   const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
                   const selectedOptionId = selectedShippingOptions[group.sellerId];
                   if (sellerQuote && selectedOptionId) {
-                    const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                    const option = sellerQuote.options?.find(opt => opt.id === selectedOptionId);
                     return option?.price || 0;
                   }
                   return 0;
@@ -843,7 +829,7 @@
                   const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
                   const selectedOptionId = selectedShippingOptions[group.sellerId];
                   if (sellerQuote && selectedOptionId) {
-                    const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
+                    const option = sellerQuote.options?.find(opt => opt.id === selectedOptionId);
                     return option?.name;
                   }
                   return undefined;
@@ -852,8 +838,8 @@
                   const sellerQuote = realShippingQuotes.find(q => q.sellerId === group.sellerId);
                   const selectedOptionId = selectedShippingOptions[group.sellerId];
                   if (sellerQuote && selectedOptionId) {
-                    const option = sellerQuote.shippingResult.options?.find(opt => opt.id === selectedOptionId);
-                    return option?.delivery_days;
+                    const option = sellerQuote.options?.find(opt => opt.id === selectedOptionId);
+                    return option?.deliveryDays;
                   }
                   return undefined;
                 })()}
@@ -923,7 +909,7 @@
                 <CouponSection
                   appliedCoupon={$appliedCoupon}
                   hasShippingCalculated={$zipCode !== '' && realShippingQuotes.length > 0}
-                  shippingCost={realShippingQuotes.length > 0 ? ShippingCartService.calculateCartShippingTotal(realShippingQuotes, selectedShippingOptions).totalShipping : 0}
+                  shippingCost={realShippingQuotes.length > 0 ? UnifiedShippingService.calculateCartShippingTotal(realShippingQuotes, selectedShippingOptions).totalShipping : 0}
                   onApplyCoupon={handleApplyCoupon}
                   onRemoveCoupon={removeCoupon}
                 />
