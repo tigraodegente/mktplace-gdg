@@ -54,7 +54,33 @@ async function selectPaymentGateway(
     // Lógica de decisão (pode ser customizada)
     // Exemplo: usar AppMax para PIX e cartões, outro gateway para boleto
     for (const gateway of gateways) {
-      const supportedMethods = JSON.parse(gateway.supported_methods || '[]');
+      let supportedMethods = [];
+      
+      try {
+        // Verificar se já é um array (vindo do banco como JSONB)
+        if (Array.isArray(gateway.supported_methods)) {
+          supportedMethods = gateway.supported_methods;
+        } else if (typeof gateway.supported_methods === 'string') {
+          // Se for string, tentar fazer parse
+          const rawMethods = gateway.supported_methods;
+          
+          // Corrigir erro comum de digitação antes do parse
+          const correctedMethods = rawMethods.replace(/credit_car/g, 'credit_card');
+          
+          supportedMethods = JSON.parse(correctedMethods);
+        } else {
+          // Se não for nem array nem string, usar array vazio
+          supportedMethods = [];
+        }
+      } catch (parseError) {
+        logger.error('Failed to parse supported_methods for gateway', {
+          gateway: gateway.name,
+          supported_methods: gateway.supported_methods,
+          error: parseError
+        });
+        // Continuar para o próximo gateway se falhar o parse
+        continue;
+      }
       
       // Verificar se o gateway suporta o método
       if (!supportedMethods.includes(paymentMethod)) continue;

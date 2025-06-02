@@ -141,6 +141,18 @@
 			} else if (window.location.hostname === 'localhost') {
 				console.log('🚫 Service Worker desabilitado em localhost');
 			}
+			
+			// Interceptar erros de ícones PWA em desenvolvimento
+			if (window.location.hostname === 'localhost') {
+				window.addEventListener('error', function(e) {
+					// Ignorar erros de ícones PWA em desenvolvimento
+					if (e.target && e.target.tagName === 'IMG' && e.target.src && e.target.src.includes('/icons/')) {
+						e.preventDefault();
+						console.log('🎨 Ícone PWA não encontrado (normal em desenvolvimento):', e.target.src);
+						return false;
+					}
+				}, true);
+			}
 		</script>
 
 		<!-- Analytics apenas em produção -->

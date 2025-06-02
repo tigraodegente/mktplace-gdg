@@ -8,6 +8,7 @@
  * - Frete grátis em múltiplos níveis
  * - Cache inteligente
  * - Peso real vs peso cubado
+ * - Modalidades: Expressa (por item) e Agrupada (por remessa)
  */
 
 import type { CartItem } from '$lib/types/cart';
@@ -186,11 +187,6 @@ export class UnifiedShippingService {
     request: UnifiedShippingRequest
   ): Promise<UnifiedShippingQuote> {
     
-    // Em desenvolvimento, usar dados mockados se não houver dados reais
-    if (platform?.env?.NODE_ENV === 'development' || !platform) {
-      return this.getMockShippingQuote(request);
-    }
-    
     // Verificar cache
     if (request.useCache !== false) {
       const cacheKey = this.cache.generateKey(request);
@@ -208,8 +204,7 @@ export class UnifiedShippingService {
         // 1. Buscar zona por CEP
         const zone = await this.findZoneByPostalCode(db, request.postalCode);
         if (!zone) {
-          // Se não encontrar zona, retornar dados mockados
-          return this.getMockShippingQuote(request);
+          return this.createErrorQuote(request, 'CEP não encontrado na área de cobertura');
         }
         
         // 2. Calcular peso e valor totais
@@ -228,9 +223,8 @@ export class UnifiedShippingService {
           request.items
         );
         
-        // Se não houver opções, retornar dados mockados
         if (shippingOptions.length === 0) {
-          return this.getMockShippingQuote(request);
+          return this.createErrorQuote(request, 'Nenhuma opção de frete disponível');
         }
         
         // 4. Criar quote
@@ -260,8 +254,7 @@ export class UnifiedShippingService {
         
       } catch (error) {
         console.error('❌ Erro no cálculo de frete:', error);
-        // Em caso de erro, retornar dados mockados
-        return this.getMockShippingQuote(request);
+        return this.createErrorQuote(request, 'Erro ao calcular frete');
       }
     });
   }
@@ -384,23 +377,41 @@ export class UnifiedShippingService {
     
     try {
       // 1. Calcular preço base
-      const basePrice = this.calculatePriceByWeight(
-        totalWeight,
-        modality.weight_rules || []
-      );
+      let basePrice: number;
       
-      if (basePrice === null) return null;
+      // Se for "per_item", calcular preço individual por item
+      if (modality.modality_pricing_type === 'per_item') {
+        basePrice = 0;
+        for (const item of items) {
+          const itemWeight = (item.weight || 0.3) * 1000 * item.quantity;
+          const itemPrice = this.calculatePriceByWeight(
+            itemWeight,
+            modality.calculated_weight_rules || modality.weight_rules || []
+          );
+          if (itemPrice === null) return null;
+          basePrice += itemPrice;
+        }
+      } else {
+        // Se for "per_shipment", usar peso total
+        const shipmentPrice = this.calculatePriceByWeight(
+          totalWeight,
+          modality.calculated_weight_rules || modality.weight_rules || []
+        );
+        if (shipmentPrice === null) return null;
+        basePrice = shipmentPrice;
+      }
       
       // 2. Buscar configurações de markup e frete grátis
       const config = await this.getShippingConfig(db, modality.modality_id, sellerId, zone.zone_id);
       
       // 3. Aplicar markup
-      const markup = basePrice * (config?.markup_percentage || 0) / 100;
+      const markupPercentage = config?.custom_price_multiplier || config?.markup_percentage || 0;
+      const markup = basePrice * markupPercentage / 100;
       
       // 4. Calcular taxas adicionais
       const taxes = this.calculateAdditionalFees(
         basePrice + markup,
-        modality.additional_fees
+        modality.calculated_fees || modality.additional_fees
       );
       
       // 5. Preço original (antes de descontos)
@@ -416,19 +427,25 @@ export class UnifiedShippingService {
         sellerId
       );
       
-      // 7. Criar opção
+      // 7. Definir prazo
+      const deliveryDays = modality.calculated_delivery_days || zone.delivery_days_min || 5;
+      const deliveryDaysMin = zone.delivery_days_min || deliveryDays;
+      const deliveryDaysMax = zone.delivery_days_max || deliveryDays + 2;
+      
+      // 8. Criar opção
       return {
-        id: `${zone.carrier_id}-${modality.id}`,
+        id: `${zone.carrier_id}-${modality.modality_id}`,
         name: this.generateOptionName(
           modality.modality_name,
-          modality.calculated_delivery_days || zone.delivery_days_min
+          deliveryDays,
+          modality.modality_pricing_type
         ),
         description: modality.modality_description || '',
         price: freeShipping.isFree ? 0 : originalPrice,
         originalPrice,
-        deliveryDays: modality.calculated_delivery_days || zone.delivery_days_min,
-        deliveryDaysMin: zone.delivery_days_min,
-        deliveryDaysMax: zone.delivery_days_max,
+        deliveryDays,
+        deliveryDaysMin,
+        deliveryDaysMax,
         modalityId: modality.modality_id,
         modalityName: modality.modality_name,
         pricingType: modality.modality_pricing_type,
@@ -546,113 +563,6 @@ export class UnifiedShippingService {
     }
     
     return { total, breakdown };
-  }
-  
-  // ============================================================================
-  // MÉTODOS AUXILIARES - MOCK DATA
-  // ============================================================================
-  
-  private static getMockShippingQuote(request: UnifiedShippingRequest): UnifiedShippingQuote {
-    const totalWeight = this.calculateEffectiveWeight(request.items);
-    const totalValue = this.calculateTotalValue(request.items);
-    
-    // Opções de frete mockadas
-    const mockOptions: UnifiedShippingOption[] = [
-      {
-        id: 'correios-pac',
-        name: 'PAC (7-10 dias úteis)',
-        description: 'Entrega econômica pelos Correios',
-        price: totalWeight < 5000 ? 18.90 : 29.90,
-        originalPrice: totalWeight < 5000 ? 18.90 : 29.90,
-        deliveryDays: 8,
-        deliveryDaysMin: 7,
-        deliveryDaysMax: 10,
-        modalityId: 'pac',
-        modalityName: 'PAC',
-        pricingType: 'per_shipment',
-        carrier: 'Correios',
-        carrierName: 'Correios',
-        carrierId: 'correios',
-        zoneName: 'Zona Mock',
-        isFree: totalValue >= 299,
-        freeReason: totalValue >= 299 ? 'Frete grátis para compras acima de R$ 299' : undefined,
-        breakdown: {
-          basePrice: totalWeight < 5000 ? 18.90 : 29.90,
-          markup: 0,
-          taxes: {},
-          discounts: {},
-          freeShippingDiscount: totalValue >= 299 ? (totalWeight < 5000 ? 18.90 : 29.90) : 0
-        }
-      },
-      {
-        id: 'correios-sedex',
-        name: 'SEDEX (3-5 dias úteis)',
-        description: 'Entrega expressa pelos Correios',
-        price: totalValue >= 299 ? 0 : (totalWeight < 5000 ? 36.90 : 49.90),
-        originalPrice: totalWeight < 5000 ? 36.90 : 49.90,
-        deliveryDays: 4,
-        deliveryDaysMin: 3,
-        deliveryDaysMax: 5,
-        modalityId: 'sedex',
-        modalityName: 'SEDEX',
-        pricingType: 'per_shipment',
-        carrier: 'Correios',
-        carrierName: 'Correios',
-        carrierId: 'correios',
-        zoneName: 'Zona Mock',
-        isFree: totalValue >= 299,
-        freeReason: totalValue >= 299 ? 'Frete grátis para compras acima de R$ 299' : undefined,
-        breakdown: {
-          basePrice: totalWeight < 5000 ? 36.90 : 49.90,
-          markup: 0,
-          taxes: {},
-          discounts: {},
-          freeShippingDiscount: totalValue >= 299 ? (totalWeight < 5000 ? 36.90 : 49.90) : 0
-        }
-      },
-      {
-        id: 'transportadora-rapida',
-        name: 'Entrega Rápida (1-2 dias úteis)',
-        description: 'Entrega expressa por transportadora',
-        price: totalValue >= 499 ? 0 : 89.90,
-        originalPrice: 89.90,
-        deliveryDays: 2,
-        deliveryDaysMin: 1,
-        deliveryDaysMax: 2,
-        modalityId: 'express',
-        modalityName: 'Express',
-        pricingType: 'per_shipment',
-        carrier: 'Transportadora Express',
-        carrierName: 'Transportadora Express',
-        carrierId: 'express',
-        zoneName: 'Zona Mock',
-        isFree: totalValue >= 499,
-        freeReason: totalValue >= 499 ? 'Frete grátis para compras acima de R$ 499' : undefined,
-        breakdown: {
-          basePrice: 89.90,
-          markup: 0,
-          taxes: {},
-          discounts: {},
-          freeShippingDiscount: totalValue >= 499 ? 89.90 : 0
-        }
-      }
-    ];
-    
-    return {
-      sellerId: request.sellerId || 'global',
-      sellerName: request.items[0]?.sellerName || 'Loja',
-      items: request.items,
-      options: mockOptions,
-      totalWeight,
-      totalValue,
-      success: true,
-      zoneInfo: {
-        zoneId: 'mock-zone',
-        zoneName: 'Zona Mock',
-        uf: 'SP',
-        carrier: 'Múltiplos'
-      }
-    };
   }
   
   // ============================================================================
@@ -810,10 +720,24 @@ export class UnifiedShippingService {
     return false;
   }
   
-  private static generateOptionName(modalityName: string, days: number): string {
-    if (days === 0) return `${modalityName} - Entrega Hoje`;
-    if (days === 1) return `${modalityName} - Entrega Amanhã`;
-    return `${modalityName} - ${days} dias úteis`;
+  private static generateOptionName(modalityName: string, days: number, pricingType: string): string {
+    let name = modalityName;
+    
+    // Adicionar prazo
+    if (days === 0) {
+      name += ' - Entrega Hoje';
+    } else if (days === 1) {
+      name += ' - Entrega Amanhã';
+    } else {
+      name += ` - ${days} dias úteis`;
+    }
+    
+    // Adicionar tipo de cobrança se for por item
+    if (pricingType === 'per_item') {
+      name += ' (por item)';
+    }
+    
+    return name;
   }
   
   private static createErrorQuote(

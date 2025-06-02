@@ -1,15 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" fill="#00BFB3" rx="64"/>
-  
-  <!-- Logo/Text -->
-  <circle cx="256" cy="256" r="160" fill="white" opacity="0.2"/>
-  <circle cx="256" cy="256" r="120" fill="white"/>
-  
-  <!-- GDG Text -->
-  <text x="256" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="#00BFB3">GDG</text>
-  
-  <!-- Marketplace text -->
-  <text x="256" y="380" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="white">MARKETPLACE</text>
-</svg> 
+  <rect width="512" height="512" fill="#00BFB3"/>
+  <circle cx="256" cy="256" r="200" fill="#ffffff" opacity="0.95"/>
+  <text x="256" y="315" font-family="Arial, sans-serif" font-size="170" font-weight="bold" fill="#00BFB3" text-anchor="middle">GDG</text>
+</svg>
