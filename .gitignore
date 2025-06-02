@@ -87,3 +87,6 @@ tsconfig.tsbuildinfo
 
 # Cache de dependências
 .pnpm-debug.log*
+
+# Arquivos arquivados
+archive/
