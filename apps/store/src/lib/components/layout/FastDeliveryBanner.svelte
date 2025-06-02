@@ -351,7 +351,7 @@
 		
 		/* Dimensions */
 		--container-max-width: 1440px;
-		--banner-max-width: 1200px;
+		--banner-max-width: calc(1440px - 64px); /* 1440px - 64px (32px padding cada lado) */
 		--banner-height-desktop: 266px;
 		--arrow-size: 48px;
 		--spinner-size: 32px;
@@ -733,11 +733,11 @@
 		}
 	}
 	
-	/* Desktop: 1024px+ */
+	/* Desktop: 1024px+ - ALINHADO COM HEADER */
 	@media (min-width: 1024px) {
 		.delivery {
 			margin: var(--spacing-4xl) 0;
-			padding: 0 var(--spacing-md);
+			padding: 0 var(--spacing-xl); /* 32px - igual ao header px-8 */
 		}
 		
 		.delivery__header {

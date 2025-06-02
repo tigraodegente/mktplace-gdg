@@ -382,9 +382,9 @@
 		--transition-fast: 300ms ease;
 		--transition-slide: 700ms cubic-bezier(0.4, 0, 0.2, 1);
 		
-		/* Container dimensions */
+		/* Container dimensions - ALINHADO COM HEADER */
 		--container-max-width: 1440px;
-		--banner-max-width: 1200px;
+		--banner-max-width: calc(1440px - 64px); /* 1440px - 64px (32px padding cada lado) */
 		--banner-height-desktop: 640px;
 		--banner-padding-top: 48px;
 	}
@@ -454,10 +454,10 @@
 		}
 	}
 	
-	/* Desktop: 1024px+ */
+	/* Desktop: 1024px+ - ALINHADO COM HEADER */
 	@media (min-width: 1024px) {
 		.banner-wrapper {
-			padding: 0 var(--spacing-md);
+			padding: 0 var(--spacing-xl); /* 32px - igual ao header px-8 */
 		}
 		
 		.banner-container {

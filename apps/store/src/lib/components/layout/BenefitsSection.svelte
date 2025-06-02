@@ -177,7 +177,7 @@
 		
 		/* Dimensions */
 		--container-max-width: 1440px;
-		--card-max-width: 1200px;
+		--card-max-width: calc(1440px - 64px); /* 1440px - 64px (32px padding cada lado) */
 		--card-height-desktop: 120px;
 		--card-height-mobile: 140px;
 		--card-width-mobile: 280px;
@@ -253,7 +253,7 @@
 			justify-content: center;
 			width: 100%;
 			max-width: var(--container-max-width);
-			padding: 0 var(--spacing-xl);
+			padding: 0 var(--spacing-3xl); /* 32px - igual ao header px-8 */
 		}
 		
 		.benefits__container {
