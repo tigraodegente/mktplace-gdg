@@ -315,12 +315,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                 
                 console.log(`🔍 Debug: Estoque atual: ${currentStock}, Novo estoque: ${newStock}`);
                 
-                // UPDATE simples e direto
-                await sql`
-                  UPDATE products 
-                  SET quantity = ${newStock}
-                  WHERE id = ${item.productId}
-                `;
+                // UPDATE usando query com parâmetros posicionais
+                const updateQuery = `UPDATE products SET quantity = $1 WHERE id = $2`;
+                await sql.unsafe(updateQuery, [newStock, item.productId]);
                 
                 console.log(`✅ Debug: Estoque atualizado com sucesso!`);
               }
