@@ -134,12 +134,15 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       const queryPromise = (async () => {
         // Usar transação para manter integridade
         return await db.transaction(async (sql) => {
+          console.log('[CREATE-ORDER] Transação iniciada');
           
           // STEP 1: Validar produtos e calcular totais
           let subtotal = 0;
           const orderItems = [];
 
           for (const item of orderData.items) {
+            console.log(`[CREATE-ORDER] Validando produto: ${item.productId}`);
+            
             const products = await sql`
               SELECT id, name, price, quantity, is_active
               FROM products 
@@ -167,6 +170,8 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               totalPrice: itemTotal
             });
           }
+
+          console.log('[CREATE-ORDER] Produtos validados, criando pedido...');
 
           // STEP 2: Calcular frete
           const shippingCost = subtotal > 100 ? 0 : 15.90;
@@ -242,6 +247,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           `;
           
           const order = orders[0];
+          console.log(`[CREATE-ORDER] Pedido criado: ${order.order_number}`);
 
           // STEP 6: Adicionar itens e reduzir estoque
           for (const [index, item] of orderItems.entries()) {
@@ -266,17 +272,28 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               VALUES (${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, ${item.unitPrice}, ${item.totalPrice}, 'pending')
             `;
 
-            // Atualizar estoque - abordagem simplificada
+            // Atualizar estoque - sem usar GREATEST para compatibilidade
             try {
-              await sql`
-                UPDATE products 
-                SET quantity = GREATEST(0, quantity - ${item.quantity})
-                WHERE id = ${item.productId}
+              const currentStock = await sql`
+                SELECT quantity FROM products WHERE id = ${item.productId}
               `;
+              
+              if (currentStock[0]) {
+                const newQuantity = Math.max(0, currentStock[0].quantity - item.quantity);
+                
+                await sql`
+                  UPDATE products 
+                  SET quantity = ${newQuantity}
+                  WHERE id = ${item.productId}
+                `;
+              }
             } catch (stockError) {
+              console.log(`[CREATE-ORDER] Erro ao atualizar estoque (não crítico): ${stockError}`);
               // Continuar sem falhar a transação
             }
           }
+
+          console.log('[CREATE-ORDER] Itens criados com sucesso');
 
           // STEP 7: Incrementar uso do cupom
           if (orderData.couponCode) {
@@ -459,6 +476,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.log(`[CREATE-ORDER] Erro na transação: ${errorMessage}`, error);
       
       // Retornar erro específico se for validação
       if (errorMessage.includes('Produto') || errorMessage.includes('Cupom') || errorMessage.includes('Estoque') || errorMessage.includes('Timeout')) {

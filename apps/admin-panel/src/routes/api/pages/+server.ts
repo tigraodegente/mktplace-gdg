@@ -25,8 +25,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     }
     
     if (status !== 'all') {
-      conditions.push(`status = $${paramIndex}`);
-      params.push(status);
+      conditions.push(`is_published = $${paramIndex}`);
+      params.push(status === 'published');
       paramIndex++;
     }
     
@@ -37,7 +37,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const query = `
       SELECT 
         id, title, slug, content, 
-        status, meta_title, meta_description, meta_keywords,
+        is_published, meta_title, meta_description,
         created_at, updated_at,
         COUNT(*) OVER() as total_count
       FROM pages
@@ -55,8 +55,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const [stats] = await db.query`
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'published') as published,
-        COUNT(*) FILTER (WHERE status = 'draft') as draft,
+        COUNT(*) FILTER (WHERE is_published = true) as published,
+        COUNT(*) FILTER (WHERE is_published = false) as draft,
         COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '7 days') as recently_updated
       FROM pages
     `;
@@ -71,11 +71,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           title: p.title,
           slug: p.slug,
           content: p.content,
-          status: p.status,
+          status: p.is_published ? 'published' : 'draft',
           seo: {
             title: p.meta_title || p.title,
             description: p.meta_description,
-            keywords: p.meta_keywords
+            keywords: ''
           },
           createdAt: p.created_at,
           updatedAt: p.updated_at
@@ -135,13 +135,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const [pageData] = await db.query`
       INSERT INTO pages (
         title, slug, content,
-        status, meta_title, meta_description, meta_keywords
+        is_published, meta_title, meta_description
       ) VALUES (
         ${data.title}, ${data.slug}, ${data.content || ''},
-        ${data.status || 'draft'}, 
+        ${data.status === 'published'}, 
         ${data.seo?.title || data.title},
-        ${data.seo?.description || null},
-        ${data.seo?.keywords || null}
+        ${data.seo?.description || null}
       ) RETURNING id
     `;
     
@@ -183,10 +182,9 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
         title = ${data.title},
         slug = ${data.slug},
         content = ${data.content || ''},
-        status = ${data.status || 'draft'},
+        is_published = ${data.status === 'published'},
         meta_title = ${data.seo?.title || data.title},
         meta_description = ${data.seo?.description || null},
-        meta_keywords = ${data.seo?.keywords || null},
         updated_at = NOW()
       WHERE id = ${data.id}
     `;

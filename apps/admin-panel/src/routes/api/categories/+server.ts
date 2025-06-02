@@ -18,9 +18,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       const query = `
         WITH RECURSIVE category_tree AS (
           SELECT 
-            id, name, slug, description, icon, color, 
-            parent_id, position, is_active, featured,
-            seo_title, seo_description, seo_keywords,
+            id, name, slug, description, image_url,
+            parent_id, position, is_active,
             created_at, updated_at,
             0 as level,
             ARRAY[id] as path
@@ -30,9 +29,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           UNION ALL
           
           SELECT 
-            c.id, c.name, c.slug, c.description, c.icon, c.color,
-            c.parent_id, c.position, c.is_active, c.featured,
-            c.seo_title, c.seo_description, c.seo_keywords,
+            c.id, c.name, c.slug, c.description, c.image_url,
+            c.parent_id, c.position, c.is_active,
             c.created_at, c.updated_at,
             ct.level + 1,
             ct.path || c.id
@@ -49,7 +47,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       // Buscar lista simples
       const conditions = activeOnly ? 'WHERE is_active = true' : '';
       
-      categories = await db.query`
+      const listQuery = `
         SELECT 
           c.*,
           pc.name as parent_name,
@@ -67,9 +65,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           ) as subcategory_count
         FROM categories c
         LEFT JOIN categories pc ON pc.id = c.parent_id
-        ${db.sql(conditions)}
+        ${conditions}
         ORDER BY c.position, c.name
       `;
+      
+      categories = await db.query(listQuery);
     }
     
     // Buscar estatísticas
@@ -77,8 +77,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE is_active = true) as active,
-        COUNT(*) FILTER (WHERE parent_id IS NULL) as root,
-        COUNT(*) FILTER (WHERE featured = true) as featured
+        COUNT(*) FILTER (WHERE parent_id IS NULL) as root
       FROM categories
     `;
     
@@ -90,22 +89,15 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       name: cat.name,
       slug: cat.slug,
       description: cat.description,
-      icon: cat.icon,
-      color: cat.color,
+      imageUrl: cat.image_url,
       parentId: cat.parent_id,
       parentName: cat.parent_name,
       parentSlug: cat.parent_slug,
       position: cat.position,
       isActive: cat.is_active,
-      featured: cat.featured,
       productCount: cat.product_count || 0,
       subcategoryCount: cat.subcategory_count || 0,
       level: cat.level || 0,
-      seo: {
-        title: cat.seo_title || cat.name,
-        description: cat.seo_description || cat.description,
-        keywords: cat.seo_keywords
-      },
       createdAt: cat.created_at,
       updatedAt: cat.updated_at
     }));
@@ -118,7 +110,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           total: stats.total || 0,
           active: stats.active || 0,
           root: stats.root || 0,
-          featured: stats.featured || 0
+          featured: 0
         }
       }
     });
@@ -163,16 +155,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const [category] = await db.query`
       INSERT INTO categories (
         name, slug, description, 
-        icon, color, parent_id, 
-        position, is_active, featured,
-        seo_title, seo_description, seo_keywords
+        image_url, parent_id, 
+        position, is_active
       ) VALUES (
         ${data.name}, ${data.slug}, ${data.description || null},
-        ${data.icon || null}, ${data.color || null}, ${data.parentId || null},
-        ${data.position || 0}, ${data.isActive !== false}, ${data.featured || false},
-        ${data.seo?.title || data.name}, 
-        ${data.seo?.description || data.description || null},
-        ${data.seo?.keywords || null}
+        ${data.imageUrl || null}, ${data.parentId || null},
+        ${data.position || 0}, ${data.isActive !== false}
       ) RETURNING id
     `;
     
@@ -226,15 +214,10 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
         name = ${data.name},
         slug = ${data.slug},
         description = ${data.description || null},
-        icon = ${data.icon || null},
-        color = ${data.color || null},
+        image_url = ${data.imageUrl || null},
         parent_id = ${data.parentId || null},
         position = ${data.position || 0},
         is_active = ${data.isActive !== false},
-        featured = ${data.featured || false},
-        seo_title = ${data.seo?.title || data.name},
-        seo_description = ${data.seo?.description || data.description || null},
-        seo_keywords = ${data.seo?.keywords || null},
         updated_at = NOW()
       WHERE id = ${data.id}
     `;
