@@ -9,11 +9,21 @@
 		addressDeleted: { id: string };
 	}>();
 	
-	export let userId: string | null = null;
-	export let selectedAddressId: string | null = null;
-	export let mode: 'view' | 'select' | 'manage' = 'manage';
-	export let addressType: 'shipping' | 'billing' = 'shipping';
-	export let showHistory: boolean = true;
+	interface Props {
+		userId?: string | null;
+		selectedAddressId?: string | null;
+		mode?: 'view' | 'select' | 'manage';
+		addressType?: 'shipping' | 'billing';
+		showHistory?: boolean;
+	}
+	
+	let {
+		userId = null,
+		selectedAddressId = null,
+		mode = 'manage',
+		addressType = 'shipping',
+		showHistory = true
+	}: Props = $props();
 	
 	interface Address {
 		id?: string;
@@ -33,17 +43,17 @@
 	}
 	
 	// Estados
-	let addresses: Address[] = [];
-	let addressHistory: Address[] = [];
-	let loading = false;
-	let saving = false;
-	let error: string | null = null;
-	let showForm = false;
-	let editingAddress: Address | null = null;
-	let loadingCep = false;
+	let addresses = $state<Address[]>([]);
+	let addressHistory = $state<Address[]>([]);
+	let loading = $state(false);
+	let saving = $state(false);
+	let error = $state<string | null>(null);
+	let showForm = $state(false);
+	let editingAddress = $state<Address | null>(null);
+	let loadingCep = $state(false);
 	
 	// Formulário
-	let formData: Address = {
+	let formData = $state<Address>({
 		type: addressType,
 		name: '',
 		street: '',
@@ -55,9 +65,9 @@
 		zipCode: '',
 		isDefault: false,
 		label: ''
-	};
+	});
 	
-	let formErrors: Record<string, string> = {};
+	let formErrors = $state<Record<string, string>>({});
 	
 	// Estados brasileiros
 	const states = [

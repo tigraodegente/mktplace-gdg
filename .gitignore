@@ -52,3 +52,38 @@ test-results/
 
 # Xata
 .xata/ 
+# Dados sensíveis
+cookies.txt
+*.session
+*.token
+.env.backup*
+.env.local*
+.env.production*
+
+# Arquivos do sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Arquivos de backup
+*.backup
+*.bak
+*~
+
+# Arquivos de build temporários
+tsconfig.tsbuildinfo
+.tsbuildinfo
+
+# Cache de dependências
+.pnpm-debug.log*

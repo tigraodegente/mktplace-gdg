@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
+import { logger, logAPI, logOperation, logPerformance } from '$lib/utils/logger';
 
 // Types
 interface CategoryData {
@@ -15,11 +17,19 @@ interface CategoryData {
 }
 
 export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
+  const startTime = performance.now();
+  
   try {
     const includeCount = url.searchParams.get('includeCount') === 'true';
     const parentOnly = url.searchParams.get('parentOnly') === 'true';
     
-    console.log('🏷️ Categories - Estratégia híbrida iniciada');
+    // Configurar contexto do logger
+    logger.setContext({ 
+      operation: 'api_categories',
+      metadata: { includeCount, parentOnly }
+    });
+    
+    logger.info('Categories API - Estratégia híbrida iniciada');
     
     // Set cache headers
     setHeaders({
@@ -51,9 +61,9 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
           ORDER BY c.position ASC NULLS LAST, c.name ASC
         `;
         
-        console.log('🔍 Executando query de categorias com contagens reais...');
+        logger.debug('Executando query de categorias com contagens reais');
         const categories = await db.query(categoriesQuery);
-        console.log(`📂 ${categories.length} categorias carregadas com contagens reais`);
+        logger.debug('Categorias carregadas com contagens reais', { count: categories.length });
         
         return categories;
       })();
@@ -64,7 +74,7 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       
       const categories = await Promise.race([queryPromise, timeoutPromise]) as any[];
       
-      console.log(`✅ Banco OK: ${categories.length} categorias reais`);
+      logOperation(true, 'Categories loaded from database', { count: categories.length });
       
       // Build hierarchy com contagens reais do banco
       const { categoryMap, rootCategories } = buildCategoryHierarchy(categories);
@@ -74,6 +84,13 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       const finalResult = parentOnly 
         ? rootCategories.map(({ subcategories, ...cat }) => cat)
         : rootCategories;
+      
+      logPerformance('categories_api', startTime, { 
+        source: 'database', 
+        count: finalResult.length 
+      });
+      
+      logAPI('GET', '/api/categories', 200, performance.now() - startTime);
       
       return json({
         success: true,
@@ -85,7 +102,9 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Banco timeout/erro: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      logger.warn('Database timeout/error - using fallback', { 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       
       // FALLBACK: Categorias mock baseadas em dados reais do marketplace
       const mockCategories = [
@@ -179,6 +198,13 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
         ? mockCategories.map(({ subcategories, ...cat }) => cat)
         : mockCategories;
       
+      logPerformance('categories_api', startTime, { 
+        source: 'fallback', 
+        count: finalResult.length 
+      });
+      
+      logAPI('GET', '/api/categories', 200, performance.now() - startTime);
+      
       return json({
         success: true,
         data: {
@@ -190,7 +216,13 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
     }
     
   } catch (error) {
-    console.error('❌ Erro crítico categories:', error);
+    logger.error('Critical categories API error', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
+    logAPI('GET', '/api/categories', 500, performance.now() - startTime);
+    
     return json({
       success: false,
       error: {
@@ -198,6 +230,8 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
         details: error instanceof Error ? error.message : 'Erro desconhecido'
       }
     }, { status: 500 });
+  } finally {
+    logger.clearContext();
   }
 };
 

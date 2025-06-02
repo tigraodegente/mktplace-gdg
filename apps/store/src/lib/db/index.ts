@@ -1,6 +1,6 @@
 import { Database } from './database'
 import { dev } from '$app/environment'
-import { env } from '$env/dynamic/private'
+// Removido import de $env/dynamic/private que não pode ser usado no cliente
 import { dbCache } from './cache'
 
 // CORREÇÃO: Não usar singleton, criar nova conexão por request
@@ -29,8 +29,9 @@ function createDatabaseConnection(platform?: App.Platform): Database {
     })
   }
   
-  // EM DESENVOLVIMENTO: Usar env local ou fallback
-  const dbUrl = env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
+  // EM DESENVOLVIMENTO: Usar variável de ambiente se disponível
+  // Para desenvolvimento, a URL deve ser configurada no script use-local-db.sh ou use-neon-db.sh
+  const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
   
   console.log('🔌 Dev:', dbUrl.includes('neon.tech') ? 'NEON' : 'LOCAL')
   
@@ -68,19 +69,20 @@ export async function withDatabase<T>(
   if (cacheKey) {
     return dbCache.getOrSet(cacheKey, async () => {
       const db = getDatabase(platform)
-      return await executeWithRetry(db, callback);
+      return await executeWithRetry(db, callback, platform);
     }, cacheTtl);
   }
   
   // Sem cache, executa direto
   const db = getDatabase(platform)
-  return await executeWithRetry(db, callback);
+  return await executeWithRetry(db, callback, platform);
 }
 
 // Função auxiliar para retry automático
 async function executeWithRetry<T>(
   db: Database,
-  callback: (db: Database) => Promise<T>
+  callback: (db: Database) => Promise<T>,
+  platform?: App.Platform
 ): Promise<T> {
   let retries = 3;
   let lastError: any;
@@ -116,7 +118,7 @@ async function executeWithRetry<T>(
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Criar nova conexão para retry
-        db = createDatabaseConnection();
+        db = createDatabaseConnection(platform);
       } else {
         // Se não for erro de conexão, lança o erro
         throw error;

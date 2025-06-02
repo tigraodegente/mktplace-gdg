@@ -1,4 +1,4 @@
-import { createDatabase } from '../packages/db-hyperdrive/dist/index.js';
+import { createDatabase } from '../apps/store/src/lib/db/database.js';
 import dotenv from 'dotenv';
 
 // Carregar variáveis de ambiente

@@ -61,11 +61,6 @@ export const GET: RequestHandler = async ({ platform }) => {
       results: {
         products_count: directResult[0]?.total || 0,
         categories_with_products: complexResult.length
-      },
-      hyperdrive_status: {
-        enabled: false,
-        reason: 'Timeout issues with external PostgreSQL',
-        alternative: 'In-memory cache + TCP connection pooling'
       }
     });
     

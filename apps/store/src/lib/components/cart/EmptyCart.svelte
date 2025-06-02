@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { scale, fade } from 'svelte/transition';
+	import { scale, fade, fly } from 'svelte/transition';
 	import { elasticOut } from 'svelte/easing';
 	import { CART_CONSTANTS } from './constants';
 	

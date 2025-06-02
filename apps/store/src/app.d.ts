@@ -14,9 +14,6 @@ declare global {
 		// interface PageData {}
 		interface Platform {
 			env: {
-				HYPERDRIVE_DB?: {
-					connectionString: string
-				}
 				CACHE_KV?: KVNamespace
 			}
 			context?: {

@@ -1,17 +1,28 @@
 <script lang="ts">
-	export let menuItems: Array<{
-		path: string;
-		icon: string;
-		label: string;
-		separator?: boolean;
-	}> = [];
+	interface Props {
+		menuItems?: Array<{
+			path: string;
+			icon: string;
+			label: string;
+			separator?: boolean;
+		}>;
+		currentPath?: string;
+		userInfo?: {
+			name: string;
+			subtitle: string;
+			role: string;
+		};
+	}
 	
-	export let currentPath = '';
-	export let userInfo = {
-		name: '',
-		subtitle: '',
-		role: ''
-	};
+	let {
+		menuItems = [],
+		currentPath = '',
+		userInfo = {
+			name: '',
+			subtitle: '',
+			role: ''
+		}
+	}: Props = $props();
 	
 	function isActiveRoute(path: string): boolean {
 		return currentPath === path;

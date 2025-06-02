@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { SellerShippingQuote } from '$lib/services/shippingCartService';
+  import type { UnifiedShippingQuote } from '$lib/services/unifiedShippingService';
   
   interface SellerShippingOptionsProps {
-    sellerQuote: SellerShippingQuote;
+    sellerQuote: UnifiedShippingQuote;
     selectedOptionId: string | undefined;
     onSelectOption: (optionId: string) => void;
   }
@@ -18,13 +18,13 @@
     Opções de entrega
     <span class="text-sm text-gray-500 font-normal">
       • {sellerQuote.items.length} {sellerQuote.items.length === 1 ? 'item' : 'itens'} • 
-      {sellerQuote.totalWeight.toFixed(1)}kg
+      {(sellerQuote.totalWeight/1000).toFixed(1)}kg
     </span>
   </h4>
 
-  {#if sellerQuote.shippingResult.success && sellerQuote.shippingResult.options.length > 0}
+  {#if sellerQuote.success && sellerQuote.options.length > 0}
     <div class="space-y-3">
-      {#each sellerQuote.shippingResult.options as option}
+      {#each sellerQuote.options as option}
         <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg
                      hover:border-[#00BFB3] transition-colors cursor-pointer
                      {selectedOptionId === option.id ? 'border-[#00BFB3] bg-[#00BFB3]/5' : ''}">
@@ -44,10 +44,10 @@
                 
                 <!-- Badge da modalidade -->
                 <span class="px-2 py-0.5 text-xs font-medium rounded-full
-                            {option.modality_id === 'expressa' 
+                            {option.modalityId === 'expressa' 
                               ? 'bg-orange-100 text-orange-800' 
                               : 'bg-blue-100 text-blue-800'}">
-                  {option.modality_name}
+                  {option.modalityName}
                 </span>
                 
                 <!-- Badge de frete grátis -->
@@ -63,7 +63,7 @@
                 {option.description} • {option.carrier}
               </p>
               
-              {#if option.pricing_type === 'per_item'}
+              {#if option.pricingType === 'per_item'}
                 <p class="text-xs text-gray-500 mt-1">
                   💡 Cobrança por item (entrega mais rápida)
                 </p>
@@ -76,18 +76,18 @@
               {option.price === 0 ? 'Grátis' : `R$ ${option.price.toFixed(2)}`}
             </div>
             <div class="text-sm text-gray-500">
-              {option.delivery_days === 0 ? 'Hoje' : 
-               option.delivery_days === 1 ? 'Amanhã' : 
-               `${option.delivery_days} dias úteis`}
+              {option.deliveryDays === 0 ? 'Hoje' : 
+               option.deliveryDays === 1 ? 'Amanhã' : 
+               `${option.deliveryDays} dias úteis`}
             </div>
           </div>
         </label>
       {/each}
     </div>
-  {:else if sellerQuote.shippingResult.error}
+  {:else if sellerQuote.error}
     <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
       <p class="text-sm text-red-600">
-        Erro: {sellerQuote.shippingResult.error}
+        Erro: {sellerQuote.error}
       </p>
     </div>
   {:else}

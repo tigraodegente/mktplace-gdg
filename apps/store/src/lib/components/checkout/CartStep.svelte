@@ -2,20 +2,29 @@
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   import type { CartItem } from '$lib/types/checkout';
   
-  export let items: CartItem[] = [];
-  export let validation: any = null;
-  export let onComplete: (data: any) => void;
-  export let loading: boolean = false;
+  interface Props {
+    items?: CartItem[];
+    validation?: any;
+    onComplete: (data: any) => void;
+    loading?: boolean;
+  }
   
-  let couponCode = '';
-  let couponError = '';
-  let showCouponInput = false;
+  let {
+    items = [],
+    validation = null,
+    onComplete,
+    loading = false
+  }: Props = $props();
+  
+  let couponCode = $state('');
+  let couponError = $state('');
+  let showCouponInput = $state(false);
   
   // Calcular totais
-  $: subtotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  $: shippingCost = validation?.totals?.shipping || 15.90;
-  $: discount = validation?.totals?.discount || 0;
-  $: total = subtotal + shippingCost - discount;
+  const subtotal = $derived(items.reduce((total, item) => total + (item.price * item.quantity), 0));
+  const shippingCost = $derived(validation?.totals?.shipping || 15.90);
+  const discount = $derived(validation?.totals?.discount || 0);
+  const total = $derived(subtotal + shippingCost - discount);
   
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {

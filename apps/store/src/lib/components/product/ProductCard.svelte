@@ -207,9 +207,9 @@
 		<a href="/produto/{product.slug}" class="image-link">
 			{#if lazy}
 				<img 
-					src={mainImage()}
+					src={product.images?.[0] || '/placeholder.jpg'}
 					alt={product.name}
-					class="product-image"
+					class="w-full h-full object-cover"
 					loading="lazy"
 					onerror={handleImageError}
 				/>
@@ -218,7 +218,7 @@
 					src={mainImage()}
 					alt={product.name}
 					class="product-image"
-					loading="eager"
+					loading="lazy"
 					onerror={handleImageError}
 				/>
 			{/if}

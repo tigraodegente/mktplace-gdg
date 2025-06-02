@@ -2,12 +2,21 @@
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   import type { Address } from '$lib/types/checkout';
   
-  export let selectedAddress: Address | null = null;
-  export let onComplete: (data: any) => void;
-  export let onBack: () => void;
-  export let loading: boolean = false;
+  interface Props {
+    selectedAddress?: Address | null;
+    onComplete: (data: any) => void;
+    onBack: () => void;
+    loading?: boolean;
+  }
   
-  let addressForm: Address = {
+  let { 
+    selectedAddress = null,
+    onComplete,
+    onBack,
+    loading = false
+  }: Props = $props();
+  
+  let addressForm: Address = $state({
     name: '',
     street: '',
     number: '',
@@ -16,15 +25,17 @@
     city: '',
     state: '',
     zipCode: ''
-  };
+  });
   
-  let errors: Record<string, string> = {};
-  let loadingCep = false;
+  let errors: Record<string, string> = $state({});
+  let loadingCep = $state(false);
   
   // Se há endereço selecionado, preencher o formulário
-  if (selectedAddress) {
-    addressForm = { ...selectedAddress };
-  }
+  $effect(() => {
+    if (selectedAddress) {
+      addressForm = { ...selectedAddress };
+    }
+  });
   
   const states = [
     { value: 'AC', label: 'Acre' },
@@ -150,7 +161,7 @@
 <div class="p-6">
   <h2 class="text-2xl font-bold text-gray-900 mb-6">Endereço de Entrega</h2>
   
-  <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
     <!-- Nome Completo -->
     <div>
       <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
@@ -180,7 +191,7 @@
           id="zipCode"
           type="text"
           value={addressForm.zipCode}
-          on:input={handleCepInput}
+          oninput={handleCepInput}
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           class:border-red-300={errors.zipCode}
           disabled={loading}

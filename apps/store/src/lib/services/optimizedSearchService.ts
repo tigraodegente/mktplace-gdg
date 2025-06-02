@@ -1,5 +1,4 @@
 import { withDatabase } from '$lib/db';
-import type { Platform } from '@cloudflare/workers-types';
 
 // Cache em memória para queries frequentes
 const memoryCache = new Map<string, { data: any; timestamp: number }>();
@@ -25,7 +24,7 @@ function cleanMemoryCache() {
   }
 }
 
-export async function getOptimizedProductCounts(platform?: Platform) {
+export async function getOptimizedProductCounts(platform?: App.Platform) {
   const cacheKey = 'product-counts';
   
   // Verificar cache em memória
@@ -48,7 +47,7 @@ export async function getOptimizedProductCounts(platform?: Platform) {
 
 export async function getOptimizedCategoryFacets(
   filters: Record<string, any>,
-  platform?: Platform
+  platform?: App.Platform
 ) {
   const cacheKey = `category-facets:${JSON.stringify(filters)}`;
   
@@ -129,7 +128,7 @@ export async function searchProductsOptimized(
   filters: Record<string, any>,
   page: number = 1,
   limit: number = 20,
-  platform?: Platform
+  platform?: App.Platform
 ) {
   const offset = (page - 1) * limit;
   
@@ -222,7 +221,7 @@ export async function searchProductsOptimized(
 }
 
 // Função para pré-aquecer o cache
-export async function warmUpCache(platform?: Platform) {
+export async function warmUpCache(platform?: App.Platform) {
   try {
     // Carregar contagens gerais
     await getOptimizedProductCounts(platform);
@@ -258,7 +257,7 @@ export async function searchWithCursor(
   cursor: string | null,
   limit: number = 20,
   filters: Record<string, any>,
-  platform?: Platform
+  platform?: App.Platform
 ) {
   return await withDatabase(platform, async (db) => {
     let conditions = ['p.is_active = true'];

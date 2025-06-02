@@ -1,20 +1,29 @@
 <script lang="ts">
   import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
   
-  export let order: any;
-  export let onComplete: (data: any) => void;
-  export let onBack: () => void;
-  export let loading: boolean = false;
+  interface Props {
+    order: any;
+    onComplete: (data: any) => void;
+    onBack: () => void;
+    loading?: boolean;
+  }
   
-  let selectedMethod = 'pix';
-  let cardData = {
+  let {
+    order,
+    onComplete,
+    onBack,
+    loading = false
+  }: Props = $props();
+  
+  let selectedMethod = $state('pix');
+  let cardData = $state({
     number: '',
     name: '',
     expiry: '',
     cvv: '',
     installments: 1
-  };
-  let notes = '';
+  });
+  let notes = $state('');
   
   const paymentMethods = [
     {
@@ -198,7 +207,7 @@
             <input
               type="text"
               value={cardData.number}
-              on:input={handleCardNumberInput}
+              oninput={handleCardNumberInput}
               placeholder="0000 0000 0000 0000"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               maxlength="19"
@@ -227,7 +236,7 @@
               <input
                 type="text"
                 value={cardData.expiry}
-                on:input={handleExpiryInput}
+                oninput={handleExpiryInput}
                 placeholder="MM/AA"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxlength="5"

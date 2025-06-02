@@ -4,7 +4,7 @@
 import type { Sql } from 'postgres'
 
 export interface DatabaseConfig {
-  provider: 'hyperdrive' | 'xata' | 'supabase' | 'neon' | 'postgres';
+  provider: 'neon' | 'postgres';
   connectionString: string;
   options?: {
     postgres?: {
@@ -17,9 +17,6 @@ export interface DatabaseConfig {
 }
 
 export interface DatabaseEnv {
-  HYPERDRIVE_DB?: {
-    connectionString: string;
-  };
   DATABASE_URL?: string;
 }
 
@@ -65,8 +62,8 @@ export class Database {
           application_name: 'mktplace-db'
         },
         max: 1, // Workers devem usar apenas 1 conexão
-        idle_timeout: 30, // Aumentado para Railway
-        connect_timeout: this.config.options?.postgres?.connectTimeout ?? 20, // Aumentado
+        idle_timeout: 30,
+        connect_timeout: this.config.options?.postgres?.connectTimeout ?? 20,
         prepare: false, // Importante para Workers
         transform: {
           undefined: null
@@ -75,14 +72,12 @@ export class Database {
 
       // Ajustes específicos por provedor
       switch (this.config.provider) {
-        case 'hyperdrive':
-          // Hyperdrive já gerencia pooling
-            (baseOptions as any).prepare = false;
-            (baseOptions as any).max = 1;
-          break;
         case 'neon':
           // Neon funciona bem com estas configs
           (baseOptions as any).prepare = false;
+          break;
+        case 'postgres':
+          // Local postgres
           break;
       }
 
@@ -158,14 +153,6 @@ export class Database {
 
 // Helper para criar database a partir do ambiente
 export function createDatabase(env: DatabaseEnv): Database {
-  // Prioridade: Hyperdrive > DATABASE_URL
-  if (env.HYPERDRIVE_DB?.connectionString) {
-    return new Database({
-      provider: 'hyperdrive',
-      connectionString: env.HYPERDRIVE_DB.connectionString
-    });
-  }
-
   if (env.DATABASE_URL) {
     // Detectar provider pela URL
     const provider = detectProvider(env.DATABASE_URL);
@@ -180,8 +167,6 @@ export function createDatabase(env: DatabaseEnv): Database {
 
 // Detectar provider pela URL
 function detectProvider(url: string): DatabaseConfig['provider'] {
-  if (url.includes('xata.sh')) return 'xata';
-  if (url.includes('supabase.co')) return 'supabase';
   if (url.includes('neon.tech')) return 'neon';
   return 'postgres';
 }

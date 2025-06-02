@@ -4,38 +4,50 @@
 	import VirtualProductGrid from './VirtualProductGrid.svelte';
 	import CursorPagination from './CursorPagination.svelte';
 	
-	export let filters: Record<string, any> = {};
-	export let useVirtualScroll: boolean = false;
-	export let useOptimizedEndpoint: boolean = true;
-	export let itemsPerPage: number = 20;
-	export let viewMode: 'grid' | 'list' = 'grid';
+	interface Props {
+		filters?: Record<string, any>;
+		useVirtualScroll?: boolean;
+		useOptimizedEndpoint?: boolean;
+		itemsPerPage?: number;
+		viewMode?: 'grid' | 'list';
+	}
+	
+	let {
+		filters = {},
+		useVirtualScroll = false,
+		useOptimizedEndpoint = true,
+		itemsPerPage = 20,
+		viewMode = 'grid'
+	}: Props = $props();
 	
 	// Serviços
 	const pagination = useCursorPagination('/api/products', itemsPerPage);
 	
 	// Estado simples
-	let products: any[] = [];
-	let loading = false;
-	let hasMore = false;
-	let error: string | null = null;
-	let totalItems: number | undefined = undefined;
+	let products = $state<any[]>([]);
+	let loading = $state(false);
+	let hasMore = $state(false);
+	let error = $state<string | null>(null);
+	let totalItems = $state<number | undefined>(undefined);
 	
 	onMount(() => {
 		// Subscribe para mudanças de paginação
-		pagination.subscribe((state) => {
-			products = state.items;
-			loading = state.loading;
-			hasMore = state.hasMore;
-			error = state.error;
-			totalItems = state.totalItems;
-		});
+		if (pagination?.subscribe) {
+			pagination.subscribe((state) => {
+				products = state.items;
+				loading = state.loading;
+				hasMore = state.hasMore;
+				error = state.error;
+				totalItems = state.totalItems;
+			});
+		}
 		
 		// Busca inicial
 		handleSearch();
 	});
 	
 	onDestroy(() => {
-		pagination.destroy();
+		pagination?.destroy();
 	});
 	
 	// Buscar produtos
@@ -63,10 +75,12 @@
 	}
 	
 	// Reagir a mudanças nos filtros
-	$: if (filters) {
-		pagination.reset();
-		handleSearch();
-	}
+	$effect(() => {
+		if (filters) {
+			pagination.reset();
+			handleSearch();
+		}
+	});
 </script>
 
 <div class="optimized-product-list">

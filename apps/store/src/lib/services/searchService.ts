@@ -1,4 +1,5 @@
 // Definir tipo Product localmente até termos o pacote shared-types configurado
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 interface Product {
   id: string;
   name: string;

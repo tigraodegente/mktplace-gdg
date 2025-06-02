@@ -9,6 +9,7 @@
   import { advancedCartStore } from '$lib/stores/cartStore';
   import { isAuthenticated, user } from '$lib/stores/authStore';
   import type { CartItem, Address } from '$lib/types/checkout';
+  import { toastStore } from '$lib/stores/toastStore';
 
   // Desestruturar o advancedCartStore
   const { sellerGroups, cartTotals, clearCart } = advancedCartStore;
@@ -172,7 +173,12 @@
       // Mostrar mensagem de recuperação bem-sucedida
       setTimeout(() => {
         if (typeof window !== 'undefined') {
-          alert('✅ Dados do checkout recuperados! Você pode continuar de onde parou.');
+          toastStore.add({
+            type: 'success',
+            title: 'Dados Recuperados',
+            message: 'Dados do checkout recuperados! Você pode continuar de onde parou.',
+            duration: 4000
+          });
         }
       }, 1000);
       

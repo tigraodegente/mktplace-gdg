@@ -3,6 +3,16 @@
  * Fornece cache distribuído global com TTL
  */
 
+import { logger } from '$lib/utils/logger';
+
+// Definição do tipo KVNamespace (subset da API que usamos)
+interface KVNamespace {
+  get(key: string, options?: { type: 'json' }): Promise<any>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  delete(key: string): Promise<void>;
+  list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>;
+}
+
 interface CacheOptions {
   ttl?: number; // Time to live em segundos
   tags?: string[]; // Tags para invalidação em grupo
@@ -26,7 +36,7 @@ export class KVCache {
    */
   async get<T = any>(key: string): Promise<T | null> {
     try {
-      const cached = await this.kv.get<CachedValue<T>>(key, 'json');
+      const cached = await this.kv.get(key, { type: 'json' }) as CachedValue<T> | null;
       
       if (!cached) return null;
       
@@ -40,7 +50,7 @@ export class KVCache {
       
       return cached.data;
     } catch (error) {
-      console.error('Erro ao buscar do cache:', error);
+      logger.error('Erro ao buscar do cache', { key, error });
       return null;
     }
   }
@@ -75,7 +85,7 @@ export class KVCache {
         await this.addToTags(key, options.tags);
       }
     } catch (error) {
-      console.error('Erro ao salvar no cache:', error);
+      logger.error('Erro ao salvar no cache', { key, error });
     }
   }
 
@@ -85,7 +95,7 @@ export class KVCache {
   async delete(key: string): Promise<void> {
     try {
       // Buscar para pegar as tags
-      const cached = await this.kv.get<CachedValue>(key, 'json');
+      const cached = await this.kv.get(key, { type: 'json' }) as CachedValue | null;
       
       if (cached?.tags?.length) {
         await this.removeFromTags(key, cached.tags);
@@ -93,7 +103,7 @@ export class KVCache {
       
       await this.kv.delete(key);
     } catch (error) {
-      console.error('Erro ao deletar do cache:', error);
+      logger.error('Erro ao deletar do cache', { key, error });
     }
   }
 
@@ -103,7 +113,7 @@ export class KVCache {
   async invalidateByTag(tag: string): Promise<void> {
     try {
       const tagKey = `tag:${tag}`;
-      const keys = await this.kv.get<string[]>(tagKey, 'json') || [];
+      const keys = await this.kv.get(tagKey, { type: 'json' }) as string[] | null || [];
       
       // Deletar todas as chaves com essa tag
       await Promise.all(keys.map(key => this.delete(key)));
@@ -111,7 +121,7 @@ export class KVCache {
       // Limpar a lista de tags
       await this.kv.delete(tagKey);
     } catch (error) {
-      console.error('Erro ao invalidar por tag:', error);
+      logger.error('Erro ao invalidar por tag', { tag, error });
     }
   }
 
@@ -129,7 +139,7 @@ export class KVCache {
         await Promise.all(batch.map(key => this.kv.delete(key)));
       }
     } catch (error) {
-      console.error('Erro ao limpar cache:', error);
+      logger.error('Erro ao limpar cache', { prefix, error });
     }
   }
 
@@ -139,7 +149,7 @@ export class KVCache {
   private async addToTags(key: string, tags: string[]): Promise<void> {
     await Promise.all(tags.map(async tag => {
       const tagKey = `tag:${tag}`;
-      const keys = await this.kv.get<string[]>(tagKey, 'json') || [];
+      const keys = await this.kv.get(tagKey, { type: 'json' }) as string[] | null || [];
       
       if (!keys.includes(key)) {
         keys.push(key);
@@ -153,7 +163,7 @@ export class KVCache {
   private async removeFromTags(key: string, tags: string[]): Promise<void> {
     await Promise.all(tags.map(async tag => {
       const tagKey = `tag:${tag}`;
-      const keys = await this.kv.get<string[]>(tagKey, 'json') || [];
+      const keys = await this.kv.get(tagKey, { type: 'json' }) as string[] | null || [];
       
       const filtered = keys.filter(k => k !== key);
       if (filtered.length > 0) {

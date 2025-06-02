@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
@@ -172,7 +173,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       
       // Criar mapa de resultados por identificador
       const resultMap: Record<string, any> = {};
-      formattedProducts.forEach(product => {
+      formattedProducts.forEach((product: any) => {
         resultMap[product.id] = product;
         resultMap[product.slug] = product;
       });

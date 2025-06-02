@@ -1,7 +1,15 @@
 <script lang="ts">
-	export let name: string;
-	export let size: 'sm' | 'md' | 'lg' = 'md';
-	export let fallbackColor: string = 'text-gray-600';
+	interface Props {
+		name: string;
+		size?: 'sm' | 'md' | 'lg';
+		fallbackColor?: string;
+	}
+	
+	let {
+		name,
+		size = 'md',
+		fallbackColor = 'text-gray-600'
+	}: Props = $props();
 	
 	const sizeClasses = {
 		sm: 'w-4 h-4',
@@ -11,10 +19,10 @@
 	
 	const icons: Record<string, string> = {
 		dashboard: '📊',
-		products: '��',
-		orders: '��',
+		products: '📦',
+		orders: '📋',
 		gift: '🎁',
-		users: '��',
+		users: '👥',
 		reports: '📈',
 		settings: '⚙️',
 		pages: '📄',
@@ -22,7 +30,7 @@
 		logout: '🚪'
 	};
 	
-	$: iconEmoji = icons[name] || '❓';
+	const iconEmoji = $derived(icons[name] || '❓');
 </script>
 
 {#if icons[name]}

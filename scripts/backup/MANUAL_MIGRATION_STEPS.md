@@ -211,7 +211,7 @@ sudo apt-get install postgresql-client
 
 ### 2. Conectar ao Banco
 ```bash
-psql "postgresql://787mk0:xau_dVL4yNzXLHrGYTmaUbvg00sGLUrZp4at1@us-east-1.sql.xata.sh/mktplace-gdg:main?sslmode=require"
+psql "postgresql://DB_USER:DB_PASSWORD@DB_HOST/DB_NAME?sslmode=require"
 ```
 
 ### 3. Executar o Script

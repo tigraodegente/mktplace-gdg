@@ -18,28 +18,45 @@
 		action: (row: any) => void;
 	}
 	
-	export let data: any[] = [];
-	export let columns: Column[] = [];
-	export let actions: TableAction[] = [];
-	export let loading = false;
-	export let searchable = true;
-	export let filterable = true;
-	export let pagination = true;
-	export let pageSize = 10;
-	export let title = '';
-	export let subtitle = '';
-	export let createAction: (() => void) | null = null;
-	export let createLabel = 'Novo';
+	interface Props {
+		data?: any[];
+		columns?: Column[];
+		actions?: TableAction[];
+		loading?: boolean;
+		searchable?: boolean;
+		filterable?: boolean;
+		pagination?: boolean;
+		pageSize?: number;
+		title?: string;
+		subtitle?: string;
+		createAction?: (() => void) | null;
+		createLabel?: string;
+	}
+	
+	let {
+		data = [],
+		columns = [],
+		actions = [],
+		loading = false,
+		searchable = true,
+		filterable = true,
+		pagination = true,
+		pageSize = 10,
+		title = '',
+		subtitle = '',
+		createAction = null,
+		createLabel = 'Novo'
+	}: Props = $props();
 	
 	const dispatch = createEventDispatcher();
 	
-	let searchTerm = '';
-	let currentPage = 1;
-	let sortColumn = '';
-	let sortDirection: 'asc' | 'desc' = 'asc';
-	let filters: Record<string, string> = {};
+	let searchTerm = $state('');
+	let currentPage = $state(1);
+	let sortColumn = $state('');
+	let sortDirection = $state<'asc' | 'desc'>('asc');
+	let filters = $state<Record<string, string>>({});
 	
-	$: filteredData = data.filter(row => {
+	const filteredData = $derived(data.filter(row => {
 		// Busca
 		if (searchTerm) {
 			const searchLower = searchTerm.toLowerCase();
@@ -56,9 +73,9 @@
 		}
 		
 		return true;
-	});
+	}));
 	
-	$: sortedData = [...filteredData].sort((a, b) => {
+	const sortedData = $derived([...filteredData].sort((a, b) => {
 		if (!sortColumn) return 0;
 		
 		const aVal = a[sortColumn];
@@ -67,13 +84,13 @@
 		if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
 		if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
 		return 0;
-	});
+	}));
 	
-	$: paginatedData = pagination ? 
+	const paginatedData = $derived(pagination ? 
 		sortedData.slice((currentPage - 1) * pageSize, currentPage * pageSize) : 
-		sortedData;
+		sortedData);
 	
-	$: totalPages = Math.ceil(sortedData.length / pageSize);
+	const totalPages = $derived(Math.ceil(sortedData.length / pageSize));
 	
 	function handleSort(column: Column) {
 		if (!column.sortable) return;
@@ -106,7 +123,7 @@
 			
 			{#if createAction}
 				<button 
-					on:click={createAction}
+					onclick={createAction}
 					class="btn btn-primary flex items-center gap-2"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +190,7 @@
 								{column.sortable ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}
 								{column.width ? `w-${column.width}` : ''}"
 							style={column.width ? `width: ${column.width}` : ''}
-							on:click={() => handleSort(column)}
+							onclick={() => handleSort(column)}
 						>
 							<div class="flex items-center gap-2">
 								{column.label}
@@ -244,7 +261,7 @@
 									<div class="flex items-center justify-end gap-2">
 										{#each actions as action}
 											<button 
-												on:click={() => action.action(row)}
+												onclick={() => action.action(row)}
 												class="btn btn-{action.variant || 'secondary'} btn-sm"
 												title={action.label}
 											>
@@ -277,7 +294,7 @@
 				
 				<div class="flex items-center gap-2">
 					<button 
-						on:click={() => currentPage = Math.max(1, currentPage - 1)}
+						onclick={() => currentPage = Math.max(1, currentPage - 1)}
 						disabled={currentPage === 1}
 						class="btn btn-secondary btn-sm"
 					>
@@ -288,7 +305,7 @@
 						{#each Array(Math.min(5, totalPages)) as _, i}
 							{@const page = i + 1}
 							<button 
-								on:click={() => currentPage = page}
+								onclick={() => currentPage = page}
 								class="btn btn-sm {currentPage === page ? 'btn-primary' : 'btn-secondary'}"
 							>
 								{page}
@@ -297,7 +314,7 @@
 					</div>
 					
 					<button 
-						on:click={() => currentPage = Math.min(totalPages, currentPage + 1)}
+						onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
 						disabled={currentPage === totalPages}
 						class="btn btn-secondary btn-sm"
 					>

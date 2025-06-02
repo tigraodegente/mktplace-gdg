@@ -418,4 +418,7 @@ export interface NotificationProviderConfig extends ProviderConfig {
 // Exportar apenas quando os arquivos específicos forem criados
 // export * from './payment';
 // export * from './shipping';
-// export * from './notification'; 
+// export * from './notification';
+
+// Exportar tipos de integrações
+export * from './appmax'; 

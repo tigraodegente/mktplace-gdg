@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { ShippingCartService, type SellerShippingQuote } from '$lib/services/shippingCartService';
+	import { UnifiedShippingService, type UnifiedShippingQuote } from '$lib/services/unifiedShippingService';
 	import type { CartItem } from '$lib/types/cart';
 	import { formatCurrency } from '$lib/utils';
 	import { fade, scale, slide } from 'svelte/transition';
@@ -10,7 +10,7 @@
 	interface ShippingCalculatorProps {
 		zipCode: string;
 		cartItems: CartItem[];
-		onCalculate: (zip: string, quotes: SellerShippingQuote[]) => void;
+		onCalculate: (zip: string, quotes: UnifiedShippingQuote[]) => void;
 		onAddressSelect?: (address: any) => void;
 		onRemoveAddress?: (id: string) => void;
 		savedAddresses?: Array<{
@@ -38,7 +38,7 @@
 	let localZipCode = $state(zipCode || '');
 	let calculating = $state(false);
 	let recentZipCodes = $state<string[]>([]);
-	let shippingQuotes = $state<SellerShippingQuote[]>([]);
+	let shippingQuotes = $state<UnifiedShippingQuote[]>([]);
 	let hasCalculated = $state(false);
 	let error = $state('');
 	let showSavedAddresses = $state(false);
@@ -82,7 +82,7 @@
 	async function handleCalculate() {
 		const cleanZip = localZipCode.replace(/\D/g, '');
 		
-		if (!ShippingCartService.validatePostalCode(cleanZip)) {
+		if (!UnifiedShippingService.validatePostalCode(cleanZip)) {
 			return;
 		}
 
@@ -94,19 +94,52 @@
 		calculating = true;
 		
 		try {
-			const quotes = await ShippingCartService.calculateShippingForCart(
-				cleanZip,
-				cartItems
-			);
+			// Converter CartItem para o formato esperado pela API
+			const items = cartItems.map(item => ({
+				product: item.product,
+				product_id: item.product.id,
+				quantity: item.quantity,
+				sellerId: item.sellerId,
+				sellerName: item.sellerName,
+				weight: (item.product as any).weight || 0.3,
+				price: item.product.price,
+				category_id: (item.product as any).category_id,
+				height: (item.product as any).height,
+				width: (item.product as any).width,
+				length: (item.product as any).length,
+				selectedColor: item.selectedColor,
+				selectedSize: item.selectedSize
+			}));
+
+			const response = await fetch('/api/shipping/calculate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					postalCode: cleanZip,
+					items
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+
+			const result = await response.json();
 			
-			shippingQuotes = quotes;
-			hasCalculated = true;
-			
-			// Salvar CEP nos recentes
-			saveRecentZipCode(localZipCode);
-			
-			// Chamar callback do componente pai
-			onCalculate(cleanZip, quotes);
+			if (result.success) {
+				shippingQuotes = result.data.quotes;
+				hasCalculated = true;
+				
+				// Salvar CEP nos recentes
+				saveRecentZipCode(localZipCode);
+				
+				// Chamar callback do componente pai
+				onCalculate(cleanZip, result.data.quotes);
+			} else {
+				throw new Error(result.error?.message || 'Erro ao calcular frete');
+			}
 			
 		} catch (error) {
 			console.error('Erro ao calcular frete:', error);
@@ -134,7 +167,7 @@
 		const target = e.target as HTMLInputElement;
 		const numbersOnly = target.value.replace(/\D/g, '');
 		if (numbersOnly.length <= 8) {
-			localZipCode = ShippingCartService.formatPostalCode(numbersOnly);
+			localZipCode = UnifiedShippingService.formatPostalCode(numbersOnly);
 		}
 	}
 	
@@ -144,7 +177,7 @@
 	});
 	
 	function selectAddress(address: any) {
-		localZipCode = ShippingCartService.formatPostalCode(address.zipCode);
+		localZipCode = UnifiedShippingService.formatPostalCode(address.zipCode);
 		addressDetails = {
 			street: address.street,
 			neighborhood: address.neighborhood,
@@ -213,7 +246,7 @@
 								{address.neighborhood} • {address.city}/{address.state}
 							</p>
 							<p class="text-[10px] sm:text-xs text-gray-500">
-								CEP: {ShippingCartService.formatPostalCode(address.zipCode)}
+								CEP: {UnifiedShippingService.formatPostalCode(address.zipCode)}
 							</p>
 						</div>
 						<div 
@@ -310,7 +343,7 @@
 		
 		<button 
 			type="submit"
-			disabled={calculating || !ShippingCartService.validatePostalCode(localZipCode.replace(/\D/g, ''))}
+			disabled={calculating || !UnifiedShippingService.validatePostalCode(localZipCode.replace(/\D/g, ''))}
 			class="px-4 py-2.5 bg-[#00BFB3] text-white text-sm font-medium rounded-lg 
 				   hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
 				   flex items-center gap-2 min-w-[100px] justify-center"

@@ -2,10 +2,19 @@
   import { createEventDispatcher } from 'svelte';
   import { page } from '$app/stores';
   
-  export let optionName: string;
-  export let optionSlug: string;
-  export let facets: Array<{ value: string; count: number }> = [];
-  export let selectedValues: string[] = [];
+  interface Props {
+    optionName: string;
+    optionSlug: string;
+    facets?: Array<{ value: string; count: number }>;
+    selectedValues?: string[];
+  }
+  
+  let {
+    optionName,
+    optionSlug,
+    facets = [],
+    selectedValues = []
+  }: Props = $props();
   
   const dispatch = createEventDispatcher();
   
@@ -50,13 +59,13 @@
     dispatch('change', { values: [] });
   }
   
-  $: hasSelection = selectedValues.length > 0;
-  $: showSearch = facets.length > 10;
+  const hasSelection = $derived(selectedValues.length > 0);
+  const showSearch = $derived(facets.length > 10);
   
-  let searchQuery = '';
-  $: filteredFacets = searchQuery
+  let searchQuery = $state('');
+  const filteredFacets = $derived(searchQuery
     ? facets.filter(f => f.value.toLowerCase().includes(searchQuery.toLowerCase()))
-    : facets;
+    : facets);
 </script>
 
 <div class="space-y-3">

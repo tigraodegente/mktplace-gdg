@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
@@ -272,7 +273,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           pagination: {
             limit,
             offset,
-            total: parseInt(stats.total_movements)
+            total: parseInt(stats.total_movements.toString())
           }
         };
       })();

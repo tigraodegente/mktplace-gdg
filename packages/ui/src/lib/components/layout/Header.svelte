@@ -1,12 +1,25 @@
 <script lang="ts">
-	export let title = '';
-	export let titleIcon = '';
-	export let subtitle = 'Marketplace GDG';
-	export let userInfo = {
-		name: 'Usuário',
-		subtitle: 'Role',
-		initials: 'U'
-	};
+	interface Props {
+		title?: string;
+		titleIcon?: string;
+		subtitle?: string;
+		userInfo?: {
+			name: string;
+			subtitle: string;
+			initials: string;
+		};
+	}
+	
+	let { 
+		title = '',
+		titleIcon = '',
+		subtitle = 'Marketplace GDG',
+		userInfo = {
+			name: 'Usuário',
+			subtitle: 'Role',
+			initials: 'U'
+		}
+	}: Props = $props();
 </script>
 
 <!-- Header -->

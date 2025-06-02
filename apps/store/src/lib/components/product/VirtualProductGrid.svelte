@@ -7,29 +7,40 @@
     [key: string]: any;
   }
 
-  export let products: Product[] = [];
-  export let itemHeight = 400; // altura estimada de cada card
-  export let columns = 4;
-  export let gap = 16;
+  interface Props {
+    products?: Product[];
+    itemHeight?: number;
+    columns?: number;
+    gap?: number;
+  }
+
+  let {
+    products = [],
+    itemHeight = 400,
+    columns = 4,
+    gap = 16
+  }: Props = $props();
 
   let container: HTMLDivElement;
-  let scrollTop = 0;
-  let containerHeight = 0;
-  let visibleStart = 0;
-  let visibleEnd = 0;
+  let scrollTop = $state(0);
+  let containerHeight = $state(0);
+  let visibleStart = $state(0);
+  let visibleEnd = $state(0);
 
   // Calcular dimensões
-  $: rowHeight = itemHeight + gap;
-  $: totalRows = Math.ceil(products.length / columns);
-  $: totalHeight = totalRows * rowHeight;
-  $: {
+  const rowHeight = $derived(itemHeight + gap);
+  const totalRows = $derived(Math.ceil(products.length / columns));
+  const totalHeight = $derived(totalRows * rowHeight);
+  
+  $effect(() => {
     // Calcular itens visíveis
     const startRow = Math.floor(scrollTop / rowHeight);
     const endRow = Math.ceil((scrollTop + containerHeight) / rowHeight);
     visibleStart = startRow * columns;
     visibleEnd = Math.min(endRow * columns, products.length);
-  }
-  $: visibleProducts = products.slice(visibleStart, visibleEnd);
+  });
+  
+  const visibleProducts = $derived(products.slice(visibleStart, visibleEnd));
 
   function handleScroll() {
     if (container) {
@@ -52,7 +63,7 @@
 
 <div 
   bind:this={container}
-  on:scroll={handleScroll}
+  onscroll={handleScroll}
   class="virtual-grid-container"
   style="height: 100%; overflow-y: auto;"
 >
@@ -70,7 +81,7 @@
       "
     >
       {#each visibleProducts as product, i (product.id)}
-        <ProductCard {product} />
+        <ProductCard product={product as any} />
       {/each}
     </div>
   </div>

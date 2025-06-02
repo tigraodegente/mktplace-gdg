@@ -47,7 +47,6 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
-		"@mktplace/db-hyperdrive": "workspace:*",
 		"@mktplace/shared-types": "workspace:*",
 		"@mktplace/ui": "workspace:*",
 		"@mktplace/utils": "workspace:*"
