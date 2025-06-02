@@ -1,0 +1,155 @@
+name: Sync MongoDB to Neon Develop
+
+on:
+  # Executar diariamente às 2h UTC (23h BRT)
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # Permitir execução manual
+  workflow_dispatch:
+    inputs:
+      sync_type:
+        description: 'Tipo de sincronização'
+        required: true
+        default: 'products'
+        type: choice
+        options:
+        - products
+        - fix-stock
+        - test-only
+      dry_run:
+        description: 'Executar em modo dry-run (simulação)'
+        required: false
+        default: false
+        type: boolean
+      force:
+        description: 'Forçar atualização de todos os registros'
+        required: false
+        default: false
+        type: boolean
+
+# Garantir que apenas uma sincronização roda por vez
+concurrency:
+  group: sync-develop
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sincronizar ${{ inputs.sync_type || 'products' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    # Executar apenas se não for PR
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'pnpm'
+        
+    - name: 📦 Instalar pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 10.11.0
+        
+    - name: 📦 Instalar dependências
+      run: pnpm install --frozen-lockfile
+      
+    - name: 🔐 Configurar ambiente
+      run: |
+        # Criar arquivo .env.develop com secrets
+        cat > .env.develop << EOF
+        DATABASE_URL=${{ secrets.NEON_DEVELOP_URL }}
+        NEON_BRANCH=develop
+        MONGODB_URI=${{ secrets.MONGODB_URI_READONLY }}
+        MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
+        SYNC_BATCH_SIZE=500
+        SYNC_DELAY_MS=200
+        ANONYMIZE_USERS=true
+        LOG_LEVEL=info
+        EOF
+        
+    - name: 🧪 Testar conexões
+      if: inputs.sync_type == 'test-only' || github.event_name == 'workflow_dispatch'
+      run: |
+        echo "🔌 Testando conexões com bancos de dados..."
+        npm run sync:test
+        
+    - name: 📦 Sincronizar Produtos
+      if: inputs.sync_type == 'products' || github.event_name == 'schedule'
+      run: |
+        if [ "${{ inputs.dry_run }}" == "true" ]; then
+          echo "🚧 Executando em modo DRY RUN..."
+          npm run sync:products:dry
+        elif [ "${{ inputs.force }}" == "true" ]; then
+          echo "⚡ Forçando atualização de todos os produtos..."
+          npm run sync:products:force
+        else
+          echo "🔄 Sincronizando produtos..."
+          npm run sync:products
+        fi
+        
+    - name: 🔧 Corrigir Estoque
+      if: inputs.sync_type == 'fix-stock'
+      run: |
+        if [ "${{ inputs.dry_run }}" == "true" ]; then
+          echo "🚧 Executando correção em modo DRY RUN..."
+          npm run sync:fix-stock:dry
+        else
+          echo "🔧 Corrigindo estoque de produtos importados..."
+          npm run sync:fix-stock
+        fi
+        
+    - name: 📊 Gerar Relatório
+      if: always()
+      run: |
+        echo "📊 Gerando relatório de sincronização..."
+        # Criar diretório de relatórios se não existir
+        mkdir -p reports/sync
+        
+        # Copiar logs mais recentes
+        if [ -f "logs/sync/latest.log" ]; then
+          cp logs/sync/latest.log reports/sync/
+        fi
+        
+        # Gerar sumário se possível
+        if [ -d "logs/sync/$(date +%Y-%m-%d)" ]; then
+          node scripts/sync/utils/logger.mjs || true
+        fi
+        
+    - name: 📤 Upload Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sync-logs-${{ github.run_number }}
+        path: |
+          logs/sync/
+          reports/sync/
+        retention-days: 30
+        
+    - name: 📨 Notificar Slack (Sucesso)
+      if: success() && github.event_name == 'schedule'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: '✅ Sincronização MongoDB → Neon concluída com sucesso!'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        
+    - name: 📨 Notificar Slack (Falha)
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: '❌ Falha na sincronização MongoDB → Neon! Verifique os logs.'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        
+    - name: 🧹 Limpar dados sensíveis
+      if: always()
+      run: |
+        rm -f .env.develop
+        echo "✅ Arquivos sensíveis removidos" 

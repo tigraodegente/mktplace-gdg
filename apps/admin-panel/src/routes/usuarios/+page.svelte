@@ -1046,7 +1046,6 @@
 		</div>
 	</div>
 {/if}
-</div>
 
 <style>
 	/* Animações customizadas para os cards */

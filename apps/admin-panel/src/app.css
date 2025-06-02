@@ -417,6 +417,46 @@ button:active {
   .btn {
     @apply w-full;
   }
+  
+  /* Manter botões pequenos inline no mobile */
+  .btn-sm {
+    @apply w-auto;
+  }
+  
+  /* Ajustar tabelas para não ter scroll horizontal */
+  .table-modern {
+    @apply block;
+  }
+  
+  /* Esconder colunas menos importantes no mobile */
+  .table-modern th:nth-child(n+5),
+  .table-modern td:nth-child(n+5) {
+    @apply hidden;
+  }
+  
+  /* Header mais compacto no mobile */
+  h1 {
+    @apply text-2xl;
+  }
+  
+  /* Cards de estatísticas em coluna única */
+  .stat-card {
+    @apply w-full;
+  }
+  
+  /* Filtros empilhados */
+  .filter-grid {
+    @apply grid-cols-1;
+  }
+  
+  /* Botões de ação menores */
+  .action-buttons {
+    @apply gap-1;
+  }
+  
+  .action-buttons button {
+    @apply p-1.5;
+  }
 }
 
 /* Scrollbar Customizada */

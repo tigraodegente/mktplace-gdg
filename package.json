@@ -25,7 +25,17 @@
     "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
     "preview": "pnpm --filter ./apps/store preview",
     "check:env": "node scripts/check-env.js",
-    "deploy:test": "echo 'Deploy seletivo funcionando!'"
+    "deploy:test": "echo 'Deploy seletivo funcionando!'",
+    "sync:test": "node scripts/sync/utils/db-connector.mjs",
+    "sync:products": "node scripts/sync/core/sync-products.mjs",
+    "sync:products:dry": "node scripts/sync/core/sync-products.mjs --dry-run",
+    "sync:products:force": "node scripts/sync/core/sync-products.mjs --force",
+    "sync:fix-stock": "node scripts/fix-imported-stock-v2.mjs",
+    "sync:fix-stock:dry": "node scripts/fix-imported-stock-v2.mjs --dry-run",
+    "sync:logs": "tail -f logs/sync/latest.log",
+    "sync:logs:errors": "grep ERROR logs/sync/latest.log",
+    "sync:summary": "cat logs/sync/$(date +%Y-%m-%d)/summary.json | jq || echo 'Nenhum sumário encontrado para hoje'",
+    "sync:develop": "echo '🚀 Sincronização completa ainda em desenvolvimento. Use sync:products por enquanto.'"
   },
   "keywords": [
     "marketplace",

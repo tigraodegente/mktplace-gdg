@@ -7,6 +7,7 @@
 	import StatCard from '$lib/components/StatCard.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import FilterBar from '$lib/components/FilterBar.svelte';
+	import ResponsiveTable from '$lib/components/ResponsiveTable.svelte';
 	import Icon from '$lib/Icon.svelte';
 	
 	// Crossfade para transições entre views
@@ -104,6 +105,59 @@
 	// Stats
 	let stats = $state<StatCard[]>([]);
 	
+	// Configuração das colunas da tabela
+	const tableColumns = [
+		{
+			key: 'id',
+			label: 'Pedido',
+			render: (value: string, row: Order) => `
+				<div class="flex items-center gap-3">
+					<div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-semibold">
+						#${value.slice(-3)}
+					</div>
+					<div>
+						<p class="font-medium text-gray-900">#${value}</p>
+						<p class="text-sm text-gray-500">${row.items} ${row.items > 1 ? 'itens' : 'item'}</p>
+					</div>
+				</div>
+			`
+		},
+		{
+			key: 'customer',
+			label: 'Cliente'
+		},
+		{
+			key: 'status',
+			label: 'Status',
+			render: (value: string) => `
+				<span class="badge ${getStatusBadge(value)}">
+					${getStatusLabel(value)}
+				</span>
+			`
+		},
+		{
+			key: 'total',
+			label: 'Total',
+			render: (value: number) => formatPrice(value)
+		},
+		{
+			key: 'payment',
+			label: 'Pagamento',
+			mobileHidden: true
+		},
+		{
+			key: 'vendor',
+			label: 'Vendedor',
+			mobileHidden: true
+		},
+		{
+			key: 'date',
+			label: 'Data',
+			render: (value: string) => formatDate(value),
+			mobileHidden: true
+		}
+	].filter(col => !(col.key === 'vendor' && userRole !== 'admin'));
+	
 	// Verificar role
 	$effect(() => {
 		const userParam = $page.url.searchParams.get('user');
@@ -136,9 +190,6 @@
 		filteredOrders = result;
 		totalPages = Math.ceil(result.length / itemsPerPage);
 		currentPage = 1;
-		
-		// Atualizar estatísticas
-		updateStats(result);
 	});
 	
 	// Funções do modal
@@ -259,6 +310,11 @@
 					payment: order.paymentStatus,
 					shipping: order.shippingAddress || 'Não informado'
 				}));
+				
+				// Inicializar filteredOrders se estiver vazio
+				if (filteredOrders.length === 0) {
+					filteredOrders = [...orders];
+				}
 				
 				totalPages = result.data.pagination.totalPages;
 				
@@ -611,113 +667,75 @@
 		</div>
 	{:else if viewMode === 'list'}
 		<!-- List View -->
-		<div class="card overflow-hidden">
-			<div class="overflow-x-auto">
-				<table class="table-modern">
-					<thead>
-						<tr>
-							<th class="w-12">
-								<input
-									type="checkbox"
-									checked={selectedOrders.size === paginatedOrders.length && paginatedOrders.length > 0}
-									onchange={toggleAllOrders}
-									class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-								/>
-							</th>
-							<th>Pedido</th>
-							<th>Cliente</th>
-							<th>Status</th>
-							<th>Total</th>
-							<th>Pagamento</th>
-							{#if userRole === 'admin'}
-								<th>Vendedor</th>
-							{/if}
-							<th>Data</th>
-							<th class="text-right">Ações</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each paginatedOrders as order, i}
-							<tr 
-								class="hover:bg-gray-50 transition-colors"
-								in:fly={{ x: -20, duration: 400, delay: i * 50 }}
-							>
-								<td>
-									<input
-										type="checkbox"
-										checked={selectedOrders.has(order.id)}
-										onchange={() => toggleOrderSelection(order.id)}
-										class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-									/>
-								</td>
-								<td>
-									<div class="flex items-center gap-3">
-										<div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-semibold">
-											#{order.id.slice(-3)}
-										</div>
-										<div>
-											<p class="font-medium text-gray-900">#{order.id}</p>
-											<p class="text-sm text-gray-500">{order.items} {order.items > 1 ? 'itens' : 'item'}</p>
-										</div>
-									</div>
-								</td>
-								<td>
-									<div>
-										<p class="font-medium text-gray-900">{order.customer}</p>
-									</div>
-								</td>
-								<td>
-									<span class="badge {getStatusBadge(order.status)}">
-										{getStatusLabel(order.status)}
-									</span>
-								</td>
-								<td class="font-medium">{formatPrice(order.total)}</td>
-								<td>{order.payment}</td>
-								{#if userRole === 'admin'}
-									<td>{order.vendor}</td>
-								{/if}
-								<td>{formatDate(order.date)}</td>
-								<td>
-									<div class="flex items-center justify-end gap-1">
-				<button
-											onclick={() => openOrderDetails(order)}
-											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-											title="Ver detalhes"
-										>
-											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-											</svg>
-										</button>
-				<button
-											class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
-					title="Editar"
-				>
-											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-											</svg>
-				</button>
-										{#if order.status !== 'cancelled' && order.status !== 'delivered'}
+		<ResponsiveTable
+			columns={tableColumns}
+			data={paginatedOrders}
+			keyField="id"
+			selectable={true}
+			selectedRows={selectedOrders}
+			onRowSelect={toggleOrderSelection}
+			onSelectAll={toggleAllOrders}
+			loading={loading}
+			emptyMessage="Nenhum pedido encontrado"
+			emptyDescription={filters.search || filters.status !== 'all' || filters.payment !== 'all' 
+				? 'Tente ajustar os filtros de busca' 
+				: 'Ainda não há pedidos cadastrados'}
+		>
+			<svelte:fragment slot="actions" let:row>
+				<div class="flex items-center justify-end gap-1">
 					<button
-												class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
-						title="Cancelar"
+						onclick={() => openOrderDetails(row)}
+						class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+						title="Ver detalhes"
 					>
-												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-												</svg>
+						<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+						</svg>
 					</button>
-				{/if}
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+					<button
+						class="p-2 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
+						title="Editar"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+						</svg>
+					</button>
+					{#if row.status !== 'cancelled' && row.status !== 'delivered'}
+						<button
+							class="p-2 hover:bg-red-50 rounded-lg transition-all hover:scale-105 text-red-600"
+							title="Cancelar"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					{/if}
+				</div>
+			</svelte:fragment>
 			
-			<!-- Pagination -->
-			{#if totalPages > 1}
-				<div class="px-6 py-4 border-t border-gray-200">
+			<svelte:fragment slot="mobile-card-footer" let:row>
+				<div class="flex gap-2">
+					<button 
+						onclick={() => openOrderDetails(row)}
+						class="btn btn-sm btn-ghost flex-1"
+					>
+						Ver Detalhes
+					</button>
+					<button 
+						onclick={() => updateOrderStatus(row.id, 'processing')}
+						class="btn btn-sm btn-primary flex-1"
+					>
+						Gerenciar
+					</button>
+				</div>
+			</svelte:fragment>
+		</ResponsiveTable>
+		
+		<!-- Pagination -->
+		{#if totalPages > 1}
+			<div class="card mt-4">
+				<div class="px-6 py-4">
 					<div class="flex items-center justify-between">
 						<p class="text-sm text-gray-700">
 							Mostrando <span class="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> até 
@@ -732,7 +750,7 @@
 							>
 								Anterior
 							</button>
-							<div class="flex gap-1">
+							<div class="hidden md:flex gap-1">
 								{#each Array(Math.min(5, totalPages)) as _, i}
 									<button
 										onclick={() => currentPage = i + 1}
@@ -742,6 +760,9 @@
 									</button>
 								{/each}
 							</div>
+							<span class="md:hidden text-sm text-gray-600">
+								{currentPage} / {totalPages}
+							</span>
 							<button
 								onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
 								disabled={currentPage === totalPages}
@@ -752,68 +773,84 @@
 						</div>
 					</div>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	{:else}
 		<!-- Grid View -->
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each paginatedOrders as order, i}
-				<div 
-					class="card hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
-					in:scale={{ duration: 400, delay: i * 50, easing: backOut }}
-				>
-					<div class="card-body">
-						<div class="flex items-start justify-between mb-4">
-							<div class="flex items-center gap-3">
-								<div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-bold">
-									#{order.id.slice(-3)}
+		{#if paginatedOrders.length === 0}
+			<div class="card">
+				<div class="card-body py-20 text-center">
+					<svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+					</svg>
+					<p class="text-lg font-medium mb-2 text-gray-700">Nenhum pedido encontrado</p>
+					<p class="text-sm text-gray-500">
+						{filters.search || filters.status !== 'all' || filters.payment !== 'all' 
+							? 'Tente ajustar os filtros de busca' 
+							: 'Ainda não há pedidos cadastrados'}
+					</p>
+				</div>
+			</div>
+		{:else}
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				{#each paginatedOrders as order, i}
+					<div 
+						class="card hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
+						in:scale={{ duration: 400, delay: i * 50, easing: backOut }}
+					>
+						<div class="card-body">
+							<div class="flex items-start justify-between mb-4">
+								<div class="flex items-center gap-3">
+									<div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-bold">
+										#{order.id.slice(-3)}
+									</div>
+									<div>
+										<p class="font-semibold text-gray-900">Pedido #{order.id}</p>
+										<p class="text-sm text-gray-500">{formatDate(order.date)}</p>
+									</div>
 								</div>
-								<div>
-									<p class="font-semibold text-gray-900">Pedido #{order.id}</p>
-									<p class="text-sm text-gray-500">{formatDate(order.date)}</p>
-								</div>
-							</div>
-							<span class="badge {getStatusBadge(order.status)}">
-								{getStatusLabel(order.status)}
-							</span>
-						</div>
-						
-						<div class="space-y-3">
-							<div>
-								<p class="text-sm text-gray-600">Cliente</p>
-								<p class="font-medium">{order.customer}</p>
+								<span class="badge {getStatusBadge(order.status)}">
+									{getStatusLabel(order.status)}
+								</span>
 							</div>
 							
-							<div class="flex justify-between items-center">
+							<div class="space-y-3">
 								<div>
-									<p class="text-sm text-gray-600">Total</p>
-									<p class="text-xl font-bold text-gray-900">{formatPrice(order.total)}</p>
+									<p class="text-sm text-gray-600">Cliente</p>
+									<p class="font-medium">{order.customer}</p>
 								</div>
-								<div class="text-right">
-									<p class="text-sm text-gray-600">{order.items} {order.items > 1 ? 'itens' : 'item'}</p>
-									<p class="text-sm font-medium">{order.payment}</p>
+								
+								<div class="flex justify-between items-center">
+									<div>
+										<p class="text-sm text-gray-600">Total</p>
+										<p class="text-xl font-bold text-gray-900">{formatPrice(order.total)}</p>
+									</div>
+									<div class="text-right">
+										<p class="text-sm text-gray-600">{order.items} {order.items > 1 ? 'itens' : 'item'}</p>
+										<p class="text-sm font-medium">{order.payment}</p>
+									</div>
 								</div>
 							</div>
-						</div>
-						
-						<div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-							<button 
-								onclick={() => openOrderDetails(order)}
-								class="btn btn-sm btn-ghost flex-1"
-							>
-								Ver Detalhes
-							</button>
-							<button 
-								onclick={() => updateOrderStatus(order.id, 'processing')}
-								class="btn btn-sm btn-primary flex-1"
-							>
-								Gerenciar
-							</button>
+							
+							<div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+								<button 
+									onclick={() => openOrderDetails(order)}
+									class="btn btn-sm btn-ghost flex-1"
+								>
+									Ver Detalhes
+								</button>
+								<button 
+									onclick={() => updateOrderStatus(order.id, 'processing')}
+									class="btn btn-sm btn-primary flex-1"
+								>
+									Gerenciar
+								</button>
+							</div>
 						</div>
 					</div>
-				</div>
-			{/each}
-		</div>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 	
 	<!-- Modal de Detalhes do Pedido -->

@@ -64,16 +64,14 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
         SELECT 
           o.id,
           o.order_number,
-          o.customer_id,
+          o.user_id,
           o.status,
           o.subtotal,
           o.shipping_cost,
           o.discount_amount,
-          o.total_amount,
+          o.total,
           o.payment_method,
           o.payment_status,
-          o.shipping_method,
-          o.shipping_status,
           o.notes,
           o.created_at,
           o.updated_at,
@@ -107,11 +105,9 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
             ) pi ON true
             WHERE oi.order_id = o.id
             LIMIT 3
-          ) as items_preview,
-          sa.street || ', ' || sa.number || COALESCE(', ' || sa.complement, '') || ', ' || sa.neighborhood || ', ' || sa.city || '/' || sa.state as shipping_address
+          ) as items_preview
         FROM orders o
-        INNER JOIN users c ON c.id = o.customer_id
-        LEFT JOIN shipping_addresses sa ON sa.id = o.shipping_address_id
+        INNER JOIN users c ON c.id = o.user_id
         ${whereClause}
         ORDER BY o.created_at DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -155,7 +151,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           COUNT(*) FILTER (WHERE status = 'delivered') as delivered,
           COUNT(*) FILTER (WHERE status = 'completed') as completed,
           COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled,
-          COALESCE(SUM(total_amount), 0) as total_revenue
+          COALESCE(SUM(total), 0) as total_revenue
         FROM orders
       `;
     }
@@ -171,7 +167,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           id: o.id,
           orderNumber: o.order_number,
           customer: {
-            id: o.customer_id,
+            id: o.user_id,
             name: o.customer_name,
             email: o.customer_email,
             phone: o.customer_phone
@@ -179,13 +175,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           status: o.status,
           paymentStatus: o.payment_status,
           paymentMethod: o.payment_method,
-          shippingStatus: o.shipping_status,
-          shippingMethod: o.shipping_method,
-          shippingAddress: o.shipping_address,
           subtotal: Number(o.subtotal),
           shippingCost: Number(o.shipping_cost),
           discount: Number(o.discount_amount),
-          total: Number(o.total_amount),
+          total: Number(o.total),
           itemCount: o.item_count || 0,
           itemsPreview: o.items_preview || [],
           notes: o.notes,
@@ -227,7 +220,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const data = await request.json();
     
     // Validações básicas
-    if (!data.customerId || !data.items || !Array.isArray(data.items) || data.items.length === 0) {
+    if (!data.userId || !data.items || !Array.isArray(data.items) || data.items.length === 0) {
       return json({
         success: false,
         error: 'Cliente e itens são obrigatórios'
@@ -250,13 +243,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     // Criar pedido
     const [order] = await db.query`
       INSERT INTO orders (
-        order_number, customer_id, status,
+        order_number, user_id, status,
         subtotal, shipping_cost, discount_amount, total_amount,
         payment_method, payment_status,
         shipping_method, shipping_status, shipping_address_id,
         notes
       ) VALUES (
-        ${orderNumber}, ${data.customerId}, 'pending',
+        ${orderNumber}, ${data.userId}, 'pending',
         ${subtotal}, ${shippingCost}, ${discountAmount}, ${totalAmount},
         ${data.paymentMethod || 'pending'}, 'pending',
         ${data.shippingMethod || null}, 'pending', ${data.shippingAddressId || null},
@@ -348,17 +341,43 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
-    // Atualizar status
-    await db.query`
-      UPDATE orders 
-      SET 
-        status = ${data.status},
-        ${data.status === 'shipped' ? db.sql`shipping_status = 'shipped',` : db.sql``}
-        ${data.status === 'delivered' ? db.sql`shipping_status = 'delivered',` : db.sql``}
-        ${data.status === 'completed' ? db.sql`payment_status = 'paid',` : db.sql``}
-        updated_at = NOW()
-      WHERE id = ${data.id}
-    `;
+    // Atualizar status baseado no tipo
+    if (data.status === 'shipped') {
+      await db.query`
+        UPDATE orders 
+        SET 
+          status = ${data.status},
+          shipping_status = 'shipped',
+          updated_at = NOW()
+        WHERE id = ${data.id}
+      `;
+    } else if (data.status === 'delivered') {
+      await db.query`
+        UPDATE orders 
+        SET 
+          status = ${data.status},
+          shipping_status = 'delivered',
+          updated_at = NOW()
+        WHERE id = ${data.id}
+      `;
+    } else if (data.status === 'completed') {
+      await db.query`
+        UPDATE orders 
+        SET 
+          status = ${data.status},
+          payment_status = 'paid',
+          updated_at = NOW()
+        WHERE id = ${data.id}
+      `;
+    } else {
+      await db.query`
+        UPDATE orders 
+        SET 
+          status = ${data.status},
+          updated_at = NOW()
+        WHERE id = ${data.id}
+      `;
+    }
     
     // Registrar histórico
     await db.query`
