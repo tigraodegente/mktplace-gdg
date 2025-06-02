@@ -122,28 +122,33 @@
 	let localSelectedCategories = $state<Set<string>>(new Set());
 	let localSelectedBrands = $state<Set<string>>(new Set());
 	
+	// Flag para evitar conflitos de sincronização
+	let isUserInteracting = false;
+	
 	// Sincronizar estado local com props quando elas mudam
 	$effect(() => {
-		const newSelectedCategories = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
-		// Só atualizar se realmente mudou para evitar loops
-		if (newSelectedCategories.size !== localSelectedCategories.size || 
-			[...newSelectedCategories].some(id => !localSelectedCategories.has(id))) {
-			localSelectedCategories = newSelectedCategories;
+		// Só sincronizar se o usuário não estiver interagindo
+		if (!isUserInteracting) {
+			const newSelectedCategories = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
+			// Só atualizar se realmente mudou para evitar loops
+			if (newSelectedCategories.size !== localSelectedCategories.size || 
+				[...newSelectedCategories].some(id => !localSelectedCategories.has(id))) {
+				localSelectedCategories = newSelectedCategories;
+			}
 		}
 	});
 	
 	$effect(() => {
-		const newSelectedBrands = new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
-		// Só atualizar se realmente mudou para evitar loops
-		if (newSelectedBrands.size !== localSelectedBrands.size || 
-			[...newSelectedBrands].some(id => !localSelectedBrands.has(id))) {
-			localSelectedBrands = newSelectedBrands;
+		// Só sincronizar se o usuário não estiver interagindo
+		if (!isUserInteracting) {
+			const newSelectedBrands = new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
+			// Só atualizar se realmente mudou para evitar loops
+			if (newSelectedBrands.size !== localSelectedBrands.size || 
+				[...newSelectedBrands].some(id => !localSelectedBrands.has(id))) {
+				localSelectedBrands = newSelectedBrands;
+			}
 		}
 	});
-	
-	// Para manter compatibilidade com o resto do código
-	let selectedCategories = $derived(localSelectedCategories);
-	let selectedBrands = $derived(localSelectedBrands);
 	
 	// Atualizar selectedPrice quando priceRange mudar
 	$effect(() => {
@@ -165,6 +170,9 @@
 	}
 	
 	function toggleFilter(type: 'category' | 'brand', filter: Filter) {
+		// Marcar que o usuário está interagindo
+		isUserInteracting = true;
+		
 		const filterValue = filter.slug || filter.id;
 		const currentSelected = type === 'category' ? localSelectedCategories : localSelectedBrands;
 		
@@ -179,9 +187,9 @@
 		
 		// Forçar reatividade
 		if (type === 'category') {
-			localSelectedCategories = new Set(localSelectedCategories);
+			localSelectedCategories = new Set([...localSelectedCategories]);
 		} else {
-			localSelectedBrands = new Set(localSelectedBrands);
+			localSelectedBrands = new Set([...localSelectedBrands]);
 		}
 		
 		// Criar nova lista de selecionados para emitir
@@ -199,13 +207,18 @@
 		};
 		
 		dispatch('filterChange', eventData);
+		
+		// Resetar flag após um pequeno delay para permitir que o evento seja processado
+		setTimeout(() => {
+			isUserInteracting = false;
+		}, 100);
 	}
 	
 	function handlePriceChange(event: CustomEvent<{ min: number; max: number }>) {
 		selectedPrice = event.detail;
 		dispatch('filterChange', {
-			categories: Array.from(selectedCategories),
-			brands: Array.from(selectedBrands),
+			categories: Array.from(localSelectedCategories),
+			brands: Array.from(localSelectedBrands),
 			priceRange: selectedPrice
 		});
 	}
@@ -276,8 +289,8 @@
 	
 	// Contar filtros ativos
 	let activeFilterCount = $derived(
-		selectedCategories.size + 
-		selectedBrands.size + 
+		localSelectedCategories.size + 
+		localSelectedBrands.size + 
 		(selectedPrice.min > (priceRange?.min || 0) || selectedPrice.max < (priceRange?.max || 1000) ? 1 : 0) +
 		(currentRating > 0 ? 1 : 0) +
 		selectedConditions.length +
@@ -369,7 +382,7 @@
 									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {totalCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 										<input
 											type="checkbox"
-											checked={selectedCategories.has(category.slug || category.id)}
+											checked={localSelectedCategories.has(category.slug || category.id)}
 											onchange={() => toggleFilter('category', category)}
 											disabled={totalCount === 0}
 											class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
@@ -385,7 +398,7 @@
 												<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition text-sm {subcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
-														checked={selectedCategories.has(subcategory.slug || subcategory.id)}
+														checked={localSelectedCategories.has(subcategory.slug || subcategory.id)}
 														onchange={() => toggleFilter('category', subcategory)}
 														disabled={subcategory.count === 0}
 														class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
@@ -406,7 +419,7 @@
 								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {orphanSubcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
-										checked={selectedCategories.has(orphanSubcategory.slug || orphanSubcategory.id)}
+										checked={localSelectedCategories.has(orphanSubcategory.slug || orphanSubcategory.id)}
 										onchange={() => toggleFilter('category', orphanSubcategory)}
 										disabled={orphanSubcategory.count === 0}
 										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
@@ -478,7 +491,7 @@
 								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {brand.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
-										checked={selectedBrands.has(brand.slug || brand.id)}
+										checked={localSelectedBrands.has(brand.slug || brand.id)}
 										onchange={() => toggleFilter('brand', brand)}
 										disabled={brand.count === 0}
 										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
