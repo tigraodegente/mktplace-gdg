@@ -118,15 +118,32 @@
 	// Filtros selecionados - SIMPLIFICADO: usar diretamente as props ao invés de state interno
 	let selectedPrice = $state(priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 }));
 	
-	// NOVO: Usar computed derivado das props ao invés de state interno
-	let selectedCategories = $derived.by(() => {
-		const result = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
-		return result;
+	// CORRIGIDO: Usar estado local que sincroniza com props mas permite atualizações imediatas
+	let localSelectedCategories = $state<Set<string>>(new Set());
+	let localSelectedBrands = $state<Set<string>>(new Set());
+	
+	// Sincronizar estado local com props quando elas mudam
+	$effect(() => {
+		const newSelectedCategories = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
+		// Só atualizar se realmente mudou para evitar loops
+		if (newSelectedCategories.size !== localSelectedCategories.size || 
+			[...newSelectedCategories].some(id => !localSelectedCategories.has(id))) {
+			localSelectedCategories = newSelectedCategories;
+		}
 	});
 	
-	let selectedBrands = $derived.by(() => {
-		return new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
+	$effect(() => {
+		const newSelectedBrands = new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
+		// Só atualizar se realmente mudou para evitar loops
+		if (newSelectedBrands.size !== localSelectedBrands.size || 
+			[...newSelectedBrands].some(id => !localSelectedBrands.has(id))) {
+			localSelectedBrands = newSelectedBrands;
+		}
 	});
+	
+	// Para manter compatibilidade com o resto do código
+	let selectedCategories = $derived(localSelectedCategories);
+	let selectedBrands = $derived(localSelectedBrands);
 	
 	// Atualizar selectedPrice quando priceRange mudar
 	$effect(() => {
@@ -149,25 +166,34 @@
 	
 	function toggleFilter(type: 'category' | 'brand', filter: Filter) {
 		const filterValue = filter.slug || filter.id;
-		const currentSelected = type === 'category' ? selectedCategories : selectedBrands;
+		const currentSelected = type === 'category' ? localSelectedCategories : localSelectedBrands;
 		
-		// Criar nova lista de selecionados
-		let newSelected: string[];
+		// Atualizar estado local IMEDIATAMENTE
 		if (currentSelected.has(filterValue)) {
 			// Remover filtro
-			newSelected = Array.from(currentSelected).filter(id => id !== filterValue);
+			currentSelected.delete(filterValue);
 		} else {
 			// Adicionar filtro
-			newSelected = [...Array.from(currentSelected), filterValue];
+			currentSelected.add(filterValue);
 		}
+		
+		// Forçar reatividade
+		if (type === 'category') {
+			localSelectedCategories = new Set(localSelectedCategories);
+		} else {
+			localSelectedBrands = new Set(localSelectedBrands);
+		}
+		
+		// Criar nova lista de selecionados para emitir
+		const newSelected = Array.from(currentSelected);
 		
 		// Emitir mudança imediatamente
 		const eventData = type === 'category' ? {
 			categories: newSelected,
-			brands: Array.from(selectedBrands),
+			brands: Array.from(localSelectedBrands),
 			priceRange: undefined // Não alterar preço neste evento
 		} : {
-			categories: Array.from(selectedCategories),
+			categories: Array.from(localSelectedCategories),
 			brands: newSelected,
 			priceRange: undefined // Não alterar preço neste evento
 		};
@@ -217,6 +243,10 @@
 	}
 	
 	function clearFilters() {
+		// Limpar estados locais IMEDIATAMENTE
+		localSelectedCategories = new Set();
+		localSelectedBrands = new Set();
+		
 		// Emitir evento para limpar todos os filtros externos
 		dispatch('clearAll');
 		
