@@ -32,7 +32,7 @@
   import BenefitBadge from '$lib/components/cart/BenefitBadge.svelte';
   import CartNotifications from '$lib/components/cart/CartNotifications.svelte';
   import OrderSummary from '$lib/components/cart/OrderSummary.svelte';
-  import { UnifiedShippingService, type UnifiedShippingQuote } from '$lib/services/unifiedShippingService';
+  import type { UnifiedShippingQuote, UnifiedShippingOption } from '$lib/services/unifiedShippingService.types';
   import { goto } from '$app/navigation';
   import { writable } from 'svelte/store';
   import { get } from 'svelte/store';
@@ -205,7 +205,7 @@
     const cartSubtotal = $cartTotals.cartSubtotal;
     
     // Calcular frete total baseado nas opções selecionadas
-    const shippingCalculation = UnifiedShippingService.calculateCartShippingTotal(
+    const shippingCalculation = calculateCartShippingTotal(
       realShippingQuotes,
       selectedShippingOptions
     );
@@ -244,6 +244,41 @@
     };
   });
   
+  // Funções de utilidade locais para evitar importar o serviço
+  function getCheapestOption(options: UnifiedShippingOption[]): UnifiedShippingOption | null {
+    if (!options || options.length === 0) return null;
+    return options.reduce((cheapest, current) => 
+      current.price < cheapest.price ? current : cheapest
+    );
+  }
+  
+  function calculateCartShippingTotal(
+    quotes: UnifiedShippingQuote[],
+    selectedOptions: Record<string, string>
+  ): {
+    totalShipping: number;
+    maxDeliveryDays: number;
+    hasFreeShipping: boolean;
+  } {
+    let totalShipping = 0;
+    let maxDeliveryDays = 0;
+    let hasFreeShipping = false;
+    
+    for (const quote of quotes) {
+      const selectedId = selectedOptions[quote.sellerId];
+      if (!selectedId) continue;
+      
+      const option = quote.options.find(opt => opt.id === selectedId);
+      if (option) {
+        totalShipping += option.price;
+        maxDeliveryDays = Math.max(maxDeliveryDays, option.deliveryDays);
+        if (option.isFree) hasFreeShipping = true;
+      }
+    }
+    
+    return { totalShipping, maxDeliveryDays, hasFreeShipping };
+  }
+  
   // Função para calcular frete real
   async function handleRealShippingCalculate(newZipCode: string, quotes: UnifiedShippingQuote[] = []) {
     calculatingRealShipping = true;
@@ -258,7 +293,7 @@
         const newSelectedOptions: Record<string, string> = {};
         quotes.forEach(quote => {
           if (quote.success && quote.options.length > 0) {
-            const cheapest = UnifiedShippingService.getCheapestOption(quote.options);
+            const cheapest = getCheapestOption(quote.options);
             if (cheapest) {
               newSelectedOptions[quote.sellerId] = cheapest.id;
             }
@@ -310,7 +345,7 @@
           const newSelectedOptions: Record<string, string> = {};
           result.data.quotes.forEach((quote: UnifiedShippingQuote) => {
             if (quote.success && quote.options.length > 0) {
-              const cheapest = UnifiedShippingService.getCheapestOption(quote.options);
+              const cheapest = getCheapestOption(quote.options);
               if (cheapest) {
                 newSelectedOptions[quote.sellerId] = cheapest.id;
               }
@@ -344,7 +379,7 @@
   // 🔄 RECÁLCULO AUTOMÁTICO quando muda seleção de frete com cupom ativo
   $effect(() => {
     if ($appliedCoupon && $appliedCoupon.type === 'free_shipping' && realShippingQuotes.length > 0) {
-      const shippingCost = UnifiedShippingService.calculateCartShippingTotal(
+      const shippingCost = calculateCartShippingTotal(
         realShippingQuotes,
         selectedShippingOptions
       ).totalShipping;
@@ -909,7 +944,7 @@
                 <CouponSection
                   appliedCoupon={$appliedCoupon}
                   hasShippingCalculated={$zipCode !== '' && realShippingQuotes.length > 0}
-                  shippingCost={realShippingQuotes.length > 0 ? UnifiedShippingService.calculateCartShippingTotal(realShippingQuotes, selectedShippingOptions).totalShipping : 0}
+                  shippingCost={realShippingQuotes.length > 0 ? calculateCartShippingTotal(realShippingQuotes, selectedShippingOptions).totalShipping : 0}
                   onApplyCoupon={handleApplyCoupon}
                   onRemoveCoupon={removeCoupon}
                 />

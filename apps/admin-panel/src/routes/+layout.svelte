@@ -3,286 +3,242 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { fade, fly, slide, scale } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	
-	// Interface para o usuário autenticado
-	interface AuthUser {
+	// Interface
+	interface User {
 		id: string;
 		name: string;
 		email: string;
-		role: 'admin' | 'vendor' | 'customer';
-		roles?: string[]; // Múltiplos roles se aplicável
+		role: 'admin' | 'vendor';
+		avatarUrl?: string;
 	}
 	
-	// Estado da autenticação
-	let user: AuthUser | null = null;
-	let isLoading = true;
-	let showUserMenu = false;
-	let logoError = false;
+	interface MenuItem {
+		label: string;
+		href: string;
+		icon: string;
+		roles: ('admin' | 'vendor')[];
+		badge?: number;
+	}
 	
-	// Path atual para navegação
-	let currentPath = '/';
+	// Props & Estado
+	let { children } = $props();
 	
-	page.subscribe((p) => {
-		if (p?.url?.pathname) {
-			currentPath = p.url.pathname;
-		}
+	let user = $state<User | null>(null);
+	let isLoading = $state(true);
+	let isSidebarOpen = $state(true);
+	let isUserMenuOpen = $state(false);
+	let isMobileMenuOpen = $state(false);
+	let currentPath = $state('');
+	
+	// Menu items com roles
+	const menuItems: MenuItem[] = [
+		{ label: 'Dashboard', href: '/', icon: '🏠', roles: ['admin', 'vendor'] },
+		{ label: 'Produtos', href: '/produtos', icon: '📦', roles: ['admin', 'vendor'], badge: 3 },
+		{ label: 'Pedidos', href: '/pedidos', icon: '📋', roles: ['admin', 'vendor'], badge: 7 },
+		{ label: 'Usuários', href: '/usuarios', icon: '👥', roles: ['admin'] },
+		{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin', 'vendor'] },
+		{ label: 'Páginas', href: '/paginas', icon: '📄', roles: ['admin'] },
+		{ label: 'Listas de Presentes', href: '/listas-presentes', icon: '🎁', roles: ['admin'] },
+		{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin', 'vendor'] }
+	];
+	
+	// Filtrar menu items baseado no role
+	const filteredMenuItems = $derived(user ? menuItems.filter(item => item.roles.includes(user.role)) : []);
+	
+	// Atualizar path atual
+	$effect(() => {
+		currentPath = $page.url.pathname;
 	});
 	
-	// Verificar autenticação no carregamento
-	onMount(async () => {
-		console.log('🚀 Layout carregado, path:', currentPath);
-		
-		// Só verificar auth se não estiver na página de login
-		if (currentPath !== '/login') {
-			await checkAuth();
-		} else {
-			isLoading = false;
-		}
-	});
+	// Verificar se está na página de login
+	const isLoginPage = $derived(currentPath === '/login');
 	
-	async function checkAuth() {
-		console.log('🔍 Verificando autenticação...');
-		
-		try {
-			// Pegar parâmetro da URL para simular diferentes usuários
+	// Lifecycle
+	onMount(() => {
+		// Simular carregamento do usuário
+		setTimeout(() => {
 			const userParam = $page.url.searchParams.get('user');
-			const apiUrl = userParam ? `/api/auth/me?user=${userParam}` : '/api/auth/me';
 			
-			console.log('📡 Fazendo requisição para:', apiUrl);
-			
-			const response = await fetch(apiUrl, {
-				credentials: 'include'
-			});
-			
-			console.log('📥 Resposta recebida:', response.status);
-			
-			if (response.ok) {
-				const result = await response.json();
-				console.log('✅ Dados do usuário:', result);
-				
-				if (result.success && result.user) {
-					user = result.user;
-					console.log('👤 Usuário autenticado:', result.user.name, result.user.role);
-				} else {
-					console.log('❌ Falha na autenticação:', result);
-					goto('/login');
-				}
+			if (userParam === 'vendor') {
+				user = {
+					id: 'vendor-1',
+					name: 'João Vendedor',
+					email: 'joao@vendor.com',
+					role: 'vendor',
+					avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=João'
+				};
 			} else {
-				console.log('🚫 Erro HTTP:', response.status);
-				goto('/login');
+				user = {
+					id: 'admin-1',
+					name: 'Maria Admin',
+					email: 'maria@admin.com',
+					role: 'admin',
+					avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
+				};
 			}
-		} catch (error) {
-			console.error('💥 Erro na verificação:', error);
-			goto('/login');
-		} finally {
-			console.log('🏁 Finalizando carregamento...');
+			
 			isLoading = false;
-		}
-	}
-	
-	async function handleLogout() {
-		try {
-			await fetch('/api/auth/logout', {
-				method: 'POST',
-				credentials: 'include'
-			});
-		} catch (error) {
-			console.error('Erro no logout:', error);
-		}
+		}, 500);
 		
-		// Limpar estado e redirecionar
-		user = null;
-		goto('/login');
-	}
+		// Fechar menus ao clicar fora
+		const handleClickOutside = (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			if (!target.closest('.user-menu-container')) {
+				isUserMenuOpen = false;
+			}
+		};
+		
+		document.addEventListener('click', handleClickOutside);
+		return () => document.removeEventListener('click', handleClickOutside);
+	});
 	
-	function handleLogoError() {
-		logoError = true;
+	// Handlers
+	function toggleSidebar() {
+		isSidebarOpen = !isSidebarOpen;
 	}
 	
 	function toggleUserMenu() {
-		showUserMenu = !showUserMenu;
+		isUserMenuOpen = !isUserMenuOpen;
 	}
 	
-	function closeUserMenu() {
-		showUserMenu = false;
+	function toggleMobileMenu() {
+		isMobileMenuOpen = !isMobileMenuOpen;
 	}
 	
-	// Verificar permissões
-	function hasPermission(requiredRoles: string[]): boolean {
-		return user ? requiredRoles.includes(user.role) : false;
+	async function handleLogout() {
+		user = null;
+		await goto('/login');
 	}
 	
-	// Navegar para loja
 	function goToStore() {
 		window.open('/', '_blank');
 	}
 	
-	// Configurações por role
-	$: roleConfig = user?.role === 'admin' ? {
-		title: 'Admin Panel',
-		subtitle: 'Painel Administrativo',
-		roleLabel: 'Administrador',
-		avatar: '👨‍💼'
-	} : {
-		title: 'Seller Panel', 
-		subtitle: 'Painel do Vendedor',
-		roleLabel: 'Vendedor',
-		avatar: '🏪'
-	};
-	
-	// Debug: reactive statement para acompanhar mudanças
-	$: console.log('📊 Estado atual - Loading:', isLoading, 'User:', user?.name || 'Nenhum');
+	// Helpers
+	function isActiveRoute(href: string): boolean {
+		if (href === '/') return currentPath === href;
+		return currentPath.startsWith(href);
+	}
 </script>
 
-<svelte:head>
-	<title>{roleConfig?.title || 'Admin Panel'} - Marketplace GDG</title>
-	<meta name="description" content="Painel de Gerenciamento do Marketplace" />
-</svelte:head>
-
-{#if currentPath === '/login'}
-	<!-- Página de login - renderizar sem layout -->
-	<slot />
-{:else if isLoading}
-	<!-- Loading Screen com informações de debug -->
-	<div class="min-h-screen flex items-center justify-center bg-gray-50">
-		<div class="text-center">
-			<div class="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-			<p class="text-gray-600 text-lg">Carregando painel...</p>
-			<p class="text-gray-500 text-sm mt-2">Verificando autenticação...</p>
-			{#if import.meta.env.DEV}
-				<div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-					<p>🛠️ Modo desenvolvimento</p>
-					<p>Path: {currentPath}</p>
-					<p>Loading: {isLoading}</p>
-				</div>
-			{/if}
-		</div>
-	</div>
-{:else if !user}
-	<!-- Não autenticado -->
-	<div class="min-h-screen flex items-center justify-center bg-gray-50">
-		<div class="text-center">
-			<div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-				<svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
-				</svg>
-			</div>
-			<p class="text-gray-600">Usuário não encontrado</p>
-			<p class="text-gray-500 text-sm">Redirecionando para login...</p>
-			<button 
-				on:click={() => goto('/login')}
-				class="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-			>
-				Ir para Login
-			</button>
-		</div>
+{#if isLoginPage}
+	<!-- Layout simples para login -->
+	<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+		{@render children()}
 	</div>
 {:else}
-	<!-- Layout Principal Unificado -->
+	<!-- Layout completo do admin -->
 	<div class="min-h-screen bg-gray-50">
-		<!-- Header Unificado -->
-		<header class="bg-white border-b border-gray-200 shadow-sm">
-			<div class="px-6 py-4">
-				<div class="flex items-center justify-between">
-					<!-- Logo e Título -->
-					<div class="flex items-center space-x-4">
-						<div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-							{#if !logoError}
-								<img 
-									src="/logo.png" 
-									alt="Marketplace GDG" 
-									class="w-8 h-8 object-contain"
-									on:error={handleLogoError}
-								/>
-							{:else}
-								<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-								</svg>
-							{/if}
+		<!-- Header -->
+		<header class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+			<div class="flex items-center justify-between h-16 px-4 lg:px-6">
+				<!-- Logo & Toggle -->
+				<div class="flex items-center gap-4">
+					<!-- Mobile Menu Toggle -->
+					<button
+						onclick={toggleMobileMenu}
+						class="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+						</svg>
+					</button>
+					
+					<!-- Desktop Sidebar Toggle -->
+					<button
+						onclick={toggleSidebar}
+						class="hidden lg:flex p-2 rounded-lg hover:bg-gray-100 transition-colors"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+						</svg>
+					</button>
+					
+					<!-- Logo -->
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center">
+							<span class="text-white font-bold text-xl">G</span>
 						</div>
 						<div>
-							<h1 class="text-xl font-bold text-gray-900">{roleConfig?.title || 'Painel'}</h1>
-							<p class="text-sm text-gray-500">{roleConfig?.subtitle || 'Sistema de Gerenciamento'}</p>
+							<h1 class="text-lg font-bold text-gray-900">
+								{user?.role === 'admin' ? 'Admin Panel' : 'Seller Panel'}
+							</h1>
+							<p class="text-xs text-gray-500">Marketplace GDG</p>
 						</div>
-						{#if import.meta.env.DEV}
-							<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-								✅ {user?.role?.toUpperCase() || 'UNKNOWN'}
-							</span>
-						{/if}
 					</div>
+				</div>
+				
+				<!-- Right Side -->
+				<div class="flex items-center gap-2 lg:gap-4">
+					<!-- Notifications -->
+					<button class="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+						<svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+						</svg>
+						<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+					</button>
 					
-					<!-- Navegação Rápida -->
-					<div class="hidden md:flex items-center space-x-4">
-						<button 
-							on:click={goToStore}
-							class="flex items-center space-x-2 bg-gray-50 rounded-lg px-3 py-2 text-sm text-primary-600 hover:text-primary-700 transition-colors"
-						>
-							<span>🛒</span>
-							<span>Ver Loja</span>
-						</button>
-					</div>
+					<!-- View Store -->
+					<button
+						onclick={goToStore}
+						class="hidden lg:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+						</svg>
+						Ver Loja
+					</button>
 					
-					<!-- Menu do Usuário -->
-					<div class="relative">
-						<button 
-							on:click={toggleUserMenu}
-							class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+					<!-- User Menu -->
+					<div class="relative user-menu-container">
+						<button
+							onclick={toggleUserMenu}
+							class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
 						>
-							<div class="text-right">
-								<div class="text-sm font-medium text-gray-900">{user?.name || 'Usuário'}</div>
-								<div class="text-xs text-gray-500">{roleConfig?.roleLabel || 'Role'}</div>
-							</div>
-							<div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white text-lg">
-								{roleConfig?.avatar || '👤'}
-							</div>
-							<svg class="w-4 h-4 text-gray-400 transition-transform {showUserMenu ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+							{#if user}
+								<img
+									src={user.avatarUrl}
+									alt={user.name}
+									class="w-8 h-8 rounded-full ring-2 ring-gray-200"
+								/>
+								<div class="hidden lg:block text-left">
+									<p class="text-sm font-semibold text-gray-900">{user.name}</p>
+									<p class="text-xs text-gray-500">{user.role === 'admin' ? 'Administrador' : 'Vendedor'}</p>
+								</div>
+							{/if}
+							<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 							</svg>
 						</button>
 						
 						<!-- Dropdown Menu -->
-						{#if showUserMenu}
-							<div class="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+						{#if isUserMenuOpen}
+							<div 
+								class="dropdown-menu animate-scale-in"
+								transition:fly={{ y: -10, duration: 200 }}
+							>
 								<div class="px-4 py-3 border-b border-gray-100">
-									<div class="text-sm font-medium text-gray-900">{user?.name || 'Usuário'}</div>
-									<div class="text-sm text-gray-500">{user?.email || 'email@exemplo.com'}</div>
-									<div class="text-xs text-primary-600 mt-1">{roleConfig?.avatar || '👤'} {roleConfig?.roleLabel || 'Role'}</div>
+									<p class="text-sm font-medium text-gray-900">{user?.name}</p>
+									<p class="text-xs text-gray-500">{user?.email}</p>
 								</div>
 								
-								{#if import.meta.env.DEV}
-									<div class="py-2 border-b border-gray-100">
-										<a href="/?user=admin" class="flex items-center px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors">
-											<span class="mr-3">👨‍💼</span>
-											Testar como Admin
-										</a>
-										<a href="/?user=vendor" class="flex items-center px-4 py-2 text-sm text-green-700 hover:bg-green-50 transition-colors">
-											<span class="mr-3">🏪</span>
-											Testar como Vendor
-										</a>
-									</div>
-								{/if}
+								<a href="/configuracoes" class="dropdown-item">
+									<svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+									</svg>
+									Configurações
+								</a>
 								
-								<div class="py-2">
-									<a href="/configuracoes" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-										<svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-										</svg>
-										Configurações
-									</a>
-								</div>
-								
-								<div class="border-t border-gray-100 pt-2">
-									<button 
-										on:click={handleLogout}
-										class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-									>
-										<svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-										</svg>
-										Sair
-									</button>
-								</div>
+								<button onclick={handleLogout} class="dropdown-item w-full text-left text-red-600 hover:bg-red-50">
+									<svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+									</svg>
+									Sair
+								</button>
 							</div>
 						{/if}
 					</div>
@@ -290,106 +246,141 @@
 			</div>
 		</header>
 		
-		<div class="flex">
-			<!-- Sidebar Unificada com Permissões -->
-			<aside class="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-80px)] overflow-y-auto">
-				<nav class="p-4 space-y-2">
-					<!-- Dashboard - Todos -->
-					<a href="/" class="nav-link {currentPath === '/' ? 'active' : ''}">
-						<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2"/>
-						</svg>
-						Dashboard
+		<!-- Sidebar Desktop -->
+		<aside 
+			class="fixed left-0 top-16 bottom-0 z-40 bg-white border-r border-gray-200 transition-all duration-300 hidden lg:block"
+			class:w-64={isSidebarOpen}
+			class:w-20={!isSidebarOpen}
+		>
+			<nav class="p-4 space-y-1 h-full overflow-y-auto">
+				{#each filteredMenuItems as item}
+					<a
+						href={item.href}
+						class="sidebar-link group"
+						class:sidebar-link-active={isActiveRoute(item.href)}
+						title={!isSidebarOpen ? item.label : ''}
+					>
+						<span class="text-xl flex-shrink-0">{item.icon}</span>
+						{#if isSidebarOpen}
+							<span class="font-medium" transition:fade={{ duration: 200 }}>{item.label}</span>
+							{#if item.badge}
+								<span class="ml-auto badge badge-primary" transition:scale={{ duration: 200 }}>
+									{item.badge}
+								</span>
+							{/if}
+						{/if}
 					</a>
-					
-					<!-- Produtos - Admin e Vendor -->
-					{#if hasPermission(['admin', 'vendor'])}
-						<a href="/produtos" class="nav-link {currentPath === '/produtos' ? 'active' : ''}">
-							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+				{/each}
+			</nav>
+		</aside>
+		
+		<!-- Mobile Menu -->
+		{#if isMobileMenuOpen}
+			<div 
+				class="fixed inset-0 z-50 lg:hidden"
+				transition:fade={{ duration: 200 }}
+			>
+				<!-- Backdrop -->
+				<div 
+					class="absolute inset-0 bg-black/50"
+					onclick={toggleMobileMenu}
+				></div>
+				
+				<!-- Menu -->
+				<aside 
+					class="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl"
+					transition:fly={{ x: -320, duration: 300, easing: cubicOut }}
+				>
+					<!-- Header -->
+					<div class="flex items-center justify-between p-4 border-b border-gray-200">
+						<div class="flex items-center gap-3">
+							<div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center">
+								<span class="text-white font-bold text-xl">G</span>
+							</div>
+							<span class="font-bold text-gray-900">Menu</span>
+						</div>
+						<button
+							onclick={toggleMobileMenu}
+							class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+						>
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 							</svg>
-							{user?.role === 'admin' ? 'Todos os Produtos' : 'Meus Produtos'}
-						</a>
-					{/if}
-					
-					<!-- Pedidos - Admin e Vendor -->
-					{#if hasPermission(['admin', 'vendor'])}
-						<a href="/pedidos" class="nav-link {currentPath === '/pedidos' ? 'active' : ''}">
-							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-							</svg>
-							{user?.role === 'admin' ? 'Todos os Pedidos' : 'Meus Pedidos'}
-						</a>
-					{/if}
-					
-					<!-- Usuários - Só Admin -->
-					{#if hasPermission(['admin'])}
-						<a href="/usuarios" class="nav-link {currentPath === '/usuarios' ? 'active' : ''}">
-							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
-							</svg>
-							Usuários
-						</a>
-					{/if}
-					
-					<!-- Relatórios - Todos -->
-					{#if hasPermission(['admin', 'vendor'])}
-						<a href="/relatorios" class="nav-link {currentPath === '/relatorios' ? 'active' : ''}">
-							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-							</svg>
-							{user?.role === 'admin' ? 'Relatórios Gerais' : 'Meus Relatórios'}
-						</a>
-					{/if}
-					
-					<div class="pt-4 border-t border-gray-200">
-						<!-- Configurações - Todos -->
-						<a href="/configuracoes" class="nav-link {currentPath === '/configuracoes' ? 'active' : ''}">
-							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-							</svg>
-							Configurações
-						</a>
+						</button>
 					</div>
-				</nav>
-			</aside>
-			
-			<!-- Main Content -->
-			<main class="flex-1 overflow-auto">
-				<div class="max-w-7xl mx-auto p-6">
-					<slot />
-				</div>
-			</main>
-		</div>
+					
+					<!-- Navigation -->
+					<nav class="p-4 space-y-1">
+						{#each filteredMenuItems as item}
+							<a
+								href={item.href}
+								onclick={toggleMobileMenu}
+								class="sidebar-link group"
+								class:sidebar-link-active={isActiveRoute(item.href)}
+							>
+								<span class="text-xl">{item.icon}</span>
+								<span class="font-medium">{item.label}</span>
+								{#if item.badge}
+									<span class="ml-auto badge badge-primary">
+										{item.badge}
+									</span>
+								{/if}
+							</a>
+						{/each}
+					</nav>
+				</aside>
+			</div>
+		{/if}
+		
+		<!-- Main Content -->
+		<main 
+			class="transition-all duration-300 pt-16"
+			class:lg:pl-64={isSidebarOpen}
+			class:lg:pl-20={!isSidebarOpen}
+		>
+			<div class="p-4 lg:p-8 animate-fade-in">
+				{#if isLoading}
+					<div class="flex items-center justify-center min-h-[60vh]">
+						<div class="text-center">
+							<div class="spinner w-12 h-12 mx-auto mb-4"></div>
+							<p class="text-gray-600">Carregando...</p>
+						</div>
+					</div>
+				{:else}
+					{@render children()}
+				{/if}
+			</div>
+		</main>
+		
+		<!-- Footer -->
+		<footer 
+			class="transition-all duration-300 border-t border-gray-200 bg-white mt-auto"
+			class:lg:pl-64={isSidebarOpen}
+			class:lg:pl-20={!isSidebarOpen}
+		>
+			<div class="px-4 lg:px-8 py-4">
+				<p class="text-center text-sm text-gray-500">
+					© 2024 Marketplace GDG. Todos os direitos reservados.
+				</p>
+			</div>
+		</footer>
 	</div>
-	
-	<!-- Overlay para fechar dropdown -->
-	{#if showUserMenu}
-		<div 
-			class="fixed inset-0 z-40"
-			on:click={closeUserMenu}
-			on:keydown={closeUserMenu}
-			role="button"
-			tabindex="0"
-		></div>
-	{/if}
 {/if}
 
 <style>
-	.nav-link {
-		@apply flex items-center px-3 py-2.5 text-sm font-medium text-gray-600 rounded-lg transition-all duration-200 hover:bg-gray-50 hover:text-gray-900;
+	/* Animações suaves ao mudar de rota */
+	:global(html) {
+		scroll-behavior: smooth;
 	}
 	
-	.nav-link.active {
-		@apply bg-primary-50 text-primary-700 border-r-2 border-primary-500;
+	/* Melhorar transições do sidebar */
+	aside {
+		will-change: width;
 	}
 	
-	.nav-link:hover {
-		@apply bg-gray-50 text-gray-900;
-	}
-	
-	.nav-link.active:hover {
-		@apply bg-primary-100;
+	/* Sombra mais suave no header fixo */
+	header {
+		backdrop-filter: blur(8px);
+		background-color: rgba(255, 255, 255, 0.95);
 	}
 </style>

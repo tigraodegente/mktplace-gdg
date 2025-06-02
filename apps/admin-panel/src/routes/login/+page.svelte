@@ -1,361 +1,354 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { fly, fade, scale } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	
-	// Estados do formulário
-	let email = '';
-	let password = '';
-	let isLoading = false;
-	let error = '';
+	// Estado
+	let email = $state('');
+	let password = $state('');
+	let role = $state<'admin' | 'vendor'>('admin');
+	let isLoading = $state(false);
+	let error = $state('');
+	let showPassword = $state(false);
+	let rememberMe = $state(false);
+	let isAnimating = $state(true);
 	
-	// Estados do sistema
-	let userRoles: string[] = [];
-	let showRoleSelector = false;
-	let userName = '';
+	// Credenciais de demo
+	const demoCredentials = {
+		admin: {
+			email: 'admin@marketplace.com',
+			password: 'admin123'
+		},
+		vendor: {
+			email: 'vendor@marketplace.com',
+			password: 'vendor123'
+		}
+	};
+	
+	// Features do sistema
+	const features = [
+		{ icon: '📊', title: 'Dashboard Intuitivo', desc: 'Visualize todas as métricas importantes' },
+		{ icon: '📦', title: 'Gestão de Produtos', desc: 'Gerencie seu catálogo facilmente' },
+		{ icon: '📈', title: 'Relatórios Detalhados', desc: 'Análises completas do seu negócio' },
+		{ icon: '🔒', title: '100% Seguro', desc: 'Seus dados protegidos sempre' }
+	];
 	
 	onMount(() => {
-		// Limpar qualquer estado anterior
-		userRoles = [];
-		showRoleSelector = false;
-		error = '';
+		// Animação inicial
+		setTimeout(() => {
+			isAnimating = false;
+		}, 300);
 		
-		// Em desenvolvimento, pré-preencher
-		if (import.meta.env.DEV) {
-			email = 'admin@dev.local';
-			password = '123456';
+		// Pré-preencher se lembrar
+		const savedEmail = localStorage.getItem('rememberedEmail');
+		if (savedEmail) {
+			email = savedEmail;
+			rememberMe = true;
 		}
 	});
 	
 	async function handleLogin() {
+		// Reset error
+		error = '';
+		
+		// Validações
 		if (!email || !password) {
 			error = 'Por favor, preencha todos os campos';
 			return;
 		}
 		
-		isLoading = true;
-		error = '';
-		
-		try {
-			// Em desenvolvimento, simular login
-			if (import.meta.env.DEV) {
-				await simulateLogin();
-				return;
-			}
-			
-			// Em produção, fazer login real
-			const response = await fetch('/api/auth/login', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				credentials: 'include',
-				body: JSON.stringify({ email, password })
-			});
-			
-			const result = await response.json();
-			
-			if (result.success && result.user) {
-				await handleLoginSuccess(result.user);
-			} else {
-				error = result.error || 'Email ou senha incorretos';
-			}
-		} catch (err) {
-			console.error('Erro no login:', err);
-			error = 'Erro de conexão. Tente novamente.';
-		} finally {
-			isLoading = false;
-		}
-	}
-	
-	async function simulateLogin() {
-		// Simular delay de rede
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		
-		// Simular diferentes usuários baseado no email
-		let mockUser;
-		
-		if (email.includes('multi')) {
-			// Usuário com múltiplos roles
-			mockUser = {
-				id: 'user-multi',
-				name: 'Carlos Multi',
-				email: email,
-				roles: ['admin', 'vendor', 'customer']
-			};
-		} else if (email.includes('vendor') || email.includes('joao')) {
-			// Só vendedor
-			mockUser = {
-				id: 'vendor-dev',
-				name: 'João Vendedor',
-				email: email,
-				roles: ['vendor']
-			};
-		} else {
-			// Só admin (default)
-			mockUser = {
-				id: 'admin-dev',
-				name: 'Maria Admin',
-				email: email,
-				roles: ['admin']
-			};
-		}
-		
-		await handleLoginSuccess(mockUser);
-	}
-	
-	async function handleLoginSuccess(user: any) {
-		userName = user.name;
-		
-		// Filtrar apenas roles que podem acessar os painéis
-		const adminRoles = user.roles?.filter((role: string) => ['admin', 'vendor'].includes(role)) || [];
-		
-		if (adminRoles.length === 0) {
-			error = 'Acesso negado. Você não tem permissão para acessar este painel.';
+		if (!email.includes('@')) {
+			error = 'Email inválido';
 			return;
 		}
 		
-		if (adminRoles.length === 1) {
-			// Único role - ir direto para o painel
-			const role = adminRoles[0];
-			await redirectToPanel(role);
-		} else {
-			// Múltiplos roles - mostrar seletor
-			userRoles = adminRoles;
-			showRoleSelector = true;
-		}
-	}
-	
-	async function selectRole(selectedRole: string) {
 		isLoading = true;
-		await redirectToPanel(selectedRole);
-	}
-	
-	async function redirectToPanel(role: string) {
-		try {
-			// Definir contexto do usuário na sessão
-			await fetch('/api/auth/set-context', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				credentials: 'include',
-				body: JSON.stringify({ role })
-			});
+		
+		// Simular login
+		setTimeout(async () => {
+			// Verificar credenciais de demo
+			const validCredentials = 
+				(role === 'admin' && email === demoCredentials.admin.email && password === demoCredentials.admin.password) ||
+				(role === 'vendor' && email === demoCredentials.vendor.email && password === demoCredentials.vendor.password);
 			
-			// Redirecionar para o painel
-			goto(`/?user=${role}`);
-		} catch (err) {
-			console.error('Erro ao definir contexto:', err);
-			// Em desenvolvimento, ir direto mesmo com erro
-			if (import.meta.env.DEV) {
-				goto(`/?user=${role}`);
+			if (validCredentials) {
+				// Salvar email se marcado
+				if (rememberMe) {
+					localStorage.setItem('rememberedEmail', email);
+				} else {
+					localStorage.removeItem('rememberedEmail');
+				}
+				
+				// Redirecionar com parâmetro de role
+				await goto(`/?user=${role}`);
 			} else {
-				error = 'Erro ao acessar painel. Tente novamente.';
+				error = 'Email ou senha incorretos';
+				isLoading = false;
 			}
-		}
+		}, 1500);
 	}
 	
-	function backToLogin() {
-		showRoleSelector = false;
-		userRoles = [];
-		userName = '';
+	function fillDemoCredentials() {
+		const creds = demoCredentials[role];
+		email = creds.email;
+		password = creds.password;
+	}
+	
+	function switchRole(newRole: 'admin' | 'vendor') {
+		role = newRole;
 		error = '';
+		// Limpar campos ao trocar
+		email = '';
+		password = '';
 	}
 	
-	// Atalhos para desenvolvimento
-	function quickLogin(role: string) {
-		if (role === 'admin') {
-			email = 'admin@dev.local';
-		} else if (role === 'vendor') {
-			email = 'joao@vendor.local';
-		} else if (role === 'multi') {
-			email = 'carlos@multi.local';
+	// Detectar Enter
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !isLoading) {
+			handleLogin();
 		}
-		password = '123456';
-		handleLogin();
 	}
 </script>
 
-<svelte:head>
-	<title>Login - Marketplace GDG</title>
-</svelte:head>
-
-<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-	<div class="max-w-md w-full space-y-8">
-		{#if !showRoleSelector}
-			<!-- Formulário de Login -->
-			<div>
-				<div class="text-center">
-					<div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-4">
-						<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+<div class="min-h-screen flex">
+	<!-- Left Side - Login Form -->
+	<div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+		<div class="w-full max-w-md" in:fly={{ x: -50, duration: 800, delay: 200 }}>
+			<!-- Logo -->
+			<div class="text-center mb-8">
+				<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl mb-4 transform hover:scale-110 transition-transform">
+					<span class="text-3xl text-white font-bold">G</span>
+				</div>
+				<h1 class="text-3xl font-bold text-gray-900">Bem-vindo de volta!</h1>
+				<p class="text-gray-600 mt-2">Faça login para acessar o painel</p>
+			</div>
+			
+			<!-- Role Selector -->
+			<div class="flex bg-gray-100 rounded-lg p-1 mb-6">
+				<button
+					onclick={() => switchRole('admin')}
+					class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all {role === 'admin' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}"
+				>
+					<span class="mr-2">👨‍💼</span>
+					Administrador
+				</button>
+				<button
+					onclick={() => switchRole('vendor')}
+					class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all {role === 'vendor' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}"
+				>
+					<span class="mr-2">🏪</span>
+					Vendedor
+				</button>
+			</div>
+			
+			<!-- Login Form -->
+			<form onsubmit={e => { e.preventDefault(); handleLogin(); }} class="space-y-5">
+				<!-- Email -->
+				<div>
+					<label for="email" class="label">
+						Email
+					</label>
+					<div class="relative">
+						<input
+							id="email"
+							type="email"
+							bind:value={email}
+							onkeydown={handleKeydown}
+							placeholder={role === 'admin' ? 'admin@marketplace.com' : 'vendor@marketplace.com'}
+							class="input pl-10 {error ? 'input-error' : ''}"
+							disabled={isLoading}
+						/>
+						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
 						</svg>
 					</div>
-					<h2 class="mt-6 text-3xl font-bold text-gray-900">
-						Acesse sua conta
-					</h2>
-					<p class="mt-2 text-sm text-gray-600">
-						Painel Administrativo do Marketplace
-					</p>
 				</div>
 				
-				<form class="mt-8 space-y-6" on:submit|preventDefault={handleLogin}>
-					<div class="space-y-4">
-						<div>
-							<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-								Email
-							</label>
-							<input
-								id="email"
-								name="email"
-								type="email"
-								autocomplete="email"
-								required
-								bind:value={email}
-								disabled={isLoading}
-								class="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-								placeholder="seu@email.com"
-							/>
-						</div>
-						
-						<div>
-							<label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-								Senha
-							</label>
-							<input
-								id="password"
-								name="password"
-								type="password"
-								autocomplete="current-password"
-								required
-								bind:value={password}
-								disabled={isLoading}
-								class="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-								placeholder="Sua senha"
-							/>
-						</div>
-					</div>
-					
-					{#if error}
-						<div class="bg-red-50 border border-red-200 rounded-lg p-4">
-							<div class="flex">
-								<svg class="w-5 h-5 text-red-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-								</svg>
-								<p class="text-sm text-red-700">{error}</p>
-							</div>
-						</div>
-					{/if}
-					
-					<div>
-						<button
-							type="submit"
+				<!-- Password -->
+				<div>
+					<label for="password" class="label">
+						Senha
+					</label>
+					<div class="relative">
+						<input
+							id="password"
+							type={showPassword ? 'text' : 'password'}
+							bind:value={password}
+							onkeydown={handleKeydown}
+							placeholder="••••••••"
+							class="input pl-10 pr-10 {error ? 'input-error' : ''}"
 							disabled={isLoading}
-							class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+						/>
+						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+						</svg>
+						<button
+							type="button"
+							onclick={() => showPassword = !showPassword}
+							class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
 						>
-							{#if isLoading}
-								<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-								Entrando...
+							{#if showPassword}
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+								</svg>
 							{:else}
-								Entrar
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+								</svg>
 							{/if}
 						</button>
 					</div>
-				</form>
+				</div>
 				
-				{#if import.meta.env.DEV}
-					<div class="mt-8 pt-6 border-t border-gray-200">
-						<p class="text-xs text-gray-500 text-center mb-4">🛠️ Atalhos para Desenvolvimento:</p>
-						<div class="space-y-2">
-							<button
-								on:click={() => quickLogin('admin')}
-								disabled={isLoading}
-								class="w-full text-left px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-							>
-								👨‍💼 Entrar como Admin
-							</button>
-							<button
-								on:click={() => quickLogin('vendor')}
-								disabled={isLoading}
-								class="w-full text-left px-3 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
-							>
-								🏪 Entrar como Vendedor
-							</button>
-							<button
-								on:click={() => quickLogin('multi')}
-								disabled={isLoading}
-								class="w-full text-left px-3 py-2 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
-							>
-								👑 Entrar como Multi-Role (Admin + Vendedor)
-							</button>
-						</div>
+				<!-- Remember & Forgot -->
+				<div class="flex items-center justify-between">
+					<label class="flex items-center">
+						<input
+							type="checkbox"
+							bind:checked={rememberMe}
+							class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+						/>
+						<span class="ml-2 text-sm text-gray-600">Lembrar-me</span>
+					</label>
+					<a href="/esqueci-senha" class="text-sm text-cyan-600 hover:text-cyan-700">
+						Esqueceu a senha?
+					</a>
+				</div>
+				
+				<!-- Error Message -->
+				{#if error}
+					<div 
+						class="bg-red-50 text-red-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2"
+						in:scale={{ duration: 200 }}
+					>
+						<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						{error}
 					</div>
 				{/if}
-			</div>
-		{:else}
-			<!-- Seletor de Role -->
-			<div>
+				
+				<!-- Submit Button -->
+				<button
+					type="submit"
+					disabled={isLoading}
+					class="w-full btn btn-primary btn-lg {isLoading ? 'opacity-75' : ''}"
+				>
+					{#if isLoading}
+						<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						Entrando...
+					{:else}
+						Entrar
+					{/if}
+				</button>
+				
+				<!-- Demo Credentials -->
 				<div class="text-center">
-					<div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-4">
-						<span class="text-2xl">👑</span>
-					</div>
-					<h2 class="mt-6 text-3xl font-bold text-gray-900">
-						Olá, {userName}!
-					</h2>
-					<p class="mt-2 text-sm text-gray-600">
-						Como você gostaria de acessar o sistema hoje?
-					</p>
-				</div>
-				
-				<div class="mt-8 space-y-4">
-					{#each userRoles as role}
-						<button
-							on:click={() => selectRole(role)}
-							disabled={isLoading}
-							class="group w-full flex items-center justify-between p-6 bg-white border border-gray-200 rounded-xl hover:border-primary-200 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							<div class="flex items-center space-x-4">
-								<div class="w-12 h-12 bg-gradient-to-br {role === 'admin' ? 'from-blue-500 to-blue-600' : 'from-green-500 to-green-600'} rounded-xl flex items-center justify-center text-white text-xl">
-									{role === 'admin' ? '👨‍💼' : '🏪'}
-								</div>
-								<div class="text-left">
-									<h3 class="text-lg font-semibold text-gray-900 group-hover:text-primary-700">
-										{role === 'admin' ? 'Administrador' : 'Vendedor'}
-									</h3>
-									<p class="text-sm text-gray-500">
-										{role === 'admin' 
-											? 'Gerencie todo o marketplace, usuários e configurações' 
-											: 'Gerencie seus produtos, vendas e relatórios'
-										}
-									</p>
-								</div>
-							</div>
-							<svg class="w-6 h-6 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-							</svg>
-						</button>
-					{/each}
-				</div>
-				
-				<div class="mt-6">
 					<button
-						on:click={backToLogin}
-						disabled={isLoading}
-						class="w-full text-center text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+						type="button"
+						onclick={fillDemoCredentials}
+						class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
 					>
-						← Voltar ao login
+						Usar credenciais de demonstração
 					</button>
 				</div>
-				
-				{#if isLoading}
-					<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-						<div class="bg-white rounded-lg p-6 text-center">
-							<div class="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-							<p class="text-gray-600">Acessando painel...</p>
-						</div>
-					</div>
-				{/if}
+			</form>
+			
+			<!-- Footer -->
+			<div class="mt-8 text-center text-sm text-gray-600">
+				<p>
+					Não tem uma conta? 
+					<a href="/cadastro" class="text-cyan-600 hover:text-cyan-700 font-medium">
+						Cadastre-se
+					</a>
+				</p>
 			</div>
-		{/if}
+		</div>
 	</div>
-</div> 
+	
+	<!-- Right Side - Info -->
+	<div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-cyan-500 via-cyan-600 to-cyan-700 p-12 items-center justify-center relative overflow-hidden">
+		<!-- Background Pattern -->
+		<div class="absolute inset-0 opacity-10">
+			<div class="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full"></div>
+			<div class="absolute -bottom-32 -left-32 w-80 h-80 bg-white rounded-full"></div>
+		</div>
+		
+		<!-- Content -->
+		<div class="relative z-10 text-white max-w-lg" in:fly={{ x: 50, duration: 800, delay: 400 }}>
+			<h2 class="text-4xl font-bold mb-6">
+				{role === 'admin' ? 'Painel Administrativo' : 'Painel do Vendedor'}
+			</h2>
+			<p class="text-xl mb-8 text-cyan-100">
+				{role === 'admin' 
+					? 'Gerencie todo o marketplace com ferramentas poderosas e intuitivas.' 
+					: 'Acompanhe suas vendas e gerencie seus produtos com facilidade.'}
+			</p>
+			
+			<!-- Features Grid -->
+			<div class="grid grid-cols-2 gap-6">
+				{#each features as feature, i}
+					<div 
+						class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 transform hover:scale-105 transition-all"
+						in:scale={{ duration: 400, delay: 600 + i * 100, easing: cubicOut }}
+					>
+						<div class="text-3xl mb-3">{feature.icon}</div>
+						<h3 class="font-semibold mb-1">{feature.title}</h3>
+						<p class="text-sm text-cyan-100">{feature.desc}</p>
+					</div>
+				{/each}
+			</div>
+			
+			<!-- Stats -->
+			<div class="mt-12 flex items-center gap-8" in:fade={{ duration: 600, delay: 1000 }}>
+				<div>
+					<p class="text-4xl font-bold">2.5k+</p>
+					<p class="text-cyan-100">Vendedores Ativos</p>
+				</div>
+				<div>
+					<p class="text-4xl font-bold">150k+</p>
+					<p class="text-cyan-100">Produtos Cadastrados</p>
+				</div>
+				<div>
+					<p class="text-4xl font-bold">98%</p>
+					<p class="text-cyan-100">Satisfação</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<style>
+	/* Animação suave no switch de role */
+	button {
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	
+	/* Efeito de focus customizado */
+	:global(input:focus) {
+		box-shadow: 0 0 0 3px rgba(0, 191, 179, 0.1);
+	}
+	
+	/* Animação do gradiente de fundo */
+	@keyframes gradient {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
+	
+	:global(.bg-gradient-to-br) {
+		background-size: 200% 200%;
+		animation: gradient 15s ease infinite;
+	}
+</style> 

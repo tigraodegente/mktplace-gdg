@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { UnifiedShippingQuote } from '$lib/services/unifiedShippingService';
+  import type { UnifiedShippingQuote } from '$lib/services/unifiedShippingService.types';
+  import { formatCurrency } from '$lib/utils';
   
   interface SellerShippingOptionsProps {
     sellerQuote: UnifiedShippingQuote;

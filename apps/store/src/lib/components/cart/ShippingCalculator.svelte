@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { UnifiedShippingService, type UnifiedShippingQuote } from '$lib/services/unifiedShippingService';
+	import type { UnifiedShippingQuote } from '$lib/services/unifiedShippingService.types';
 	import type { CartItem } from '$lib/types/cart';
 	import { formatCurrency } from '$lib/utils';
+	import { validatePostalCode, formatPostalCode } from '$lib/utils/shipping';
 	import { fade, scale, slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { CART_CONSTANTS } from './constants';
+	import SellerShippingOptions from './SellerShippingOptions.svelte';
+	import { flip } from 'svelte/animate';
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	
 	interface ShippingCalculatorProps {
 		zipCode: string;
@@ -82,7 +87,7 @@
 	async function handleCalculate() {
 		const cleanZip = localZipCode.replace(/\D/g, '');
 		
-		if (!UnifiedShippingService.validatePostalCode(cleanZip)) {
+		if (!validatePostalCode(cleanZip)) {
 			return;
 		}
 
@@ -167,7 +172,7 @@
 		const target = e.target as HTMLInputElement;
 		const numbersOnly = target.value.replace(/\D/g, '');
 		if (numbersOnly.length <= 8) {
-			localZipCode = UnifiedShippingService.formatPostalCode(numbersOnly);
+			localZipCode = formatPostalCode(numbersOnly);
 		}
 	}
 	
@@ -177,7 +182,7 @@
 	});
 	
 	function selectAddress(address: any) {
-		localZipCode = UnifiedShippingService.formatPostalCode(address.zipCode);
+		localZipCode = formatPostalCode(address.zipCode);
 		addressDetails = {
 			street: address.street,
 			neighborhood: address.neighborhood,
@@ -246,7 +251,7 @@
 								{address.neighborhood} • {address.city}/{address.state}
 							</p>
 							<p class="text-[10px] sm:text-xs text-gray-500">
-								CEP: {UnifiedShippingService.formatPostalCode(address.zipCode)}
+								CEP: {formatPostalCode(address.zipCode)}
 							</p>
 						</div>
 						<div 
@@ -343,7 +348,7 @@
 		
 		<button 
 			type="submit"
-			disabled={calculating || !UnifiedShippingService.validatePostalCode(localZipCode.replace(/\D/g, ''))}
+			disabled={calculating || !validatePostalCode(localZipCode.replace(/\D/g, ''))}
 			class="px-4 py-2.5 bg-[#00BFB3] text-white text-sm font-medium rounded-lg 
 				   hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
 				   flex items-center gap-2 min-w-[100px] justify-center"

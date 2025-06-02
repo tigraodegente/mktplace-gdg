@@ -13,6 +13,26 @@
 
 import type { CartItem } from '$lib/types/cart';
 import { withDatabase } from '$lib/db';
+import type { 
+  UnifiedShippingItem,
+  UnifiedShippingOption,
+  UnifiedShippingQuote,
+  UnifiedShippingRequest,
+  ShippingBreakdown
+} from './unifiedShippingService.types';
+
+// Re-export types for compatibility
+export type { 
+  UnifiedShippingItem,
+  UnifiedShippingOption,
+  UnifiedShippingQuote,
+  UnifiedShippingRequest,
+  ShippingBreakdown
+} from './unifiedShippingService.types';
+
+// ============================================================================
+// TIPOS UNIFICADOS
+// ============================================================================
 
 // Definindo Product interface localmente para evitar problemas de import
 interface Product {
@@ -26,77 +46,6 @@ interface Product {
   width?: number;
   length?: number;
   [key: string]: any;
-}
-
-// ============================================================================
-// TIPOS UNIFICADOS
-// ============================================================================
-
-export interface UnifiedShippingItem {
-  product: Product;
-  product_id: string;
-  quantity: number;
-  sellerId: string;
-  sellerName: string;
-  weight?: number;
-  price: number;
-  category_id?: string;
-  height?: number;
-  width?: number;
-  length?: number;
-}
-
-export interface UnifiedShippingOption {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  originalPrice: number;
-  deliveryDays: number;
-  deliveryDaysMin: number;
-  deliveryDaysMax: number;
-  modalityId: string;
-  modalityName: string;
-  pricingType: 'per_item' | 'per_shipment';
-  carrier: string;
-  carrierName: string;
-  carrierId: string;
-  zoneName: string;
-  isFree: boolean;
-  freeReason?: string;
-  breakdown?: ShippingBreakdown;
-}
-
-export interface ShippingBreakdown {
-  basePrice: number;
-  markup: number;
-  taxes: Record<string, number>;
-  discounts: Record<string, number>;
-  freeShippingDiscount: number;
-}
-
-export interface UnifiedShippingQuote {
-  sellerId: string;
-  sellerName: string;
-  items: UnifiedShippingItem[];
-  options: UnifiedShippingOption[];
-  totalWeight: number;
-  totalValue: number;
-  success: boolean;
-  error?: string;
-  zoneInfo?: {
-    zoneId: string;
-    zoneName: string;
-    uf: string;
-    carrier: string;
-  };
-}
-
-export interface UnifiedShippingRequest {
-  postalCode: string;
-  items: UnifiedShippingItem[];
-  sellerId?: string;
-  useCache?: boolean;
 }
 
 // ============================================================================

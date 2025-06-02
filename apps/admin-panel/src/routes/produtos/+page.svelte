@@ -1,380 +1,689 @@
 <script lang="ts">
-  // Interface para tipagem
-  interface Product {
-    id: number;
-    name: string;
-    category: string;
-    price: number;
-    stock: number;
-    status: string;
-    seller: string;
-    created: string;
-    image: string;
-  }
-
-  // Mock data - seria substituído por dados reais da API
-  const products: Product[] = [
-    { 
-      id: 1, 
-      name: 'Smartphone Galaxy S24', 
-      category: 'Eletrônicos', 
-      price: 2999.99, 
-      stock: 25, 
-      status: 'Ativo', 
-      seller: 'TechStore',
-      created: '2024-01-15',
-      image: 'https://via.placeholder.com/150'
-    },
-    { 
-      id: 2, 
-      name: 'Notebook Dell Inspiron', 
-      category: 'Informática', 
-      price: 3599.99, 
-      stock: 12, 
-      status: 'Ativo', 
-      seller: 'ComputerWorld',
-      created: '2024-01-10',
-      image: 'https://via.placeholder.com/150'
-    },
-    { 
-      id: 3, 
-      name: 'Headphone Sony WH-1000XM5', 
-      category: 'Áudio', 
-      price: 1299.99, 
-      stock: 0, 
-      status: 'Inativo', 
-      seller: 'AudioPro',
-      created: '2024-01-05',
-      image: 'https://via.placeholder.com/150'
-    },
-  ];
-
-  let searchTerm = '';
-  let selectedCategory = '';
-  let selectedStatus = '';
-
-  // Filtros reativos
-  $: filteredProducts = products.filter(product => {
-    return (
-      (searchTerm === '' || product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-       product.seller.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (selectedCategory === '' || product.category === selectedCategory) &&
-      (selectedStatus === '' || product.status === selectedStatus)
-    );
-  });
-
-  function getStatusBadgeClass(status: string): string {
-    return status === 'Ativo' 
-      ? 'bg-green-100 text-green-800 border-green-200' 
-      : 'bg-red-100 text-red-800 border-red-200';
-  }
-
-  function formatPrice(price: number): string {
-    return price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  }
-
-  function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  }
-
-  function handleEditProduct(product: Product): void {
-    console.log('Editar', product);
-  }
-
-  function handleDeleteProduct(product: Product): void {
-    console.log('Excluir', product);
-  }
-
-  function handleCreateProduct(): void {
-    console.log('Criar novo produto');
-  }
-
-  function handleExport(): void {
-    console.log('Exportar dados');
-  }
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { fade, fly, scale } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	
+	// Interfaces
+	interface Product {
+		id: string;
+		name: string;
+		sku: string;
+		price: number;
+		stock: number;
+		category: string;
+		status: 'active' | 'inactive' | 'pending' | 'draft';
+		vendor?: string;
+		image: string;
+		createdAt: string;
+		sales: number;
+		rating: number;
+	}
+	
+	interface Filter {
+		search: string;
+		status: string;
+		category: string;
+		minPrice: number;
+		maxPrice: number;
+	}
+	
+	// Estado
+	let products = $state<Product[]>([]);
+	let filteredProducts = $state<Product[]>([]);
+	let loading = $state(true);
+	let selectedProducts = $state<Set<string>>(new Set());
+	let viewMode = $state<'grid' | 'list'>('list');
+	let showFilters = $state(true);
+	let showAddModal = $state(false);
+	let userRole = $state<'admin' | 'vendor'>('admin');
+	
+	// Filtros
+	let filters = $state<Filter>({
+		search: '',
+		status: 'all',
+		category: 'all',
+		minPrice: 0,
+		maxPrice: 10000
+	});
+	
+	// Paginação
+	let currentPage = $state(1);
+	let itemsPerPage = $state(10);
+	let totalPages = $state(1);
+	
+	// Estatísticas
+	let stats = $state({
+		total: 0,
+		active: 0,
+		pending: 0,
+		lowStock: 0
+	});
+	
+	// Categorias mock
+	const categories = [
+		'Eletrônicos',
+		'Roupas',
+		'Casa e Jardim',
+		'Esportes',
+		'Livros',
+		'Brinquedos'
+	];
+	
+	// Verificar role
+	$effect(() => {
+		const userParam = $page.url.searchParams.get('user');
+		userRole = userParam === 'vendor' ? 'vendor' : 'admin';
+	});
+	
+	// Aplicar filtros
+	$effect(() => {
+		let result = [...products];
+		
+		// Busca
+		if (filters.search) {
+			result = result.filter(p => 
+				p.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+				p.sku.toLowerCase().includes(filters.search.toLowerCase())
+			);
+		}
+		
+		// Status
+		if (filters.status !== 'all') {
+			result = result.filter(p => p.status === filters.status);
+		}
+		
+		// Categoria
+		if (filters.category !== 'all') {
+			result = result.filter(p => p.category === filters.category);
+		}
+		
+		// Preço
+		result = result.filter(p => 
+			p.price >= filters.minPrice && p.price <= filters.maxPrice
+		);
+		
+		filteredProducts = result;
+		totalPages = Math.ceil(result.length / itemsPerPage);
+		currentPage = 1;
+		
+		// Atualizar estatísticas
+		updateStats(result);
+	});
+	
+	onMount(() => {
+		loadProducts();
+	});
+	
+	async function loadProducts() {
+		loading = true;
+		
+		// Simular carregamento
+		setTimeout(() => {
+			// Dados mock
+			products = Array.from({ length: 50 }, (_, i) => ({
+				id: `prod-${i + 1}`,
+				name: `Produto ${i + 1}`,
+				sku: `SKU-${1000 + i}`,
+				price: Math.floor(Math.random() * 5000) + 100,
+				stock: Math.floor(Math.random() * 100),
+				category: categories[Math.floor(Math.random() * categories.length)],
+				status: ['active', 'inactive', 'pending', 'draft'][Math.floor(Math.random() * 4)] as any,
+				vendor: userRole === 'vendor' ? 'Minha Loja' : `Vendedor ${Math.floor(Math.random() * 10) + 1}`,
+				image: `https://source.unsplash.com/200x200/?product,${i}`,
+				createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+				sales: Math.floor(Math.random() * 1000),
+				rating: (Math.random() * 2 + 3).toFixed(1) as any
+			}));
+			
+			if (userRole === 'vendor') {
+				products = products.filter(p => p.vendor === 'Minha Loja');
+			}
+			
+			loading = false;
+		}, 1000);
+	}
+	
+	function updateStats(prods: Product[]) {
+		stats = {
+			total: prods.length,
+			active: prods.filter(p => p.status === 'active').length,
+			pending: prods.filter(p => p.status === 'pending').length,
+			lowStock: prods.filter(p => p.stock < 10).length
+		};
+	}
+	
+	function toggleProductSelection(id: string) {
+		const newSet = new Set(selectedProducts);
+		if (newSet.has(id)) {
+			newSet.delete(id);
+		} else {
+			newSet.add(id);
+		}
+		selectedProducts = newSet;
+	}
+	
+	function toggleAllProducts() {
+		if (selectedProducts.size === paginatedProducts.length) {
+			selectedProducts = new Set();
+		} else {
+			selectedProducts = new Set(paginatedProducts.map(p => p.id));
+		}
+	}
+	
+	function getStatusBadge(status: string) {
+		const badges = {
+			active: 'badge-success',
+			inactive: 'badge-danger',
+			pending: 'badge-warning',
+			draft: 'badge-info'
+		};
+		return badges[status as keyof typeof badges] || 'badge';
+	}
+	
+	function getStatusLabel(status: string) {
+		const labels = {
+			active: 'Ativo',
+			inactive: 'Inativo',
+			pending: 'Pendente',
+			draft: 'Rascunho'
+		};
+		return labels[status as keyof typeof labels] || status;
+	}
+	
+	function formatPrice(price: number) {
+		return new Intl.NumberFormat('pt-BR', {
+			style: 'currency',
+			currency: 'BRL'
+		}).format(price);
+	}
+	
+	function formatDate(date: string) {
+		return new Date(date).toLocaleDateString('pt-BR');
+	}
+	
+	// Produtos paginados
+	const paginatedProducts = $derived(
+		filteredProducts.slice(
+			(currentPage - 1) * itemsPerPage,
+			currentPage * itemsPerPage
+		)
+	);
+	
+	// Ações em lote
+	async function bulkUpdateStatus(status: Product['status']) {
+		console.log('Atualizando status de', selectedProducts.size, 'produtos para', status);
+		selectedProducts = new Set();
+	}
+	
+	async function bulkDelete() {
+		if (confirm(`Tem certeza que deseja excluir ${selectedProducts.size} produtos?`)) {
+			console.log('Excluindo', selectedProducts.size, 'produtos');
+			selectedProducts = new Set();
+		}
+	}
 </script>
 
-<svelte:head>
-  <title>Produtos - Admin Panel</title>
-</svelte:head>
-
-<!-- Page Header Melhorado -->
-<div class="bg-white border-b border-gray-200 px-8 py-6 mb-8">
-  <div class="max-w-7xl mx-auto">
-    <!-- Breadcrumbs -->
-    <nav class="flex mb-4" aria-label="Breadcrumb">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="/" class="text-gray-500 hover:text-primary-600 transition-colors">Dashboard</a>
-        </li>
-        <li class="flex items-center">
-          <svg class="w-4 h-4 text-gray-400 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-          <span class="text-gray-900 font-medium">Produtos</span>
-        </li>
-      </ol>
-    </nav>
-
-    <!-- Title & Actions -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestão de Produtos</h1>
-        <p class="text-lg text-gray-600">Modere e gerencie todos os produtos do marketplace</p>
-      </div>
-      <div class="flex items-center space-x-3">
-        <button 
-          on:click={handleExport}
-          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-        >
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          Exportar
-        </button>
-        <button 
-          on:click={handleCreateProduct}
-          class="inline-flex items-center px-4 py-2 bg-primary-500 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 shadow-sm"
-        >
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-          </svg>
-          Novo Produto
-        </button>
-      </div>
-    </div>
-  </div>
+<div class="space-y-6">
+	<!-- Header -->
+	<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4" in:fly={{ y: -20, duration: 500 }}>
+		<div>
+			<h1 class="text-3xl font-bold text-gray-900">
+				{userRole === 'admin' ? 'Todos os Produtos' : 'Meus Produtos'}
+			</h1>
+			<p class="text-gray-600 mt-1">Gerencie o catálogo de produtos do marketplace</p>
+		</div>
+		
+		<div class="flex items-center gap-3">
+			<!-- View Mode -->
+			<div class="flex items-center bg-gray-100 rounded-lg p-1">
+				<button
+					onclick={() => viewMode = 'list'}
+					class="p-2 rounded {viewMode === 'list' ? 'bg-white shadow-sm' : ''} transition-all"
+					title="Visualização em lista"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+					</svg>
+				</button>
+				<button
+					onclick={() => viewMode = 'grid'}
+					class="p-2 rounded {viewMode === 'grid' ? 'bg-white shadow-sm' : ''} transition-all"
+					title="Visualização em grade"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+					</svg>
+				</button>
+			</div>
+			
+			<!-- Toggle Filters -->
+			<button
+				onclick={() => showFilters = !showFilters}
+				class="btn btn-ghost"
+			>
+				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+				</svg>
+				Filtros
+			</button>
+			
+			<!-- Add Product -->
+			<button 
+				onclick={() => showAddModal = true}
+				class="btn btn-primary"
+			>
+				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+				Adicionar Produto
+			</button>
+		</div>
+	</div>
+	
+	<!-- Stats Cards -->
+	<div class="grid grid-cols-1 md:grid-cols-4 gap-4" in:fly={{ y: 20, duration: 500, delay: 100 }}>
+		<div class="stat-card">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-gray-600">Total de Produtos</p>
+					<p class="text-2xl font-bold text-gray-900">{stats.total}</p>
+				</div>
+				<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+					<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+					</svg>
+				</div>
+			</div>
+		</div>
+		
+		<div class="stat-card">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-gray-600">Produtos Ativos</p>
+					<p class="text-2xl font-bold text-green-600">{stats.active}</p>
+				</div>
+				<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+					<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				</div>
+			</div>
+		</div>
+		
+		<div class="stat-card">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-gray-600">Aprovação Pendente</p>
+					<p class="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+				</div>
+				<div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+					<svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				</div>
+			</div>
+		</div>
+		
+		<div class="stat-card">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-gray-600">Estoque Baixo</p>
+					<p class="text-2xl font-bold text-red-600">{stats.lowStock}</p>
+				</div>
+				<div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+					<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+					</svg>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Filters -->
+	{#if showFilters}
+		<div class="card" transition:slide={{ duration: 300 }}>
+			<div class="card-body">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+					<!-- Search -->
+					<div class="lg:col-span-2">
+						<label class="label">Buscar</label>
+						<input
+							type="text"
+							bind:value={filters.search}
+							placeholder="Nome ou SKU..."
+							class="input"
+						/>
+					</div>
+					
+					<!-- Status -->
+					<div>
+						<label class="label">Status</label>
+						<select bind:value={filters.status} class="input">
+							<option value="all">Todos</option>
+							<option value="active">Ativo</option>
+							<option value="inactive">Inativo</option>
+							<option value="pending">Pendente</option>
+							<option value="draft">Rascunho</option>
+						</select>
+					</div>
+					
+					<!-- Category -->
+					<div>
+						<label class="label">Categoria</label>
+						<select bind:value={filters.category} class="input">
+							<option value="all">Todas</option>
+							{#each categories as cat}
+								<option value={cat}>{cat}</option>
+							{/each}
+						</select>
+					</div>
+					
+					<!-- Price Range -->
+					<div>
+						<label class="label">Preço</label>
+						<div class="flex items-center gap-2">
+							<input
+								type="number"
+								bind:value={filters.minPrice}
+								placeholder="Min"
+								class="input"
+							/>
+							<span class="text-gray-500">-</span>
+							<input
+								type="number"
+								bind:value={filters.maxPrice}
+								placeholder="Max"
+								class="input"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+	
+	<!-- Bulk Actions -->
+	{#if selectedProducts.size > 0}
+		<div class="card bg-cyan-50 border-cyan-200" transition:slide={{ duration: 300 }}>
+			<div class="card-body py-3">
+				<div class="flex items-center justify-between">
+					<p class="text-sm font-medium text-cyan-900">
+						{selectedProducts.size} {selectedProducts.size === 1 ? 'produto selecionado' : 'produtos selecionados'}
+					</p>
+					<div class="flex items-center gap-2">
+						<button 
+							onclick={() => bulkUpdateStatus('active')}
+							class="btn btn-sm btn-ghost text-green-600"
+						>
+							Ativar
+						</button>
+						<button 
+							onclick={() => bulkUpdateStatus('inactive')}
+							class="btn btn-sm btn-ghost text-yellow-600"
+						>
+							Desativar
+						</button>
+						<button 
+							onclick={bulkDelete}
+							class="btn btn-sm btn-ghost text-red-600"
+						>
+							Excluir
+						</button>
+						<button 
+							onclick={() => selectedProducts = new Set()}
+							class="btn btn-sm btn-ghost"
+						>
+							Cancelar
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+	
+	<!-- Products Table/Grid -->
+	{#if loading}
+		<div class="card">
+			<div class="card-body">
+				<div class="flex items-center justify-center py-12">
+					<div class="text-center">
+						<div class="spinner w-12 h-12 mx-auto mb-4"></div>
+						<p class="text-gray-600">Carregando produtos...</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	{:else if viewMode === 'list'}
+		<!-- List View -->
+		<div class="card overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="table-modern">
+					<thead>
+						<tr>
+							<th class="w-12">
+								<input
+									type="checkbox"
+									checked={selectedProducts.size === paginatedProducts.length && paginatedProducts.length > 0}
+									onchange={toggleAllProducts}
+									class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+								/>
+							</th>
+							<th>Produto</th>
+							<th>SKU</th>
+							<th>Preço</th>
+							<th>Estoque</th>
+							<th>Status</th>
+							{#if userRole === 'admin'}
+								<th>Vendedor</th>
+							{/if}
+							<th>Vendas</th>
+							<th>Avaliação</th>
+							<th class="text-right">Ações</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each paginatedProducts as product, i}
+							<tr 
+								class="hover:bg-gray-50 transition-colors"
+								in:fly={{ x: -20, duration: 400, delay: i * 50 }}
+							>
+								<td>
+									<input
+										type="checkbox"
+										checked={selectedProducts.has(product.id)}
+										onchange={() => toggleProductSelection(product.id)}
+										class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+									/>
+								</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<img
+											src={product.image}
+											alt={product.name}
+											class="w-10 h-10 rounded-lg object-cover"
+										/>
+										<div>
+											<p class="font-medium text-gray-900">{product.name}</p>
+											<p class="text-sm text-gray-500">{product.category}</p>
+										</div>
+									</div>
+								</td>
+								<td class="text-gray-600">{product.sku}</td>
+								<td class="font-medium">{formatPrice(product.price)}</td>
+								<td>
+									<span class:text-red-600={product.stock < 10} class:font-semibold={product.stock < 10}>
+										{product.stock}
+									</span>
+								</td>
+								<td>
+									<span class="badge {getStatusBadge(product.status)}">
+										{getStatusLabel(product.status)}
+									</span>
+								</td>
+								{#if userRole === 'admin'}
+									<td class="text-gray-600">{product.vendor}</td>
+								{/if}
+								<td class="text-gray-600">{product.sales}</td>
+								<td>
+									<div class="flex items-center gap-1">
+										<span class="text-yellow-500">⭐</span>
+										<span class="text-sm font-medium">{product.rating}</span>
+									</div>
+								</td>
+								<td>
+									<div class="flex items-center justify-end gap-1">
+										<button
+											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+											title="Editar"
+										>
+											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+											</svg>
+										</button>
+										<button
+											class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+											title="Visualizar"
+										>
+											<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+											</svg>
+										</button>
+										<button
+											class="p-2 hover:bg-red-50 rounded-lg transition-colors"
+											title="Excluir"
+										>
+											<svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+											</svg>
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{:else}
+		<!-- Grid View -->
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			{#each paginatedProducts as product, i}
+				<div 
+					class="card group hover:shadow-xl transition-all duration-300"
+					in:scale={{ duration: 400, delay: i * 50, easing: cubicOut }}
+				>
+					<div class="relative overflow-hidden">
+						<img
+							src={product.image}
+							alt={product.name}
+							class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+						/>
+						<div class="absolute top-2 right-2">
+							<span class="badge {getStatusBadge(product.status)}">
+								{getStatusLabel(product.status)}
+							</span>
+						</div>
+						{#if product.stock < 10}
+							<div class="absolute top-2 left-2">
+								<span class="badge badge-danger">
+									Estoque Baixo
+								</span>
+							</div>
+						{/if}
+					</div>
+					<div class="card-body">
+						<h3 class="font-semibold text-gray-900 line-clamp-2">{product.name}</h3>
+						<p class="text-sm text-gray-500">{product.category}</p>
+						<div class="flex items-center justify-between mt-2">
+							<p class="text-xl font-bold text-gray-900">{formatPrice(product.price)}</p>
+							<div class="flex items-center gap-1">
+								<span class="text-yellow-500">⭐</span>
+								<span class="text-sm font-medium">{product.rating}</span>
+							</div>
+						</div>
+						<div class="flex items-center justify-between mt-4 text-sm text-gray-600">
+							<span>Estoque: {product.stock}</span>
+							<span>Vendas: {product.sales}</span>
+						</div>
+					</div>
+					<div class="card-footer flex gap-2">
+						<button class="btn btn-sm btn-ghost flex-1">
+							Editar
+						</button>
+						<button class="btn btn-sm btn-primary flex-1">
+							Detalhes
+						</button>
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/if}
+	
+	<!-- Pagination -->
+	{#if totalPages > 1}
+		<div class="flex items-center justify-between">
+			<p class="text-sm text-gray-600">
+				Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, filteredProducts.length)} de {filteredProducts.length} produtos
+			</p>
+			<div class="flex items-center gap-2">
+				<button
+					onclick={() => currentPage = Math.max(1, currentPage - 1)}
+					disabled={currentPage === 1}
+					class="btn btn-ghost btn-sm"
+				>
+					Anterior
+				</button>
+				{#each Array(totalPages) as _, i}
+					{#if i + 1 === 1 || i + 1 === totalPages || (i + 1 >= currentPage - 1 && i + 1 <= currentPage + 1)}
+						<button
+							onclick={() => currentPage = i + 1}
+							class="btn btn-sm {currentPage === i + 1 ? 'btn-primary' : 'btn-ghost'}"
+						>
+							{i + 1}
+						</button>
+					{:else if i + 1 === currentPage - 2 || i + 1 === currentPage + 2}
+						<span class="text-gray-400">...</span>
+					{/if}
+				{/each}
+				<button
+					onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
+					disabled={currentPage === totalPages}
+					class="btn btn-ghost btn-sm"
+				>
+					Próximo
+				</button>
+			</div>
+		</div>
+	{/if}
 </div>
-  
-<div class="space-y-8">
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-sm font-medium text-gray-600 mb-2">Total de Produtos</p>
-          <p class="text-3xl font-bold text-gray-900">2,543</p>
-        </div>
-        <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-          </svg>
-        </div>
-      </div>
-      <div class="flex items-center text-sm">
-        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
-        </svg>
-        <span class="text-green-600 font-semibold">+18%</span>
-        <span class="text-gray-500 ml-1">vs. mês anterior</span>
-      </div>
-    </div>
-  
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-sm font-medium text-gray-600 mb-2">Produtos Ativos</p>
-          <p class="text-3xl font-bold text-gray-900">2,456</p>
-        </div>
-        <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-      </div>
-      <div class="flex items-center text-sm">
-        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
-        </svg>
-        <span class="text-green-600 font-semibold">+8%</span>
-        <span class="text-gray-500 ml-1">vs. mês anterior</span>
-      </div>
-    </div>
-  
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-sm font-medium text-gray-600 mb-2">Pendentes</p>
-          <p class="text-3xl font-bold text-gray-900">87</p>
-        </div>
-        <div class="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-      </div>
-      <div class="flex items-center text-sm">
-        <svg class="w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-        </svg>
-        <span class="text-yellow-600 font-semibold">Aguardando</span>
-        <span class="text-gray-500 ml-1">moderação</span>
-      </div>
-    </div>
 
-    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-white">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-sm font-medium text-blue-100 mb-2">Valor Total</p>
-          <p class="text-3xl font-bold text-white">R$ 8.7M</p>
-        </div>
-        <div class="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
-          </svg>
-        </div>
-      </div>
-      <div class="flex items-center text-sm">
-        <svg class="w-4 h-4 text-green-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
-        </svg>
-        <span class="text-green-200 font-semibold">+24%</span>
-        <span class="text-blue-100 ml-1">em valor</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Advanced Table -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-    <!-- Table Header -->
-    <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/30">
-      <div class="flex items-center justify-between">
-        <div>
-          <h3 class="text-xl font-semibold text-gray-900">Lista de Produtos</h3>
-          <p class="text-sm text-gray-600 mt-1">Todos os produtos cadastrados no marketplace</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="px-6 py-4 bg-gray-50/50 border-b border-gray-100">
-      <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input 
-              type="text" 
-              bind:value={searchTerm}
-              placeholder="Buscar produtos..."
-              class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all duration-200"
-            />
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <select 
-            bind:value={selectedCategory}
-            class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all duration-200 min-w-[150px]"
-          >
-            <option value="">Todas as Categorias</option>
-            <option value="Eletrônicos">Eletrônicos</option>
-            <option value="Informática">Informática</option>
-            <option value="Áudio">Áudio</option>
-          </select>
-          <select 
-            bind:value={selectedStatus}
-            class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all duration-200 min-w-[150px]"
-          >
-            <option value="">Todos os Status</option>
-            <option value="Ativo">Ativo</option>
-            <option value="Inativo">Inativo</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        <thead class="bg-gray-50/50">
-          <tr>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Produto</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Categoria</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estoque</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Vendedor</th>
-            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          {#each filteredProducts as product}
-            <tr class="hover:bg-gray-50 transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center space-x-3">
-                  <img src={product.image} alt={product.name} class="w-12 h-12 rounded-lg object-cover">
-                  <div>
-                    <div class="font-medium text-gray-900">{product.name}</div>
-                    <div class="text-sm text-gray-500">#{product.id}</div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                {product.category}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {formatPrice(product.price)}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                <span class="px-2 py-1 text-xs rounded-full {product.stock > 10 ? 'bg-green-100 text-green-800' : product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
-                  {product.stock} un.
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-3 py-1 text-xs font-medium rounded-full border {getStatusBadgeClass(product.status)}">
-                  {product.status}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                {product.seller}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                <div class="flex items-center justify-end gap-2">
-                  <button 
-                    on:click={() => handleEditProduct(product)}
-                    class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-                  >
-                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    Editar
-                  </button>
-                  <button 
-                    on:click={() => handleDeleteProduct(product)}
-                    class="inline-flex items-center px-3 py-1 border border-red-300 rounded-lg text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
-                  >
-                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    Excluir
-                  </button>
-                </div>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Table Footer -->
-    <div class="px-6 py-4 bg-gray-50/30 border-t border-gray-100">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {products.length} produtos
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-            Anterior
-          </button>
-          <button class="px-3 py-1 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors">
-            1
-          </button>
-          <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-            Próximo
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div> 
+<style>
+	/* Animação para hover nas imagens */
+	img {
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	
+	/* Melhora na tabela */
+	:global(.table-modern tbody tr) {
+		position: relative;
+		overflow: hidden;
+	}
+	
+	:global(.table-modern tbody tr::before) {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 3px;
+		background: #00BFB3;
+		transform: translateX(-100%);
+		transition: transform 0.3s ease;
+	}
+	
+	:global(.table-modern tbody tr:hover::before) {
+		transform: translateX(0);
+	}
+</style> 
