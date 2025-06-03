@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import { toast } from '$lib/stores/toast';
 	
 	let { formData = $bindable() } = $props();
 	
@@ -8,6 +9,68 @@
 	let brands = $state<Array<{id: string, name: string}>>([]);
 	let sellers = $state<Array<{id: string, company_name: string}>>([]);
 	let loading = $state(true);
+	
+	// Estados de loading para IA
+	let aiLoading = $state({
+		name: false,
+		description: false,
+		shortDescription: false,
+		sku: false,
+		tags: false
+	});
+	
+	// Função de enriquecimento com IA
+	async function enrichField(field: string) {
+		aiLoading[field] = true;
+		
+		try {
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					field,
+					currentData: formData,
+					category: categories.find(c => c.id === formData.category_id)?.name
+				})
+			});
+			
+			if (!response.ok) throw new Error('Erro na resposta da API');
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				// Aplicar o resultado ao campo específico
+				switch (field) {
+					case 'name':
+						formData.name = result.data;
+						formData.slug = generateSlug(result.data);
+						break;
+					case 'description':
+						formData.description = result.data;
+						break;
+					case 'short_description':
+						formData.short_description = result.data;
+						break;
+					case 'sku':
+						formData.sku = result.data;
+						break;
+					case 'tags':
+						formData.tags = result.data;
+						formData.tags_input = result.data.join(', ');
+						break;
+				}
+				
+				toast.success(`${field === 'short_description' ? 'Descrição curta' : field.charAt(0).toUpperCase() + field.slice(1)} enriquecido com IA!`);
+			} else {
+				toast.error('Erro ao enriquecer com IA');
+			}
+		} catch (error) {
+			console.error('Erro:', error);
+			toast.error('Erro ao conectar com o serviço de IA');
+		} finally {
+			aiLoading[field] = false;
+		}
+	}
 	
 	// Gerar slug automaticamente
 	function generateSlug(name: string) {
@@ -78,13 +141,28 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Nome do Produto *
 				</label>
-				<input
-					type="text"
-					bind:value={formData.name}
-					required
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Ex: Cesto Organizador para Brinquedos"
-				/>
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={formData.name}
+						required
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="Ex: Cesto Organizador para Brinquedos"
+					/>
+					<button
+						type="button"
+						onclick={() => enrichField('name')}
+						disabled={aiLoading.name || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Melhorar com IA"
+					>
+						{#if aiLoading.name}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} />
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Slug -->
@@ -116,13 +194,28 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					SKU (Código do Produto) *
 				</label>
-				<input
-					type="text"
-					bind:value={formData.sku}
-					required
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="PROD-001"
-				/>
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={formData.sku}
+						required
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="PROD-001"
+					/>
+					<button
+						type="button"
+						onclick={() => enrichField('sku')}
+						disabled={aiLoading.sku || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Gerar com IA"
+					>
+						{#if aiLoading.sku}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} />
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Código de Barras -->
@@ -182,12 +275,27 @@
 					Descrição Curta
 					<span class="text-xs text-gray-500 ml-2">Aparece nos cards de produto</span>
 				</label>
-				<textarea
-					bind:value={formData.short_description}
-					rows="3"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Uma breve descrição do produto..."
-				></textarea>
+				<div class="flex gap-2">
+					<textarea
+						bind:value={formData.short_description}
+						rows="3"
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="Uma breve descrição do produto..."
+					></textarea>
+					<button
+						type="button"
+						onclick={() => enrichField('short_description')}
+						disabled={aiLoading.shortDescription || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Gerar com IA"
+					>
+						{#if aiLoading.shortDescription}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} />
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Descrição Completa -->
@@ -195,13 +303,28 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Descrição Completa *
 				</label>
-				<textarea
-					bind:value={formData.description}
-					rows="6"
-					required
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Descrição detalhada do produto..."
-				></textarea>
+				<div class="flex gap-2">
+					<textarea
+						bind:value={formData.description}
+						rows="6"
+						required
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="Descrição detalhada do produto..."
+					></textarea>
+					<button
+						type="button"
+						onclick={() => enrichField('description')}
+						disabled={aiLoading.description || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Gerar com IA"
+					>
+						{#if aiLoading.description}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} />
+						{/if}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -274,13 +397,28 @@
 				Tags
 				<span class="text-xs text-gray-500 ml-2">Separe por vírgula</span>
 			</label>
-			<input
-				type="text"
-				bind:value={formData.tags_input}
-				onblur={() => formData.tags = formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || []}
-				class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-				placeholder="decoração, organização, infantil"
-			/>
+			<div class="flex gap-2">
+				<input
+					type="text"
+					bind:value={formData.tags_input}
+					onblur={() => formData.tags = formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || []}
+					class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="decoração, organização, infantil"
+				/>
+				<button
+					type="button"
+					onclick={() => enrichField('tags')}
+					disabled={aiLoading.tags || !formData.name}
+					class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+					title="Gerar tags com IA"
+				>
+					{#if aiLoading.tags}
+						<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+					{:else}
+						<ModernIcon name="robot" size={20} />
+					{/if}
+				</button>
+			</div>
 		</div>
 	</div>
 	

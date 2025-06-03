@@ -1,5 +1,58 @@
 <script lang="ts">
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import { toast } from '$lib/stores/toast';
+	
 	let { formData = $bindable() } = $props();
+
+	// Estados de loading para IA
+	let aiLoading = $state({
+		metaTitle: false,
+		metaDescription: false
+	});
+
+	// Função de enriquecimento com IA
+	async function enrichField(field: string) {
+		const fieldMap = {
+			metaTitle: 'meta_title',
+			metaDescription: 'meta_description'
+		};
+		
+		aiLoading[field] = true;
+		
+		try {
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					field: fieldMap[field],
+					currentData: formData,
+					category: formData.category_name
+				})
+			});
+			
+			if (!response.ok) throw new Error('Erro na resposta da API');
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				// Aplicar o resultado ao campo específico
+				if (field === 'metaTitle') {
+					formData.meta_title = result.data;
+				} else if (field === 'metaDescription') {
+					formData.meta_description = result.data;
+				}
+				
+				toast.success(`${field === 'metaTitle' ? 'Meta título' : 'Meta descrição'} otimizado com IA!`);
+			} else {
+				toast.error('Erro ao enriquecer com IA');
+			}
+		} catch (error) {
+			console.error('Erro:', error);
+			toast.error('Erro ao conectar com o serviço de IA');
+		} finally {
+			aiLoading[field] = false;
+		}
+	}
 
 	// Inicializar campos SEO se não existirem
 	if (!formData.meta_title) formData.meta_title = '';
@@ -78,15 +131,30 @@
 						{(formData.meta_title || '').length}/60 caracteres
 					</span>
 				</div>
-				<input
-					type="text"
-					bind:value={formData.meta_title}
-					on:input={generateSlugFromTitle}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Título otimizado para Google (50-60 caracteres)"
-					maxlength="60"
-					required
-				/>
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={formData.meta_title}
+						oninput={generateSlugFromTitle}
+						class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="Título otimizado para Google (50-60 caracteres)"
+						maxlength="60"
+						required
+					/>
+					<button
+						type="button"
+						onclick={() => enrichField('metaTitle')}
+						disabled={aiLoading.metaTitle || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Otimizar com IA"
+					>
+						{#if aiLoading.metaTitle}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} />
+						{/if}
+					</button>
+				</div>
 				<p class="text-xs text-slate-500 mt-1">Título que aparece nos resultados do Google</p>
 			</div>
 
@@ -100,15 +168,30 @@
 						{(formData.meta_description || '').length}/160 caracteres
 					</span>
 				</div>
-				<textarea
-					bind:value={formData.meta_description}
-					on:input={() => descriptionStatus = getDescriptionStatus(formData.meta_description.length)}
-					rows="3"
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors resize-none"
-					placeholder="Descrição atrativa para aparecer no Google (140-160 caracteres)"
-					maxlength="160"
-					required
-				></textarea>
+				<div class="flex gap-2">
+					<textarea
+						bind:value={formData.meta_description}
+						oninput={() => descriptionStatus = getDescriptionStatus(formData.meta_description.length)}
+						rows="3"
+						class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors resize-none"
+						placeholder="Descrição atrativa para aparecer no Google (140-160 caracteres)"
+						maxlength="160"
+						required
+					></textarea>
+					<button
+						type="button"
+						onclick={() => enrichField('metaDescription')}
+						disabled={aiLoading.metaDescription || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Otimizar com IA"
+					>
+						{#if aiLoading.metaDescription}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} />
+						{/if}
+					</button>
+				</div>
 				<p class="text-xs text-slate-500 mt-1">Descrição que aparece abaixo do título no Google</p>
 			</div>
 		</div>
@@ -225,7 +308,7 @@
 			<!-- Robots Meta -->
 			<div>
 				<label class="block text-sm font-medium text-slate-700 mb-2">
-					🤖 Robots Meta
+					�� Robots Meta
 				</label>
 				<select
 					bind:value={formData.robots_meta}

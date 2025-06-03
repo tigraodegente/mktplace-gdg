@@ -17,6 +17,7 @@
 	let activeTab = $state('basic');
 	let formData = $state<any>({});
 	let productId = $derived($page.params.id);
+	let enriching = $state(false);
 	
 	// Tabs disponíveis
 	const tabs = [
@@ -26,6 +27,75 @@
 		{ id: 'seo', label: 'SEO', icon: 'search' },
 		{ id: 'advanced', label: 'Avançado', icon: 'Settings' }
 	];
+	
+	// Enriquecer produto completo com IA
+	async function enrichCompleteProduct() {
+		enriching = true;
+		try {
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'enrich_all',
+					currentData: formData,
+					category: formData.category_name
+				})
+			});
+			
+			if (!response.ok) throw new Error('Erro na resposta da API');
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				// Aplicar dados enriquecidos mantendo alguns campos originais
+				const enrichedData = result.data;
+				
+				// Atualizar apenas campos que foram melhorados
+				if (enrichedData.enhanced_name) formData.name = enrichedData.enhanced_name;
+				if (enrichedData.slug) formData.slug = enrichedData.slug;
+				if (enrichedData.sku) formData.sku = enrichedData.sku;
+				if (enrichedData.description) formData.description = enrichedData.description;
+				if (enrichedData.short_description) formData.short_description = enrichedData.short_description;
+				if (enrichedData.model) formData.model = enrichedData.model;
+				if (enrichedData.barcode) formData.barcode = enrichedData.barcode;
+				if (enrichedData.tags) {
+					formData.tags = enrichedData.tags;
+					formData.tags_input = enrichedData.tags.join(', ');
+				}
+				
+				// Dados de frete
+				if (enrichedData.weight) formData.weight = enrichedData.weight;
+				if (enrichedData.dimensions) {
+					formData.height = enrichedData.dimensions.height;
+					formData.width = enrichedData.dimensions.width;
+					formData.length = enrichedData.dimensions.length;
+				}
+				if (enrichedData.delivery_days_min) formData.delivery_days_min = enrichedData.delivery_days_min;
+				if (enrichedData.delivery_days_max) formData.delivery_days_max = enrichedData.delivery_days_max;
+				
+				// SEO
+				if (enrichedData.meta_title) formData.meta_title = enrichedData.meta_title;
+				if (enrichedData.meta_description) formData.meta_description = enrichedData.meta_description;
+				if (enrichedData.meta_keywords) {
+					formData.meta_keywords = enrichedData.meta_keywords;
+					formData.meta_keywords_input = enrichedData.meta_keywords.join(', ');
+				}
+				
+				// Outros dados
+				if (enrichedData.cost) formData.cost = enrichedData.cost;
+				if (enrichedData.stock_location) formData.stock_location = enrichedData.stock_location;
+				
+				toast.success('🚀 Produto enriquecido com IA! Revise todas as abas para ver as melhorias.');
+			} else {
+				toast.error('Erro ao enriquecer produto');
+			}
+		} catch (error) {
+			console.error('Erro:', error);
+			toast.error('Erro ao conectar com o serviço de IA');
+		} finally {
+			enriching = false;
+		}
+	}
 	
 	// Carregar produto
 	async function loadProduct() {
@@ -161,6 +231,21 @@
 				</div>
 				
 				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						onclick={enrichCompleteProduct}
+						disabled={enriching || loading || !formData.name}
+						class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Enriquecer com IA"
+					>
+						{#if enriching}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={16} />
+						{/if}
+						Enriquecer com IA
+					</button>
+					
 					<button
 						type="button"
 						onclick={() => goto('/produtos')}
