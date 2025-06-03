@@ -94,9 +94,14 @@ export class Database {
     const sql = await this.getSqlClient();
     
     try {
-    if (typeof strings === 'string') {
-      // Query simples com string
-        const result = await sql.unsafe(strings, values);
+      if (typeof strings === 'string') {
+        // Query simples com string
+        // Se o primeiro valor for um array, espalha ele
+        if (values.length === 1 && Array.isArray(values[0])) {
+          const result = await sql.unsafe(strings, ...values[0]);
+          return result as unknown as T[];
+        }
+        const result = await sql.unsafe(strings, ...values);
         return result as unknown as T[];
       }
       // Template literal query
