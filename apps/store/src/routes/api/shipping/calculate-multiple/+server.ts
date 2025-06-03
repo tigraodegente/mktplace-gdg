@@ -210,106 +210,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro shipping multiple: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro calculate-multiple: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Múltiplas opções inteligentes baseadas no CEP
-      const totalWeight = items.reduce((sum: number, item: any) => sum + ((item.product?.weight || 0.5) * item.quantity), 0) * 1000;
-      const totalValue = items.reduce((sum: number, item: any) => sum + (item.product.price * item.quantity), 0);
-      const isFreeShipping = totalValue >= 199;
-      
-      // Determinar região e ajustar preços
-      const cepRegion = cleanPostalCode.substring(0, 2);
-      let regionName = 'Nacional';
-      let baseDays = 5;
-      let priceMultiplier = 1;
-      
-      if (['01', '02', '03', '04', '05', '08', '09'].includes(cepRegion)) {
-        regionName = 'São Paulo';
-        baseDays = 2;
-        priceMultiplier = 0.8;
-      } else if (['20', '21', '22', '23', '24', '25', '26', '27', '28'].includes(cepRegion)) {
-        regionName = 'Rio de Janeiro';
-        baseDays = 3;
-        priceMultiplier = 0.9;
-      }
-      
-      // Ajustar preços por peso
-      let weightMultiplier = 1;
-      if (totalWeight > 5000) { // > 5kg
-        weightMultiplier = 1.5;
-      } else if (totalWeight > 2000) { // > 2kg
-        weightMultiplier = 1.3;
-      }
-      
-      const mockOptions = [
-        {
-          id: 'frenet-express',
-          carrierId: 'frenet-carrier',
-          carrierName: 'Frenet',
-          name: 'Frenet - Expresso',
-          price: isFreeShipping ? 0 : Math.round(35.90 * priceMultiplier * weightMultiplier * 100) / 100,
-          originalPrice: Math.round(35.90 * priceMultiplier * weightMultiplier * 100) / 100,
-          isFree: isFreeShipping,
-          freeReason: isFreeShipping ? 'Frete grátis acima de R$ 199' : '',
-          deliveryDaysMin: Math.max(1, baseDays - 2),
-          deliveryDaysMax: Math.max(2, baseDays - 1),
-          breakdown: {
-            basePrice: Math.round(35.90 * priceMultiplier * weightMultiplier * 100) / 100,
-            taxes: { gris: 0, adv: 0 },
-            totalTaxes: 0,
-            freeShippingDiscount: isFreeShipping ? Math.round(35.90 * priceMultiplier * weightMultiplier * 100) / 100 : 0
-          }
-        },
-        {
-          id: 'frenet-standard',
-          carrierId: 'frenet-carrier',
-          carrierName: 'Frenet',
-          name: 'Frenet - Padrão',
-          price: isFreeShipping ? 0 : Math.round(25.90 * priceMultiplier * weightMultiplier * 100) / 100,
-          originalPrice: Math.round(25.90 * priceMultiplier * weightMultiplier * 100) / 100,
-          isFree: isFreeShipping,
-          freeReason: isFreeShipping ? 'Frete grátis acima de R$ 199' : '',
-          deliveryDaysMin: baseDays,
-          deliveryDaysMax: baseDays + 1,
-          breakdown: {
-            basePrice: Math.round(25.90 * priceMultiplier * weightMultiplier * 100) / 100,
-            taxes: { gris: 0, adv: 0 },
-            totalTaxes: 0,
-            freeShippingDiscount: isFreeShipping ? Math.round(25.90 * priceMultiplier * weightMultiplier * 100) / 100 : 0
-          }
-        },
-        {
-          id: 'frenet-economic',
-          carrierId: 'frenet-carrier',
-          carrierName: 'Frenet',
-          name: 'Frenet - Econômico',
-          price: isFreeShipping ? 0 : Math.round(15.90 * priceMultiplier * weightMultiplier * 100) / 100,
-          originalPrice: Math.round(15.90 * priceMultiplier * weightMultiplier * 100) / 100,
-          isFree: isFreeShipping,
-          freeReason: isFreeShipping ? 'Frete grátis acima de R$ 199' : '',
-          deliveryDaysMin: baseDays + 2,
-          deliveryDaysMax: baseDays + 4,
-          breakdown: {
-            basePrice: Math.round(15.90 * priceMultiplier * weightMultiplier * 100) / 100,
-            taxes: { gris: 0, adv: 0 },
-            totalTaxes: 0,
-            freeShippingDiscount: isFreeShipping ? Math.round(15.90 * priceMultiplier * weightMultiplier * 100) / 100 : 0
-          }
-        }
-      ];
-
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: {
-          postalCode: cleanPostalCode,
-          sellerId,
-          totalWeight,
-          totalValue,
-          options: mockOptions,
-          region: regionName
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível calcular as opções de frete',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {

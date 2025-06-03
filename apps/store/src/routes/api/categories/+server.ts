@@ -102,117 +102,17 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       });
       
     } catch (error) {
-      logger.warn('Database timeout/error - using fallback', { 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      console.log(`⚠️ Erro ao buscar categorias: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Categorias mock baseadas em dados reais do marketplace
-      const mockCategories = [
-        {
-          id: '1',
-          name: 'Smartphones',
-          slug: 'smartphones',
-          description: 'Celulares e smartphones das melhores marcas',
-          position: 1,
-          parent_id: null,
-          subcategories: [
-            {
-              id: '11',
-              name: 'Samsung',
-              slug: 'smartphones-samsung',
-              description: 'Smartphones Samsung Galaxy',
-              position: 1,
-              parent_id: '1',
-              subcategories: [],
-              product_count: 12
-            },
-            {
-              id: '12',
-              name: 'Xiaomi',
-              slug: 'smartphones-xiaomi', 
-              description: 'Smartphones Xiaomi Redmi e Mi',
-              position: 2,
-              parent_id: '1',
-              subcategories: [],
-              product_count: 15
-            }
-          ],
-          product_count: 27
-        },
-        {
-          id: '2',
-          name: 'TVs e Áudio',
-          slug: 'tvs-audio',
-          description: 'Televisores, soundbars e equipamentos de áudio',
-          position: 2,
-          parent_id: null,
-          subcategories: [
-            {
-              id: '21',
-              name: 'Smart TVs',
-              slug: 'smart-tvs',
-              description: 'Smart TVs de todas as marcas e tamanhos',
-              position: 1,
-              parent_id: '2',
-              subcategories: [],
-              product_count: 8
-            }
-          ],
-          product_count: 8
-        },
-        {
-          id: '3',
-          name: 'Informática',
-          slug: 'informatica',
-          description: 'Notebooks, desktops e acessórios',
-          position: 3,
-          parent_id: null,
-          subcategories: [
-            {
-              id: '31',
-              name: 'Notebooks',
-              slug: 'notebooks',
-              description: 'Notebooks para trabalho e jogos',
-              position: 1,
-              parent_id: '3',
-              subcategories: [],
-              product_count: 6
-            }
-          ],
-          product_count: 6
-        },
-        {
-          id: '4',
-          name: 'Casa e Decoração',
-          slug: 'casa-decoracao',
-          description: 'Móveis e itens para decoração',
-          position: 4,
-          parent_id: null,
-          subcategories: [],
-          product_count: 5
-        }
-      ].slice(0, parentOnly ? 4 : 20); // Limitar se parentOnly
-      
-      // Remover subcategorias se parentOnly
-      const finalResult = parentOnly 
-        ? mockCategories.map(({ subcategories, ...cat }) => cat)
-        : mockCategories;
-      
-      logPerformance('categories_api', startTime, { 
-        source: 'fallback', 
-        count: finalResult.length 
-      });
-      
-      logAPI('GET', '/api/categories', 200, performance.now() - startTime);
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: {
-          categories: finalResult,
-          total: finalResult.length
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar as categorias',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
     
   } catch (error) {

@@ -110,65 +110,17 @@ export const GET: RequestHandler = async ({ url, cookies, platform }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro conversations GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro conversations GET: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Conversas mock
-      const mockConversations = [
-        {
-          id: 'conv-1',
-          type: 'support',
-          title: 'Suporte - Pedido #12345',
-          participants: [userId, 'support-1'],
-          order_id: 'order-12345',
-          seller_id: null,
-          status: 'active',
-          created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          last_message_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-          last_message: {
-            content: 'Olá, como posso ajudá-lo?',
-            sender_name: 'Suporte',
-            created_at: new Date(Date.now() - 3600000).toISOString()
-          },
-          unread_count: 1
-        },
-        {
-          id: 'conv-2',
-          type: 'seller',
-          title: 'Chat com Vendedor',
-          participants: [userId, 'seller-1'],
-          order_id: null,
-          seller_id: 'seller-1',
-          status: 'active',
-          created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-          last_message_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-          last_message: {
-            content: 'Produto disponível para entrega!',
-            sender_name: 'João Vendedor',
-            created_at: new Date(Date.now() - 7200000).toISOString()
-          },
-          unread_count: 0
-        }
-      ];
-
-      // Filtrar por tipo se necessário
-      let filteredConversations = mockConversations;
-      if (type) {
-        filteredConversations = mockConversations.filter(c => c.type === type);
-      }
-
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: {
-          conversations: filteredConversations,
-          pagination: {
-            page,
-            limit,
-            total: filteredConversations.length,
-            pages: Math.ceil(filteredConversations.length / limit)
-          }
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar as conversas',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (err) {
@@ -256,29 +208,17 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro conversations POST: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro conversations POST: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Simular criação de conversa
-      const mockConversation = {
-        id: `conv-${Date.now()}`,
-        type: type,
-        title: title || `Conversa ${type}`,
-        participants: participants,
-        order_id: order_id,
-        seller_id: seller_id,
-        created_by: userId,
-        status: 'active',
-        created_at: new Date().toISOString()
-      };
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: {
-          conversation: mockConversation,
-          message: 'Conversa criada com sucesso'
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível criar a conversa',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (err) {

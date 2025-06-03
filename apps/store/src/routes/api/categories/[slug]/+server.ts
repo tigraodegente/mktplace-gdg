@@ -89,132 +89,17 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 			});
 			
 		} catch (error) {
-			console.log(`⚠️ Erro category [slug]: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+			console.log(`⚠️ Erro category: ${error instanceof Error ? error.message : 'Erro'}`);
 			
-			// FALLBACK: Categoria mock baseada no slug
-			const categoryMocks: Record<string, any> = {
-				'smartphones': {
-					id: '1',
-					name: 'Smartphones',
-					slug: 'smartphones',
-					description: 'Os melhores smartphones e celulares das principais marcas',
-					image: '/api/placeholder/400/300?text=Smartphones',
-					productCount: 87,
-					subcategories: [
-						{
-							id: '11',
-							name: 'Samsung Galaxy',
-							slug: 'samsung-galaxy',
-							description: 'Linha Galaxy da Samsung',
-							image: '/api/placeholder/300/200?text=Samsung+Galaxy',
-							count: 34
-						},
-						{
-							id: '12',
-							name: 'Xiaomi',
-							slug: 'xiaomi',
-							description: 'Smartphones Xiaomi',
-							image: '/api/placeholder/300/200?text=Xiaomi',
-							count: 28
-						},
-						{
-							id: '13',
-							name: 'iPhone',
-							slug: 'iphone',
-							description: 'Apple iPhone',
-							image: '/api/placeholder/300/200?text=iPhone',
-							count: 25
-						}
-					]
-				},
-				'informatica': {
-					id: '2',
-					name: 'Informática',
-					slug: 'informatica',
-					description: 'Notebooks, desktops e acessórios para informática',
-					image: '/api/placeholder/400/300?text=Informática',
-					productCount: 156,
-					subcategories: [
-						{
-							id: '21',
-							name: 'Notebooks',
-							slug: 'notebooks',
-							description: 'Notebooks e laptops',
-							image: '/api/placeholder/300/200?text=Notebooks',
-							count: 67
-						},
-						{
-							id: '22',
-							name: 'Desktops',
-							slug: 'desktops',
-							description: 'Computadores desktop',
-							image: '/api/placeholder/300/200?text=Desktops',
-							count: 45
-						},
-						{
-							id: '23',
-							name: 'Acessórios',
-							slug: 'acessorios-informatica',
-							description: 'Acessórios para informática',
-							image: '/api/placeholder/300/200?text=Acessórios',
-							count: 44
-						}
-					]
-				},
-				'eletronicos': {
-					id: '3',
-					name: 'Eletrônicos',
-					slug: 'eletronicos',
-					description: 'TVs, áudio e eletrônicos em geral',
-					image: '/api/placeholder/400/300?text=Eletrônicos',
-					productCount: 234,
-					subcategories: [
-						{
-							id: '31',
-							name: 'Smart TVs',
-							slug: 'smart-tvs',
-							description: 'Smart TVs e televisores',
-							image: '/api/placeholder/300/200?text=Smart+TVs',
-							count: 89
-						},
-						{
-							id: '32',
-							name: 'Áudio',
-							slug: 'audio',
-							description: 'Equipamentos de áudio',
-							image: '/api/placeholder/300/200?text=Áudio',
-							count: 145
-						}
-					]
-				}
-			};
-			
-			// Verificar se existe mock para o slug
-			const mockCategory = categoryMocks[slug];
-			if (mockCategory) {
-				return json({
-					success: true,
-					data: mockCategory,
-					source: 'fallback'
-				});
-			}
-			
-			// Categoria genérica
-			const genericCategory = {
-				id: `cat-${slug}`,
-				name: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '),
-				slug: slug,
-				description: `Categoria ${slug.replace(/-/g, ' ')}`,
-				image: `/api/placeholder/400/300?text=${encodeURIComponent(slug)}`,
-				productCount: Math.floor(Math.random() * 100) + 20,
-				subcategories: []
-			};
-			
+			// Retornar erro ao invés de dados mockados
 			return json({
-				success: true,
-				data: genericCategory,
-				source: 'fallback'
-			});
+				success: false,
+				error: {
+					code: 'DATABASE_ERROR',
+					message: 'Não foi possível carregar a categoria',
+					details: 'Por favor, tente novamente em alguns instantes'
+				}
+			}, { status: 503 });
 		}
 		
 	} catch (error) {

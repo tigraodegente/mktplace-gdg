@@ -97,31 +97,17 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro address GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro addresses GET: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Endereço mock
-      const mockAddress = {
-        id: addressId,
-        type: 'shipping',
-        isDefault: true,
-        name: 'Casa',
-        street: 'Rua das Flores',
-        number: '123',
-        complement: 'Apto 45',
-        neighborhood: 'Centro',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '01310-100',
-        label: 'Residencial',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockAddress,
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar o endereço',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {
@@ -345,31 +331,17 @@ export const PUT: RequestHandler = async ({ params, request, platform, cookies }
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro address PUT: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro addresses PUT: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Simular atualização
-      const mockUpdatedAddress = {
-        id: addressId,
-        type: type || 'shipping',
-        isDefault: isDefault !== undefined ? isDefault : true,
-        name: name || 'Casa',
-        street: street || 'Rua das Flores',
-        number: number || '123',
-        complement: complement || 'Apto 45',
-        neighborhood: neighborhood || 'Centro',
-        city: city || 'São Paulo',
-        state: state || 'SP',
-        zipCode: zipCode?.replace(/\D/g, '') || '01310100',
-        label: label || 'Residencial',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockUpdatedAddress,
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível atualizar o endereço',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {

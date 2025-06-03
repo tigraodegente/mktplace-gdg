@@ -142,82 +142,17 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro order [id]: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro orders [id]: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Pedido mock baseado no ID
-      const mockOrder = {
-        id: orderId,
-        orderNumber: `MP${orderId.slice(-8).toUpperCase()}`,
-        status: 'delivered',
-        statusLabel: 'Entregue',
-        statusColor: 'green',
-        totalAmount: 299.99,
-        shippingCost: 15.90,
-        discountAmount: 0,
-        paymentMethod: 'pix',
-        paymentMethodLabel: 'PIX',
-        shippingAddress: {
-          street: 'Rua das Flores, 123',
-          neighborhood: 'Centro',
-          city: 'São Paulo',
-          state: 'SP',
-          zipCode: '01310-100'
-        },
-        notes: null,
-        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
-        updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
-        items: [
-          {
-            id: '1',
-            productId: 'prod-1',
-            productName: 'Smartphone Xiaomi Redmi Note 13',
-            productImage: '/api/placeholder/300/300?text=Xiaomi+Redmi+Note+13',
-            quantity: 1,
-            price: 299.99,
-            total: 299.99,
-            createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
-          }
-        ],
-        statusHistory: [
-          {
-            status: 'pending',
-            statusLabel: 'Aguardando Pagamento',
-            notes: 'Pedido criado',
-            createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
-          },
-          {
-            status: 'confirmed',
-            statusLabel: 'Confirmado',
-            notes: 'Pagamento confirmado',
-            createdAt: new Date(Date.now() - 86400000 * 3 + 3600000).toISOString()
-          },
-          {
-            status: 'shipped',
-            statusLabel: 'Enviado',
-            notes: 'Produto enviado',
-            createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-          },
-          {
-            status: 'delivered',
-            statusLabel: 'Entregue',
-            notes: 'Produto entregue',
-            createdAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        ],
-        summary: {
-          itemsCount: 1,
-          subtotal: 299.99,
-          shipping: 15.90,
-          discount: 0,
-          total: 299.99
+      // Retornar erro ao invés de dados mockados
+      return json({
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar o pedido',
+          details: 'Por favor, tente novamente em alguns instantes'
         }
-      };
-    
-    return json({
-      success: true,
-        data: mockOrder,
-        source: 'fallback'
-    });
+      }, { status: 503 });
     }
     
   } catch (error: any) {

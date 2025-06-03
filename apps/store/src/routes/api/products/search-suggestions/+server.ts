@@ -154,88 +154,17 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro search suggestions: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro search suggestions: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Sugestões mock baseadas na query
-      const mockSuggestions = [];
-      
-      // Produtos mock relacionados
-      const productKeywords = query.toLowerCase();
-      const mockProducts = [
-        { keyword: 'phone', name: 'Smartphone', category: 'Celulares' },
-        { keyword: 'xiaomi', name: 'Xiaomi Redmi Note 13', category: 'Smartphones' },
-        { keyword: 'samsung', name: 'Samsung Galaxy S24', category: 'Smartphones' },
-        { keyword: 'tv', name: 'Smart TV', category: 'Eletrônicos' },
-        { keyword: 'notebook', name: 'Notebook', category: 'Informática' },
-        { keyword: 'mouse', name: 'Mouse Gamer', category: 'Acessórios' },
-        { keyword: 'teclado', name: 'Teclado Mecânico', category: 'Acessórios' }
-      ].filter(p => p.keyword.includes(productKeywords) || productKeywords.includes(p.keyword));
-      
-      mockProducts.slice(0, 5).forEach((product, index) => {
-        mockSuggestions.push({
-          type: 'product',
-          id: `prod-${index + 1}`,
-          text: `${product.name} - ${query}`,
-          slug: `${product.name.toLowerCase().replace(/\s+/g, '-')}-${query}`,
-          image: `/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`,
-          price: 299.99 + (index * 100),
-          originalPrice: 399.99 + (index * 100),
-          discount: 25,
-          rating: 4.5,
-          soldCount: 150 - (index * 20)
-        });
-      });
-      
-      // Categorias mock
-      if (productKeywords.includes('phone') || productKeywords.includes('celular')) {
-        mockSuggestions.push({
-          type: 'category',
-          id: 'cat-smartphones',
-          text: 'Smartphones',
-          slug: 'smartphones',
-          count: 87
-        });
-      }
-      
-      // Marcas mock
-      if (productKeywords.includes('samsung')) {
-        mockSuggestions.push({
-          type: 'brand',
-          id: 'brand-samsung',
-          text: 'Samsung',
-          slug: 'samsung',
-          count: 45
-        });
-      }
-      
-      if (productKeywords.includes('xiaomi')) {
-        mockSuggestions.push({
-          type: 'brand',
-          id: 'brand-xiaomi',
-          text: 'Xiaomi',
-          slug: 'xiaomi',
-          count: 32
-        });
-      }
-      
-      // Sugestão de busca geral
-      if (mockSuggestions.length > 0) {
-        mockSuggestions.unshift({
-          type: 'query',
-          id: query,
-          text: `Buscar "${query}"`,
-          count: mockSuggestions.length * 5
-        });
-      }
-    
-    return json({
-      success: true,
-        data: {
-          suggestions: mockSuggestions,
-          totalProducts: mockSuggestions.length * 5
-        },
-        source: 'fallback'
-    });
+      // Retornar erro ao invés de dados mockados
+      return json({
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar as sugestões',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
     
   } catch (error) {

@@ -87,44 +87,17 @@ export const GET: RequestHandler = async ({ params, url, cookies, platform }) =>
     });
       
     } catch (error) {
-      // FALLBACK: Mensagens mock
-      const mockMessages = [
-        {
-          id: 'msg-1',
-          conversation_id: conversationId,
-          sender_id: 'other-user',
-          sender_name: 'Suporte',
-          sender_avatar: '/api/placeholder/40/40',
-          message_type: 'text',
-          content: 'Olá! Como posso ajudá-lo hoje?',
-          attachments: [],
-          metadata: {},
-          is_own_message: false,
-          created_at: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-          id: 'msg-2',
-          conversation_id: conversationId,
-          sender_id: userId,
-          sender_name: 'Você',
-          sender_avatar: '/api/placeholder/40/40',
-          message_type: 'text',
-          content: 'Preciso de ajuda com meu pedido',
-          attachments: [],
-          metadata: {},
-          is_own_message: true,
-          created_at: new Date(Date.now() - 3000000).toISOString()
-        }
-      ];
+      console.log(`⚠️ Erro messages GET: ${error instanceof Error ? error.message : 'Erro'}`);
       
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: {
-          messages: mockMessages,
-          pagination: { page, limit, total: 2, pages: 1 }
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar as mensagens',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (err) {
@@ -213,27 +186,17 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
     });
       
     } catch (error) {
-      // FALLBACK: Simular criação de mensagem
-      const mockMessage = {
-        id: `msg-${Date.now()}`,
-        conversation_id: conversationId,
-        sender_id: userId,
-        sender_name: 'Você',
-        sender_avatar: '/api/placeholder/40/40',
-        message_type: message_type,
-        content: content,
-        attachments: attachments,
-        metadata: metadata,
-        is_own_message: true,
-        created_at: new Date().toISOString()
-      };
+      console.log(`⚠️ Erro messages POST: ${error instanceof Error ? error.message : 'Erro'}`);
       
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockMessage,
-        message: 'Mensagem enviada com sucesso',
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível enviar a mensagem',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (err) {

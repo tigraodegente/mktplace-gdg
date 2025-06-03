@@ -50,25 +50,17 @@ export const GET: RequestHandler = async ({ platform, url }) => {
       return json({ ...result, source: 'database' });
       
     } catch (error) {
-      // FALLBACK: Devoluções mock
-      const mockReturns = [
-        {
-          id: 'return-1',
-          order_id: 'order-12345',
-          user_id: userId || 'user-1',
-          reason: 'Produto com defeito',
-          status: 'pending',
-          amount: 99.90,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
-
+      console.log(`⚠️ Erro returns: ${error instanceof Error ? error.message : 'Erro'}`);
+      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        returns: mockReturns.filter(r => !status || r.status === status),
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar as devoluções',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error: any) {

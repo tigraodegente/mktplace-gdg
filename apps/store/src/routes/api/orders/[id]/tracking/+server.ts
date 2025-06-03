@@ -132,58 +132,17 @@ export const GET: RequestHandler = async ({ platform, params, url, setHeaders, c
 			});
 
 		} catch (error) {
-			console.log(`⚠️ Erro tracking: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+			console.log(`⚠️ Erro tracking GET: ${error instanceof Error ? error.message : 'Erro'}`);
 			
-			// FALLBACK: Rastreamento mock
-			const mockTracking = {
-				order: {
-					id: orderId,
-					orderNumber: `MP${orderId.slice(-8).toUpperCase()}`,
-					status: 'shipped',
-					trackingCode: 'BR123456789BR',
-					currentStatus: 'shipped'
-				},
-				tracking: {
-					events: [
-						{
-							id: '1',
-							type: 'shipped',
-							status: 'OBJETO_EM_TRANSITO',
-							description: 'Objeto em trânsito - por favor aguarde',
-							location: 'São Paulo-SP',
-							dateTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-							source: 'correios'
-						},
-						{
-							id: '2',
-							type: 'posted',
-							status: 'OBJETO_POSTADO',
-							description: 'Objeto postado nos Correios',
-							location: 'São Paulo-SP',
-							dateTime: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-							source: 'correios'
-						},
-						{
-							id: '3',
-							type: 'processing',
-							status: 'PREPARANDO_ENVIO',
-							description: 'Pedido em preparação',
-							location: 'Centro de Distribuição',
-							dateTime: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-							source: 'internal'
-						}
-					],
-					lastUpdate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-					estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-					canTrackExternal: true
-				}
-			};
-
+			// Retornar erro ao invés de dados mockados
 			return json({
-				success: true,
-				data: mockTracking,
-				source: 'fallback'
-			});
+				success: false,
+				error: {
+					code: 'DATABASE_ERROR',
+					message: 'Não foi possível carregar o rastreamento',
+					details: 'Por favor, tente novamente em alguns instantes'
+				}
+			}, { status: 503 });
 		}
 
 	} catch (error) {

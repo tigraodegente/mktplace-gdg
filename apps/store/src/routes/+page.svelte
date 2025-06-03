@@ -31,6 +31,12 @@
   import ChatWidget from '$lib/components/chat/ChatWidget.svelte';
   import { toastStore } from '$lib/stores/toastStore';
   import { unreadCount } from '$lib/stores/notificationStore';
+  import FeaturedProducts from '$lib/components/product/FeaturedProducts.svelte';
+  import CategoryGrid from '$lib/components/category/CategoryGrid.svelte';
+  import HeroBanner from '$lib/components/layout/HeroBanner.svelte';
+  import NewsletterSection from '$lib/components/layout/NewsletterSection.svelte';
+  import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
+  import { invalidateAll } from '$app/navigation';
   
   let { data }: { data: PageData } = $props();
   
@@ -142,6 +148,11 @@
       reloadProducts();
     }
   });
+  
+  // Função para recarregar a página
+  async function handleRetry() {
+    await invalidateAll();
+  }
 </script>
 
 <svelte:head>
@@ -307,3 +318,53 @@
     }
   }
 </style>
+
+<div class="min-h-screen bg-gray-50">
+	<!-- Hero Banner -->
+	<HeroBanner />
+	
+	{#if data.error}
+		<!-- Mostrar mensagem de erro -->
+		<div class="container mx-auto px-4 py-16">
+			<ErrorMessage 
+				title="Ops! Não conseguimos carregar os produtos"
+				message={data.error}
+				onRetry={handleRetry}
+			/>
+		</div>
+	{:else}
+		<!-- Categorias -->
+		{#if data.categories && data.categories.length > 0}
+			<section class="py-12 bg-white">
+				<div class="container mx-auto px-4">
+					<h2 class="text-2xl font-bold text-gray-900 mb-8 text-center">
+						Categorias Populares
+					</h2>
+					<CategoryGrid categories={data.categories} />
+				</div>
+			</section>
+		{/if}
+		
+		<!-- Produtos em Destaque -->
+		{#if data.featuredProducts && data.featuredProducts.length > 0}
+			<section class="py-12">
+				<div class="container mx-auto px-4">
+					<h2 class="text-2xl font-bold text-gray-900 mb-8 text-center">
+						Produtos em Destaque
+					</h2>
+					<FeaturedProducts products={data.featuredProducts} />
+				</div>
+			</section>
+		{:else if !data.error}
+			<!-- Mensagem quando não há produtos mas não é erro -->
+			<section class="py-12">
+				<div class="container mx-auto px-4 text-center">
+					<p class="text-gray-600">Nenhum produto em destaque no momento.</p>
+				</div>
+			</section>
+		{/if}
+		
+		<!-- Newsletter -->
+		<NewsletterSection />
+	{/if}
+</div>

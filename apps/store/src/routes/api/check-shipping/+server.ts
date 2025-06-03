@@ -84,35 +84,17 @@ export const GET: RequestHandler = async ({ platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro check shipping: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro check-shipping: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Status mock do sistema de shipping
-      const mockShippingStatus = {
-        database: 'PostgreSQL via Hyperdrive (fallback)',
-        shipping_tables: [
-          'shipping_carriers',
-          'shipping_zones', 
-          'shipping_rates',
-          'shipping_base_rates',
-          'shipping_calculated_options',
-          'shipping_modalities'
-        ],
-        table_counts: {
-          shipping_carriers: 3,
-          shipping_zones: 27,
-          shipping_rates: 156,
-          shipping_base_rates: 2847,
-          shipping_calculated_options: 450,
-          shipping_modalities_active: 8
-        },
-        sp_zone_exists: true,
-        total_shipping_tables: 6
-      };
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        ...mockShippingStatus,
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível verificar o status do sistema de frete',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {

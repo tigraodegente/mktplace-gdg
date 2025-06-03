@@ -190,9 +190,6 @@
 		filteredProducts = result;
 		totalPages = Math.ceil(result.length / itemsPerPage);
 		currentPage = 1;
-		
-		// Atualizar estatísticas
-		updateStats(result);
 	});
 	
 	// Funções do formulário
@@ -455,15 +452,6 @@
 		} finally {
 			loading = false;
 		}
-	}
-	
-	function updateStats(prods: Product[]) {
-		stats = {
-			total: prods.length,
-			active: prods.filter(p => p.status === 'active').length,
-			pending: prods.filter(p => p.status === 'pending').length,
-			lowStock: prods.filter(p => p.stock < 10).length
-		};
 	}
 	
 	function toggleProductSelection(id: string) {
@@ -979,7 +967,6 @@
 						<option value={20}>20</option>
 						<option value={50}>50</option>
 						<option value={100}>100</option>
-						<option value={999}>Todos</option>
 					</select>
 				</div>
 			</div>
@@ -1042,7 +1029,6 @@
 					<option value={20}>20</option>
 					<option value={50}>50</option>
 					<option value={100}>100</option>
-					<option value={999}>Todos</option>
 				</select>
 			</div>
 		</div>

@@ -136,73 +136,17 @@ export const GET: RequestHandler = async ({ platform, url, setHeaders, cookies }
 			});
 			
 		} catch (error) {
-			console.log(`⚠️ Erro notifications GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+			console.log(`⚠️ Erro ao buscar notificações: ${error instanceof Error ? error.message : 'Erro'}`);
 			
-			// FALLBACK: Notificações mock
-			const mockNotifications = [
-				{
-					id: 'notif-1',
-					type: 'order',
-					title: 'Pedido confirmado',
-					message: 'Seu pedido #12345 foi confirmado e está sendo preparado.',
-					data: { orderId: '12345', status: 'confirmed' },
-					read: false,
-					createdAt: new Date(Date.now() - 3600000).toISOString(), // 1h ago
-					readAt: null
-				},
-				{
-					id: 'notif-2',
-					type: 'promotion',
-					title: 'Oferta especial',
-					message: 'Promoção de fim de semana: até 50% de desconto!',
-					data: { discount: 50, category: 'electronics' },
-					read: true,
-					createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-					readAt: new Date(Date.now() - 43200000).toISOString() // 12h ago
-				},
-				{
-					id: 'notif-3',
-					type: 'system',
-					title: 'Bem-vindo!',
-					message: 'Obrigado por se cadastrar em nossa loja.',
-					data: null,
-					read: true,
-					createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-					readAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+			// Retornar erro ao invés de dados mockados
+			return json({
+				success: false,
+				error: {
+					code: 'DATABASE_ERROR',
+					message: 'Não foi possível carregar as notificações',
+					details: 'Por favor, tente novamente em alguns instantes'
 				}
-			];
-			
-			// Filtrar por tipo se solicitado
-			let filteredNotifications = mockNotifications;
-			if (type) {
-				filteredNotifications = mockNotifications.filter(n => n.type === type);
-			}
-			
-			// Filtrar apenas não lidas se solicitado
-			if (unreadOnly) {
-				filteredNotifications = filteredNotifications.filter(n => !n.read);
-			}
-			
-			// Paginar
-			const start = offset;
-			const end = start + limit;
-			const paginatedNotifications = filteredNotifications.slice(start, end);
-
-		return json({
-			success: true,
-				data: {
-					notifications: paginatedNotifications,
-					pagination: {
-						page,
-						limit,
-						total: filteredNotifications.length,
-						totalPages: Math.ceil(filteredNotifications.length / limit),
-						hasNext: end < filteredNotifications.length,
-						hasPrev: page > 1
-					}
-				},
-				source: 'fallback'
-		});
+			}, { status: 503 });
 		}
 
 	} catch (error) {
@@ -321,26 +265,17 @@ export const POST: RequestHandler = async ({ platform, request, cookies }) => {
 			});
 			
 		} catch (error) {
-			console.log(`⚠️ Erro notifications POST: ${error instanceof Error ? error.message : 'Erro'} - simulando sucesso`);
+			console.log(`⚠️ Erro notifications POST: ${error instanceof Error ? error.message : 'Erro'}`);
 			
-			// FALLBACK: Simular sucesso da ação
-			let mockResult;
-			if (action === 'markAsRead') {
-				mockResult = { updated: true };
-			} else if (action === 'delete') {
-				mockResult = { deleted: true };
-			} else {
-				return json({
-					success: false,
-					error: { message: 'Ação não suportada' }
-				}, { status: 400 });
-			}
-
-		return json({
-			success: true,
-				data: mockResult,
-				source: 'fallback'
-		});
+			// Retornar erro ao invés de simular sucesso
+			return json({
+				success: false,
+				error: {
+					code: 'DATABASE_ERROR',
+					message: 'Não foi possível processar a ação',
+					details: 'Por favor, tente novamente em alguns instantes'
+				}
+			}, { status: 503 });
 		}
 
 	} catch (error) {

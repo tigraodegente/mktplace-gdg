@@ -45,32 +45,17 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro pages: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro page: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Página mock baseada no slug
-      const mockPage = {
-        id: `page-${slug}`,
-        title: slug === 'sobre' ? 'Sobre Nós' : 
-              slug === 'contato' ? 'Contato' :
-              slug === 'termos' ? 'Termos de Uso' :
-              slug === 'privacidade' ? 'Política de Privacidade' :
-              'Página Institucional',
-        slug: slug,
-        content: `<h1>${slug === 'sobre' ? 'Sobre Nossa Loja' : 'Conteúdo da Página'}</h1>
-                  <p>Esta é uma página institucional do nosso marketplace.</p>
-                  <p>Conteúdo gerado automaticamente para demonstração.</p>`,
-        meta_title: `${slug} - Marketplace GDG`,
-        meta_description: `Página de ${slug} do Marketplace GDG`,
-        is_published: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockPage,
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar a página',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {

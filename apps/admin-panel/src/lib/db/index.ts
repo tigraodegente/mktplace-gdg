@@ -43,7 +43,7 @@ function createDatabaseConnection(platform?: App.Platform): Database {
   
   // EM DESENVOLVIMENTO: Usar variável de ambiente se disponível
   // Para desenvolvimento, a URL deve ser configurada no script use-local-db.sh ou use-neon-db.sh
-  const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost/mktplace_dev'
+  const dbUrl = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-raspy-meadow-acds6p80-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require'
       
   console.log('🔌 Dev:', dbUrl.includes('neon.tech') ? 'NEON' : 'LOCAL')
       

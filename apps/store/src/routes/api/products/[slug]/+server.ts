@@ -105,27 +105,30 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Banco timeout/erro: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Banco timeout/erro: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Produto mock baseado no slug
-      const mockProduct = generateMockProduct(slug);
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockProduct,
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar o produto',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
     
   } catch (error) {
-    console.error('❌ Erro crítico produto:', error);
+    console.error('❌ Erro ao buscar produto:', error);
+    
     return json({
       success: false,
       error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Erro ao buscar produto'
+        code: 'DATABASE_ERROR',
+        message: 'Não foi possível carregar o produto',
+        details: 'Por favor, tente novamente em alguns instantes'
       }
-    }, { status: 500 });
+    }, { status: 503 });
   }
 };
 
@@ -168,131 +171,5 @@ function formatProduct(product: any, images: string[], category_name: string, br
     condition: product.condition || 'new',
     has_free_shipping: product.has_free_shipping !== false,
     delivery_days: product.delivery_days || 7
-  };
-}
-
-/**
- * Gerar produto mock baseado no slug (fallback inteligente)
- */
-function generateMockProduct(slug: string): any {
-  // Mapear slugs conhecidos para produtos reais do marketplace
-  const productMap: Record<string, any> = {
-    'samsung-galaxy-s24-ultra': {
-      id: 'prod-1',
-      name: 'Samsung Galaxy S24 Ultra 256GB',
-      slug: 'samsung-galaxy-s24-ultra',
-      description: 'O mais avançado smartphone Samsung com S Pen, câmera de 200MP e tela Dynamic AMOLED 2X de 6.8"',
-      price: 2999.99,
-      original_price: 3499.99,
-      discount_percentage: 14,
-      category_name: 'Smartphones',
-      brand_name: 'Samsung',
-      rating: 4.8,
-      reviews_count: 127,
-      sales_count: 89
-    },
-    'xiaomi-redmi-note-13-pro': {
-      id: 'prod-2',
-      name: 'Xiaomi Redmi Note 13 Pro 256GB',
-      slug: 'xiaomi-redmi-note-13-pro',
-      description: 'Smartphone Xiaomi com câmera de 200MP, carregamento rápido de 67W e tela AMOLED de 6.67"',
-      price: 899.99,
-      original_price: 1099.99,
-      discount_percentage: 18,
-      category_name: 'Smartphones',
-      brand_name: 'Xiaomi',
-      rating: 4.6,
-      reviews_count: 89,
-      sales_count: 145
-    },
-    'samsung-smart-tv-55-4k': {
-      id: 'prod-3',
-      name: 'Samsung Smart TV 55" 4K UHD',
-      slug: 'samsung-smart-tv-55-4k',
-      description: 'Smart TV Samsung 55 polegadas com resolução 4K, HDR10+ e sistema Tizen OS',
-      price: 2199.99,
-      original_price: 2699.99,
-      discount_percentage: 19,
-      category_name: 'TVs e Áudio',
-      brand_name: 'Samsung',
-      rating: 4.7,
-      reviews_count: 56,
-      sales_count: 34
-    }
-  };
-  
-  // Verificar se existe produto específico para o slug
-  const specificProduct = productMap[slug];
-  if (specificProduct) {
-    return {
-      ...specificProduct,
-      images: [
-        `/api/placeholder/800/800?text=${encodeURIComponent(specificProduct.name)}`,
-        `/api/placeholder/800/800?text=${encodeURIComponent(specificProduct.name)}+2`,
-        `/api/placeholder/800/800?text=${encodeURIComponent(specificProduct.name)}+3`
-      ],
-      image: `/api/placeholder/800/800?text=${encodeURIComponent(specificProduct.name)}`,
-      category_id: 'cat-1',
-      brand_id: 'brand-1',
-      seller_id: 'seller-1',
-      seller_name: 'Loja Oficial',
-      is_active: true,
-      stock: 50,
-      sold_count: specificProduct.sales_count,
-      tags: ['popular', 'promo'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_featured: true,
-      sku: `SKU-${specificProduct.id}`,
-      weight: 0.5,
-      brand: specificProduct.brand_name,
-      model: specificProduct.name,
-      condition: 'new',
-      has_free_shipping: true,
-      delivery_days: 2
-    };
-  }
-  
-  // Produto genérico baseado no slug
-  const productName = slug.split('-').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ');
-  
-  return {
-    id: `prod-${slug}`,
-    name: productName,
-    slug: slug,
-    description: `${productName} - Produto de alta qualidade com excelente custo-benefício`,
-    price: 299.99 + (Math.random() * 700),
-    original_price: 399.99 + (Math.random() * 900),
-    discount_percentage: Math.floor(Math.random() * 20) + 10,
-    images: [
-      `/api/placeholder/800/800?text=${encodeURIComponent(productName)}`,
-      `/api/placeholder/800/800?text=${encodeURIComponent(productName)}+2`
-    ],
-    image: `/api/placeholder/800/800?text=${encodeURIComponent(productName)}`,
-    category_id: 'cat-1',
-    category_name: 'Categoria',
-    brand_id: 'brand-1',
-    brand_name: 'Marca',
-    seller_id: 'seller-1',
-    seller_name: 'Loja Virtual',
-    is_active: true,
-    stock: Math.floor(Math.random() * 100) + 10,
-    rating: 4.0 + (Math.random() * 1),
-    reviews_count: Math.floor(Math.random() * 100) + 10,
-    sales_count: Math.floor(Math.random() * 50) + 5,
-    sold_count: Math.floor(Math.random() * 50) + 5,
-    tags: ['produto'],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    is_featured: false,
-    sku: `SKU-${slug}`,
-    weight: 0.5,
-    brand: 'Marca',
-    model: productName,
-    condition: 'new',
-    has_free_shipping: true,
-    delivery_days: 7
   };
 } 

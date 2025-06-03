@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter ./apps/store dev",
+    "dev": "turbo dev",
     "dev:store": "pnpm --filter ./apps/store dev",
     "dev:admin": "pnpm --filter ./apps/admin-panel dev",
     "dev:seller": "pnpm --filter ./apps/seller-panel dev",
-    "build": "pnpm --filter ./apps/store build",
+    "build": "turbo build",
     "build:store": "pnpm --filter ./apps/store build",
     "build:admin": "pnpm --filter ./apps/admin-panel build",
     "build:seller": "pnpm --filter ./apps/seller-panel build",
@@ -22,12 +22,12 @@
     "analyze": "pnpm --filter ./apps/store analyze",
     "analyze:admin": "pnpm --filter ./apps/admin-panel analyze",
     "analyze:all": "pnpm analyze && pnpm analyze:admin",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
-    "preview": "pnpm --filter ./apps/store preview",
+    "clean": "turbo clean",
+    "preview": "turbo preview",
     "check:env": "node scripts/check-env.js",
     "deploy:test": "echo 'Deploy seletivo funcionando!'",
     "sync:test": "node scripts/sync/utils/db-connector.mjs",
-    "sync:products": "node scripts/sync/core/sync-products.mjs",
+    "sync:products": "node scripts/sync-products.mjs",
     "sync:products:dry": "node scripts/sync/core/sync-products.mjs --dry-run",
     "sync:products:force": "node scripts/sync/core/sync-products.mjs --force",
     "sync:fix-stock": "node scripts/fix-imported-stock-v2.mjs",
@@ -35,7 +35,11 @@
     "sync:logs": "tail -f logs/sync/latest.log",
     "sync:logs:errors": "grep ERROR logs/sync/latest.log",
     "sync:summary": "cat logs/sync/$(date +%Y-%m-%d)/summary.json | jq || echo 'Nenhum sumário encontrado para hoje'",
-    "sync:develop": "echo '🚀 Sincronização completa ainda em desenvolvimento. Use sync:products por enquanto.'"
+    "sync:develop": "echo '🚀 Sincronização completa ainda em desenvolvimento. Use sync:products por enquanto.'",
+    "type-check": "turbo type-check",
+    "sync:products:test": "DRY_RUN=true node scripts/sync-products.mjs",
+    "check:products": "node scripts/check-product-count.mjs",
+    "clean:reimport": "node scripts/clean-and-reimport.mjs"
   },
   "keywords": [
     "marketplace",
@@ -50,6 +54,7 @@
     "@types/node": "^22.15.21",
     "dotenv": "^16.5.0",
     "node-fetch": "^2.7.0",
+    "ora": "^8.2.0",
     "prettier": "^3.4.2",
     "sharp": "^0.34.2",
     "typescript": "^5.7.3"
@@ -67,6 +72,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "mongodb": "^6.16.0",
+    "openai": "^5.0.2",
     "pg": "^8.16.0",
     "postgres": "^3.4.7",
     "uuid": "^11.1.0"

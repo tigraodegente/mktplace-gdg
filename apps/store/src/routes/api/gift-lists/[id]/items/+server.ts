@@ -86,73 +86,17 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro items GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro items GET: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Itens mock
-      const mockItems = [
-        {
-          id: 'item-1',
-          custom_item_name: 'Jogo de Panelas',
-          category: 'cozinha',
-          priority: 'high',
-          target_amount: 300.00,
-          collected_amount: 150.00,
-          is_purchased: false,
-          display_order: 1,
-          product_id: null,
-          created_at: new Date().toISOString(),
-          notes: 'Inox, 5 peças',
-          product_name: null,
-          product_slug: null,
-          completion_percentage: 50.0,
-          is_fully_funded: false,
-          remaining_amount: 150.00,
-          product_image: null,
-          brand_name: null,
-          category_name: 'Cozinha',
-          contributions: includeContributions ? [
-            {
-              id: 'contrib-1',
-              amount: 50.00,
-              message: 'Parabéns!',
-              is_anonymous: false,
-              created_at: new Date().toISOString(),
-              contributor_name: 'Ana Silva',
-              display_name: 'Ana Silva'
-            }
-          ] : [],
-          contributor_count: includeContributions ? 1 : 0
-        },
-        {
-          id: 'item-2',
-          custom_item_name: 'Jogo de Cama',
-          category: 'casa',
-          priority: 'medium',
-          target_amount: 200.00,
-          collected_amount: 0.00,
-          is_purchased: false,
-          display_order: 2,
-          product_id: null,
-          created_at: new Date().toISOString(),
-          notes: 'Casal, algodão',
-          product_name: null,
-          product_slug: null,
-          completion_percentage: 0.0,
-          is_fully_funded: false,
-          remaining_amount: 200.00,
-          product_image: null,
-          brand_name: null,
-          category_name: 'Casa',
-          contributions: [],
-          contributor_count: 0
-        }
-      ];
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockItems,
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar os itens da lista',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {
@@ -242,28 +186,17 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     });
       
     } catch (error) {
-      // FALLBACK: Simular criação
-      const mockNewItem = {
-        id: `item-${Date.now()}`,
-        list_id: listId,
-        product_id: data.product_id || null,
-        custom_item_name: data.custom_item_name || null,
-        category: data.category || 'geral',
-        priority: data.priority || 'medium',
-        target_amount: data.target_amount,
-        collected_amount: 0,
-        display_order: data.display_order || 1,
-        notes: data.notes || null,
-        is_active: true,
-        created_at: new Date().toISOString()
-      };
+      console.log(`⚠️ Erro items POST: ${error instanceof Error ? error.message : 'Erro'}`);
       
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockNewItem,
-        message: 'Item adicionado à lista com sucesso!',
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível adicionar o item',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {
@@ -338,12 +271,17 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       });
       
     } catch (error) {
-      // FALLBACK: Simular sucesso
+      console.log(`⚠️ Erro items PUT: ${error instanceof Error ? error.message : 'Erro'}`);
+      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        message: 'Ordem dos itens atualizada com sucesso!',
-        source: 'fallback'
-    });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível atualizar a ordem dos itens',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {

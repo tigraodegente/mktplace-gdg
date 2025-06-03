@@ -30,13 +30,15 @@ export class DataMapper {
     
     // Determinar estoque
     let stock = this.options.defaultStock
-    if (mongoProduct.stock && mongoProduct.stock > 0) {
+    if (mongoProduct.realstock && mongoProduct.realstock > 0) {
+      stock = mongoProduct.realstock
+    } else if (mongoProduct.virtualstock && mongoProduct.virtualstock > 0) {
+      stock = mongoProduct.virtualstock
+    } else if (mongoProduct.stock && mongoProduct.stock > 0) {
       stock = mongoProduct.stock
-    } else if (mongoProduct.realStock && mongoProduct.realStock > 0) {
-      stock = mongoProduct.realStock
-    } else if (mongoProduct.virtualStock && mongoProduct.virtualStock > 0) {
-      stock = mongoProduct.virtualStock
-    } else if (!mongoProduct.activeForSeo) {
+    } else if (mongoProduct.isactive || mongoProduct.activeforseo) {
+      stock = 10 // Estoque padrão para produtos ativos
+    } else {
       stock = 0
     }
     
@@ -44,26 +46,29 @@ export class DataMapper {
     const images = this.mapProductImages(mongoProduct)
     
     // Criar slug se não existir
-    const slug = mongoProduct.slug || this.createSlug(mongoProduct.name || mongoProduct.productName)
+    const baseSlug = mongoProduct.slug || this.createSlug(mongoProduct.productname || mongoProduct.marketplaceproductname || mongoProduct.googleproductname || mongoProduct.name || mongoProduct.productName)
+    
+    // Adicionar SKU ao slug para garantir unicidade
+    const uniqueSlug = `${baseSlug}-${mongoProduct.productid || mongoProduct.sku || this.generateSKU()}`
     
     // Tags do produto
     const tags = this.mapProductTags(mongoProduct)
     
     return {
       // Identificadores
-      sku: mongoProduct.productId?.toString() || mongoProduct.sku || this.generateSKU(),
+      sku: mongoProduct.productid?.toString() || mongoProduct.sku || this.generateSKU(),
       barcode: mongoProduct.ean || mongoProduct.barcode || null,
       
       // Informações básicas
-      name: mongoProduct.name || mongoProduct.productName || 'Produto sem nome',
-      slug: slug,
+      name: mongoProduct.productname || mongoProduct.marketplaceproductname || mongoProduct.googleproductname || mongoProduct.name || mongoProduct.productName || 'Produto sem nome',
+      slug: uniqueSlug,
       description: this.mapDescription(mongoProduct),
       short_description: mongoProduct.shortDescription || null,
       
       // Preços
       price: this.parsePrice(mongoProduct.price || mongoProduct.salePrice),
-      compare_at_price: this.parsePrice(mongoProduct.originalPrice || mongoProduct.comparePrice),
-      cost: this.parsePrice(mongoProduct.cost || mongoProduct.costPrice),
+      compare_at_price: this.parsePrice(mongoProduct.promotionalprice || mongoProduct.originalPrice || mongoProduct.comparePrice),
+      cost: this.parsePrice(mongoProduct.costprice || mongoProduct.cost || mongoProduct.costPrice),
       
       // Estoque
       quantity: stock,
@@ -74,20 +79,20 @@ export class DataMapper {
       weight: this.parseWeight(mongoProduct),
       width: mongoProduct.width || mongoProduct.dimensions?.width || null,
       height: mongoProduct.height || mongoProduct.dimensions?.height || null,
-      length: mongoProduct.length || mongoProduct.dimensions?.length || null,
+      length: mongoProduct.depth || mongoProduct.length || mongoProduct.dimensions?.length || null,
       
       // Status
-      is_active: mongoProduct.activeForSeo !== false,
+      is_active: mongoProduct.isactive || mongoProduct.activeforseo || mongoProduct.activeForSeo !== false,
       is_featured: mongoProduct.featured || mongoProduct.isFeatured || false,
       
       // SEO
-      meta_title: mongoProduct.metaTitle || mongoProduct.seoTitle || null,
+      meta_title: mongoProduct.metaTitle || mongoProduct.seoTitle || mongoProduct.productname || null,
       meta_description: mongoProduct.metaDescription || mongoProduct.seoDescription || null,
       meta_keywords: mongoProduct.metaKeywords || mongoProduct.seoKeywords || null,
       
       // Categorização
       category_id: this.mapCategoryId(mongoProduct),
-      brand: mongoProduct.brand || mongoProduct.manufacturer || null,
+      brand: mongoProduct.brand?.name || mongoProduct.brand || mongoProduct.manufacturer || null,
       
       // Imagens e mídia
       images: images,
@@ -223,8 +228,12 @@ export class DataMapper {
   // Métodos auxiliares
 
   createSlug(text) {
-    if (!text) return ''
-    return text
+    if (!text) {
+      // Se não há texto, gerar um slug único baseado em timestamp
+      return `produto-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
+    }
+    
+    const slug = text
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -232,6 +241,13 @@ export class DataMapper {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim()
+    
+    // Se após o processamento o slug estiver vazio, gerar um único
+    if (!slug) {
+      return `produto-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
+    }
+    
+    return slug
   }
 
   generateSKU() {
@@ -268,7 +284,30 @@ export class DataMapper {
   mapProductImages(product) {
     const images = []
     
-    // Coletar todas as possíveis fontes de imagens
+    // Primeiro, adicionar imagem principal se existir
+    if (product.urlImagePrimary) {
+      images.push({
+        url: product.urlImagePrimary,
+        alt: product.productname || product.name || 'Imagem do produto',
+        is_primary: true
+      })
+    }
+    
+    // Depois, adicionar outras imagens de files.photos
+    if (product.files?.photos && Array.isArray(product.files.photos)) {
+      for (const photo of product.files.photos) {
+        const url = photo.url || photo.src || (typeof photo === 'string' ? photo : null)
+        if (url && url !== product.urlImagePrimary) {
+          images.push({
+            url: url,
+            alt: photo.name || product.productname || product.name || 'Imagem do produto',
+            is_primary: false
+          })
+        }
+      }
+    }
+    
+    // Coletar todas as possíveis fontes de imagens (fallback)
     const imageSources = [
       product.images,
       product.photos,
@@ -322,10 +361,16 @@ export class DataMapper {
       }
     }
     
+    // Adicionar temas se existir
+    if (product.theme && Array.isArray(product.theme)) {
+      tags.push(...product.theme.map(t => t.name || t))
+    }
+    
     // Tags baseadas em status
-    if (!product.activeForSeo) tags.push('inativo')
+    if (!product.isactive && !product.activeforseo) tags.push('inativo')
     if (product.featured) tags.push('destaque')
-    if (product.stock === 0) tags.push('sem-estoque')
+    if (product.realstock === 0 && product.virtualstock === 0) tags.push('sem-estoque')
+    if (product.fastshipping) tags.push('entrega-rapida')
     
     return [...new Set(tags)] // Remover duplicatas
   }

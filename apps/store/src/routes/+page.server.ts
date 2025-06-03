@@ -175,8 +175,8 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					
 					return await Promise.race([queryPromise, timeoutPromise]);
 				} catch (error) {
-					console.log('⚠️ Fallback para produtos mock (erro ou timeout)');
-					return generateMockProducts();
+					console.log('⚠️ Erro ao buscar produtos:', error);
+					throw new Error('Não foi possível carregar os produtos');
 				}
 			})(),
 			
@@ -217,8 +217,8 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					
 					return await Promise.race([queryPromise, timeoutPromise]);
 				} catch (error) {
-					console.log('⚠️ Fallback para categorias mock (erro ou timeout)');
-					return generateMockCategories();
+					console.log('⚠️ Erro ao buscar categorias:', error);
+					throw new Error('Não foi possível carregar as categorias');
 				}
 			})(),
 			
@@ -250,13 +250,8 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 					
 					return await Promise.race([queryPromise, timeoutPromise]);
 				} catch (error) {
-					console.log('⚠️ Fallback para stats mock (erro ou timeout)');
-					return {
-						totalProducts: 1247,
-						totalCategories: 12,
-						totalSellers: 18,
-						featuredProducts: 24
-				};
+					console.log('⚠️ Erro ao buscar estatísticas:', error);
+					throw new Error('Não foi possível carregar as estatísticas');
 				}
 			})()
 		]);
@@ -265,11 +260,7 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 			featuredProducts,
 			categories: categoriesData,
 			stats: statsData,
-			dataSource: {
-				products: featuredProducts.length > 0 ? 'database' : 'mock',
-				categories: categoriesData.length > 0 ? 'database' : 'mock',
-				stats: statsData.totalProducts > 0 ? 'database' : 'mock'
-			},
+			dataSource: 'database',
 			meta: {
 				loadTime: Date.now(),
 				cached: false
@@ -277,32 +268,26 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 		};
 		
 		// Armazenar no cache apenas se temos dados reais
-		if (result.dataSource.products === 'database') {
 		setCache(cacheKey, result);
-		}
 		
 		console.log(`✅ Página principal carregada: ${featuredProducts.length} produtos, ${categoriesData.length} categorias`);
 		return result;
 		
 	} catch (error) {
-		console.error('❌ Erro crítico ao carregar página principal:', error);
+		console.error('❌ Erro ao carregar página principal:', error);
 		
-		// Fallback completo com dados mock
+		// Retornar erro ao invés de dados mockados
 		return {
-			featuredProducts: generateMockProducts(),
-			categories: generateMockCategories(),
+			featuredProducts: [],
+			categories: [],
 			stats: {
-				totalProducts: 1247,
-				totalCategories: 12,
-				totalSellers: 18,
-				featuredProducts: 24
+				totalProducts: 0,
+				totalCategories: 0,
+				totalSellers: 0,
+				featuredProducts: 0
 			},
-			dataSource: {
-				products: 'mock',
-				categories: 'mock',
-				stats: 'mock'
-			},
-			error: 'Sistema temporariamente indisponível',
+			dataSource: 'error',
+			error: 'Desculpe, estamos com problemas técnicos. Por favor, tente novamente em alguns instantes.',
 			meta: {
 				loadTime: Date.now(),
 				cached: false
@@ -310,122 +295,6 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 		};
 	}
 };
-
-// Função para gerar produtos mock realistas
-function generateMockProducts(): Product[] {
-	return [
-		{
-			id: 'mock-1',
-			name: 'Kit Berço Americano Premium',
-			slug: 'kit-berco-americano-premium',
-			description: 'Kit completo para berço americano com 9 peças',
-			price: 299.90,
-			original_price: 399.90,
-			discount: 25,
-			image: '/api/placeholder/300/400?text=Kit+Berço&bg=f8f9fa&color=495057',
-			images: ['/api/placeholder/300/400?text=Kit+Berço&bg=f8f9fa&color=495057'],
-			category_id: 'cat-1',
-			category_name: 'Enxoval',
-			seller_id: 'seller-1',
-			seller_name: 'Grão de Gente',
-			stock: 15,
-			sku: 'KIT-BERCO-001',
-			rating: 4.8,
-			reviews_count: 127,
-			sold_count: 89,
-			is_black_friday: true,
-			has_fast_delivery: true,
-			tags: ['promocao', 'frete-gratis'],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		},
-		{
-			id: 'mock-2',
-			name: 'Cadeirinha de Carro Safety 1st',
-			slug: 'cadeirinha-safety-1st',
-			description: 'Cadeirinha de carro para bebês de 0 a 36kg',
-			price: 899.90,
-			original_price: 1199.90,
-			discount: 25,
-			image: '/api/placeholder/300/400?text=Cadeirinha&bg=e3f2fd&color=1976d2',
-			images: ['/api/placeholder/300/400?text=Cadeirinha&bg=e3f2fd&color=1976d2'],
-			category_id: 'cat-2',
-			category_name: 'Segurança',
-			seller_id: 'seller-1',
-			seller_name: 'Grão de Gente',
-			stock: 8,
-			sku: 'CAD-SF1-001',
-			rating: 4.9,
-			reviews_count: 203,
-			sold_count: 156,
-			is_black_friday: true,
-			has_fast_delivery: true,
-			tags: ['seguranca', 'certificado'],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		},
-		{
-			id: 'mock-3',
-			name: 'Móbile Musical com Projetor',
-			slug: 'mobile-musical-projetor',
-			description: 'Móbile com música e projeção de estrelas',
-			price: 189.90,
-			image: '/api/placeholder/300/400?text=Móbile&bg=fce4ec&color=c2185b',
-			images: ['/api/placeholder/300/400?text=Móbile&bg=fce4ec&color=c2185b'],
-			category_id: 'cat-3',
-			category_name: 'Brinquedos',
-			seller_id: 'seller-1',
-			seller_name: 'Grão de Gente',
-			stock: 25,
-			sku: 'MOB-MUS-001',
-			rating: 4.7,
-			reviews_count: 89,
-			sold_count: 67,
-			is_black_friday: false,
-			has_fast_delivery: true,
-			tags: ['musical', 'educativo'],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		},
-		{
-			id: 'mock-4',
-			name: 'Conjunto Maternidade Rosa',
-			slug: 'conjunto-maternidade-rosa',
-			description: 'Conjunto completo para saída de maternidade',
-			price: 149.90,
-			original_price: 199.90,
-			discount: 25,
-			image: '/api/placeholder/300/400?text=Maternidade&bg=f3e5f5&color=7b1fa2',
-			images: ['/api/placeholder/300/400?text=Maternidade&bg=f3e5f5&color=7b1fa2'],
-			category_id: 'cat-4',
-			category_name: 'Roupas',
-			seller_id: 'seller-1',
-			seller_name: 'Grão de Gente',
-			stock: 12,
-			sku: 'CONJ-MAT-001',
-			rating: 4.6,
-			reviews_count: 45,
-			sold_count: 32,
-			is_black_friday: true,
-			has_fast_delivery: false,
-			tags: ['algodao', 'delicado'],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		}
-	];
-}
-
-// Função para gerar categorias mock
-function generateMockCategories() {
-	return [
-		{ id: 'cat-1', name: 'Enxoval do Bebê', slug: 'enxoval', icon: '🧺', count: 156 },
-		{ id: 'cat-2', name: 'Segurança', slug: 'seguranca', icon: '🛡️', count: 89 },
-		{ id: 'cat-3', name: 'Brinquedos', slug: 'brinquedos', icon: '🧸', count: 234 },
-		{ id: 'cat-4', name: 'Roupas', slug: 'roupas', icon: '👕', count: 178 },
-		{ id: 'cat-5', name: 'Higiene', slug: 'higiene', icon: '🧴', count: 145 },
-		{ id: 'cat-6', name: 'Alimentação', slug: 'alimentacao', icon: '🍼', count: 98 }
-	];
-}
 
 // Função auxiliar otimizada para ícones de categoria
 function getCategoryIcon(categorySlug: string): string {

@@ -132,18 +132,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     });
 
   } catch (error) {
-    console.error('Erro ao calcular frete:', error);
+    console.log(`⚠️ Erro ao calcular frete: ${error instanceof Error ? error.message : 'Erro'}`);
     
-    return json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Erro interno do servidor',
-          details: error instanceof Error ? error.message : 'Erro desconhecido'
-        } 
-      },
-      { status: 500 }
-    );
+    // Retornar erro ao invés de dados mockados
+    return json({
+      success: false,
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Não foi possível calcular o frete',
+        details: 'Por favor, tente novamente em alguns instantes'
+      }
+    }, { status: 503 });
   }
 }; 

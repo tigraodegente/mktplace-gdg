@@ -159,92 +159,16 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro orders: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
-      
-      // FALLBACK: Pedidos mock
-      const mockOrders = [
-        {
-          id: '1',
-          orderNumber: 'MP1234567890',
-          status: 'delivered',
-          statusLabel: 'Entregue',
-          statusColor: 'green',
-          totalAmount: 299.99,
-          shippingCost: 15.90,
-          discountAmount: 0,
-          paymentMethod: 'pix',
-          shippingAddress: {
-            street: 'Rua das Flores, 123',
-            city: 'São Paulo',
-            state: 'SP'
-          },
-          notes: null,
-          items: [
-            {
-              id: '1',
-              productId: 'prod-1',
-              productName: 'Smartphone Xiaomi Redmi Note 13',
-              productImage: '/api/placeholder/300/300?text=Xiaomi+Note+13',
-              quantity: 1,
-              price: 299.99,
-              total: 299.99
-            }
-          ],
-          itemsCount: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          orderNumber: 'MP1234567891',
-          status: 'processing',
-          statusLabel: 'Preparando',
-          statusColor: 'purple',
-          totalAmount: 1999.99,
-          shippingCost: 0,
-          discountAmount: 100,
-          paymentMethod: 'credit_card',
-          shippingAddress: {
-            street: 'Av. Paulista, 456',
-            city: 'São Paulo',
-            state: 'SP'
-          },
-          notes: null,
-          items: [
-            {
-              id: '2',
-              productId: 'prod-2',
-              productName: 'Smart TV Samsung 55" 4K',
-              productImage: '/api/placeholder/300/300?text=Samsung+TV+55',
-              quantity: 1,
-              price: 1999.99,
-              total: 1999.99
-            }
-          ],
-          itemsCount: 1,
-          createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          updatedAt: new Date(Date.now() - 86400000).toISOString()
-        }
-      ];
-      
-      const filteredOrders = status ? mockOrders.filter(o => o.status === status) : mockOrders;
-      const paginatedOrders = filteredOrders.slice(offset, offset + limit);
+      console.log(`⚠️ Erro orders: ${error instanceof Error ? error.message : 'Erro'}`);
       
       return json({
-        success: true,
-        data: {
-          orders: paginatedOrders,
-          pagination: {
-            page,
-            limit,
-            total: filteredOrders.length,
-            totalPages: Math.ceil(filteredOrders.length / limit),
-            hasNext: page < Math.ceil(filteredOrders.length / limit),
-            hasPrev: page > 1
-          }
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar seus pedidos. Por favor, tente novamente.',
+          details: 'Estamos com problemas técnicos temporários.'
+        }
+      }, { status: 503 }); // 503 Service Unavailable
     }
     
   } catch (error: any) {

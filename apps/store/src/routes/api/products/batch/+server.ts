@@ -192,59 +192,18 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro products batch: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro batch: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Produtos mock baseados nos identificadores
-      const mockProducts = identifiers.slice(0, 10).map((identifier: string, index: number) => {
-        const isId = identifier.length > 20;
-        return {
-          id: isId ? identifier : `prod-${index + 1}`,
-          name: `Produto ${identifier}`,
-          slug: isId ? `produto-${index + 1}` : identifier,
-          description: `Descrição do produto ${identifier}`,
-          price: 99.99 + (index * 50),
-          original_price: 149.99 + (index * 50),
-          discount: 33,
-          images: [`/api/placeholder/300/400?text=${encodeURIComponent(`Produto ${identifier}`)}`],
-          image: `/api/placeholder/300/400?text=${encodeURIComponent(`Produto ${identifier}`)}`,
-          category_id: '1',
-          category_name: 'Categoria',
-          brand_id: '1',
-          brand_name: 'Marca',
-          seller_id: '1',
-          seller_name: 'Loja',
-          is_active: true,
-          stock: 10,
-          rating: 4.5,
-          reviews_count: 25,
-          sold_count: 50,
-          tags: ['produto', 'mock'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_featured: false,
-          sku: `SKU-${index + 1}`,
-          pieces: 1,
-          has_fast_delivery: true
-      };
-    });
-      
-      const resultMap: Record<string, any> = {};
-      mockProducts.forEach(product => {
-        resultMap[product.id] = product;
-        resultMap[product.slug] = product;
-      });
-    
-    return json({
-      success: true,
-        data: resultMap,
-      meta: {
-          found: mockProducts.length,
-          requested: identifiers.length,
-        cached: false
-        },
-        source: 'fallback'
-      });
-      }
+      // Retornar erro ao invés de dados mockados
+      return json({
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar os produtos',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
+    }
     
   } catch (error) {
     console.error('❌ Erro crítico products batch:', error);

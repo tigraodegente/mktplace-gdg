@@ -120,101 +120,17 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro gift lists GET: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro gift lists GET: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Gift lists mock baseadas no tipo
-      const mockGiftLists = [
-        {
-          id: 'list-1',
-          user_id: 'user-1',
-          type: 'wedding',
-          title: 'Casamento João & Maria',
-          description: 'Nossa lista de presentes para o grande dia!',
-          event_date: new Date(Date.now() + 2592000000).toISOString(), // 30 days from now
-          privacy: 'public',
-          goal_amount: 5000.00,
-          collected_amount: 1250.00,
-          created_at: new Date(Date.now() - 604800000).toISOString(), // 7 days ago
-          status: 'active',
-          cover_image: null,
-          theme_color: '#FF69B4',
-          owner_name: 'João Silva',
-          owner_email: 'joao@email.com',
-          total_items: 15,
-          purchased_items: 4,
-          completion_percentage: 25.0
-        },
-        {
-          id: 'list-2',
-          user_id: 'user-2',
-          type: 'baby_shower',
-          title: 'Chá da Maria Helena',
-          description: 'Esperando nossa princesinha chegar!',
-          event_date: new Date(Date.now() + 1296000000).toISOString(), // 15 days from now
-          privacy: 'public',
-          goal_amount: 3000.00,
-          collected_amount: 900.00,
-          created_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
-          status: 'active',
-          cover_image: null,
-          theme_color: '#FFB6C1',
-          owner_name: 'Ana Costa',
-          owner_email: 'ana@email.com',
-          total_items: 12,
-          purchased_items: 3,
-          completion_percentage: 30.0
-        },
-        {
-          id: 'list-3',
-          user_id: 'user-3',
-          type: 'birthday',
-          title: 'Aniversário de 30 anos',
-          description: 'Chegando nos 30! 🎉',
-          event_date: new Date(Date.now() + 864000000).toISOString(), // 10 days from now
-          privacy: 'public',
-          goal_amount: 2000.00,
-          collected_amount: 450.00,
-          created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          status: 'active',
-          cover_image: null,
-          theme_color: '#9370DB',
-          owner_name: 'Carlos Santos',
-          owner_email: 'carlos@email.com',
-          total_items: 8,
-          purchased_items: 2,
-          completion_percentage: 22.5
-        }
-      ];
-      
-      // Filtrar por tipo se solicitado
-      let filteredLists = mockGiftLists;
-      if (type) {
-        filteredLists = mockGiftLists.filter(list => list.type === type);
-      }
-      
-      // Filtrar por usuário se solicitado
-      if (userId) {
-        filteredLists = filteredLists.filter(list => list.user_id === userId);
-      }
-      
-      // Apenas públicas se solicitado
-      if (publicOnly) {
-        filteredLists = filteredLists.filter(list => list.privacy === 'public');
-      }
-      
-      // Paginar
-      const paginatedLists = filteredLists.slice(offset, offset + limit);
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: paginatedLists,
-        meta: {
-          total: paginatedLists.length,
-          limit,
-          offset
-        },
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível carregar as listas de presentes',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {
@@ -345,44 +261,17 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     });
       
     } catch (error) {
-      console.log(`⚠️ Erro gift lists POST: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+      console.log(`⚠️ Erro gift lists POST: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // FALLBACK: Simular criação de gift list
-      const mockNewList = {
-        id: `list-${Date.now()}`,
-        user_id: data.user_id,
-        type: data.type,
-        title: data.title,
-        description: data.description || null,
-        event_date: data.event_date || null,
-        event_location: data.event_location || null,
-        couple_name_1: data.couple_name_1 || null,
-        couple_name_2: data.couple_name_2 || null,
-        baby_name: data.baby_name || null,
-        baby_gender: data.baby_gender || null,
-        cover_image: data.cover_image || null,
-        theme_color: data.theme_color || '#FF69B4',
-        privacy: data.privacy || 'public',
-        allow_partial_contributions: data.allow_partial_contributions !== false,
-        allow_anonymous_contributions: data.allow_anonymous_contributions !== false,
-        minimum_contribution: data.minimum_contribution || 10.00,
-        goal_amount: data.goal_amount || null,
-        expires_at: data.expires_at || null,
-        thank_you_message: data.thank_you_message || null,
-        delivery_address: data.delivery_address || {},
-        settings: data.settings || {},
-        status: 'active',
-        collected_amount: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
+      // Retornar erro ao invés de dados mockados
       return json({
-        success: true,
-        data: mockNewList,
-        message: 'Lista de presentes criada com sucesso!',
-        source: 'fallback'
-      });
+        success: false,
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'Não foi possível criar a lista de presentes',
+          details: 'Por favor, tente novamente em alguns instantes'
+        }
+      }, { status: 503 });
     }
 
   } catch (error) {
