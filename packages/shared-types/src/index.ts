@@ -2,16 +2,32 @@
 export type { 
   AuthUser, 
   UserRole, 
+  UserStatus,
+  Permission,
+  PermissionCategory,
+  SystemPermission,
   AuthLoginRequest, 
-  AuthLoginResponse, 
+  AuthLoginResponse,
+  TwoFactorRequest,
+  PasswordResetRequest,
+  PasswordResetConfirm,
+  UserCreateRequest,
+  UserUpdateRequest,
+  UserListFilters,
+  UserListResponse,
+  PermissionCheckRequest,
+  PermissionCheckResponse,
+  BulkUserAction,
   AuthSession, 
-  RoleSwitchRequest, 
   AuthContext,
-  AdminPermission,
   VendorData,
   AdminData,
-  CustomerData
+  CustomerData,
+  RoleConfig,
+  StatusConfig
 } from './auth/index';
+
+export { USER_ROLES, USER_STATUSES } from './auth/index';
 
 // Tipos básicos existentes (manter compatibilidade)
 export * from './user';

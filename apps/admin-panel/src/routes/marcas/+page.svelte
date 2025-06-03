@@ -598,7 +598,12 @@
 											src={brand.logo_url} 
 											alt={brand.name} 
 											class="h-10 w-10 rounded-lg object-cover mr-3"
-											onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+											onerror={(e) => { 
+												const target = e.target as HTMLImageElement;
+												target.style.display='none'; 
+												const sibling = target.nextElementSibling as HTMLElement;
+												if (sibling) sibling.style.display='flex';
+											}}
 										>
 									{/if}
 									<div class="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center mr-3 {brand.logo_url ? 'hidden' : ''}">
@@ -695,7 +700,12 @@
 										src={brand.logo_url} 
 										alt={brand.name} 
 										class="h-16 w-16 rounded-lg object-cover shadow-sm"
-										onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+										onerror={(e) => { 
+											const target = e.target as HTMLImageElement;
+											target.style.display='none'; 
+											const sibling = target.nextElementSibling as HTMLElement;
+											if (sibling) sibling.style.display='flex';
+										}}
 									>
 								{/if}
 								<div class="h-16 w-16 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-sm {brand.logo_url ? 'hidden' : ''}">
@@ -797,13 +807,13 @@
 		>
 			<h3 class="text-lg font-bold mb-4 text-gray-900">Nova Marca</h3>
 			
-			<form on:submit|preventDefault={createBrand} class="space-y-4">
+			<form onsubmit={(e) => { e.preventDefault(); createBrand(); }} class="space-y-4">
 				<div>
 					<label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
 					<input
 						type="text"
 						bind:value={formData.name}
-						on:input={generateSlug}
+						oninput={generateSlug}
 						required
 						class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 						placeholder="Nome da marca"
@@ -893,7 +903,7 @@
 		>
 			<h3 class="text-lg font-bold mb-4 text-gray-900">Editar Marca</h3>
 			
-			<form on:submit|preventDefault={updateBrand} class="space-y-4">
+			<form onsubmit={(e) => { e.preventDefault(); updateBrand(); }} class="space-y-4">
 				<div>
 					<label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
 					<input
