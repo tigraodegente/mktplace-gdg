@@ -96,13 +96,20 @@ export class Database {
     try {
       if (typeof strings === 'string') {
         // Query simples com string
-        // Se o primeiro valor for um array, espalha ele
+        // Se temos valores, precisa usar sql.unsafe com segundo parâmetro
         if (values.length === 1 && Array.isArray(values[0])) {
-          const result = await sql.unsafe(strings, ...values[0]);
+          // values[0] é o array de parâmetros
+          const result = await sql.unsafe(strings, values[0]);
+          return result as unknown as T[];
+        } else if (values.length > 0) {
+          // valores individuais
+          const result = await sql.unsafe(strings, values);
+          return result as unknown as T[];
+        } else {
+          // sem parâmetros
+          const result = await sql.unsafe(strings);
           return result as unknown as T[];
         }
-        const result = await sql.unsafe(strings, ...values);
-        return result as unknown as T[];
       }
       // Template literal query
       const result = await sql(strings, ...values);
