@@ -763,8 +763,8 @@
 				class="fixed right-0 top-0 h-full w-[1000px] bg-white shadow-2xl z-50 border-l border-gray-200 flex flex-col"
 				transition:fly={{ x: 1000, duration: 300 }}
 			>
-				<!-- Header do Panel (mantendo o degradê verde) -->
-				<div class="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 shadow-lg">
+				<!-- Header do Panel com degradê verde mais visível -->
+				<div class="header-gradient text-white p-6 shadow-lg">
 					<div class="flex items-center justify-between">
 						<div>
 							<h2 class="text-xl font-bold">
@@ -1102,5 +1102,18 @@
 	/* Animações suaves */
 	:global(body) {
 		transition: all 0.3s ease;
+	}
+
+	/* Degradê verde marcante para o header */
+	.header-gradient {
+		background: linear-gradient(135deg, #16a34a 0%, #15803d 50%, #166534 100%);
+		background-size: 200% 200%;
+		animation: gradientShift 4s ease infinite;
+	}
+
+	@keyframes gradientShift {
+		0% { background-position: 0% 50%; }
+		50% { background-position: 100% 50%; }
+		100% { background-position: 0% 50%; }
 	}
 </style> 
