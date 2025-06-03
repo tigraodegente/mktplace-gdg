@@ -153,10 +153,11 @@
 	function handleEnrichmentComplete(result: any) {
 		console.log('Enriquecimento concluído:', result);
 		
-		// Aplicar os dados enriquecidos
-		if (result.enrichedData) {
+		// Verificar se temos dados no resultado
+		const enrichedData = result.data || result.enrichedData || result;
+		
+		if (enrichedData) {
 			// Aplicar dados mantendo campos originais quando necessário
-			const enrichedData = result.enrichedData;
 			
 			// Atualizar apenas campos que foram melhorados
 			if (enrichedData.enhanced_name) formData.name = enrichedData.enhanced_name;
@@ -194,11 +195,24 @@
 			if (enrichedData.stock_location) formData.stock_location = enrichedData.stock_location;
 			
 			// Aplicar sugestões de categoria e marca
-			if (enrichedData.category_suggestion && enrichedData.category_suggestion.category_id) {
-				formData.category_id = enrichedData.category_suggestion.category_id;
+			if (enrichedData.category_suggestion) {
+				// Categoria principal
+				if (enrichedData.category_suggestion.primary_category_id) {
+					formData.category_id = enrichedData.category_suggestion.primary_category_id;
+				}
+				// Guardar categorias relacionadas para uso futuro
+				if (enrichedData.category_suggestion.related_categories) {
+					formData._related_categories = enrichedData.category_suggestion.related_categories;
+				}
 			}
 			if (enrichedData.brand_suggestion && enrichedData.brand_suggestion.brand_id) {
-				formData.brand_id = enrichedData.brand_suggestion.brand_id;
+				// Verificar se o brand_id é um UUID válido
+				const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+				if (uuidRegex.test(enrichedData.brand_suggestion.brand_id)) {
+					formData.brand_id = enrichedData.brand_suggestion.brand_id;
+				} else {
+					console.warn('ID de marca inválido retornado pela IA:', enrichedData.brand_suggestion.brand_id);
+				}
 			}
 			
 			// Guardar informações sobre variações para uso futuro
@@ -206,14 +220,22 @@
 				formData._suggested_variations = enrichedData.suggested_variations;
 			}
 			
+			// Forçar reatividade
+			formData = { ...formData };
+			
 			toast.success('🚀 Produto enriquecido com IA! Revise todas as abas para ver as melhorias.');
+		} else {
+			console.error('Nenhum dado retornado do enriquecimento');
+			toast.error('Erro: Nenhum dado foi retornado pela IA');
 		}
 		
 		showEnrichmentProgress = false;
 		isEnriching = false;
 		
-		// Salvar automaticamente
-		saveProduct();
+		// Salvar automaticamente se tiver dados
+		if (enrichedData) {
+			saveProduct();
+		}
 	}
 	
 	// Callback quando o enriquecimento for cancelado

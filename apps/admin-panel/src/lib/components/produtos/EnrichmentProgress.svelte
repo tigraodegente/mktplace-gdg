@@ -79,6 +79,12 @@
 			// Iniciar enriquecimento real
 			updateStep(1, 'active', 0);
 			
+			console.log('Enviando dados para enriquecimento:', {
+				...productData,
+				fetchCategories: true,
+				fetchBrands: true
+			});
+			
 			const response = await fetch('/api/ai/enrich', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -90,8 +96,12 @@
 				signal: abortController.signal
 			});
 			
+			console.log('Resposta do servidor:', response.status, response.statusText);
+			
 			if (!response.ok) {
-				throw new Error('Erro ao enriquecer produto');
+				const errorData = await response.json();
+				console.error('Erro na resposta:', errorData);
+				throw new Error(errorData.error || 'Erro ao enriquecer produto');
 			}
 			
 			// Simular progresso dos passos restantes
@@ -109,9 +119,10 @@
 			
 			if (!cancelled) {
 				const result = await response.json();
+				console.log('Resultado do enriquecimento:', result);
 				
 				if (result.success) {
-					onComplete(result.data);
+					onComplete(result.data || result);
 				} else if (result.cancelled) {
 					// Foi cancelado pelo usuário, não mostrar erro
 					return;
@@ -245,9 +256,14 @@
 	<!-- Error State -->
 	{#if error}
 		<div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-			<div class="flex items-center gap-2">
-				<ModernIcon name="AlertTriangle" size={20} color="#DC2626" />
-				<p class="text-sm text-red-700">{error}</p>
+			<div class="flex items-start gap-3">
+				<div class="flex-shrink-0">
+					<ModernIcon name="AlertTriangle" size={20} color="#DC2626" />
+				</div>
+				<div class="flex-1">
+					<p class="text-sm text-red-700 font-medium">Erro ao enriquecer produto</p>
+					<p class="text-xs text-red-600 mt-1">{error}</p>
+				</div>
 			</div>
 		</div>
 	{/if}

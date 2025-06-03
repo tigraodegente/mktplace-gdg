@@ -19,6 +19,21 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			}, { status: 500 });
 		}
 		
+		// Testar conexão com a API (apenas em desenvolvimento)
+		if (process.env.NODE_ENV === 'development') {
+			try {
+				console.log('Testando conexão com OpenAI...');
+				const testResponse = await openai.models.list();
+				console.log('Conexão com OpenAI OK');
+			} catch (apiError: any) {
+				console.error('Erro ao conectar com OpenAI:', apiError.message);
+				return json({
+					success: false,
+					error: 'Erro ao conectar com OpenAI. Verifique sua API key.'
+				}, { status: 500 });
+			}
+		}
+		
 		// Obter o signal do AbortController se enviado
 		const signal = request.signal;
 		
@@ -124,12 +139,19 @@ RETORNE EM JSON EXATO com:
   "meta_description": "Meta descrição SEO (máx 160 chars)",
   "meta_keywords": ["palavra", "chave", "seo"],
   "category_suggestion": {
-    "category_id": "ID da categoria mais apropriada",
-    "category_name": "Nome da categoria",
+    "primary_category_id": "ID UUID da categoria principal mais apropriada (APENAS o ID, não o nome)",
+    "primary_category_name": "Nome da categoria principal",
+    "related_categories": [
+      {
+        "category_id": "ID UUID de categoria relacionada",
+        "category_name": "Nome da categoria",
+        "relevance": 0.9
+      }
+    ],
     "confidence": 0.95
   },
   "brand_suggestion": {
-    "brand_id": "ID da marca se identificada",
+    "brand_id": "ID UUID da marca se identificada (APENAS o ID, não o nome) ou null",
     "brand_name": "Nome da marca",
     "confidence": 0.90
   },
@@ -152,10 +174,12 @@ RETORNE EM JSON EXATO com:
   "ncm_code": "Código NCM se aplicável",
   "warranty_period": "Período de garantia",
   "care_instructions": "Instruções de cuidado/uso"
-}`;
+}
+
+IMPORTANTE: Para category_suggestion e brand_suggestion, retorne APENAS os IDs UUID exatos que foram fornecidos na lista acima, NUNCA retorne slugs ou nomes como IDs.`;
 
 		const response = await openai.chat.completions.create({
-			model: 'gpt-4-turbo-preview',
+			model: 'gpt-4o-mini',
 			max_tokens: 2500,
 			temperature: 0.7,
 			messages: [{
@@ -297,7 +321,7 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 		}
 
 		const response = await openai.chat.completions.create({
-			model: 'gpt-4-turbo-preview',
+			model: 'gpt-4o-mini',
 			max_tokens: 1000,
 			temperature: 0.8,
 			messages: [{

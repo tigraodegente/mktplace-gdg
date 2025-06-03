@@ -359,38 +359,56 @@
 		</h4>
 		
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-			<!-- Categoria -->
-			<div>
+			<!-- Categorias (múltiplas) -->
+			<div class="mb-6">
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Categoria *
+					Categorias
+					<span class="text-xs text-gray-500 ml-1">(principal e relacionadas)</span>
 				</label>
-				<div class="flex gap-2">
-					<select
-						bind:value={formData.category_id}
-						required
-						disabled={loading || aiLoading.category}
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
-					>
-						<option value="">Selecione uma categoria</option>
-						{#each categories as category}
-							<option value={category.id}>{category.name}</option>
-						{/each}
-					</select>
-					<button
-						type="button"
-						onclick={() => enrichField('category')}
-						disabled={aiLoading.category || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Identificar categoria com IA"
-					>
-						{#if aiLoading.category}
-							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
-						{/if}
-					</button>
+				
+				<!-- Categoria Principal -->
+				<div class="mb-3">
+					<label class="block text-xs text-gray-600 mb-1">Categoria Principal</label>
+					<div class="flex gap-2">
+						<select
+							bind:value={formData.category_id}
+							class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3]"
+						>
+							<option value="">Selecione uma categoria</option>
+							{#each categories as category}
+								<option value={category.id}>{category.name}</option>
+							{/each}
+						</select>
+						<button
+							type="button"
+							onclick={() => enrichField('category')}
+							disabled={aiLoading.category || !formData.name}
+							class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+							title="Identificar categoria com IA"
+						>
+							<ModernIcon name="robot" size={16} color="white" />
+							IA
+						</button>
+					</div>
 				</div>
+				
+				<!-- Categorias Relacionadas -->
+				{#if formData._related_categories?.length}
+					<div class="mt-3">
+						<p class="text-xs text-gray-600 mb-2">Categorias Relacionadas Sugeridas:</p>
+						<div class="space-y-2">
+							{#each formData._related_categories as relatedCat}
+								<div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm">
+									<span>{relatedCat.category_name}</span>
+									<span class="text-xs text-gray-500">Relevância: {Math.round(relatedCat.relevance * 100)}%</span>
+								</div>
+							{/each}
+						</div>
+						<p class="text-xs text-gray-500 mt-2">
+							💡 Em breve: poderá adicionar o produto a múltiplas categorias
+						</p>
+					</div>
+				{/if}
 			</div>
 			
 			<!-- Marca -->
@@ -401,10 +419,9 @@
 				<div class="flex gap-2">
 					<select
 						bind:value={formData.brand_id}
-						disabled={loading || aiLoading.brand}
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
+						class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3]"
 					>
-						<option value="">Sem marca</option>
+						<option value="">Selecione uma marca</option>
 						{#each brands as brand}
 							<option value={brand.id}>{brand.name}</option>
 						{/each}
@@ -413,17 +430,18 @@
 						type="button"
 						onclick={() => enrichField('brand')}
 						disabled={aiLoading.brand || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Identificar marca com IA"
+						class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+						title="Detectar marca com IA"
 					>
-						{#if aiLoading.brand}
-							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
-						{/if}
+						<ModernIcon name="robot" size={16} color="white" />
+						IA
 					</button>
 				</div>
+				{#if formData.brand && !formData.brand_id}
+					<p class="text-xs text-amber-600 mt-1">
+						⚠️ Marca detectada: "{formData.brand}" - não encontrada no sistema
+					</p>
+				{/if}
 			</div>
 			
 			<!-- Vendedor -->
