@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	
 	let { formData = $bindable() } = $props();
 
@@ -62,6 +63,43 @@
 	function removeDownloadFile(index: number) {
 		formData.download_files = formData.download_files.filter((_: any, i: number) => i !== index);
 	}
+
+	// Estados
+	let activeVariationTab = $state('colors');
+	let showNewVariantModal = $state(false);
+	let newVariant = $state<any>({});
+	let selectedTags = $state<string[]>([]);
+	let availableTags = $state<Array<{id: string, name: string}>>([]);
+
+	// Carregar tags disponíveis
+	async function loadTags() {
+		try {
+			// Por enquanto usar tags mockadas, futuramente buscar da API
+			availableTags = [
+				{ id: '1', name: 'Promoção' },
+				{ id: '2', name: 'Lançamento' },
+				{ id: '3', name: 'Mais Vendido' },
+				{ id: '4', name: 'Exclusivo' },
+				{ id: '5', name: 'Sustentável' },
+				{ id: '6', name: 'Premium' },
+				{ id: '7', name: 'Oferta Limitada' },
+				{ id: '8', name: 'Frete Grátis' }
+			];
+			
+			// Inicializar tags selecionadas
+			if (formData.tags && Array.isArray(formData.tags)) {
+				// Mapear tags de string para IDs (temporário)
+				selectedTags = formData.tags.map((tag, index) => String(index + 1)).slice(0, availableTags.length);
+			}
+		} catch (error) {
+			console.error('Erro ao carregar tags:', error);
+		}
+	}
+	
+	import { onMount } from 'svelte';
+	onMount(() => {
+		loadTags();
+	});
 </script>
 
 <div class="space-y-8">
@@ -767,4 +805,96 @@
 		</div>
 	</div>
 	{/if}
+
+	<!-- TAGS E LABELS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="tag" size={20} color="#00BFB3" />
+			Tags e Rótulos
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Tags do Sistema -->
+			<div>
+				<MultiSelect
+					items={availableTags}
+					selected={selectedTags}
+					onSelectionChange={(selected) => {
+						selectedTags = selected;
+						// Por enquanto, salvar as tags como strings
+						formData.tags = selected.map(id => 
+							availableTags.find(t => t.id === id)?.name || ''
+						).filter(Boolean);
+					}}
+					label="Tags do Sistema"
+					placeholder="Selecione tags..."
+					hierarchical={false}
+					allowMultiple={true}
+				/>
+				<p class="text-xs text-gray-500 mt-2">
+					Tags ajudam a destacar produtos em buscas e filtros
+				</p>
+			</div>
+			
+			<!-- Tags Customizadas -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Tags Customizadas
+					<span class="text-xs text-gray-500 ml-2">Separe por vírgula</span>
+				</label>
+				<input
+					type="text"
+					bind:value={formData.tags_input}
+					onblur={() => {
+						const customTags = formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [];
+						// Mesclar com tags do sistema
+						const systemTags = selectedTags.map(id => 
+							availableTags.find(t => t.id === id)?.name || ''
+						).filter(Boolean);
+						formData.tags = [...new Set([...systemTags, ...customTags])];
+					}}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="oferta, novidade, exclusivo online"
+				/>
+			</div>
+		</div>
+	</div>
+
+	<!-- RELACIONAMENTOS FUTUROS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="link" size={20} color="#00BFB3" />
+			Relacionamentos (Em Breve)
+		</h4>
+		
+		<div class="space-y-4">
+			<div class="p-4 bg-gray-50 rounded-lg">
+				<h5 class="font-medium text-gray-700 mb-2">🛍️ Produtos Relacionados</h5>
+				<p class="text-sm text-gray-600">
+					Vincule produtos complementares, similares ou da mesma coleção
+				</p>
+			</div>
+			
+			<div class="p-4 bg-gray-50 rounded-lg">
+				<h5 class="font-medium text-gray-700 mb-2">🏭 Múltiplos Fornecedores</h5>
+				<p class="text-sm text-gray-600">
+					Gerencie diferentes fornecedores para o mesmo produto
+				</p>
+			</div>
+			
+			<div class="p-4 bg-gray-50 rounded-lg">
+				<h5 class="font-medium text-gray-700 mb-2">🏢 Múltiplos Estoques</h5>
+				<p class="text-sm text-gray-600">
+					Controle estoque em diferentes locais/armazéns
+				</p>
+			</div>
+			
+			<div class="p-4 bg-gray-50 rounded-lg">
+				<h5 class="font-medium text-gray-700 mb-2">🎯 Coleções e Kits</h5>
+				<p class="text-sm text-gray-600">
+					Agrupe produtos em coleções temáticas ou kits promocionais
+				</p>
+			</div>
+		</div>
+	</div>
 </div> 

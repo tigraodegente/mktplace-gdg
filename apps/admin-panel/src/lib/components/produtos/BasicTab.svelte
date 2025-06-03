@@ -1,14 +1,19 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	import { toast } from '$lib/stores/toast';
 	
 	let { formData = $bindable() } = $props();
 	
 	// Estados para seleções
-	let categories = $state<Array<{id: string, name: string}>>([]);
+	let categories = $state<Array<{id: string, name: string, parent_id?: string | null}>>([]);
 	let brands = $state<Array<{id: string, name: string}>>([]);
 	let sellers = $state<Array<{id: string, company_name: string}>>([]);
 	let loading = $state(true);
+	
+	// Estados de categorias múltiplas
+	let selectedCategories = $state<string[]>([]);
+	let primaryCategory = $state<string | null>(null);
 	
 	// Estados de loading para IA
 	let aiLoading = $state({
@@ -61,11 +66,33 @@
 						formData.tags_input = result.data.join(', ');
 						break;
 					case 'category':
-						if (result.data && result.data.category_id) {
-							formData.category_id = result.data.category_id;
-							toast.success(`Categoria identificada: ${result.data.category_name} (${Math.round(result.data.confidence * 100)}% de certeza)`);
+						if (result.data) {
+							// Se tiver categoria principal sugerida
+							if (result.data.primary_category_id) {
+								selectedCategories = [result.data.primary_category_id];
+								primaryCategory = result.data.primary_category_id;
+								formData.category_id = result.data.primary_category_id;
+								formData._selected_categories = [result.data.primary_category_id];
+								
+								// Adicionar categorias relacionadas se houver
+								if (result.data.related_categories) {
+									const relatedIds = result.data.related_categories.map((c: any) => c.category_id);
+									selectedCategories = [...new Set([result.data.primary_category_id, ...relatedIds])];
+									formData._selected_categories = selectedCategories;
+									formData._related_categories = result.data.related_categories;
+								}
+								
+								toast.success(`Categorias identificadas! Principal: ${result.data.primary_category_name}`);
+							} else if (result.data.category_id) {
+								// Formato antigo de resposta
+								selectedCategories = [result.data.category_id];
+								primaryCategory = result.data.category_id;
+								formData.category_id = result.data.category_id;
+								formData._selected_categories = [result.data.category_id];
+								toast.success(`Categoria identificada: ${result.data.category_name} (${Math.round(result.data.confidence * 100)}% de certeza)`);
+							}
 						} else {
-							toast.error('Não foi possível identificar a categoria');
+							toast.error('Não foi possível identificar categorias');
 						}
 						break;
 					case 'brand':
@@ -142,6 +169,20 @@
 	import { onMount } from 'svelte';
 	onMount(() => {
 		loadSelectData();
+	});
+	
+	// Inicializar categorias selecionadas quando carregar dados
+	$effect(() => {
+		if (formData.category_id && !selectedCategories.includes(formData.category_id)) {
+			selectedCategories = [formData.category_id];
+			primaryCategory = formData.category_id;
+		}
+		
+		// Se tiver categorias relacionadas sugeridas, adicionar também
+		if (formData._related_categories) {
+			const relatedIds = formData._related_categories.map((c: any) => c.category_id);
+			selectedCategories = [...new Set([...selectedCategories, ...relatedIds])];
+		}
 	});
 </script>
 
@@ -360,55 +401,46 @@
 		
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 			<!-- Categorias (múltiplas) -->
-			<div class="mb-6">
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Categorias
-					<span class="text-xs text-gray-500 ml-1">(principal e relacionadas)</span>
-				</label>
-				
-				<!-- Categoria Principal -->
-				<div class="mb-3">
-					<label class="block text-xs text-gray-600 mb-1">Categoria Principal</label>
-					<div class="flex gap-2">
-						<select
-							bind:value={formData.category_id}
-							class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3]"
-						>
-							<option value="">Selecione uma categoria</option>
-							{#each categories as category}
-								<option value={category.id}>{category.name}</option>
-							{/each}
-						</select>
-						<button
-							type="button"
-							onclick={() => enrichField('category')}
-							disabled={aiLoading.category || !formData.name}
-							class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-							title="Identificar categoria com IA"
-						>
-							<ModernIcon name="robot" size={16} color="white" />
-							IA
-						</button>
+			<div class="md:col-span-3">
+				<div class="flex items-start gap-2">
+					<div class="flex-1">
+						<MultiSelect
+							items={categories}
+							selected={selectedCategories}
+							onSelectionChange={(selected) => {
+								selectedCategories = selected;
+								// Atualizar formData com a categoria principal
+								formData.category_id = primaryCategory || selected[0] || null;
+								// Guardar todas as categorias selecionadas para uso futuro
+								formData._selected_categories = selected;
+							}}
+							primarySelection={primaryCategory}
+							onPrimaryChange={(id) => {
+								primaryCategory = id;
+								formData.category_id = id;
+							}}
+							label="Categorias"
+							placeholder="Selecione as categorias..."
+							hierarchical={true}
+							allowMultiple={true}
+						/>
+						{#if selectedCategories.length > 0 && !primaryCategory}
+							<p class="text-xs text-amber-600 mt-1">
+								⚠️ Selecione uma categoria principal clicando em "Definir"
+							</p>
+						{/if}
 					</div>
+					<button
+						type="button"
+						onclick={() => enrichField('category')}
+						disabled={aiLoading.category || !formData.name}
+						class="mt-8 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+						title="Identificar categorias com IA"
+					>
+						<ModernIcon name="robot" size={16} color="white" />
+						IA
+					</button>
 				</div>
-				
-				<!-- Categorias Relacionadas -->
-				{#if formData._related_categories?.length}
-					<div class="mt-3">
-						<p class="text-xs text-gray-600 mb-2">Categorias Relacionadas Sugeridas:</p>
-						<div class="space-y-2">
-							{#each formData._related_categories as relatedCat}
-								<div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm">
-									<span>{relatedCat.category_name}</span>
-									<span class="text-xs text-gray-500">Relevância: {Math.round(relatedCat.relevance * 100)}%</span>
-								</div>
-							{/each}
-						</div>
-						<p class="text-xs text-gray-500 mt-2">
-							💡 Em breve: poderá adicionar o produto a múltiplas categorias
-						</p>
-					</div>
-				{/if}
 			</div>
 			
 			<!-- Marca -->
