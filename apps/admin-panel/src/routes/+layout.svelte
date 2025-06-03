@@ -21,6 +21,19 @@
 		icon: string;
 		roles: ('admin' | 'vendor')[];
 		badge?: number;
+		badgeKey?: string;
+	}
+	
+	interface MenuStats {
+		products: { total: number; active: number; pending: number };
+		orders: { total: number; pending: number };
+		users: { total: number; customers: number; vendors: number };
+		reviews: { total: number; pending: number };
+		returns: { total: number; pending: number };
+		coupons: { total: number; active: number };
+		categories: { total: number; active: number };
+		pages: { total: number; published: number };
+		wishlists: { total: number; public: number };
 	}
 	
 	// Props & Estado
@@ -32,39 +45,63 @@
 	let isUserMenuOpen = $state(false);
 	let isMobileMenuOpen = $state(false);
 	let currentPath = $state('');
+	let menuStats = $state<MenuStats | null>(null);
 	
-	// Menu items com roles
-	const menuItems: MenuItem[] = [
+	// Menu items com roles e mapeamento para estatísticas
+	const baseMenuItems: MenuItem[] = [
 		// Principal
 		{ label: 'Dashboard', href: '/', icon: '🏠', roles: ['admin', 'vendor'] },
 		
 		// E-commerce
-		{ label: 'Produtos', href: '/produtos', icon: '📦', roles: ['admin', 'vendor'], badge: 3 },
-		{ label: 'Pedidos', href: '/pedidos', icon: '📋', roles: ['admin', 'vendor'], badge: 7 },
-		{ label: 'Categorias', href: '/categorias', icon: '📁', roles: ['admin'] },
-		{ label: 'Cupons', href: '/cupons', icon: '🎟️', roles: ['admin', 'vendor'] },
+		{ label: 'Produtos', href: '/produtos', icon: '📦', roles: ['admin', 'vendor'], badgeKey: 'products.total' },
+		{ label: 'Pedidos', href: '/pedidos', icon: '📋', roles: ['admin', 'vendor'], badgeKey: 'orders.pending' },
+		{ label: 'Categorias', href: '/categorias', icon: '📁', roles: ['admin'], badgeKey: 'categories.active' },
+		{ label: 'Marcas', href: '/marcas', icon: '🏷️', roles: ['admin'], badgeKey: 'brands.total' },
+		{ label: 'Cupons', href: '/cupons', icon: '🎟️', roles: ['admin', 'vendor'], badgeKey: 'coupons.active' },
 		
-		// Clientes
+		// Clientes e Vendedores
 		{ label: 'Usuários', href: '/usuarios', icon: '👥', roles: ['admin'] },
-		{ label: 'Avaliações', href: '/avaliacoes', icon: '⭐', roles: ['admin', 'vendor'], badge: 5 },
-		{ label: 'Listas de Presentes', href: '/listas-presentes', icon: '🎁', roles: ['admin'] },
+		{ label: 'Vendedores', href: '/vendedores', icon: '🏪', roles: ['admin'], badgeKey: 'sellers.total' },
+		{ label: 'Avaliações', href: '/avaliacoes', icon: '⭐', roles: ['admin', 'vendor'], badgeKey: 'reviews.total' },
+		{ label: 'Listas de Presentes', href: '/listas-presentes', icon: '🎁', roles: ['admin'], badgeKey: 'wishlists.total' },
 		
-		// Operações
-		{ label: 'Devoluções', href: '/devolucoes', icon: '📦', roles: ['admin', 'vendor'], badge: 2 },
+		// Vendas e Entregas
+		{ label: 'Devoluções', href: '/devolucoes', icon: '📦', roles: ['admin', 'vendor'], badgeKey: 'returns.pending' },
 		{ label: 'Frete', href: '/frete', icon: '🚚', roles: ['admin'] },
 		
-		// Gestão
-		{ label: 'Financeiro', href: '/financeiro', icon: '💰', roles: ['admin', 'vendor'] },
-		{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin', 'vendor'] },
+		// Financeiro e Pagamento
+		{ label: 'Financeiro', href: '/financeiro', icon: '💰', roles: ['admin'] },
+		{ label: 'Métodos de Pagamento', href: '/metodos-pagamento', icon: '💳', roles: ['admin'], badgeKey: 'payment_methods.total' },
+		
+		// Análises
+		{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin'] },
 		
 		// Sistema
 		{ label: 'Integrações', href: '/integracoes', icon: '🔗', roles: ['admin'] },
-		{ label: 'Páginas', href: '/paginas', icon: '📄', roles: ['admin'] },
-		{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin', 'vendor'] }
+		{ label: 'Páginas', href: '/paginas', icon: '📄', roles: ['admin'], badgeKey: 'pages.total' },
+		{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin'] }
 	];
 	
+	// Função para obter valor de estatística usando dot notation
+	function getStatValue(stats: MenuStats, path: string): number {
+		const keys = path.split('.');
+		let value: any = stats;
+		for (const key of keys) {
+			value = value?.[key];
+		}
+		return typeof value === 'number' ? value : 0;
+	}
+	
+	// Menu items com badges dinâmicos
+	const menuItems = $derived(() => {
+		return baseMenuItems.map(item => ({
+			...item,
+			badge: item.badgeKey && menuStats ? getStatValue(menuStats, item.badgeKey) : undefined
+		}));
+	});
+	
 	// Filtrar menu items baseado no role
-	const filteredMenuItems = $derived(user ? menuItems.filter(item => item.roles.includes(user!.role)) : []);
+	const filteredMenuItems = $derived(user ? menuItems().filter(item => item.roles.includes(user!.role)) : []);
 	
 	// Atualizar path atual
 	$effect(() => {
@@ -73,6 +110,23 @@
 	
 	// Verificar se está na página de login
 	const isLoginPage = $derived(currentPath === '/login');
+	
+	// Função para carregar estatísticas do menu
+	async function loadMenuStats() {
+		try {
+			const response = await fetch('/api/menu-stats');
+			const result = await response.json();
+			
+			if (result.success) {
+				menuStats = result.data;
+				console.log('📊 Estatísticas do menu carregadas:', menuStats);
+			} else {
+				console.error('❌ Erro ao carregar estatísticas:', result.error);
+			}
+		} catch (error) {
+			console.error('❌ Erro na requisição de estatísticas:', error);
+		}
+	}
 	
 	// Lifecycle
 	onMount(() => {
@@ -99,6 +153,9 @@
 			}
 			
 			isLoading = false;
+			
+			// Carregar estatísticas do menu após carregar usuário
+			loadMenuStats();
 		}, 500);
 		
 		// Fechar menus ao clicar fora
@@ -139,6 +196,16 @@
 	function isActiveRoute(href: string): boolean {
 		if (href === '/') return currentPath === href;
 		return currentPath.startsWith(href);
+	}
+	
+	// Função para formatar números do badge  
+	function formatBadgeNumber(num: number): string {
+		if (num >= 1000000) {
+			return (num / 1000000).toFixed(1).replace('.0', '') + 'M';
+		} else if (num >= 1000) {
+			return (num / 1000).toFixed(1).replace('.0', '') + 'K';
+		}
+		return num.toString();
 	}
 </script>
 
@@ -281,9 +348,9 @@
 						<span class="text-xl flex-shrink-0">{item.icon}</span>
 						{#if isSidebarOpen}
 							<span class="font-medium" transition:fade={{ duration: 200 }}>{item.label}</span>
-							{#if item.badge}
+							{#if item.badge && item.badge > 0}
 								<span class="ml-auto badge badge-primary" transition:scale={{ duration: 200 }}>
-									{item.badge}
+									{formatBadgeNumber(item.badge)}
 								</span>
 							{/if}
 						{/if}
@@ -338,9 +405,9 @@
 							>
 								<span class="text-xl">{item.icon}</span>
 								<span class="font-medium">{item.label}</span>
-								{#if item.badge}
+								{#if item.badge && item.badge > 0}
 									<span class="ml-auto badge badge-primary">
-										{item.badge}
+										{formatBadgeNumber(item.badge)}
 									</span>
 								{/if}
 							</a>
