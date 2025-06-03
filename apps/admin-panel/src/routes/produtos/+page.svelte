@@ -485,7 +485,7 @@
 	<!-- Container principal com slide panel -->
 	<div class="flex h-screen pt-0">
 		<!-- Conteúdo principal -->
-		<div class="flex-1 transition-all duration-300 {showSlidePanel ? 'mr-[800px]' : 'mr-0'}">
+		<div class="flex-1 transition-all duration-300 {showSlidePanel ? 'mr-[1000px]' : 'mr-0'}">
 			<!-- Estatísticas -->
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 				<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -760,8 +760,8 @@
 		<!-- Slide Panel -->
 		{#if showSlidePanel}
 			<div 
-				class="fixed right-0 top-0 h-full w-[800px] bg-white shadow-2xl z-50 border-l border-gray-200 flex flex-col"
-				transition:fly={{ x: 800, duration: 300 }}
+				class="fixed right-0 top-0 h-full w-[1000px] bg-white shadow-2xl z-50 border-l border-gray-200 flex flex-col"
+				transition:fly={{ x: 1000, duration: 300 }}
 			>
 				<!-- Header do Panel (mantendo o degradê verde) -->
 				<div class="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 shadow-lg">
@@ -803,7 +803,7 @@
 				</div>
 
 				<!-- Conteúdo Scrollável -->
-				<div class="flex-1 overflow-y-auto p-6">
+				<div class="flex-1 overflow-y-auto p-8">
 					{#if activeTab === 'basic'}
 						<div class="space-y-6">
 							<h3 class="text-lg font-medium text-gray-900 mb-4">Informações Básicas</h3>
