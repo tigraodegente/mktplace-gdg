@@ -6,6 +6,7 @@
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
 	import SeoTab from '$lib/components/produtos/SeoTab.svelte';
 	import AdvancedTab from '$lib/components/produtos/AdvancedTab.svelte';
+	import { toast } from '$lib/stores/toast';
 	
 	// Estados
 	let saving = $state(false);
@@ -121,15 +122,15 @@
 			
 			if (response.ok) {
 				const data = await response.json();
-				alert('Produto criado com sucesso!');
+				toast.success('Produto criado com sucesso!');
 				goto(`/produtos/${data.data.id}`);
 			} else {
 				const error = await response.json();
-				alert(error.message || 'Erro ao criar produto');
+				toast.error(error.message || 'Erro ao criar produto');
 			}
 		} catch (error) {
 			console.error('Erro:', error);
-			alert('Erro ao criar produto');
+			toast.error('Erro ao criar produto');
 		} finally {
 			saving = false;
 		}
