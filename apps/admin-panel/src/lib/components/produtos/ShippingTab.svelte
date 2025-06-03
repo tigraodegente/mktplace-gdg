@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import { toast } from '$lib/stores/toast';
 	
 	let { formData = $bindable() } = $props();
 	
@@ -34,6 +35,58 @@
 		{ sigla: 'TO', nome: 'Tocantins' }
 	];
 	
+	// Estados de loading para IA
+	let aiLoading = $state({
+		weight: false,
+		dimensions: false
+	});
+	
+	// Função de enriquecimento com IA
+	async function enrichField(field: string) {
+		aiLoading[field] = true;
+		
+		try {
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					field,
+					currentData: formData,
+					category: formData.category_name
+				})
+			});
+			
+			if (!response.ok) throw new Error('Erro na resposta da API');
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				// Aplicar o resultado ao campo específico
+				switch (field) {
+					case 'weight':
+						formData.weight = parseFloat(result.data) || 0;
+						toast.success(`Peso estimado: ${result.data}kg`);
+						break;
+					case 'dimensions':
+						if (result.data) {
+							formData.height = parseFloat(result.data.height) || 0;
+							formData.width = parseFloat(result.data.width) || 0;
+							formData.length = parseFloat(result.data.length) || 0;
+							toast.success('Dimensões estimadas com base no produto!');
+						}
+						break;
+				}
+			} else {
+				toast.error('Erro ao enriquecer com IA');
+			}
+		} catch (error) {
+			console.error('Erro:', error);
+			toast.error('Erro ao conectar com o serviço de IA');
+		} finally {
+			aiLoading[field] = false;
+		}
+	}
+	
 	// Calcular volume
 	let volume = $derived(
 		formData.width && formData.height && formData.length 
@@ -50,74 +103,97 @@
 			Dimensões e Peso
 		</h4>
 		
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<!-- Peso -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Peso (kg)
+					⚖️ Peso (kg) *
 				</label>
-				<input
-					type="number"
-					bind:value={formData.weight}
-					step="0.001"
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="0,000"
-				/>
+				<div class="flex gap-2">
+					<input
+						type="number"
+						bind:value={formData.weight}
+						step="0.1"
+						min="0"
+						required
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="0.5"
+					/>
+					<button
+						type="button"
+						onclick={() => enrichField('weight')}
+						disabled={aiLoading.weight || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Estimar peso com IA"
+					>
+						{#if aiLoading.weight}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
+						{/if}
+					</button>
+				</div>
 			</div>
 			
-			<!-- Comprimento -->
+			<!-- Dimensões -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Comprimento (cm)
+					📐 Dimensões (cm)
 				</label>
-				<input
-					type="number"
-					bind:value={formData.length}
-					step="0.01"
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="0,00"
-				/>
-			</div>
-			
-			<!-- Largura -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Largura (cm)
-				</label>
-				<input
-					type="number"
-					bind:value={formData.width}
-					step="0.01"
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="0,00"
-				/>
-			</div>
-			
-			<!-- Altura -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Altura (cm)
-				</label>
-				<input
-					type="number"
-					bind:value={formData.height}
-					step="0.01"
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="0,00"
-				/>
+				<div class="space-y-2">
+					<div class="grid grid-cols-3 gap-2">
+						<input
+							type="number"
+							bind:value={formData.height}
+							step="1"
+							min="0"
+							class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors text-sm"
+							placeholder="Altura"
+						/>
+						<input
+							type="number"
+							bind:value={formData.width}
+							step="1"
+							min="0"
+							class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors text-sm"
+							placeholder="Largura"
+						/>
+						<input
+							type="number"
+							bind:value={formData.length}
+							step="1"
+							min="0"
+							class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors text-sm"
+							placeholder="Compr."
+						/>
+					</div>
+					<button
+						type="button"
+						onclick={() => enrichField('dimensions')}
+						disabled={aiLoading.dimensions || !formData.name}
+						class="w-full px-3 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+						title="Estimar dimensões com IA"
+					>
+						{#if aiLoading.dimensions}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={16} color="white" />
+							<span class="text-sm font-medium">Estimar com IA</span>
+						{/if}
+					</button>
+				</div>
 			</div>
 		</div>
 		
-		<!-- Cálculo de Volume -->
-		{#if volume}
+		<!-- Cálculo de volume -->
+		{#if formData.height && formData.width && formData.length}
 			<div class="mt-4 p-4 bg-gray-50 rounded-lg">
 				<div class="flex items-center justify-between">
-					<span class="text-sm text-gray-600">Volume Calculado:</span>
-					<span class="font-semibold text-gray-900">{volume} m³</span>
+					<span class="text-sm text-gray-600">Volume:</span>
+					<span class="font-semibold text-gray-900">
+						{((formData.height * formData.width * formData.length) / 1000000).toFixed(3)} m³
+					</span>
 				</div>
 			</div>
 		{/if}

@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import EnrichmentProgress from '$lib/components/shared/EnrichmentProgress.svelte';
 	import BasicTab from '$lib/components/produtos/BasicTab.svelte';
 	import MediaTab from '$lib/components/produtos/MediaTab.svelte';
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
@@ -18,6 +19,7 @@
 	let formData = $state<any>({});
 	let productId = $derived($page.params.id);
 	let enriching = $state(false);
+	let showEnrichmentProgress = $state(false);
 	
 	// Tabs disponíveis
 	const tabs = [
@@ -31,6 +33,7 @@
 	// Enriquecer produto completo com IA
 	async function enrichCompleteProduct() {
 		enriching = true;
+		showEnrichmentProgress = true;
 		try {
 			const response = await fetch('/api/ai/enrich', {
 				method: 'POST',
@@ -85,6 +88,19 @@
 				if (enrichedData.cost) formData.cost = enrichedData.cost;
 				if (enrichedData.stock_location) formData.stock_location = enrichedData.stock_location;
 				
+				// Aplicar sugestões de categoria e marca
+				if (enrichedData.category_suggestion && enrichedData.category_suggestion.category_id) {
+					formData.category_id = enrichedData.category_suggestion.category_id;
+				}
+				if (enrichedData.brand_suggestion && enrichedData.brand_suggestion.brand_id) {
+					formData.brand_id = enrichedData.brand_suggestion.brand_id;
+				}
+				
+				// Guardar informações sobre variações para uso futuro
+				if (enrichedData.has_variations) {
+					formData._suggested_variations = enrichedData.suggested_variations;
+				}
+				
 				toast.success('🚀 Produto enriquecido com IA! Revise todas as abas para ver as melhorias.');
 			} else {
 				toast.error('Erro ao enriquecer produto');
@@ -94,6 +110,10 @@
 			toast.error('Erro ao conectar com o serviço de IA');
 		} finally {
 			enriching = false;
+			// Manter o loading por mais um pouco para completar a animação
+			setTimeout(() => {
+				showEnrichmentProgress = false;
+			}, 1000);
 		}
 	}
 	
@@ -206,6 +226,9 @@
 		loadProduct();
 	});
 </script>
+
+<!-- Componente de progresso de enriquecimento -->
+<EnrichmentProgress show={showEnrichmentProgress} />
 
 <div class="min-h-screen bg-gray-50">
 	<!-- Header -->

@@ -1,22 +1,24 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import OpenAI from 'openai';
+import { OPENAI_API_KEY } from '$env/static/private';
+import { getDatabase } from '$lib/db';
 
 const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY
+	apiKey: OPENAI_API_KEY
 });
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
 		const { field, prompt, currentData, category, action } = await request.json();
 		
 		// Verificar se é ação de enriquecimento completo
 		if (action === 'enrich_all') {
-			return await enrichCompleteProduct(currentData, category);
+			return await enrichCompleteProduct(currentData, category, platform);
 		}
 		
 		// Enriquecimento de campo específico
-		return await enrichSpecificField(field, prompt, currentData, category);
+		return await enrichSpecificField(field, prompt, currentData, category, platform);
 		
 	} catch (error) {
 		console.error('Erro no enriquecimento IA:', error);
@@ -27,23 +29,38 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 };
 
-async function enrichCompleteProduct(currentData: any, category?: string) {
+async function enrichCompleteProduct(currentData: any, category?: string, platform?: any) {
 	try {
+		// Buscar categorias e marcas disponíveis
+		const db = getDatabase(platform);
+		const [categories, brands] = await Promise.all([
+			db.query`SELECT id, name, slug FROM categories WHERE is_active = true`,
+			db.query`SELECT id, name, slug FROM brands WHERE is_active = true`
+		]);
+		await db.close();
+
 		const prompt = `Você é um especialista em e-commerce brasileiro. Crie um produto COMPLETO e PROFISSIONAL baseado nos dados básicos fornecidos.
 
 DADOS ATUAIS:
 - Nome: "${currentData.name || 'Produto sem nome'}"
 - Preço: R$ ${currentData.price || 0}
-- Categoria: ${category || 'Geral'}
-- Marca: ${currentData.brand || 'Genérica'}
+- Categoria atual: ${category || 'Nenhuma'}
+- Marca atual: ${currentData.brand || 'Nenhuma'}
 - Descrição atual: "${currentData.description || 'Sem descrição'}"
+
+CATEGORIAS DISPONÍVEIS:
+${categories.map((c: any) => `- ${c.name} (ID: ${c.id})`).join('\n')}
+
+MARCAS DISPONÍVEIS:
+${brands.map((b: any) => `- ${b.name} (ID: ${b.id})`).join('\n')}
 
 IMPORTANTE:
 - Seja NATURAL e PROFISSIONAL
 - EVITE clichês como "destaca-se", "além disso", "portanto"
 - Varie o vocabulário e estrutura
 - Use dados REALISTAS e específicos
-- Pense como um vendedor experiente
+- Identifique a categoria e marca mais apropriadas
+- Sugira variações se o produto normalmente as tem (cores, tamanhos, etc)
 
 RETORNE EM JSON EXATO com:
 
@@ -53,7 +70,6 @@ RETORNE EM JSON EXATO com:
   "sku": "SKU único profissional",
   "description": "Descrição completa 300-400 palavras",
   "short_description": "Resumo atrativo 150 chars",
-  "brand_suggestion": "Marca sugerida se não fornecida",
   "model": "Modelo específico do produto",
   "condition": "new",
   "cost": "Custo sugerido (70% do preço)",
@@ -68,35 +84,40 @@ RETORNE EM JSON EXATO com:
   "meta_title": "Título SEO (máx 60 chars)",
   "meta_description": "Meta descrição SEO (máx 160 chars)",
   "meta_keywords": ["palavra", "chave", "seo"],
-  "attributes": {
-    "cor": "Cor principal",
-    "material": "Material predominante",
-    "garantia": "Tempo de garantia",
-    "origem": "País/região de origem"
+  "category_suggestion": {
+    "category_id": "ID da categoria mais apropriada",
+    "category_name": "Nome da categoria",
+    "confidence": 0.95
   },
-  "specifications": {
-    "tecnicas": {
-      "especificacao1": "valor1",
-      "especificacao2": "valor2"
+  "brand_suggestion": {
+    "brand_id": "ID da marca se identificada",
+    "brand_name": "Nome da marca",
+    "confidence": 0.90
+  },
+  "has_variations": true,
+  "suggested_variations": [
+    {
+      "type": "Cor",
+      "options": ["Preto", "Branco", "Azul"]
     },
-    "gerais": {
-      "peso_bruto": "valor",
-      "dimensoes_embalagem": "valor"
+    {
+      "type": "Tamanho",
+      "options": ["P", "M", "G", "GG"]
     }
-  },
+  ],
   "delivery_days": "Prazo médio",
   "delivery_days_min": "Prazo mínimo",
   "delivery_days_max": "Prazo máximo",
-  "has_free_shipping": true,
-  "featured": false,
-  "stock_location": "Local sugerido",
-  "track_inventory": true,
-  "allow_backorder": false
+  "has_free_shipping": false,
+  "stock_location": "Local sugerido no estoque",
+  "ncm_code": "Código NCM se aplicável",
+  "warranty_period": "Período de garantia",
+  "care_instructions": "Instruções de cuidado/uso"
 }`;
 
 		const response = await openai.chat.completions.create({
 			model: 'gpt-4-turbo-preview',
-			max_tokens: 2000,
+			max_tokens: 2500,
 			temperature: 0.7,
 			messages: [{
 				role: 'user',
@@ -128,11 +149,44 @@ RETORNE EM JSON EXATO com:
 	}
 }
 
-async function enrichSpecificField(field: string, prompt: string, currentData: any, category?: string) {
+async function enrichSpecificField(field: string, prompt: string, currentData: any, category?: string, platform?: any) {
 	try {
 		let specificPrompt = '';
 		
 		switch (field) {
+			case 'category':
+				const db = getDatabase(platform);
+				const categories = await db.query`SELECT id, name, slug FROM categories WHERE is_active = true`;
+				await db.close();
+				
+				specificPrompt = `Analise este produto e sugira a categoria mais apropriada:
+Nome: "${currentData.name}"
+Descrição: "${currentData.description || 'N/A'}"
+Tags: ${currentData.tags?.join(', ') || 'N/A'}
+
+CATEGORIAS DISPONÍVEIS:
+${categories.map((c: any) => `- ${c.name} (ID: ${c.id})`).join('\n')}
+
+Retorne APENAS um JSON: {"category_id": "id-escolhido", "category_name": "nome", "confidence": 0.95}`;
+				break;
+				
+			case 'brand':
+				const db2 = getDatabase(platform);
+				const brands = await db2.query`SELECT id, name, slug FROM brands WHERE is_active = true`;
+				await db2.close();
+				
+				specificPrompt = `Identifique a marca deste produto:
+Nome: "${currentData.name}"
+Descrição: "${currentData.description || 'N/A'}"
+SKU: "${currentData.sku || 'N/A'}"
+
+MARCAS DISPONÍVEIS:
+${brands.map((b: any) => `- ${b.name} (ID: ${b.id})`).join('\n')}
+
+Se não identificar nenhuma marca conhecida, retorne null.
+Retorne APENAS um JSON: {"brand_id": "id-ou-null", "brand_name": "nome-ou-null", "confidence": 0.90}`;
+				break;
+				
 			case 'name':
 				specificPrompt = `Melhore este nome de produto para ser mais atrativo e vendável: "${currentData.name}". Categoria: ${category}. Seja direto e objetivo, sem explicações. Retorne apenas o nome melhorado.`;
 				break;
@@ -169,12 +223,16 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 				specificPrompt = `Gere um SKU único e profissional para: "${currentData.name}". Categoria: ${category}. Use formato: CategoriaCode + DescriçãoCode + Números. Retorne apenas o SKU.`;
 				break;
 				
-			case 'slug':
-				specificPrompt = `Crie uma URL amigável (slug) para: "${currentData.name}". Use apenas letras minúsculas, números e hífens. Seja conciso. Retorne apenas o slug.`;
-				break;
-				
 			case 'short_description':
 				specificPrompt = `Crie uma descrição curta (máximo 150 caracteres) atrativa para: "${currentData.name}". Foque no principal benefício. Retorne apenas a descrição curta.`;
+				break;
+				
+			case 'weight':
+				specificPrompt = `Estime o peso em kg para este produto: "${currentData.name}". Categoria: ${category}. Considere embalagem. Retorne apenas o número (ex: 0.5).`;
+				break;
+				
+			case 'dimensions':
+				specificPrompt = `Estime as dimensões (altura, largura, comprimento em cm) para: "${currentData.name}". Retorne JSON: {"height": 10, "width": 20, "length": 30}`;
 				break;
 				
 			default:
@@ -204,6 +262,8 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 				// Se não for JSON válido, dividir por vírgula
 				processedData = aiResponse.split(',').map(tag => tag.trim().replace(/"/g, ''));
 			}
+		} else if (field === 'category' || field === 'brand' || field === 'dimensions') {
+			processedData = JSON.parse(aiResponse);
 		}
 
 		return json({

@@ -36,7 +36,7 @@
 		colorClass = color; // Assumir que é uma classe Tailwind
 	}
 	
-	const classes = `${sizeClass} ${colorClass} ${className}`.trim();
+	const classes = `${sizeClass} ${colorClass} ${className} inline-block`.trim();
 	
 	// Debug para verificar ícone
 	if (!iconSvg) {
@@ -48,7 +48,7 @@
 	{#if typeof size === 'number'}
 		<div 
 			class={classes}
-			style="width: {size}px; height: {size}px; color: {color.startsWith('#') || color.startsWith('rgb') ? color : ''}"
+			style="width: {size}px; height: {size}px; min-width: {size}px; min-height: {size}px; color: {color.startsWith('#') || color.startsWith('rgb') ? color : 'inherit'}"
 			{title}
 		>
 			{@html iconSvg}
@@ -56,17 +56,32 @@
 	{:else}
 		<div 
 			class={classes}
-			style="color: {color.startsWith('#') || color.startsWith('rgb') ? color : ''}"
+			style="color: {color.startsWith('#') || color.startsWith('rgb') ? color : 'inherit'}"
 			{title}
 		>
 			{@html iconSvg}
 		</div>
 	{/if}
 {:else}
-	<div class="{sizeClass} {className}" title="Ícone não encontrado: {name}">
+	<div class="{sizeClass} {className} inline-block" title="Ícone não encontrado: {name}">
 		<!-- Ícone de fallback -->
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 		</svg>
 	</div>
-{/if} 
+{/if}
+
+<style>
+	div {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+	
+	div :global(svg) {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+</style> 

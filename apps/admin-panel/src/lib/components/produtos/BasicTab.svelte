@@ -16,7 +16,9 @@
 		description: false,
 		shortDescription: false,
 		sku: false,
-		tags: false
+		tags: false,
+		category: false,
+		brand: false
 	});
 	
 	// Função de enriquecimento com IA
@@ -58,6 +60,22 @@
 						formData.tags = result.data;
 						formData.tags_input = result.data.join(', ');
 						break;
+					case 'category':
+						if (result.data && result.data.category_id) {
+							formData.category_id = result.data.category_id;
+							toast.success(`Categoria identificada: ${result.data.category_name} (${Math.round(result.data.confidence * 100)}% de certeza)`);
+						} else {
+							toast.error('Não foi possível identificar a categoria');
+						}
+						break;
+					case 'brand':
+						if (result.data && result.data.brand_id) {
+							formData.brand_id = result.data.brand_id;
+							toast.success(`Marca identificada: ${result.data.brand_name} (${Math.round(result.data.confidence * 100)}% de certeza)`);
+						} else {
+							toast.info('Nenhuma marca conhecida foi identificada');
+						}
+						break;
 				}
 				
 				toast.success(`${field === 'short_description' ? 'Descrição curta' : field.charAt(0).toUpperCase() + field.slice(1)} enriquecido com IA!`);
@@ -97,21 +115,21 @@
 			const catResponse = await fetch('/api/categories');
 			if (catResponse.ok) {
 				const catData = await catResponse.json();
-				categories = catData.data || [];
+				categories = catData.data?.categories || catData.data || [];
 			}
 			
 			// Carregar marcas
 			const brandResponse = await fetch('/api/brands');
 			if (brandResponse.ok) {
 				const brandData = await brandResponse.json();
-				brands = brandData.data || [];
+				brands = brandData.data?.brands || brandData.data || [];
 			}
 			
 			// Carregar vendedores
 			const sellerResponse = await fetch('/api/sellers');
 			if (sellerResponse.ok) {
 				const sellerData = await sellerResponse.json();
-				sellers = sellerData.data || [];
+				sellers = sellerData.data?.sellers || sellerData.data || [];
 			}
 		} catch (error) {
 			console.error('Erro ao carregar dados:', error);
@@ -153,13 +171,14 @@
 						type="button"
 						onclick={() => enrichField('name')}
 						disabled={aiLoading.name || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Melhorar com IA"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Melhorar nome do produto com IA"
 					>
 						{#if aiLoading.name}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} />
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
 						{/if}
 					</button>
 				</div>
@@ -206,13 +225,14 @@
 						type="button"
 						onclick={() => enrichField('sku')}
 						disabled={aiLoading.sku || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Gerar com IA"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Gerar SKU com IA"
 					>
 						{#if aiLoading.sku}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} />
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
 						{/if}
 					</button>
 				</div>
@@ -286,13 +306,14 @@
 						type="button"
 						onclick={() => enrichField('short_description')}
 						disabled={aiLoading.shortDescription || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Gerar com IA"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Gerar descrição curta com IA"
 					>
 						{#if aiLoading.shortDescription}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} />
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
 						{/if}
 					</button>
 				</div>
@@ -315,13 +336,14 @@
 						type="button"
 						onclick={() => enrichField('description')}
 						disabled={aiLoading.description || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Gerar com IA"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Gerar descrição completa com IA"
 					>
 						{#if aiLoading.description}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} />
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
 						{/if}
 					</button>
 				</div>
@@ -342,17 +364,33 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Categoria *
 				</label>
-				<select
-					bind:value={formData.category_id}
-					required
-					disabled={loading}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
-				>
-					<option value="">Selecione uma categoria</option>
-					{#each categories as category}
-						<option value={category.id}>{category.name}</option>
-					{/each}
-				</select>
+				<div class="flex gap-2">
+					<select
+						bind:value={formData.category_id}
+						required
+						disabled={loading || aiLoading.category}
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
+					>
+						<option value="">Selecione uma categoria</option>
+						{#each categories as category}
+							<option value={category.id}>{category.name}</option>
+						{/each}
+					</select>
+					<button
+						type="button"
+						onclick={() => enrichField('category')}
+						disabled={aiLoading.category || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Identificar categoria com IA"
+					>
+						{#if aiLoading.category}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Marca -->
@@ -360,16 +398,32 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Marca
 				</label>
-				<select
-					bind:value={formData.brand_id}
-					disabled={loading}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
-				>
-					<option value="">Sem marca</option>
-					{#each brands as brand}
-						<option value={brand.id}>{brand.name}</option>
-					{/each}
-				</select>
+				<div class="flex gap-2">
+					<select
+						bind:value={formData.brand_id}
+						disabled={loading || aiLoading.brand}
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
+					>
+						<option value="">Sem marca</option>
+						{#each brands as brand}
+							<option value={brand.id}>{brand.name}</option>
+						{/each}
+					</select>
+					<button
+						type="button"
+						onclick={() => enrichField('brand')}
+						disabled={aiLoading.brand || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Identificar marca com IA"
+					>
+						{#if aiLoading.brand}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Vendedor -->
@@ -409,13 +463,14 @@
 					type="button"
 					onclick={() => enrichField('tags')}
 					disabled={aiLoading.tags || !formData.name}
-					class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-					title="Gerar tags com IA"
+					class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+					title="Gerar tags relevantes com IA"
 				>
 					{#if aiLoading.tags}
 						<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 					{:else}
-						<ModernIcon name="robot" size={20} />
+						<ModernIcon name="robot" size={20} color="white" />
+						<span class="text-sm font-medium">IA</span>
 					{/if}
 				</button>
 			</div>

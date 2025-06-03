@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	
 	let { formData = $bindable() } = $props();
 
 	// Inicializar campos avançados se não existirem
@@ -448,4 +450,321 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- GESTÃO DE ESTOQUE -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="Package" size={20} color="#00BFB3" />
+			Gestão de Estoque
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Rastreamento de Estoque -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.track_inventory}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Rastrear Estoque</span>
+						<p class="text-xs text-gray-500">Controlar quantidade disponível</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Permitir Backorder -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.allow_backorder}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Permitir Backorder</span>
+						<p class="text-xs text-gray-500">Vender mesmo sem estoque disponível</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Localização no Estoque -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					📍 Localização no Estoque
+				</label>
+				<input
+					type="text"
+					bind:value={formData.stock_location}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="Ex: Prateleira A-15, Corredor 3"
+				/>
+			</div>
+			
+			<!-- Alerta de Estoque Baixo -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					⚠️ Quantidade Mínima para Alerta
+				</label>
+				<input
+					type="number"
+					bind:value={formData.low_stock_alert}
+					min="0"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="10"
+				/>
+			</div>
+		</div>
+	</div>
+	
+	<!-- INFORMAÇÕES FISCAIS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="document" size={20} color="#00BFB3" />
+			Informações Fiscais
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Código NCM -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					🏷️ Código NCM
+					<span class="text-xs text-gray-500 ml-2">Nomenclatura Comum do Mercosul</span>
+				</label>
+				<input
+					type="text"
+					bind:value={formData.ncm_code}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="0000.00.00"
+				/>
+			</div>
+			
+			<!-- Código EAN/GTIN -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					🏷️ Código EAN/GTIN
+					<span class="text-xs text-gray-500 ml-2">Código de barras global</span>
+				</label>
+				<input
+					type="text"
+					bind:value={formData.gtin}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="7890000000000"
+				/>
+			</div>
+			
+			<!-- Origem do Produto -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					🌍 Origem do Produto
+				</label>
+				<select
+					bind:value={formData.origin}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+				>
+					<option value="">Selecione a origem</option>
+					<option value="0">Nacional</option>
+					<option value="1">Estrangeira - Importação direta</option>
+					<option value="2">Estrangeira - Adquirida no mercado interno</option>
+					<option value="3">Nacional com conteúdo importado superior a 40%</option>
+					<option value="4">Nacional com conteúdo importado inferior a 40%</option>
+					<option value="5">Nacional com conteúdo importado inferior a 70%</option>
+					<option value="6">Estrangeira - Importação direta sem similar nacional</option>
+					<option value="7">Estrangeira - Adquirida no mercado interno sem similar nacional</option>
+					<option value="8">Nacional - Mercadoria ou bem com conteúdo de importação superior a 70%</option>
+				</select>
+			</div>
+		</div>
+	</div>
+	
+	<!-- GARANTIA E SUPORTE -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="shield" size={20} color="#00BFB3" />
+			Garantia e Suporte
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Período de Garantia -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					🛡️ Período de Garantia
+				</label>
+				<input
+					type="text"
+					bind:value={formData.warranty_period}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="Ex: 12 meses, 90 dias, 2 anos"
+				/>
+			</div>
+			
+			<!-- Instruções de Cuidado -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					📋 Instruções de Cuidado/Uso
+				</label>
+				<textarea
+					bind:value={formData.care_instructions}
+					rows="4"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="Descreva cuidados especiais, modo de uso, manutenção..."
+				></textarea>
+			</div>
+			
+			<!-- Manual do Usuário -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					📄 Link do Manual
+					<span class="text-xs text-gray-500 ml-2">URL do manual online</span>
+				</label>
+				<input
+					type="url"
+					bind:value={formData.manual_link}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="https://exemplo.com/manual.pdf"
+				/>
+			</div>
+		</div>
+	</div>
+	
+	<!-- CONFIGURAÇÕES AVANÇADAS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="settings" size={20} color="#00BFB3" />
+			Configurações Avançadas
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Produto em Destaque -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.featured}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Produto em Destaque</span>
+						<p class="text-xs text-gray-500">Exibir na página inicial e vitrines</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Produto Digital -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.is_digital}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Produto Digital</span>
+						<p class="text-xs text-gray-500">Download ou acesso online</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Permitir Avaliações -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.allow_reviews}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Permitir Avaliações</span>
+						<p class="text-xs text-gray-500">Clientes podem avaliar o produto</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Requer Idade Mínima -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.age_restricted}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Produto com Restrição de Idade</span>
+						<p class="text-xs text-gray-500">Apenas para maiores de 18 anos</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Produto Personalizado -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.is_customizable}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Aceita Personalização</span>
+						<p class="text-xs text-gray-500">Cliente pode personalizar o produto</p>
+					</div>
+				</label>
+			</div>
+		</div>
+	</div>
+	
+	<!-- NOTAS INTERNAS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="note" size={20} color="#00BFB3" />
+			Notas Internas
+		</h4>
+		
+		<div>
+			<label class="block text-sm font-medium text-gray-700 mb-2">
+				📝 Observações (não visível para clientes)
+			</label>
+			<textarea
+				bind:value={formData.internal_notes}
+				rows="4"
+				class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+				placeholder="Anotações internas sobre o produto, fornecedor, etc..."
+			></textarea>
+		</div>
+	</div>
+	
+	<!-- VARIAÇÕES SUGERIDAS PELA IA -->
+	{#if formData._suggested_variations && formData._suggested_variations.length > 0}
+	<div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+		<h4 class="font-semibold text-purple-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="robot" size={20} color="#9333ea" />
+			Variações Sugeridas pela IA
+		</h4>
+		
+		<div class="space-y-4">
+			<p class="text-sm text-purple-700">
+				A IA identificou que este produto pode ter as seguintes variações:
+			</p>
+			
+			{#each formData._suggested_variations as variation}
+			<div class="bg-white rounded-lg p-4 border border-purple-200">
+				<h5 class="font-medium text-purple-900 mb-2">{variation.type}</h5>
+				<div class="flex flex-wrap gap-2">
+					{#each variation.options as option}
+					<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+						{option}
+					</span>
+					{/each}
+				</div>
+			</div>
+			{/each}
+			
+			<div class="mt-4 p-3 bg-purple-100 rounded-lg">
+				<p class="text-xs text-purple-800">
+					<strong>💡 Dica:</strong> Para criar variações, vá para a aba "Variações" após salvar o produto principal.
+				</p>
+			</div>
+		</div>
+	</div>
+	{/if}
 </div> 

@@ -145,13 +145,14 @@
 						type="button"
 						onclick={() => enrichField('metaTitle')}
 						disabled={aiLoading.metaTitle || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Otimizar com IA"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Otimizar título para SEO com IA"
 					>
 						{#if aiLoading.metaTitle}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} />
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
 						{/if}
 					</button>
 				</div>
@@ -182,13 +183,14 @@
 						type="button"
 						onclick={() => enrichField('metaDescription')}
 						disabled={aiLoading.metaDescription || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Otimizar com IA"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Otimizar descrição para SEO com IA"
 					>
 						{#if aiLoading.metaDescription}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} />
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
 						{/if}
 					</button>
 				</div>
