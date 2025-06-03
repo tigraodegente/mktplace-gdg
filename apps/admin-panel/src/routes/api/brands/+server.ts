@@ -4,8 +4,6 @@ import { getDatabase } from '$lib/db';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		console.log('🔌 Dev: NEON');
-		
 		const db = getDatabase();
 		
 		// Parâmetros de consulta
@@ -14,43 +12,61 @@ export const GET: RequestHandler = async ({ url }) => {
 		const search = url.searchParams.get('search') || '';
 		const offset = (page - 1) * limit;
 		
-		// Query base
-		let whereClause = '';
-		let countQuery = '';
-		let searchParams: any[] = [];
-		
-		if (search) {
-			whereClause = 'WHERE b.name ILIKE $1 OR b.slug ILIKE $1 OR b.description ILIKE $1';
-			countQuery = `
-				SELECT COUNT(*) as total 
-				FROM brands b 
-				${whereClause}
-			`;
-			searchParams = [`%${search}%`];
+		// Query de contagem com ou sem busca
+		let totalResult;
+		if (search.trim()) {
+			// Com busca - usando cast explícito para o parâmetro
+			const searchPattern = `%${search}%`;
+			totalResult = await db.query(
+				`SELECT COUNT(*) as total FROM brands 
+				 WHERE name ILIKE $1::text OR slug ILIKE $1::text OR description ILIKE $1::text`,
+				[searchPattern]
+			);
 		} else {
-			countQuery = 'SELECT COUNT(*) as total FROM brands';
+			// Sem busca
+			totalResult = await db.query('SELECT COUNT(*) as total FROM brands');
 		}
 		
-		// Buscar total de registros
-		const totalResult = await db.query(countQuery, searchParams);
 		const total = parseInt(totalResult[0]?.total || '0');
 		const totalPages = Math.ceil(total / limit);
 		
-		// Query principal com paginação
-		const mainQuery = `
-			SELECT 
-				b.*,
-				COUNT(p.id) as product_count
-			FROM brands b
-			LEFT JOIN products p ON p.brand_id = b.id
-			${whereClause}
-			GROUP BY b.id
-			ORDER BY b.name ASC
-			LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}
-		`;
-		
-		const params = [...searchParams, limit, offset];
-		const brands = await db.query(mainQuery, params);
+		// Query principal com ou sem busca
+		let brands;
+		if (search.trim()) {
+			// Com busca - usando cast explícito para o parâmetro
+			const searchPattern = `%${search}%`;
+			const mainQuery = `
+				SELECT 
+					b.*,
+					COALESCE(p.product_count, 0) as product_count
+				FROM brands b
+				LEFT JOIN (
+					SELECT brand_id, COUNT(*) as product_count 
+					FROM products 
+					GROUP BY brand_id
+				) p ON p.brand_id = b.id
+				WHERE b.name ILIKE $1::text OR b.slug ILIKE $1::text OR b.description ILIKE $1::text
+				ORDER BY b.name ASC
+				LIMIT ${limit} OFFSET ${offset}
+			`;
+			brands = await db.query(mainQuery, [searchPattern]);
+		} else {
+			// Sem busca
+			const mainQuery = `
+				SELECT 
+					b.*,
+					COALESCE(p.product_count, 0) as product_count
+				FROM brands b
+				LEFT JOIN (
+					SELECT brand_id, COUNT(*) as product_count 
+					FROM products 
+					GROUP BY brand_id
+				) p ON p.brand_id = b.id
+				ORDER BY b.name ASC
+				LIMIT ${limit} OFFSET ${offset}
+			`;
+			brands = await db.query(mainQuery);
+		}
 		
 		return json({
 			success: true,
@@ -67,7 +83,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			}
 		});
 		
-	} catch (error) {
+	} catch (error: any) {
 		console.error('❌ Erro na query:', error);
 		return json({
 			success: false,
@@ -78,8 +94,6 @@ export const GET: RequestHandler = async ({ url }) => {
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		console.log('🔌 Dev: NEON');
-		
 		const db = getDatabase();
 		const data = await request.json();
 		
@@ -104,9 +118,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			}, { status: 400 });
 		}
 		
-		// Inserir nova marca
+		// Inserir nova marca (ajustando o nome da coluna website)
 		const result = await db.query(
-			`INSERT INTO brands (name, slug, description, logo_url, website_url, is_active, created_at)
+			`INSERT INTO brands (name, slug, description, logo_url, website, is_active, created_at)
 			 VALUES ($1, $2, $3, $4, $5, $6, NOW())
 			 RETURNING *`,
 			[
@@ -114,7 +128,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				data.slug,
 				data.description || null,
 				data.logo_url || null,
-				data.website_url || null,
+				data.website || null, // Mudança aqui: website em vez de website_url
 				data.is_active ?? true
 			]
 		);
@@ -125,7 +139,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			message: 'Marca criada com sucesso'
 		});
 		
-	} catch (error) {
+	} catch (error: any) {
 		console.error('❌ Erro ao criar marca:', error);
 		return json({
 			success: false,
@@ -136,8 +150,6 @@ export const POST: RequestHandler = async ({ request }) => {
 
 export const PUT: RequestHandler = async ({ request }) => {
 	try {
-		console.log('🔌 Dev: NEON');
-		
 		const db = getDatabase();
 		const data = await request.json();
 		
@@ -175,11 +187,11 @@ export const PUT: RequestHandler = async ({ request }) => {
 			}, { status: 400 });
 		}
 		
-		// Atualizar marca
+		// Atualizar marca (ajustando o nome da coluna website)
 		const result = await db.query(
 			`UPDATE brands 
 			 SET name = $1, slug = $2, description = $3, logo_url = $4, 
-			     website_url = $5, is_active = $6, updated_at = NOW()
+			     website = $5, is_active = $6, updated_at = NOW()
 			 WHERE id = $7
 			 RETURNING *`,
 			[
@@ -187,7 +199,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 				data.slug,
 				data.description || null,
 				data.logo_url || null,
-				data.website_url || null,
+				data.website || null, // Mudança aqui: website em vez de website_url
 				data.is_active ?? true,
 				data.id
 			]
@@ -199,7 +211,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 			message: 'Marca atualizada com sucesso'
 		});
 		
-	} catch (error) {
+	} catch (error: any) {
 		console.error('❌ Erro ao atualizar marca:', error);
 		return json({
 			success: false,
@@ -210,8 +222,6 @@ export const PUT: RequestHandler = async ({ request }) => {
 
 export const DELETE: RequestHandler = async ({ request }) => {
 	try {
-		console.log('🔌 Dev: NEON');
-		
 		const db = getDatabase();
 		const data = await request.json();
 		
@@ -256,7 +266,7 @@ export const DELETE: RequestHandler = async ({ request }) => {
 			message: `Marca "${existingBrand[0].name}" excluída com sucesso`
 		});
 		
-	} catch (error) {
+	} catch (error: any) {
 		console.error('❌ Erro ao excluir marca:', error);
 		return json({
 			success: false,

@@ -13,6 +13,9 @@ export * from './validators';
 export * from './helpers';
 export * from './constants';
 
+// Exportar módulo de enriquecimento
+export * from './enrichment';
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',

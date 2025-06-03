@@ -161,9 +161,9 @@ async function enrichBatch() {
         try {
           await connector.queryNeon(`
             UPDATE products 
-            SET tags = $1::jsonb
+            SET tags = $1::text[]
             WHERE id = $2
-          `, [JSON.stringify(enrichedData.tags), product.id])
+          `, [enrichedData.tags, product.id])
         } catch (tagError) {
           console.log('  ⚠️  Tags não salvas:', tagError.message)
         }

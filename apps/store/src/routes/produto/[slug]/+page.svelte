@@ -47,6 +47,7 @@
   interface ProductVariation {
     color?: string;
     size?: string;
+    style?: string;
     price: number;
     original_price?: number;
     stock: number;
@@ -63,6 +64,7 @@
   let selectedImage = $state(0);
   let selectedColor = $state<string>('');
   let selectedSize = $state<string>('');
+  let selectedStyle = $state<string>('');
   let quantity = $state(1);
   let showZoomModal = $state(false);
   let activeTab = $state<'description' | 'specs' | 'shipping' | 'reviews'>('description');
@@ -80,6 +82,7 @@
   // Variações disponíveis (será preenchido com dados do produto)
   let availableColors = $state<string[]>([]);
   let availableSizes = $state<string[]>([]);
+  let availableStyles = $state<string[]>([]);
   let currentVariation = $state<ProductVariation | null>(null);
   
   // Simular pessoas vendo o produto
@@ -103,6 +106,15 @@
     return sizes;
   }
   
+  // Função para obter estilos únicos das variações
+  function getUniqueStyles(variations: ProductVariation[]): string[] {
+    const styles = variations
+      .filter((v: ProductVariation) => v.style)
+      .map((v: ProductVariation) => v.style!)
+      .filter((style, index, self) => self.indexOf(style) === index);
+    return styles;
+  }
+  
   // Função para encontrar variação atual baseada nas seleções
   function findCurrentVariation(): ProductVariation | null {
     if (!product?.variations || product.variations.length === 0) return null;
@@ -110,7 +122,8 @@
     return product.variations.find((v: ProductVariation) => {
       const colorMatch = !selectedColor || v.color === selectedColor;
       const sizeMatch = !selectedSize || v.size === selectedSize;
-      return colorMatch && sizeMatch;
+      const styleMatch = !selectedStyle || v.style === selectedStyle;
+      return colorMatch && sizeMatch && styleMatch;
     }) || null;
   }
   
@@ -140,7 +153,7 @@
     
     const url = new URL(window.location.href);
     
-    // Atualizar parâmetros de cor e tamanho
+    // Atualizar parâmetros de cor, tamanho e style
     if (selectedColor) {
       url.searchParams.set('cor', selectedColor.toLowerCase());
     } else {
@@ -151,6 +164,12 @@
       url.searchParams.set('tamanho', selectedSize.toLowerCase());
     } else {
       url.searchParams.delete('tamanho');
+    }
+    
+    if (selectedStyle) {
+      url.searchParams.set('estilo', selectedStyle.toLowerCase());
+    } else {
+      url.searchParams.delete('estilo');
     }
     
     // Atualizar a URL sem recarregar a página
@@ -171,6 +190,12 @@
     if (sizeParam) {
       const size = availableSizes.find(s => s.toLowerCase() === sizeParam.toLowerCase());
       if (size) selectedSize = size;
+    }
+    
+    const styleParam = urlParams.get('estilo');
+    if (styleParam) {
+      const style = availableStyles.find(s => s.toLowerCase() === styleParam.toLowerCase());
+      if (style) selectedStyle = style;
     }
   }
   
@@ -197,6 +222,13 @@
   // Função para selecionar tamanho
   function selectSize(size: string) {
     selectedSize = size;
+    validationError = ''; // Limpar erro ao selecionar
+    updateURLWithVariations();
+  }
+  
+  // Função para selecionar style
+  function selectStyle(style: string) {
+    selectedStyle = style;
     validationError = ''; // Limpar erro ao selecionar
     updateURLWithVariations();
   }
@@ -230,10 +262,11 @@
       viewingCount = Math.floor(Math.random() * 20) + 5;
     }, 30000);
     
-    // Extrair cores e tamanhos únicos das variações reais do produto
+    // Extrair cores, tamanhos e estilos únicos das variações reais do produto
     if (product?.variations && product.variations.length > 0) {
       availableColors = getUniqueColors(product.variations);
       availableSizes = getUniqueSizes(product.variations);
+      availableStyles = getUniqueStyles(product.variations);
     }
     
     // Carregar variações da URL
@@ -392,26 +425,20 @@
   }
   
   // Função para verificar se uma combinação está disponível
-  function isCombinationAvailable(color?: string, size?: string): boolean {
+  function isCombinationAvailable(color?: string, size?: string, style?: string): boolean {
     if (!product?.variations) return false;
     
     return product.variations.some((v: ProductVariation) => {
       const colorMatch = !color || v.color === color;
       const sizeMatch = !size || v.size === size;
-      return colorMatch && sizeMatch && v.stock > 0;
+      const styleMatch = !style || v.style === style;
+      return colorMatch && sizeMatch && styleMatch && v.stock > 0;
     });
   }
   
-  // Função para verificar se um tamanho está disponível para a cor selecionada
-  function isSizeAvailableForColor(size: string): boolean {
-    if (!selectedColor) return isCombinationAvailable(undefined, size);
-    return isCombinationAvailable(selectedColor, size);
-  }
-  
-  // Função para verificar se uma cor está disponível para o tamanho selecionado
-  function isColorAvailableForSize(color: string): boolean {
-    if (!selectedSize) return isCombinationAvailable(color, undefined);
-    return isCombinationAvailable(color, selectedSize);
+  // Função para verificar se um style está disponível para as outras seleções
+  function isStyleAvailableForSelection(style: string): boolean {
+    return isCombinationAvailable(selectedColor || undefined, selectedSize || undefined, style);
   }
 </script>
 
@@ -753,14 +780,43 @@
             </div>
           {/if}
           
+          {#if availableStyles.length > 0}
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Tipo {#if validationError.includes('estilo')}<span class="text-red-600">*</span>{/if}
+              </label>
+              <div class="flex gap-2 flex-wrap {validationError.includes('estilo') ? 'animate-pulse' : ''}">
+                {#each availableStyles as style}
+                  {@const isAvailable = isStyleAvailableForSelection(style)}
+                  <button
+                    onclick={() => isAvailable && selectStyle(style)}
+                    disabled={!isAvailable}
+                    class="px-4 py-2 border-2 rounded-lg transition-all font-medium
+                           {selectedStyle === style ? 'border-[#00BFB3] bg-[#00BFB3]/10 text-[#00BFB3]' : 
+                           validationError.includes('estilo') ? 'border-red-300 hover:border-red-400' : 
+                           'border-gray-200 hover:border-gray-300'}
+                           {!isAvailable ? 'opacity-50 cursor-not-allowed line-through' : ''}"
+                  >
+                    {style}
+                  </button>
+                {/each}
+              </div>
+              {#if selectedStyle}
+                <p class="text-xs text-gray-600 mt-1">
+                  Tipo selecionado: <span class="font-medium">{selectedStyle}</span>
+                </p>
+              {/if}
+            </div>
+          {/if}
+          
           <!-- Aviso de Variação Indisponível -->
-          {#if selectedColor && selectedSize && !currentVariation}
+          {#if (selectedColor || selectedSize || selectedStyle) && !currentVariation}
             <div class="bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm">
               <p class="text-gray-700 flex items-center">
                 <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 15.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-                Esta combinação de cor e tamanho não está disponível. Por favor, selecione outra opção.
+                Esta combinação não está disponível. Por favor, selecione outras opções.
               </p>
             </div>
           {/if}

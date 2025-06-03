@@ -24,7 +24,7 @@
 		slug: '',
 		description: '',
 		logo_url: '',
-		website_url: '',
+		website: '',
 		is_active: true
 	};
 	
@@ -132,7 +132,7 @@
 			slug: '',
 			description: '',
 			logo_url: '',
-			website_url: '',
+			website: '',
 			is_active: true
 		};
 	}
@@ -144,7 +144,7 @@
 			slug: brand.slug,
 			description: brand.description || '',
 			logo_url: brand.logo_url || '',
-			website_url: brand.website_url || '',
+			website: brand.website || '',
 			is_active: brand.is_active
 		};
 		showEditModal = true;
@@ -402,7 +402,7 @@
 					<label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
 					<input
 						type="url"
-						bind:value={formData.website_url}
+						bind:value={formData.website}
 						class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 					>
 				</div>
@@ -486,7 +486,7 @@
 					<label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
 					<input
 						type="url"
-						bind:value={formData.website_url}
+						bind:value={formData.website}
 						class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 					>
 				</div>
