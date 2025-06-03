@@ -132,15 +132,15 @@
 					</span>
 				</div>
 				<div class="flex gap-2">
-					<input
-						type="text"
-						bind:value={formData.meta_title}
+				<input
+					type="text"
+					bind:value={formData.meta_title}
 						oninput={generateSlugFromTitle}
 						class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="Título otimizado para Google (50-60 caracteres)"
-						maxlength="60"
-						required
-					/>
+					placeholder="Título otimizado para Google (50-60 caracteres)"
+					maxlength="60"
+					required
+				/>
 					<button
 						type="button"
 						onclick={() => enrichField('metaTitle')}
@@ -170,15 +170,15 @@
 					</span>
 				</div>
 				<div class="flex gap-2">
-					<textarea
-						bind:value={formData.meta_description}
+				<textarea
+					bind:value={formData.meta_description}
 						oninput={() => descriptionStatus = getDescriptionStatus(formData.meta_description.length)}
-						rows="3"
+					rows="3"
 						class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors resize-none"
-						placeholder="Descrição atrativa para aparecer no Google (140-160 caracteres)"
-						maxlength="160"
-						required
-					></textarea>
+					placeholder="Descrição atrativa para aparecer no Google (140-160 caracteres)"
+					maxlength="160"
+					required
+				></textarea>
 					<button
 						type="button"
 						onclick={() => enrichField('metaDescription')}

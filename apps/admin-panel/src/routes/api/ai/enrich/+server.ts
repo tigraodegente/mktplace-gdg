@@ -1,17 +1,18 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import OpenAI from 'openai';
+import { OPENAI_API_KEY } from '$env/static/private';
 import { getDatabase } from '$lib/db';
 
 // Inicializar OpenAI com a chave do ambiente
 const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY || ''
+	apiKey: OPENAI_API_KEY
 });
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
 		// Verificar se a API key está configurada
-		if (!process.env.OPENAI_API_KEY) {
+		if (!OPENAI_API_KEY) {
 			return json({
 				success: false,
 				error: 'Chave da API OpenAI não configurada. Configure OPENAI_API_KEY no arquivo .env'
