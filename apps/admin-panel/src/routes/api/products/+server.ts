@@ -179,11 +179,9 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     
   } catch (error) {
     console.error('Error fetching products:', error);
-    console.error('Stack:', error instanceof Error ? error.stack : 'No stack');
     return json({
       success: false,
-      error: 'Erro ao buscar produtos',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Erro ao buscar produtos'
     }, { status: 500 });
   }
 };
