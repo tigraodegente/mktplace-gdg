@@ -2,22 +2,7 @@
 	import { fly, fade, slide } from 'svelte/transition';
 	
 	// Props
-	let {
-		title,
-		description,
-		columns,
-		data = [],
-		loading = false,
-		filters,
-		actions,
-		bulkActions,
-		selectedRows = new Set(),
-		onRowClick = () => {},
-		showPagination = true,
-		currentPage = 1,
-		itemsPerPage = 10,
-		totalItems = 0
-	} = $props<{
+	interface Props {
 		title?: string;
 		description?: string;
 		columns: Array<{
@@ -38,14 +23,41 @@
 		currentPage?: number;
 		itemsPerPage?: number;
 		totalItems?: number;
-	}>();
+	}
+	
+	let {
+		title,
+		description,
+		columns,
+		data = [],
+		loading = false,
+		filters,
+		actions,
+		bulkActions,
+		selectedRows = $bindable(new Set()),
+		onRowClick = () => {},
+		showPagination = true,
+		currentPage = $bindable(1),
+		itemsPerPage = 10,
+		totalItems = 0
+	}: Props = $props();
+	
+	// Debug
+	$effect(() => {
+		console.log('DataTable props:', { 
+			dataLength: data?.length, 
+			loading, 
+			columns: columns?.length,
+			totalItems 
+		});
+	});
 	
 	// Paginação
-	const totalPages = Math.ceil((totalItems || data.length) / itemsPerPage);
-	const paginatedData = data.slice(
+	let totalPages = $derived(Math.ceil((totalItems || data.length) / itemsPerPage));
+	let paginatedData = $derived(data.slice(
 		(currentPage - 1) * itemsPerPage,
 		currentPage * itemsPerPage
-	);
+	));
 	
 	// Seleção
 	function toggleSelectAll() {
@@ -54,7 +66,7 @@
 		} else {
 			paginatedData.forEach((row: any) => selectedRows.add(row.id || row));
 		}
-		selectedRows = selectedRows;
+		selectedRows = new Set(selectedRows);
 	}
 	
 	function toggleSelectRow(rowId: string) {
@@ -63,7 +75,7 @@
 		} else {
 			selectedRows.add(rowId);
 		}
-		selectedRows = selectedRows;
+		selectedRows = new Set(selectedRows);
 	}
 </script>
 

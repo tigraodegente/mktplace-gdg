@@ -1,3 +1,8 @@
+/// <reference types="svelte" />
+/// <reference types="vite/client" />
+
+import type { SvelteHTMLElements } from 'svelte/elements';
+
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 declare global {
@@ -22,6 +27,17 @@ declare global {
 			};
 			context?: any;
 			caches?: any;
+		}
+	}
+
+	// Expandir o namespace svelteHTML para Svelte 5
+	namespace svelteHTML {
+		interface HTMLAttributes<T = any> extends SvelteHTMLElements {
+			[key: string]: any;
+		}
+		
+		interface SVGAttributes<T = any> {
+			[key: string]: any;
 		}
 	}
 }

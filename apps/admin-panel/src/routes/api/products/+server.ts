@@ -13,7 +13,14 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     const search = url.searchParams.get('search') || '';
     const status = url.searchParams.get('status') || 'all';
     const category = url.searchParams.get('category') || 'all';
+    const sortBy = url.searchParams.get('sortBy') || 'created_at';
+    const sortOrder = url.searchParams.get('sortOrder') || 'desc';
     const vendorId = locals.user?.role === 'vendor' ? locals.user.seller_id : url.searchParams.get('vendor_id');
+    
+    // Validar campos de ordenação
+    const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at', 'category_id', 'brand_id'];
+    const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
     
     // Construir query
     const conditions: string[] = [];
@@ -97,7 +104,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
         LEFT JOIN brands b ON b.id = p.brand_id
         LEFT JOIN sellers s ON s.id = p.seller_id
         ${whereClause}
-        ORDER BY p.created_at DESC
+        ORDER BY p.${safeSortBy} ${safeSortOrder}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       )
       SELECT * FROM product_stats
@@ -174,100 +181,83 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 };
 
 // POST - Criar produto
-export const POST: RequestHandler = async ({ request, platform, locals }) => {
+export const POST: RequestHandler = async ({ request }) => {
+  const db = await getDatabase();
+  
   try {
-    const db = getDatabase(platform);
     const data = await request.json();
     
-    // Validações
-    if (!data.name || !data.price || !data.sku) {
-      return json({
-        success: false,
-        error: 'Nome, preço e SKU são obrigatórios'
-      }, { status: 400 });
-    }
-    
-    // Gerar slug se não fornecido
-    const slug = data.slug || data.name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    
-    // Verificar SKU duplicado
-    const [existing] = await db.query`
-      SELECT id FROM products WHERE sku = ${data.sku}
-    `;
-    
-    if (existing) {
+    // Validar campos obrigatórios
+    if (!data.name || !data.sku || !data.price) {
       await db.close();
-      return json({
-        success: false,
-        error: 'SKU já existe'
+      return json({ 
+        success: false, 
+        error: 'Campos obrigatórios: name, sku, price' 
       }, { status: 400 });
     }
     
-    // Inserir produto
-    const [product] = await db.query`
+    // Criar produto
+    const result = await db.query`
       INSERT INTO products (
-        name, slug, sku, description, 
-        price, original_price, cost,
-        quantity, category_id, brand_id, seller_id,
-        tags, status, is_active, featured,
-        weight, dimensions, barcode,
-        seo_title, seo_description, seo_keywords
+        name, slug, sku, barcode, model,
+        description, short_description,
+        price, original_price, cost, currency,
+        quantity, stock_location, track_inventory, allow_backorder,
+        category_id, brand_id, seller_id,
+        status, is_active, featured, condition,
+        weight, height, width, length,
+        has_free_shipping, delivery_days_min, delivery_days_max,
+        seller_state, seller_city,
+        meta_title, meta_description, meta_keywords,
+        tags
       ) VALUES (
-        ${data.name}, ${slug}, ${data.sku}, ${data.description || null},
-        ${data.price}, ${data.comparePrice || null}, ${data.cost || null},
-        ${data.stock || 0}, ${data.categoryId || null}, ${data.brandId || null}, 
-        ${locals.user?.seller_id || data.sellerId || null},
-        ${data.tags || []}, ${data.status || 'draft'}, 
-        ${data.status === 'active'}, ${data.featured || false},
-        ${data.weight || null}, 
-        ${data.dimensions ? JSON.stringify(data.dimensions) : null}, 
+        ${data.name},
+        ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
+        ${data.sku},
         ${data.barcode || null},
-        ${data.seo?.title || data.name}, 
-        ${data.seo?.description || data.description || null},
-        ${data.seo?.keywords || null}
-      ) RETURNING id
+        ${data.model || null},
+        ${data.description || ''},
+        ${data.short_description || null},
+        ${data.price},
+        ${data.original_price || null},
+        ${data.cost || 0},
+        ${data.currency || 'BRL'},
+        ${data.quantity || 0},
+        ${data.stock_location || null},
+        ${data.track_inventory !== false},
+        ${data.allow_backorder || false},
+        ${data.category_id || null},
+        ${data.brand_id || null},
+        ${data.seller_id || null},
+        ${data.status || 'draft'},
+        ${data.is_active || false},
+        ${data.featured || false},
+        ${data.condition || 'new'},
+        ${data.weight || null},
+        ${data.height || null},
+        ${data.width || null},
+        ${data.length || null},
+        ${data.has_free_shipping || false},
+        ${data.delivery_days_min || null},
+        ${data.delivery_days_max || null},
+        ${data.seller_state || null},
+        ${data.seller_city || null},
+        ${data.meta_title || null},
+        ${data.meta_description || null},
+        ${data.meta_keywords || []},
+        ${data.tags || []}
+      ) RETURNING *
     `;
     
-    // Inserir imagens
-    if (data.images && data.images.length > 0) {
-      const imageValues = data.images.map((url: string, index: number) => ({
-        product_id: product.id,
-        url,
-        position: index,
-        alt: data.name
-      }));
-      
-      await db.query`
-        INSERT INTO product_images ${db.sql(imageValues)}
-      `;
-    }
+    const newProduct = result[0];
     
-    // Inserir variações se houver
-    if (data.variations && data.variations.length > 0) {
-      for (const variation of data.variations) {
-        const [option] = await db.query`
-          INSERT INTO product_options (product_id, name)
-          VALUES (${product.id}, ${variation.name})
-          RETURNING id
+    // Adicionar imagens se fornecidas
+    if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+      for (let i = 0; i < data.images.length; i++) {
+        await db.query`
+          INSERT INTO product_images (product_id, url, position)
+          VALUES (${newProduct.id}, ${data.images[i]}, ${i})
         `;
-        
-        if (variation.options && variation.options.length > 0) {
-          const optionValues = variation.options.map((value: string) => ({
-            option_id: option.id,
-            value
-          }));
-          
-          await db.query`
-            INSERT INTO product_option_values ${db.sql(optionValues)}
-          `;
-        }
       }
     }
     
@@ -275,17 +265,15 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     
     return json({
       success: true,
-      data: {
-        id: product.id,
-        message: 'Produto criado com sucesso'
-      }
+      data: newProduct
     });
     
   } catch (error) {
-    console.error('Error creating product:', error);
-    return json({
-      success: false,
-      error: 'Erro ao criar produto'
+    console.error('Erro ao criar produto:', error);
+    await db.close();
+    return json({ 
+      success: false, 
+      error: 'Erro ao criar produto' 
     }, { status: 500 });
   }
 };
@@ -337,14 +325,12 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       
       // Inserir novas imagens
       if (data.images.length > 0) {
-        const imageValues = data.images.map((url: string, index: number) => ({
-          product_id: data.id,
-          url,
-          position: index,
-          alt: data.name
-        }));
-        
-        await db.query`INSERT INTO product_images ${db.sql(imageValues)}`;
+        for (let i = 0; i < data.images.length; i++) {
+          await db.query`
+            INSERT INTO product_images (product_id, url, position, alt)
+            VALUES (${data.id}, ${data.images[i]}, ${i}, ${data.name})
+          `;
+        }
       }
     }
     

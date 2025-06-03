@@ -514,4 +514,397 @@ img, svg {
   .no-print {
     display: none !important;
   }
+}
+
+/* ===========================
+   FLOATING MENU STYLES
+   =========================== */
+
+/* Floating Menu Button */
+.floating-menu-button {
+  @apply fixed z-50 transition-all duration-300;
+  filter: drop-shadow(0 10px 25px rgba(0, 191, 179, 0.3));
+}
+
+.floating-menu-button.menu-hidden {
+  @apply opacity-50 scale-90;
+}
+
+.floating-menu-button.dragging {
+  @apply cursor-grabbing;
+  filter: drop-shadow(0 20px 40px rgba(0, 191, 179, 0.4));
+}
+
+.floating-menu-button .main-button {
+  @apply relative w-16 h-16 rounded-2xl flex items-center justify-center;
+  @apply bg-gradient-to-br from-[#00BFB3] to-[#00A89D];
+  @apply text-white shadow-lg hover:shadow-xl;
+  @apply transition-all duration-300 hover:scale-110 active:scale-95;
+  @apply border-2 border-white/20;
+  backdrop-filter: blur(10px);
+}
+
+.floating-menu-button .menu-icon {
+  @apply flex flex-col gap-1;
+}
+
+.floating-menu-button .hamburger-line {
+  @apply w-5 h-0.5 bg-white rounded-full transition-all duration-300;
+}
+
+.floating-menu-button .main-button:hover .hamburger-line:nth-child(1) {
+  transform: translateY(2px);
+}
+
+.floating-menu-button .main-button:hover .hamburger-line:nth-child(3) {
+  transform: translateY(-2px);
+}
+
+.floating-menu-button .notification-badge {
+  @apply absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white;
+  @apply text-xs font-bold rounded-full flex items-center justify-center;
+  @apply border-2 border-white shadow-lg;
+}
+
+/* Quick Access Panel */
+.floating-menu-button .quick-access-panel {
+  @apply absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2;
+  @apply flex flex-col gap-2;
+}
+
+.floating-menu-button .quick-access-item {
+  @apply relative w-12 h-12 rounded-xl flex items-center justify-center;
+  @apply bg-white/90 backdrop-blur-md border border-white/20;
+  @apply text-slate-700 hover:text-[#00BFB3] transition-all duration-300;
+  @apply hover:scale-110 hover:shadow-lg;
+}
+
+.floating-menu-button .quick-access-item.active {
+  @apply bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white;
+}
+
+.floating-menu-button .item-badge {
+  @apply absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white;
+  @apply text-xs rounded-full flex items-center justify-center;
+  @apply border border-white;
+}
+
+/* Menu Backdrop */
+.menu-backdrop {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-40;
+}
+
+/* Menu Overlay */
+.menu-overlay {
+  @apply fixed left-0 top-0 bottom-0 w-80 z-50;
+  @apply bg-white/95 backdrop-blur-xl border-r border-white/20;
+  @apply shadow-2xl flex flex-col;
+}
+
+/* Menu Header */
+.menu-overlay .menu-header {
+  @apply flex items-center justify-between p-6 border-b border-gray-200/50;
+  @apply bg-gradient-to-r from-[#00BFB3]/10 to-transparent;
+}
+
+.menu-overlay .menu-logo {
+  @apply flex items-center gap-3;
+}
+
+.menu-overlay .logo-icon {
+  @apply w-12 h-12 bg-gradient-to-br from-[#00BFB3] to-[#00A89D];
+  @apply rounded-xl flex items-center justify-center text-white font-bold text-xl;
+}
+
+.menu-overlay .close-button {
+  @apply p-2 rounded-lg hover:bg-gray-100 text-slate-600 hover:text-slate-900;
+  @apply transition-all duration-200;
+}
+
+/* Navigation */
+.menu-overlay .menu-navigation {
+  @apply flex-1 overflow-y-auto p-6 space-y-6;
+}
+
+.menu-overlay .nav-section {
+  @apply space-y-2;
+}
+
+.menu-overlay .section-title {
+  @apply text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3;
+}
+
+.menu-overlay .nav-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl;
+  @apply text-slate-700 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10;
+  @apply transition-all duration-200;
+}
+
+.menu-overlay .nav-item.active {
+  @apply bg-gradient-to-r from-[#00BFB3]/20 to-[#00BFB3]/10;
+  @apply text-[#00BFB3] font-semibold;
+  @apply border-l-4 border-[#00BFB3];
+}
+
+.menu-overlay .nav-badge {
+  @apply px-2 py-1 bg-[#00BFB3] text-white text-xs rounded-full;
+  @apply font-semibold min-w-[1.5rem] text-center;
+}
+
+/* Menu Footer */
+.menu-overlay .menu-footer {
+  @apply p-6 border-t border-gray-200/50 space-y-2;
+  @apply bg-gradient-to-r from-slate-50/50 to-transparent;
+}
+
+.menu-overlay .control-button {
+  @apply w-full flex items-center gap-3 px-4 py-2 rounded-lg;
+  @apply text-slate-600 hover:text-slate-900 hover:bg-gray-100;
+  @apply transition-all duration-200 text-sm;
+}
+
+.menu-overlay .control-button.minimize {
+  @apply hover:bg-[#00BFB3]/10 hover:text-[#00BFB3];
+}
+
+/* Minimized Menu */
+.minimized-menu {
+  @apply fixed left-2 top-1/2 transform -translate-y-1/2 z-50;
+  @apply bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg;
+  @apply border border-white/20 p-2 space-y-2;
+  @apply flex flex-col items-center;
+}
+
+.minimized-menu .expand-button {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center;
+  @apply bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white;
+  @apply hover:scale-105 transition-all duration-200;
+}
+
+.minimized-menu .mini-item {
+  @apply relative w-10 h-10 rounded-lg flex items-center justify-center;
+  @apply text-slate-600 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10;
+  @apply transition-all duration-200;
+}
+
+.minimized-menu .mini-item.active {
+  @apply bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white;
+}
+
+.minimized-menu .mini-badge {
+  @apply absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white;
+  @apply text-xs rounded-full flex items-center justify-center;
+  @apply border border-white;
+}
+
+/* Responsive para Menu Flutuante */
+@media (max-width: 768px) {
+  .menu-overlay {
+    @apply w-full;
+  }
+  
+  .floating-menu-button .quick-access-panel {
+    @apply hidden;
+  }
+  
+  .floating-menu-button {
+    @apply scale-90;
+  }
+}
+
+/* ===========================
+   MOBILE-FIRST RESPONSIVE
+   =========================== */
+
+/* Cards responsivos */
+.card-grid {
+  @apply grid gap-4 lg:gap-6;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+@media (max-width: 640px) {
+  .card-grid {
+    @apply grid-cols-1;
+  }
+  
+  .card {
+    @apply rounded-lg shadow-sm;
+  }
+  
+  .card-header {
+    @apply px-4 py-3;
+  }
+  
+  .card-body {
+    @apply p-4;
+  }
+  
+  .card-footer {
+    @apply px-4 py-3;
+  }
+}
+
+/* Stats cards mobile */
+@media (max-width: 768px) {
+  .stat-card {
+    @apply p-4;
+  }
+  
+  .stat-card::before {
+    @apply w-20 h-20 -mr-10 -mt-10;
+  }
+}
+
+/* Tables mobile */
+@media (max-width: 768px) {
+  .table-modern {
+    @apply text-sm;
+  }
+  
+  .table-modern th,
+  .table-modern td {
+    @apply px-3 py-2;
+  }
+  
+  /* Esconder colunas menos importantes */
+  .table-modern th:nth-child(n+4),
+  .table-modern td:nth-child(n+4) {
+    @apply hidden;
+  }
+}
+
+/* Header mobile */
+@media (max-width: 640px) {
+  header {
+    @apply h-14;
+  }
+  
+  header .container {
+    @apply px-3;
+  }
+  
+  header h1 {
+    @apply text-base;
+  }
+  
+  header p {
+    @apply text-xs;
+  }
+}
+
+/* Main content mobile */
+@media (max-width: 640px) {
+  main {
+    @apply pt-14;
+  }
+  
+  main .container {
+    @apply p-3;
+  }
+}
+
+/* Forms mobile */
+@media (max-width: 640px) {
+  .input {
+    @apply px-3 py-2 text-sm;
+  }
+  
+  .btn {
+    @apply px-4 py-2 text-sm;
+  }
+  
+  .btn-lg {
+    @apply px-5 py-3 text-base;
+  }
+}
+
+/* Modal mobile */
+@media (max-width: 640px) {
+  .modal {
+    @apply m-3 max-w-none;
+  }
+}
+
+/* Grid responsivo universal */
+.responsive-grid {
+  @apply grid gap-4;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+@media (max-width: 640px) {
+  .responsive-grid {
+    @apply grid-cols-1 gap-3;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .responsive-grid {
+    @apply grid-cols-2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    @apply grid-cols-3;
+  }
+}
+
+/* Sidebar menu mobile específico */
+@media (max-width: 1024px) {
+  .side-menu {
+    @apply fixed inset-0 z-50;
+  }
+  
+  .side-menu .menu-panel {
+    @apply max-w-[85vw];
+  }
+}
+
+/* Utility classes para mobile */
+.mobile-hidden {
+  @apply hidden lg:block;
+}
+
+.mobile-only {
+  @apply block lg:hidden;
+}
+
+.tablet-hidden {
+  @apply hidden md:block;
+}
+
+.tablet-only {
+  @apply block md:hidden;
+}
+
+/* Dashboard específico mobile */
+@media (max-width: 640px) {
+  .dashboard-grid {
+    @apply grid-cols-1 gap-3;
+  }
+  
+  .dashboard-card {
+    @apply p-4;
+  }
+  
+  .dashboard-stats {
+    @apply grid-cols-2 gap-2;
+  }
+}
+
+/* Navigation mobile */
+@media (max-width: 640px) {
+  .nav-tabs {
+    @apply flex-nowrap overflow-x-auto pb-2;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .nav-tabs::-webkit-scrollbar {
+    @apply hidden;
+  }
+  
+  .nav-tab {
+    @apply whitespace-nowrap px-3 py-2 text-sm;
+  }
 } 
