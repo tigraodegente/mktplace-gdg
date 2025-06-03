@@ -257,8 +257,8 @@
 	{#if error}
 		<div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
 			<div class="flex items-start gap-3">
-				<div class="flex-shrink-0">
-					<ModernIcon name="AlertTriangle" size={20} color="#DC2626" />
+				<div class="flex-shrink-0 w-5 h-5">
+					<ModernIcon name="warning" size={20} color="#DC2626" />
 				</div>
 				<div class="flex-1">
 					<p class="text-sm text-red-700 font-medium">Erro ao enriquecer produto</p>
