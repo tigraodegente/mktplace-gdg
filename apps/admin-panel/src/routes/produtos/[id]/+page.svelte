@@ -9,6 +9,7 @@
 	import SeoTab from '$lib/components/produtos/SeoTab.svelte';
 	import AdvancedTab from '$lib/components/produtos/AdvancedTab.svelte';
 	import { productService } from '$lib/services/productService';
+	import { toast } from '$lib/stores/toast';
 	
 	// Estados
 	let loading = $state(true);
@@ -60,16 +61,16 @@
 					formData.track_inventory = formData.track_inventory ?? true;
 					formData.allow_backorder = formData.allow_backorder ?? false;
 				} else {
-					alert(result.error || 'Erro ao carregar produto');
+					toast.error(result.error || 'Erro ao carregar produto');
 					goto('/produtos');
 				}
 			} else {
-				alert('Erro ao carregar produto');
+				toast.error('Erro ao carregar produto');
 				goto('/produtos');
 			}
 		} catch (error) {
 			console.error('Erro:', error);
-			alert('Erro ao carregar produto');
+			toast.error('Erro ao carregar produto');
 			goto('/produtos');
 		} finally {
 			loading = false;
@@ -117,14 +118,14 @@
 			const result = await response.json();
 			
 			if (response.ok && result.success) {
-				alert(result.message || 'Produto atualizado com sucesso!');
+				toast.success(result.message || 'Produto atualizado com sucesso!');
 				await loadProduct(); // Recarregar dados
 			} else {
-				alert(result.error || result.message || 'Erro ao salvar produto');
+				toast.error(result.error || result.message || 'Erro ao salvar produto');
 			}
 		} catch (error) {
 			console.error('Erro:', error);
-			alert('Erro ao salvar produto');
+			toast.error('Erro ao salvar produto');
 		} finally {
 			saving = false;
 		}
