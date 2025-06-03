@@ -112,13 +112,17 @@
 				
 				if (result.success) {
 					onComplete(result.data);
+				} else if (result.cancelled) {
+					// Foi cancelado pelo usuário, não mostrar erro
+					return;
 				} else {
 					throw new Error(result.error || 'Erro ao enriquecer produto');
 				}
 			}
 		} catch (err: any) {
 			if (err.name === 'AbortError' || cancelled) {
-				// Operação cancelada
+				// Operação cancelada - não mostrar erro
+				console.log('Enriquecimento cancelado pelo usuário');
 				return;
 			}
 			error = err.message;

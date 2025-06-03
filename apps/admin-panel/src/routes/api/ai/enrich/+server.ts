@@ -1,24 +1,52 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import OpenAI from 'openai';
-import { OPENAI_API_KEY } from '$env/static/private';
 import { getDatabase } from '$lib/db';
 
+// Inicializar OpenAI com a chave do ambiente
 const openai = new OpenAI({
-	apiKey: OPENAI_API_KEY
+	apiKey: process.env.OPENAI_API_KEY || ''
 });
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
-		const { field, prompt, currentData, category, action } = await request.json();
+		// Verificar se a API key está configurada
+		if (!process.env.OPENAI_API_KEY) {
+			return json({
+				success: false,
+				error: 'Chave da API OpenAI não configurada. Configure OPENAI_API_KEY no arquivo .env'
+			}, { status: 500 });
+		}
+		
+		// Obter o signal do AbortController se enviado
+		const signal = request.signal;
+		
+		// Verificar se a requisição já foi cancelada
+		if (signal?.aborted) {
+			return json({
+				success: false,
+				error: 'Requisição cancelada'
+			}, { status: 499 }); // 499 = Client Closed Request
+		}
+		
+		const requestData = await request.json();
+		
+		// Para requisições que vêm do EnrichmentProgress, o formato é diferente
+		if (requestData.fetchCategories || requestData.fetchBrands) {
+			// Enriquecimento completo
+			return await enrichCompleteProduct(requestData, requestData.category, platform, signal);
+		}
+		
+		// Para requisições de campo específico
+		const { field, prompt, currentData, category, action } = requestData;
 		
 		// Verificar se é ação de enriquecimento completo
 		if (action === 'enrich_all') {
-			return await enrichCompleteProduct(currentData, category, platform);
+			return await enrichCompleteProduct(currentData, category, platform, signal);
 		}
 		
 		// Enriquecimento de campo específico
-		return await enrichSpecificField(field, prompt, currentData, category, platform);
+		return await enrichSpecificField(field, prompt, currentData, category, platform, signal);
 		
 	} catch (error) {
 		console.error('Erro no enriquecimento IA:', error);
@@ -29,8 +57,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	}
 };
 
-async function enrichCompleteProduct(currentData: any, category?: string, platform?: any) {
+async function enrichCompleteProduct(currentData: any, category?: string, platform?: any, signal?: AbortSignal) {
 	try {
+		// Verificar se foi cancelado antes de começar
+		if (signal?.aborted) {
+			throw new Error('Requisição cancelada');
+		}
+		
 		// Buscar categorias e marcas disponíveis
 		const db = getDatabase(platform);
 		const [categories, brands] = await Promise.all([
@@ -38,6 +71,11 @@ async function enrichCompleteProduct(currentData: any, category?: string, platfo
 			db.query`SELECT id, name, slug FROM brands WHERE is_active = true`
 		]);
 		await db.close();
+		
+		// Verificar novamente se foi cancelado
+		if (signal?.aborted) {
+			throw new Error('Requisição cancelada');
+		}
 
 		const prompt = `Você é um especialista em e-commerce brasileiro. Crie um produto COMPLETO e PROFISSIONAL baseado nos dados básicos fornecidos.
 
@@ -123,6 +161,9 @@ RETORNE EM JSON EXATO com:
 				role: 'user',
 				content: prompt
 			}]
+		}, {
+			// Passar o signal para a OpenAI SDK cancelar a requisição
+			signal: signal
 		});
 
 		const aiResponse = response.choices[0].message.content;
@@ -140,7 +181,17 @@ RETORNE EM JSON EXATO com:
 			data: validatedData
 		});
 
-	} catch (error) {
+	} catch (error: any) {
+		// Se foi cancelado, retornar status específico
+		if (error.message === 'Requisição cancelada' || error.name === 'AbortError' || signal?.aborted) {
+			console.log('Enriquecimento cancelado pelo usuário');
+			return json({
+				success: false,
+				error: 'Enriquecimento cancelado',
+				cancelled: true
+			}, { status: 499 });
+		}
+		
 		console.error('Erro no enriquecimento completo:', error);
 		return json({
 			success: false,
@@ -149,8 +200,13 @@ RETORNE EM JSON EXATO com:
 	}
 }
 
-async function enrichSpecificField(field: string, prompt: string, currentData: any, category?: string, platform?: any) {
+async function enrichSpecificField(field: string, prompt: string, currentData: any, category?: string, platform?: any, signal?: AbortSignal) {
 	try {
+		// Verificar se foi cancelado
+		if (signal?.aborted) {
+			throw new Error('Requisição cancelada');
+		}
+		
 		let specificPrompt = '';
 		
 		switch (field) {
@@ -247,6 +303,8 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 				role: 'user',
 				content: specificPrompt
 			}]
+		}, {
+			signal: signal
 		});
 
 		const aiResponse = response.choices[0].message.content?.trim();
@@ -271,7 +329,17 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 			data: processedData
 		});
 
-	} catch (error) {
+	} catch (error: any) {
+		// Se foi cancelado, retornar status específico
+		if (error.message === 'Requisição cancelada' || error.name === 'AbortError' || signal?.aborted) {
+			console.log(`Enriquecimento do campo ${field} cancelado pelo usuário`);
+			return json({
+				success: false,
+				error: 'Enriquecimento cancelado',
+				cancelled: true
+			}, { status: 499 });
+		}
+		
 		console.error(`Erro no enriquecimento do campo ${field}:`, error);
 		return json({
 			success: false,
@@ -337,4 +405,4 @@ function validateAndAdjustData(enrichedData: any, currentData: any) {
 	}
 
 	return validated;
-} 
+}
