@@ -79,25 +79,20 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 async function enrichFullProduct(product: any): Promise<Record<string, any>> {
   const enrichmentResults: Record<string, any> = {};
 
-  // Lista de campos para enriquecer
+  // Lista de campos para enriquecer - APENAS os que existem no banco Neon
   const fieldsToEnrich = [
-    'name',
-    'description',
-    'short_description',
-    'category',
-    'tags',
-    'variations',
-    'image_url',
-    'images',
-    'technical_specifications',
-    'materials',
-    'care_instructions',
-    'warranty',
-    'age_group',
-    'safety_certifications',
-    'seo_title',
-    'seo_description', 
-    'seo_keywords'
+    'name',                    // ✅ EXISTE
+    'description',             // ✅ EXISTE  
+    'category',               // ✅ EXISTE (category_id)
+    'tags',                   // ✅ EXISTE
+    'seo_title',              // ✅ EXISTE (meta_title)
+    'seo_description',        // ✅ EXISTE (meta_description)
+    'seo_keywords',           // ✅ EXISTE (meta_keywords)
+    'technical_specifications' // ✅ EXISTE (specifications)
+    
+    // ❌ REMOVIDOS - Campos que NÃO EXISTEM no Neon:
+    // 'short_description', 'variations', 'image_url', 'images', 
+    // 'materials', 'care_instructions', 'warranty', 'age_group', 'safety_certifications'
   ];
 
   // Enriquecer cada campo
@@ -308,40 +303,53 @@ async function updateProductWithEnrichment(db: any, productId: string, enrichmen
   const values: any[] = [];
   let paramIndex = 1;
 
-  // Mapear campos de enriquecimento para campos do banco
+  // Mapear campos de enriquecimento para campos que REALMENTE EXISTEM no banco Neon
   const fieldMappings: Record<string, string> = {
-    name: 'name',
-    description: 'description',
-    short_description: 'short_description',
-    category: 'category_id',
-    tags: 'tags',
-    variations: 'variations',
-    image_url: 'image_url',
-    images: 'images',
-    technical_specifications: 'technical_specifications',
-    materials: 'materials',
-    care_instructions: 'care_instructions',
-    warranty: 'warranty',
-    age_group: 'age_group',
-    safety_certifications: 'safety_certifications',
-    seo_title: 'seo_title',
-    seo_description: 'seo_description',
-    seo_keywords: 'seo_keywords'
+    name: 'name',                              // ✅ EXISTE
+    description: 'description',                // ✅ EXISTE
+    category: 'category_id',                   // ✅ EXISTE
+    tags: 'tags',                             // ✅ EXISTE
+    seo_title: 'meta_title',                  // ✅ EXISTE (mapeamento correto)
+    seo_description: 'meta_description',       // ✅ EXISTE (mapeamento correto)
+    seo_keywords: 'meta_keywords',            // ✅ EXISTE (mapeamento correto)
+    technical_specifications: 'specifications' // ✅ EXISTE (mapeamento correto)
+    
+    // ❌ REMOVIDOS - Campos que NÃO EXISTEM no Neon:
+    // short_description, variations, images, materials, care_instructions, 
+    // warranty, age_group, safety_certifications, image_url
   };
 
   for (const [enrichField, dbField] of Object.entries(fieldMappings)) {
-    if (enrichmentData[enrichField] !== undefined) {
+    if (enrichmentData[enrichField]?.success && enrichmentData[enrichField]?.value !== undefined) {
       updateFields.push(`${dbField} = $${paramIndex}`);
       
       // Processar valor conforme tipo
-      let value = enrichmentData[enrichField];
-      if (typeof value === 'object') {
+      let value = enrichmentData[enrichField].value;
+      
+      // Para campos específicos do Neon
+      if (enrichField === 'tags' && Array.isArray(value)) {
+        // tags no Neon é array PostgreSQL
+        value = `{${value.join(',')}}`;
+      } else if (enrichField === 'seo_keywords' && Array.isArray(value)) {
+        // meta_keywords no Neon também é array
+        value = `{${value.join(',')}}`;
+      } else if (enrichField === 'technical_specifications' && typeof value === 'object') {
+        // specifications no Neon é JSONB
+        value = JSON.stringify(value);
+      } else if (typeof value === 'object') {
         value = JSON.stringify(value);
       }
       
       values.push(value);
       paramIndex++;
     }
+  }
+
+  // Para variações, usar as tabelas relacionadas que JÁ EXISTEM
+  if (enrichmentData.variations?.success && enrichmentData.variations?.value) {
+    // TODO: Implementar salvamento nas tabelas product_variants e variant_option_values
+    // Não salvar no campo variations porque não existe
+    console.log('Variações devem ser salvas nas tabelas product_variants e variant_option_values');
   }
 
   if (updateFields.length > 0) {
@@ -354,6 +362,6 @@ async function updateProductWithEnrichment(db: any, productId: string, enrichmen
     `;
     
     values.push(productId);
-    await db.query(query, ...values);
+    await db.query(query, values);
   }
 } 
