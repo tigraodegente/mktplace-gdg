@@ -450,7 +450,7 @@
 		
 		.banner-container--with-countdown {
 			border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
-			margin-top: 24px; /* Espaço para o countdown no tablet */
+			margin-top: 0; /* Conecta diretamente com o countdown - sem espaço */
 		}
 	}
 	

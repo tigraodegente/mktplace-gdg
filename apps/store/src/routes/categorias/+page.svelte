@@ -82,7 +82,7 @@
 	<meta name="description" content="Explore todas as categorias de produtos disponíveis no Marketplace GDG" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-white">
 	<!-- Hero -->
 	<div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white py-16">
 		<div class="w-full max-w-[1440px] mx-auto px-8">

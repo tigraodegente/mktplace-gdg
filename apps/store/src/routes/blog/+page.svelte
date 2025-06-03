@@ -25,7 +25,7 @@
   <meta property="og:url" content="https://marketplace-gdg.com/blog" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-white">
   <!-- Hero Section -->
   <div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white py-16">
     <div class="max-w-7xl mx-auto px-4">

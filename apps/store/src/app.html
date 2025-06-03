@@ -189,6 +189,18 @@
 				console.error('🚨 Unhandled Promise:', e.reason);
 			});
 		</script>
+		
+		<!-- Prefetch menu data for better UX -->
+		<script>
+			// Prefetch menu data when the page loads for better performance
+			if (typeof fetch !== 'undefined') {
+				setTimeout(() => {
+					fetch('/api/menu-items')
+						.then(response => response.json())
+						.catch(() => {}); // Silent fail
+				}, 100);
+			}
+		</script>
 	</body>
 </html>
 <!-- Deploy automático funcionando -->

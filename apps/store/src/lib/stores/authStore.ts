@@ -1,13 +1,23 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
-import type { AuthUser } from '@mktplace/shared-types';
 import { clearNotificationsOnLogout } from './notificationStore';
 
+// Definir interface local para evitar problemas de import
+interface AuthUser {
+	id: string;
+	email: string;
+	name: string;
+	role: 'customer' | 'admin' | 'vendor';
+	avatar?: string;
+	permissions?: string[];
+}
+
 interface AuthState {
-  user: AuthUser | null;
-  isLoading: boolean;
-  error: string | null;
+	isAuthenticated: boolean;
+	user: AuthUser | null;
+	role: 'customer' | 'admin' | 'vendor' | null;
+	loading: boolean;
 }
 
 function createAuthStore() {
@@ -152,7 +162,7 @@ function createAuthStore() {
         }));
         
         // Redirecionar para home
-        await goto('/');
+        await browser.goto('/');
       } catch (error) {
         console.error('Erro ao fazer logout:', error);
         update(state => ({ 

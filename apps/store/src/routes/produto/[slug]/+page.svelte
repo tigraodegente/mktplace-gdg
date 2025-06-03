@@ -436,6 +436,16 @@
     });
   }
   
+  // Função para verificar se uma cor está disponível para o tamanho selecionado
+  function isColorAvailableForSize(color: string): boolean {
+    return isCombinationAvailable(color, selectedSize || undefined, selectedStyle || undefined);
+  }
+  
+  // Função para verificar se um tamanho está disponível para a cor selecionada
+  function isSizeAvailableForColor(size: string): boolean {
+    return isCombinationAvailable(selectedColor || undefined, size, selectedStyle || undefined);
+  }
+  
   // Função para verificar se um style está disponível para as outras seleções
   function isStyleAvailableForSelection(style: string): boolean {
     return isCombinationAvailable(selectedColor || undefined, selectedSize || undefined, style);
@@ -523,7 +533,7 @@
   {/if}
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-white">
   {#if loading}
     <div class="flex items-center justify-center h-96">
       <div class="text-center">

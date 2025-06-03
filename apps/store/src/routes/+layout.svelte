@@ -340,7 +340,7 @@
 <MobileCategoryMenu bind:isOpen={mobileMenuOpen} onClose={() => mobileMenuOpen = false} />
 
 <!-- Main Content -->
-<main class="min-h-screen bg-gray-50">
+<main class="min-h-screen bg-white">
 	{#if children}
 		{@render children()}
 	{/if}
@@ -356,3 +356,18 @@
 {#if shouldShowWidget}
 	<ChatWidget />
 {/if}
+
+<style>
+	/* Garantir fundo branco global */
+	:global(html, body) {
+		background-color: white !important;
+	}
+	
+	:global(body) {
+		font-family: 'Lato', sans-serif;
+	}
+	
+	:global(#app, main) {
+		background-color: white !important;
+	}
+</style>
