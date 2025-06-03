@@ -181,18 +181,20 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 };
 
 // POST - Criar produto
-export const POST: RequestHandler = async ({ request }) => {
-  const db = await getDatabase();
-  
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
+    const db = getDatabase(platform);
     const data = await request.json();
+    
+    console.log('Dados recebidos para criar produto:', data);
     
     // Validar campos obrigatórios
     if (!data.name || !data.sku || !data.price) {
       await db.close();
       return json({ 
         success: false, 
-        error: 'Campos obrigatórios: name, sku, price' 
+        error: 'Campos obrigatórios: name, sku, price',
+        message: 'Campos obrigatórios: name, sku, price' 
       }, { status: 400 });
     }
     
@@ -250,6 +252,7 @@ export const POST: RequestHandler = async ({ request }) => {
     `;
     
     const newProduct = result[0];
+    console.log('Produto criado:', newProduct);
     
     // Adicionar imagens se fornecidas
     if (data.images && Array.isArray(data.images) && data.images.length > 0) {
@@ -270,10 +273,10 @@ export const POST: RequestHandler = async ({ request }) => {
     
   } catch (error) {
     console.error('Erro ao criar produto:', error);
-    await db.close();
     return json({ 
       success: false, 
-      error: 'Erro ao criar produto' 
+      error: error instanceof Error ? error.message : 'Erro ao criar produto',
+      message: error instanceof Error ? error.message : 'Erro ao criar produto'
     }, { status: 500 });
   }
 };
@@ -284,7 +287,10 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     const db = getDatabase(platform);
     const data = await request.json();
     
+    console.log('Dados recebidos para atualizar produto:', data);
+    
     if (!data.id) {
+      await db.close();
       return json({
         success: false,
         error: 'ID do produto é obrigatório'
@@ -292,34 +298,46 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     }
     
     // Atualizar produto
-    await db.query`
+    const result = await db.query`
       UPDATE products SET
         name = ${data.name},
-        slug = ${data.slug},
+        slug = ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
         sku = ${data.sku},
-        description = ${data.description || null},
+        description = ${data.description || ''},
+        short_description = ${data.short_description || null},
         price = ${data.price},
-        original_price = ${data.comparePrice || null},
-        cost = ${data.cost || null},
-        quantity = ${data.stock || 0},
-        category_id = ${data.categoryId || null},
-        brand_id = ${data.brandId || null},
+        original_price = ${data.originalPrice || data.original_price || null},
+        cost = ${data.cost || 0},
+        quantity = ${data.stock || data.quantity || 0},
+        category_id = ${data.categoryId || data.category_id || null},
+        brand_id = ${data.brandId || data.brand_id || null},
         tags = ${data.tags || []},
-        status = ${data.status || 'draft'},
-        is_active = ${data.status === 'active'},
+        status = ${data.status || 'active'},
+        is_active = ${data.is_active !== false},
         featured = ${data.featured || false},
         weight = ${data.weight || null},
-        dimensions = ${data.dimensions ? JSON.stringify(data.dimensions) : null},
+        height = ${data.height || null},
+        width = ${data.width || null},
+        length = ${data.length || null},
         barcode = ${data.barcode || null},
-        seo_title = ${data.seo?.title || data.name},
-        seo_description = ${data.seo?.description || data.description || null},
-        seo_keywords = ${data.seo?.keywords || null},
+        model = ${data.model || null},
+        condition = ${data.condition || 'new'},
+        has_free_shipping = ${data.has_free_shipping || false},
+        delivery_days_min = ${data.delivery_days_min || null},
+        delivery_days_max = ${data.delivery_days_max || null},
+        meta_title = ${data.meta_title || data.seo?.title || null},
+        meta_description = ${data.meta_description || data.seo?.description || null},
+        meta_keywords = ${data.meta_keywords || data.seo?.keywords || []},
         updated_at = NOW()
       WHERE id = ${data.id}
+      RETURNING *
     `;
     
-    // Atualizar imagens
-    if (data.images) {
+    const updatedProduct = result[0];
+    console.log('Produto atualizado:', updatedProduct);
+    
+    // Atualizar imagens se fornecidas
+    if (data.images && Array.isArray(data.images)) {
       // Remover imagens antigas
       await db.query`DELETE FROM product_images WHERE product_id = ${data.id}`;
       
@@ -327,8 +345,8 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       if (data.images.length > 0) {
         for (let i = 0; i < data.images.length; i++) {
           await db.query`
-            INSERT INTO product_images (product_id, url, position, alt)
-            VALUES (${data.id}, ${data.images[i]}, ${i}, ${data.name})
+            INSERT INTO product_images (product_id, url, position)
+            VALUES (${data.id}, ${data.images[i]}, ${i})
           `;
         }
       }
@@ -338,16 +356,15 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     
     return json({
       success: true,
-      data: {
-        message: 'Produto atualizado com sucesso'
-      }
+      data: updatedProduct
     });
     
   } catch (error) {
-    console.error('Error updating product:', error);
+    console.error('Erro ao atualizar produto:', error);
     return json({
       success: false,
-      error: 'Erro ao atualizar produto'
+      error: error instanceof Error ? error.message : 'Erro ao atualizar produto',
+      message: error instanceof Error ? error.message : 'Erro ao atualizar produto'
     }, { status: 500 });
   }
 };

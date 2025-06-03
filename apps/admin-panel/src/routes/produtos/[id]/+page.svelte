@@ -32,20 +32,37 @@
 		try {
 			const response = await fetch(`/api/products/${productId}`);
 			if (response.ok) {
-				const data = await response.json();
-				formData = data.data;
-				
-				// Preparar campos especiais
-				if (formData.tags) {
-					formData.tags_input = formData.tags.join(', ');
+				const result = await response.json();
+				if (result.success) {
+					formData = result.data;
+					
+					// Preparar campos especiais
+					if (formData.tags && Array.isArray(formData.tags)) {
+						formData.tags_input = formData.tags.join(', ');
+					}
+					if (formData.meta_keywords && Array.isArray(formData.meta_keywords)) {
+						formData.meta_keywords_input = formData.meta_keywords.join(', ');
+					}
+					
+					// Preparar imagens
+					if (formData.images && Array.isArray(formData.images)) {
+						formData.images = formData.images.map((img: any) => 
+							typeof img === 'string' ? img : img.url
+						);
+					} else {
+						formData.images = [];
+					}
+					
+					// Inicializar campos booleanos
+					formData.is_active = formData.is_active ?? true;
+					formData.featured = formData.featured ?? false;
+					formData.has_free_shipping = formData.has_free_shipping ?? false;
+					formData.track_inventory = formData.track_inventory ?? true;
+					formData.allow_backorder = formData.allow_backorder ?? false;
+				} else {
+					alert(result.error || 'Erro ao carregar produto');
+					goto('/produtos');
 				}
-				if (formData.meta_keywords) {
-					formData.meta_keywords_input = formData.meta_keywords.join(', ');
-				}
-				
-				// Inicializar campos booleanos
-				formData.seo_index = formData.seo_index ?? true;
-				formData.seo_follow = formData.seo_follow ?? true;
 			} else {
 				alert('Erro ao carregar produto');
 				goto('/produtos');
@@ -66,9 +83,28 @@
 			// Preparar dados para envio
 			const dataToSend = {
 				...formData,
+				// Converter strings para arrays
 				tags: formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [],
-				meta_keywords: formData.meta_keywords_input?.split(',').map((k: string) => k.trim()).filter(Boolean) || []
+				meta_keywords: formData.meta_keywords_input?.split(',').map((k: string) => k.trim()).filter(Boolean) || [],
+				// Garantir que números sejam números
+				price: parseFloat(formData.price) || 0,
+				original_price: formData.original_price ? parseFloat(formData.original_price) : null,
+				cost: formData.cost ? parseFloat(formData.cost) : 0,
+				quantity: parseInt(formData.quantity) || 0,
+				weight: formData.weight ? parseFloat(formData.weight) : null,
+				height: formData.height ? parseFloat(formData.height) : null,
+				width: formData.width ? parseFloat(formData.width) : null,
+				length: formData.length ? parseFloat(formData.length) : null,
+				delivery_days_min: formData.delivery_days_min ? parseInt(formData.delivery_days_min) : null,
+				delivery_days_max: formData.delivery_days_max ? parseInt(formData.delivery_days_max) : null
 			};
+			
+			// Remover campos temporários
+			delete dataToSend.tags_input;
+			delete dataToSend.meta_keywords_input;
+			delete dataToSend.category_name;
+			delete dataToSend.brand_name;
+			delete dataToSend.vendor_name;
 			
 			const response = await fetch(`/api/products/${productId}`, {
 				method: 'PUT',
@@ -78,12 +114,13 @@
 				body: JSON.stringify(dataToSend)
 			});
 			
-			if (response.ok) {
-				alert('Produto atualizado com sucesso!');
+			const result = await response.json();
+			
+			if (response.ok && result.success) {
+				alert(result.message || 'Produto atualizado com sucesso!');
 				await loadProduct(); // Recarregar dados
 			} else {
-				const error = await response.json();
-				alert(error.message || 'Erro ao salvar produto');
+				alert(result.error || result.message || 'Erro ao salvar produto');
 			}
 		} catch (error) {
 			console.error('Erro:', error);

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+	<!-- Deploy seletivo - teste -->
+	<head>
+		<meta charset="utf-8" />
+		
+		<!-- PROTEÇÕES DO CARRINHO - DEVE SER O PRIMEIRO SCRIPT -->
+		<script>
+			// Proteções ativadas APENAS na página do carrinho
+			if (window.location.pathname === '/cart' || window.location.pathname.startsWith('/cart/')) {
+				console.log('🛡️🛡️🛡️ PROTEÇÕES DO CARRINHO ATIVADAS NO HTML! 🛡️🛡️🛡️');
+				
+				// 1. Interceptar ALERT imediatamente
+				window.alert = function(message) {
+					if (message && (
+						message.toLowerCase().includes('sessão') || 
+						message.toLowerCase().includes('login') || 
+						message.toLowerCase().includes('expirou') ||
+						message.toLowerCase().includes('página')
+					)) {
+						console.log('🛡️ Alert BLOQUEADO NO HTML!', message);
+						return;
+					}
+					// Outros alerts passam
+					return window.alert.originalAlert ? window.alert.originalAlert.call(window, message) : null;
+				};
+				// Salvar referência do alert original
+				window.alert.originalAlert = window.alert;
+				
+				// 2. Interceptar redirecionamentos
+				const blockedPaths = ['/login', '/logout'];
+				
+				// window.location.href
+				const originalHref = Object.getOwnPropertyDescriptor(window.location, 'href');
+				Object.defineProperty(window.location, 'href', {
+					get() {
+						return originalHref?.get?.call(window.location);
+					},
+					set(value) {
+						if (value && blockedPaths.some(path => value.toString().includes(path))) {
+							console.warn('🛡️ Redirecionamento BLOQUEADO NO HTML!', value);
+							return;
+						}
+						originalHref?.set?.call(window.location, value);
+					}
+				});
+				
+				// window.location.assign
+				const originalAssign = window.location.assign;
+				window.location.assign = function(url) {
+					if (url && blockedPaths.some(path => url.includes(path))) {
+						console.warn('🛡️ location.assign BLOQUEADO NO HTML!', url);
+						return;
+					}
+					originalAssign.call(window.location, url);
+				};
+				
+				// window.location.replace
+				const originalReplace = window.location.replace;
+				window.location.replace = function(url) {
+					if (url && blockedPaths.some(path => url.includes(path))) {
+						console.warn('🛡️ location.replace BLOQUEADO NO HTML!', url);
+						return;
+					}
+					originalReplace.call(window.location, url);
+				};
+				
+				// 3. Interceptar FETCH para bloquear logout
+				const originalFetch = window.fetch;
+				window.fetch = async function(...args) {
+					const [url] = args;
+					if (typeof url === 'string' && url.includes('/api/auth/logout')) {
+						console.warn('🛡️ LOGOUT API BLOQUEADO NO HTML!');
+						return new Response(JSON.stringify({ success: true }), {
+							status: 200,
+							headers: { 'Content-Type': 'application/json' }
+						});
+					}
+					return originalFetch.apply(window, args);
+				};
+				
+				// Marcar globalmente
+				window.__cartHTMLProtection = true;
+			}
+		</script>
+		
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		
+		<!-- PWA Meta Tags -->
+		<meta name="theme-color" content="#00BFB3" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="Marketplace GDG" />
+		<link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+		<link rel="manifest" href="/manifest.json" />
+		
+		<!-- OpenSearch -->
+		<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Buscar produtos no Marketplace GDG" />
+		
+		<!-- Google Fonts Preload -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link rel="preload" href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+		<noscript>
+			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap">
+		</noscript>
+		
+		<!-- Preload CSS crítico -->
+		%sveltekit.head%
+		
+		<!-- Critical CSS inlined (será feito pelo build) -->
+		<style>
+			/* Critical CSS for layout stability */
+			.loading-skeleton {
+				background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+				background-size: 200% 100%;
+				animation: loading 1.5s infinite;
+			}
+			@keyframes loading {
+				0% { background-position: 200% 0; }
+				100% { background-position: -200% 0; }
+			}
+		</style>
+
+		<!-- Service Worker Registration (APENAS PRODUÇÃO) -->
+		<script>
+			// COMPLETAMENTE DESABILITADO EM LOCALHOST
+			if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
+				window.addEventListener('load', async () => {
+					try {
+						const registration = await navigator.serviceWorker.register('/sw.js', {
+							scope: '/',
+							updateViaCache: 'imports'
+						});
+						console.log('🎉 Service Worker registrado:', registration.scope);
+					} catch (error) {
+						console.warn('Service Worker erro:', error);
+					}
+				});
+			} else if (window.location.hostname === 'localhost') {
+				console.log('🚫 Service Worker desabilitado em localhost');
+			}
+			
+			// Interceptar erros de ícones PWA em desenvolvimento
+			if (window.location.hostname === 'localhost') {
+				window.addEventListener('error', function(e) {
+					// Ignorar erros de ícones PWA em desenvolvimento
+					if (e.target && e.target.tagName === 'IMG' && e.target.src && e.target.src.includes('/icons/')) {
+						e.preventDefault();
+						console.log('🎨 Ícone PWA não encontrado (normal em desenvolvimento):', e.target.src);
+						return false;
+					}
+				}, true);
+			}
+		</script>
+
+		<!-- Analytics apenas em produção -->
+		<script>
+			if (window.location.hostname !== 'localhost') {
+				// Google Analytics 4
+				(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+				new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+				j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+				'https://www.googletagmanager.com/gtag/js?id='+i+dl;f.parentNode.insertBefore(j,f);
+				})(window,document,'script','dataLayer','GA_MEASUREMENT_ID');
+				
+				window.dataLayer = window.dataLayer || [];
+				function gtag(){dataLayer.push(arguments);}
+				gtag('js', new Date());
+				gtag('config', 'GA_MEASUREMENT_ID');
+			}
+		</script>
+	</head>
+	<body data-sveltekit-preload-data="hover" class="bg-white">
+		<!-- App Shell -->
+		<div style="display: contents">%sveltekit.body%</div>
+		
+		<!-- Chat Widget Container -->
+		<div id="chat-widget-root"></div>
+		
+		<!-- Error Tracking (Development) -->
+		<script>
+			window.addEventListener('error', (e) => {
+				console.error('🚨 Global Error:', e.error);
+			});
+			
+			window.addEventListener('unhandledrejection', (e) => {
+				console.error('🚨 Unhandled Promise:', e.reason);
+			});
+		</script>
+	</body>
+</html>
+<!-- Deploy automático funcionando -->

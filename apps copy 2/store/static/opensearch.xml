@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+    <ShortName>Marketplace GDG</ShortName>
+    <Description>Buscar produtos no Marketplace GDG</Description>
+    <InputEncoding>UTF-8</InputEncoding>
+    <Image width="16" height="16" type="image/x-icon">https://marketplace-gdg.com/favicon.ico</Image>
+    <Image width="64" height="64" type="image/png">https://marketplace-gdg.com/icons/icon-64x64.png</Image>
+    <Url type="text/html" method="get" template="https://marketplace-gdg.com/busca?q={searchTerms}"/>
+    <Url type="application/x-suggestions+json" method="get" template="https://marketplace-gdg.com/api/search/suggestions?q={searchTerms}"/>
+    <Query role="example" searchTerms="celular samsung" />
+    <Language>pt-BR</Language>
+    <Tags>marketplace ecommerce shopping brasil</Tags>
+    <Contact>suporte@marketplace-gdg.com</Contact>
+    <SyndicationRight>open</SyndicationRight>
+    <AdultContent>false</AdultContent>
+</OpenSearchDescription> 
