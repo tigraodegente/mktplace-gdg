@@ -30,7 +30,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       GROUP BY p.id, c.name, b.name, s.company_name
     `;
     
-    const result = await db.query(query, id);
+    const result = await db.query(query, [id]);
     
     if (result.length === 0) {
       await db.close();

@@ -112,7 +112,8 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     
     params.push(limit, offset);
     
-    const products = await db.query(query, ...params);
+    // Executar query com parâmetros como array
+    const products = await db.query(query, params);
     const totalCount = products[0]?.total_count || 0;
     
     // Buscar estatísticas gerais
@@ -127,7 +128,12 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       ${vendorId ? `WHERE p.seller_id = $1` : ''}
     `;
     
-    const [stats] = await db.query(statsQuery, ...(vendorId ? [vendorId] : []));
+    // Executar query de stats com ou sem parâmetros
+    const statsResult = vendorId 
+      ? await db.query(statsQuery, [vendorId])
+      : await db.query(statsQuery);
+    
+    const stats = statsResult[0];
     
     await db.close();
     
