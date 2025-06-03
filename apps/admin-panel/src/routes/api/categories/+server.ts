@@ -45,7 +45,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       categories = await db.query(query);
     } else {
       // Buscar lista simples
-      const conditions = activeOnly ? 'WHERE is_active = true' : '';
+      const conditions = activeOnly ? 'WHERE c.is_active = true' : '';
       
       const listQuery = `
         SELECT 
@@ -76,9 +76,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const [stats] = await db.query`
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE is_active = true) as active,
-        COUNT(*) FILTER (WHERE parent_id IS NULL) as root
-      FROM categories
+        COUNT(*) FILTER (WHERE c.is_active = true) as active,
+        COUNT(*) FILTER (WHERE c.parent_id IS NULL) as root
+      FROM categories c
     `;
     
     await db.close();

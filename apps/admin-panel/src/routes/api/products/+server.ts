@@ -111,10 +111,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     // Buscar estatísticas gerais
     const statsQuery = `
       SELECT 
-        COUNT(*) FILTER (WHERE is_active = true AND quantity > 0) as active,
-        COUNT(*) FILTER (WHERE is_active = false) as inactive, 
-        COUNT(*) FILTER (WHERE status = 'pending') as pending,
-        COUNT(*) FILTER (WHERE quantity < 10 AND quantity > 0) as low_stock,
+        COUNT(*) FILTER (WHERE p.is_active = true AND p.quantity > 0) as active,
+        COUNT(*) FILTER (WHERE p.is_active = false) as inactive, 
+        COUNT(*) FILTER (WHERE p.status = 'pending') as pending,
+        COUNT(*) FILTER (WHERE p.quantity < 10 AND p.quantity > 0) as low_stock,
         COUNT(*) as total
       FROM products p
       ${vendorId ? `WHERE p.seller_id = $1` : ''}
