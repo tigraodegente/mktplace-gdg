@@ -41,7 +41,7 @@
 	}: Props = $props();
 	
 	// Configuração
-	const INSTALLMENTS = 12;
+	const INSTALLMENTS = 5;
 	const PIX_DISCOUNT = 0.95; // 5% desconto PIX
 	
 	// Estados reativos otimizados
@@ -198,9 +198,17 @@
 			onclick={handleToggleFavorite}
 			aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
 		>
-			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-			</svg>
+			{#if isFavorite}
+				<!-- Coração preenchido quando favoritado -->
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+					<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+				</svg>
+			{:else}
+				<!-- Coração outline quando não favoritado -->
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+				</svg>
+			{/if}
 		</button>
 		
 		<!-- Imagem principal -->
@@ -268,20 +276,24 @@
 		
 		<!-- Preços -->
 		<div class="pricing">
+			<!-- Preço PIX (principal e destacado) -->
+			<p class="pix-price">
+				<strong>{formatCurrency(pixPrice())}</strong> 
+				<span class="pix-label">no pix ou boleto</span>
+			</p>
+			
+			<!-- Preço original riscado -->
 			{#if product.original_price && product.original_price > product.price}
 				<p class="original-price">de {formatCurrency(product.original_price)}</p>
 			{/if}
 			
+			<!-- Parcelamento -->
 			<div class="installment-price">
-				<span class="label">por</span>
+				<span class="label">ou</span>
 				<span class="count">{INSTALLMENTS}x</span>
 				<span class="label">de</span>
 				<span class="value">{formatCurrency(installmentPrice())}</span>
 			</div>
-			
-			<p class="pix-price">
-				<strong>{formatCurrency(pixPrice())}</strong> no PIX
-			</p>
 		</div>
 		
 		<!-- Badges inferiores -->
@@ -393,19 +405,21 @@
 	.badge {
 		position: absolute;
 		font-size: 0.75rem;
-		font-weight: 600;
-		padding: 4px 8px;
-		border-radius: 4px;
+		font-weight: 700;
+		padding: 5px 10px;
+		border-radius: 12px;
 		z-index: 2;
 		color: white;
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 	
 	.badge--discount {
 		top: 8px;
 		left: 8px;
 		background: #ff4444;
+		font-weight: 800;
 	}
 	
 	.badge--material {
@@ -505,16 +519,16 @@
 	
 	/* Informações do produto */
 	.product-info {
-		padding: 16px;
+		padding: 12px;
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 6px;
 	}
 	
 	.compact .product-info {
-		padding: 12px;
-		gap: 6px;
+		padding: 10px;
+		gap: 4px;
 	}
 	
 	.pieces {
@@ -559,34 +573,56 @@
 	/* Preços */
 	.pricing {
 		margin-top: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 	}
 	
+	/* Preço PIX (principal e destacado) */
+	.pix-price {
+		font-size: 1.1rem;
+		color: #00bfb3;
+		margin: 0;
+		font-weight: 400;
+		line-height: 1.2;
+	}
+	
+	.pix-price strong {
+		font-weight: 800;
+		font-size: 1.15rem;
+	}
+	
+	.pix-label {
+		font-size: 0.8rem;
+		font-weight: 400;
+		color: #00a89d;
+	}
+	
+	/* Preço original riscado */
 	.original-price {
 		color: #999;
-		font-size: 0.75rem;
+		font-size: 0.8rem;
 		text-decoration: line-through;
-		margin: 0 0 4px 0;
+		margin: 0;
+		font-weight: 400;
 	}
 	
+	/* Parcelamento (menor hierarquia) */
 	.installment-price {
-		font-size: 0.85rem;
-		color: #333;
-		margin-bottom: 4px;
+		font-size: 0.8rem;
+		color: #666;
+		margin: 0;
+		font-weight: 400;
 	}
 	
 	.installment-price .label {
-		color: #666;
+		color: #999;
 	}
 	
 	.installment-price .count,
 	.installment-price .value {
 		font-weight: 600;
-	}
-	
-	.pix-price {
-		font-size: 0.85rem;
-		color: #00bfb3;
-		margin: 0;
+		color: #333;
 	}
 	
 	/* Badges inferiores */
