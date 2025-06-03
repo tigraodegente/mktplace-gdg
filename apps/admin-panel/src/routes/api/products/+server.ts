@@ -28,9 +28,9 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     let paramIndex = 1;
     
     if (search) {
-      conditions.push(`(p.name ILIKE $${paramIndex} OR p.sku ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`);
-      params.push(`%${search}%`);
-      paramIndex++;
+      conditions.push(`(p.name ILIKE $${paramIndex} OR p.sku ILIKE $${paramIndex + 1} OR p.description ILIKE $${paramIndex + 2})`);
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      paramIndex += 3;
     }
     
     if (status !== 'all') {
