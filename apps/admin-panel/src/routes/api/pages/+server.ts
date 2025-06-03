@@ -36,9 +36,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     // Query principal
     const query = `
       SELECT 
-        id, title, slug, content, 
-        is_published, meta_title, meta_description,
-        created_at, updated_at,
+        id, title, slug, content, excerpt, meta_title, meta_description,
+        is_published, featured_image, template, created_at, updated_at,
         COUNT(*) OVER() as total_count
       FROM pages
       ${whereClause}
@@ -56,8 +55,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE is_published = true) as published,
-        COUNT(*) FILTER (WHERE is_published = false) as draft,
-        COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '7 days') as recently_updated
+        COUNT(*) FILTER (WHERE is_published = false) as draft
       FROM pages
     `;
     
@@ -71,12 +69,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           title: p.title,
           slug: p.slug,
           content: p.content,
-          status: p.is_published ? 'published' : 'draft',
-          seo: {
-            title: p.meta_title || p.title,
-            description: p.meta_description,
-            keywords: ''
-          },
+          excerpt: p.excerpt,
+          metaTitle: p.meta_title,
+          metaDescription: p.meta_description,
+          isPublished: p.is_published,
+          featuredImage: p.featured_image,
+          template: p.template,
           createdAt: p.created_at,
           updatedAt: p.updated_at
         })),
@@ -89,8 +87,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         stats: {
           total: stats.total || 0,
           published: stats.published || 0,
-          draft: stats.draft || 0,
-          recentlyUpdated: stats.recently_updated || 0
+          draft: stats.draft || 0
         }
       }
     });
@@ -132,15 +129,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     }
     
     // Inserir página
-    const [pageData] = await db.query`
+    const [page] = await db.query`
       INSERT INTO pages (
-        title, slug, content,
-        is_published, meta_title, meta_description
+        title, slug, content, excerpt, meta_title, meta_description,
+        is_published, featured_image, template
       ) VALUES (
         ${data.title}, ${data.slug}, ${data.content || ''},
-        ${data.status === 'published'}, 
-        ${data.seo?.title || data.title},
-        ${data.seo?.description || null}
+        ${data.excerpt || null}, ${data.metaTitle || data.title},
+        ${data.metaDescription || null}, ${data.isPublished !== false},
+        ${data.featuredImage || null}, ${data.template || 'default'}
       ) RETURNING id
     `;
     
@@ -149,7 +146,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return json({
       success: true,
       data: {
-        id: pageData.id,
+        id: page.id,
         message: 'Página criada com sucesso'
       }
     });
@@ -176,15 +173,33 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
+    // Verificar slug duplicado (exceto a própria página)
+    if (data.slug) {
+      const [existing] = await db.query`
+        SELECT id FROM pages WHERE slug = ${data.slug} AND id != ${data.id}
+      `;
+      
+      if (existing) {
+        await db.close();
+        return json({
+          success: false,
+          error: 'Slug já existe'
+        }, { status: 400 });
+      }
+    }
+    
     // Atualizar página
     await db.query`
       UPDATE pages SET
         title = ${data.title},
         slug = ${data.slug},
         content = ${data.content || ''},
-        is_published = ${data.status === 'published'},
-        meta_title = ${data.seo?.title || data.title},
-        meta_description = ${data.seo?.description || null},
+        excerpt = ${data.excerpt || null},
+        meta_title = ${data.metaTitle || data.title},
+        meta_description = ${data.metaDescription || null},
+        is_published = ${data.isPublished !== false},
+        featured_image = ${data.featuredImage || null},
+        template = ${data.template || 'default'},
         updated_at = NOW()
       WHERE id = ${data.id}
     `;
@@ -217,20 +232,6 @@ export const DELETE: RequestHandler = async ({ request, platform }) => {
       return json({
         success: false,
         error: 'ID da página é obrigatório'
-      }, { status: 400 });
-    }
-    
-    // Páginas protegidas que não podem ser excluídas
-    const protectedSlugs = ['terms', 'privacy', 'about', 'contact'];
-    const [pageData] = await db.query`
-      SELECT slug FROM pages WHERE id = ${id}
-    `;
-    
-    if (pageData && protectedSlugs.includes(pageData.slug)) {
-      await db.close();
-      return json({
-        success: false,
-        error: 'Esta página é protegida e não pode ser excluída'
       }, { status: 400 });
     }
     

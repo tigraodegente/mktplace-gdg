@@ -4,7 +4,7 @@ import { getDatabase } from '$lib/db';
 import bcrypt from 'bcryptjs';
 
 // GET - Listar usuários
-export const GET: RequestHandler = async ({ url, platform, locals }) => {
+export const GET: RequestHandler = async ({ url, platform }) => {
   try {
     const db = getDatabase(platform);
     
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     let paramIndex = 1;
     
     if (search) {
-      conditions.push(`(u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR u.phone ILIKE $${paramIndex})`);
+      conditions.push(`(u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`);
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -43,37 +43,25 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     
     // Query principal
     const query = `
-      WITH user_stats AS (
-        SELECT 
-          u.id,
-          u.name,
-          u.email,
-          u.phone,
-          u.role,
-          u.is_active,
-          u.email_verified,
-          u.created_at,
-          u.updated_at,
-          u.last_login,
-          COUNT(*) OVER() as total_count,
-          (
-            SELECT COUNT(*) 
-            FROM orders o 
-            WHERE o.customer_id = u.id
-          ) as order_count,
-          (
-            SELECT SUM(total_amount) 
-            FROM orders o 
-            WHERE o.customer_id = u.id AND o.status = 'completed'
-          ) as total_spent,
-          s.company_name as seller_name
-        FROM users u
-        LEFT JOIN sellers s ON s.id = u.seller_id
-        ${whereClause}
-        ORDER BY u.created_at DESC
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-      )
-      SELECT * FROM user_stats
+      SELECT 
+        u.id, u.name, u.email, u.role, u.is_active, u.email_verified_at,
+        u.phone, u.avatar, u.created_at, u.updated_at, u.last_login,
+        COUNT(*) OVER() as total_count,
+        CASE 
+          WHEN u.role = 'customer' THEN (
+            SELECT COUNT(*) FROM orders WHERE user_id = u.id
+          )
+          WHEN u.role = 'seller' THEN (
+            SELECT COUNT(*) FROM products WHERE seller_id = (
+              SELECT id FROM sellers WHERE user_id = u.id
+            )
+          )
+          ELSE 0
+        END as activity_count
+      FROM users u
+      ${whereClause}
+      ORDER BY u.created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     
     params.push(limit, offset);
@@ -81,15 +69,15 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     const users = await db.query(query, ...params);
     const totalCount = users[0]?.total_count || 0;
     
-    // Buscar estatísticas gerais
+    // Buscar estatísticas
     const [stats] = await db.query`
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE is_active = true) as active,
-        COUNT(*) FILTER (WHERE role = 'admin') as admins,
-        COUNT(*) FILTER (WHERE role = 'vendor') as vendors,
         COUNT(*) FILTER (WHERE role = 'customer') as customers,
-        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as new_users
+        COUNT(*) FILTER (WHERE role = 'seller') as sellers,
+        COUNT(*) FILTER (WHERE role = 'admin') as admins,
+        COUNT(*) FILTER (WHERE is_active = true) as active,
+        COUNT(*) FILTER (WHERE email_verified_at IS NOT NULL) as verified
       FROM users
     `;
     
@@ -102,16 +90,15 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           id: u.id,
           name: u.name,
           email: u.email,
-          phone: u.phone,
           role: u.role,
-          status: u.is_active ? 'active' : 'inactive',
-          emailVerified: u.email_verified,
-          orderCount: u.order_count || 0,
-          totalSpent: Number(u.total_spent || 0),
-          sellerName: u.seller_name,
+          isActive: u.is_active,
+          emailVerified: !!u.email_verified_at,
+          phone: u.phone,
+          avatar: u.avatar,
+          activityCount: u.activity_count || 0,
+          lastLogin: u.last_login,
           createdAt: u.created_at,
-          updatedAt: u.updated_at,
-          lastLogin: u.last_login
+          updatedAt: u.updated_at
         })),
         pagination: {
           page,
@@ -121,11 +108,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
         },
         stats: {
           total: stats.total || 0,
-          active: stats.active || 0,
-          admins: stats.admins || 0,
-          vendors: stats.vendors || 0,
           customers: stats.customers || 0,
-          newUsers: stats.new_users || 0
+          sellers: stats.sellers || 0,
+          admins: stats.admins || 0,
+          active: stats.active || 0,
+          verified: stats.verified || 0
         }
       }
     });
@@ -146,57 +133,50 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const data = await request.json();
     
     // Validações
-    if (!data.name || !data.email || !data.password || !data.role) {
+    if (!data.name || !data.email || !data.password) {
       return json({
         success: false,
-        error: 'Nome, email, senha e perfil são obrigatórios'
+        error: 'Nome, email e senha são obrigatórios'
       }, { status: 400 });
     }
     
     // Verificar email duplicado
     const [existing] = await db.query`
-      SELECT id FROM users WHERE email = ${data.email}
+      SELECT id FROM users WHERE email = ${data.email.toLowerCase()}
     `;
     
     if (existing) {
       await db.close();
       return json({
         success: false,
-        error: 'Email já cadastrado'
+        error: 'Email já existe'
       }, { status: 400 });
     }
     
     // Hash da senha
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const hashedPassword = await bcrypt.hash(data.password, 12);
     
     // Inserir usuário
     const [user] = await db.query`
       INSERT INTO users (
-        name, email, phone, password_hash,
-        role, is_active, email_verified
+        name, email, password, role, phone, 
+        is_active, email_verified_at
       ) VALUES (
-        ${data.name}, ${data.email}, ${data.phone || null}, ${hashedPassword},
-        ${data.role}, ${data.status === 'active'}, false
+        ${data.name}, ${data.email.toLowerCase()}, ${hashedPassword},
+        ${data.role || 'customer'}, ${data.phone || null},
+        ${data.isActive !== false}, 
+        ${data.emailVerified ? new Date() : null}
       ) RETURNING id
     `;
     
-    // Se for vendor, criar registro na tabela sellers
-    if (data.role === 'vendor' && data.sellerInfo) {
+    // Se for seller, criar registro na tabela sellers
+    if (data.role === 'seller') {
       await db.query`
         INSERT INTO sellers (
-          id, user_id, company_name, slug,
-          is_active, commission_rate
+          user_id, company_name, is_active
         ) VALUES (
-          ${user.id}, ${user.id}, 
-          ${data.sellerInfo.companyName || data.name},
-          ${data.sellerInfo.slug || data.email.split('@')[0]},
-          true, ${data.sellerInfo.commissionRate || 15}
+          ${user.id}, ${data.companyName || data.name}, true
         )
-      `;
-      
-      // Atualizar user com seller_id
-      await db.query`
-        UPDATE users SET seller_id = ${user.id} WHERE id = ${user.id}
       `;
     }
     
@@ -232,51 +212,58 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
-    // Construir query dinâmica
+    // Construir update dinamicamente
     const updates: string[] = [];
-    const values: any[] = [];
+    const params: any[] = [];
     let paramIndex = 1;
     
     if (data.name) {
       updates.push(`name = $${paramIndex}`);
-      values.push(data.name);
+      params.push(data.name);
       paramIndex++;
     }
     
     if (data.email) {
       updates.push(`email = $${paramIndex}`);
-      values.push(data.email);
-      paramIndex++;
-    }
-    
-    if (data.phone !== undefined) {
-      updates.push(`phone = $${paramIndex}`);
-      values.push(data.phone || null);
+      params.push(data.email.toLowerCase());
       paramIndex++;
     }
     
     if (data.role) {
       updates.push(`role = $${paramIndex}`);
-      values.push(data.role);
+      params.push(data.role);
       paramIndex++;
     }
     
-    if (data.status !== undefined) {
+    if (data.phone !== undefined) {
+      updates.push(`phone = $${paramIndex}`);
+      params.push(data.phone || null);
+      paramIndex++;
+    }
+    
+    if (data.isActive !== undefined) {
       updates.push(`is_active = $${paramIndex}`);
-      values.push(data.status === 'active');
+      params.push(data.isActive);
       paramIndex++;
     }
     
+    // Se está definindo como verificado
+    if (data.emailVerified !== undefined) {
+      updates.push(`email_verified_at = $${paramIndex}`);
+      params.push(data.emailVerified ? new Date() : null);
+      paramIndex++;
+    }
+    
+    // Se tem nova senha
     if (data.password) {
-      const hashedPassword = await bcrypt.hash(data.password, 10);
-      updates.push(`password_hash = $${paramIndex}`);
-      values.push(hashedPassword);
+      const hashedPassword = await bcrypt.hash(data.password, 12);
+      updates.push(`password = $${paramIndex}`);
+      params.push(hashedPassword);
       paramIndex++;
     }
     
     updates.push('updated_at = NOW()');
-    
-    values.push(data.id); // Para o WHERE
+    params.push(data.id);
     
     const query = `
       UPDATE users 
@@ -284,7 +271,7 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       WHERE id = $${paramIndex}
     `;
     
-    await db.query(query, ...values);
+    await db.query(query, ...params);
     await db.close();
     
     return json({
@@ -316,21 +303,39 @@ export const DELETE: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
-    // Soft delete - apenas desativar
-    await db.query`
-      UPDATE users 
-      SET is_active = false, updated_at = NOW()
-      WHERE id = ${id}
+    // Verificar se tem pedidos
+    const [orderCount] = await db.query`
+      SELECT COUNT(*) as count FROM orders WHERE user_id = ${id}
     `;
     
-    await db.close();
-    
-    return json({
-      success: true,
-      data: {
-        message: 'Usuário desativado com sucesso'
-      }
-    });
+    if (orderCount.count > 0) {
+      // Apenas desativar se tem histórico
+      await db.query`
+        UPDATE users SET is_active = false, updated_at = NOW()
+        WHERE id = ${id}
+      `;
+      
+      await db.close();
+      
+      return json({
+        success: true,
+        data: {
+          message: 'Usuário desativado (possui histórico de pedidos)'
+        }
+      });
+    } else {
+      // Excluir se não tem histórico
+      await db.query`DELETE FROM users WHERE id = ${id}`;
+      
+      await db.close();
+      
+      return json({
+        success: true,
+        data: {
+          message: 'Usuário excluído com sucesso'
+        }
+      });
+    }
     
   } catch (error) {
     console.error('Error deleting user:', error);
