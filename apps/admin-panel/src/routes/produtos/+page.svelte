@@ -1326,47 +1326,30 @@
 <!-- Modal de Criar/Editar Produto -->
 {#if showCreateModal}
 	<div 
-		class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
 		transition:fade={{ duration: 300 }}
 		onclick={closeModal}
 	>
 		<div 
-			class="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden relative"
+			class="bg-white rounded-2xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden relative"
 			transition:scale={{ duration: 400, easing: backOut, start: 0.9 }}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<!-- Background Pattern -->
-			<div class="absolute inset-0 opacity-5">
-				<svg class="w-full h-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<defs>
-						<pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-							<path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.5"/>
-						</pattern>
-					</defs>
-					<rect width="100" height="100" fill="url(#grid)" />
-				</svg>
-			</div>
-
-			<!-- Header Moderno -->
-			<div class="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-8 text-white">
-				<!-- Padrão de fundo sutil -->
-				<div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-				<div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32"></div>
-				<div class="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24"></div>
-				
-				<div class="relative flex items-center justify-between">
+			<!-- Header -->
+			<div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
+				<div class="flex items-center justify-between">
 					<div class="flex items-center space-x-4">
-						<div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-							<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
 									d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 							</svg>
 						</div>
 						<div>
-							<h2 class="text-3xl font-bold tracking-tight">
+							<h2 class="text-2xl font-bold">
 								{editingProduct ? 'Editar Produto' : 'Novo Produto'}
 							</h2>
-							<p class="text-white/80 mt-1">
+							<p class="text-white/80">
 								{editingProduct ? 'Atualize as informações do produto' : 'Adicione um novo produto ao catálogo'}
 							</p>
 						</div>
@@ -1374,9 +1357,9 @@
 					
 					<button 
 						onclick={closeModal}
-						class="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-2xl flex items-center justify-center backdrop-blur-sm transition-all duration-200 hover:scale-105"
+						class="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors"
 					>
-						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</button>
@@ -1384,71 +1367,58 @@
 
 				<!-- Status do produto se estiver editando -->
 				{#if editingProduct}
-					<div class="relative mt-6 flex items-center space-x-4">
-						<div class="flex items-center space-x-2">
-							<div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-							<span class="text-sm text-white/90">ID: {editingProduct.id}</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
-							</svg>
-							<span class="text-sm text-white/90">SKU: {editingProduct.sku}</span>
-						</div>
+					<div class="mt-4 flex items-center space-x-4 text-sm">
+						<span class="bg-white/20 px-3 py-1 rounded-full">ID: {editingProduct.id}</span>
+						<span class="bg-white/20 px-3 py-1 rounded-full">SKU: {editingProduct.sku}</span>
 					</div>
 				{/if}
 			</div>
 			
-			<!-- Tabs Redesenhadas -->
-			<div class="relative border-b border-gray-100">
-				<div class="flex overflow-x-auto scrollbar-hide">
+			<!-- Tabs -->
+			<div class="border-b border-gray-200">
+				<nav class="flex overflow-x-auto">
 					{#each [
-						{ id: 'basic', label: 'Informações', icon: '📋', color: 'from-blue-500 to-cyan-500' },
-						{ id: 'images', label: 'Mídia', icon: '🎨', color: 'from-purple-500 to-pink-500' },
-						{ id: 'inventory', label: 'Estoque', icon: '📦', color: 'from-green-500 to-emerald-500' },
-						{ id: 'seo', label: 'SEO', icon: '🔍', color: 'from-orange-500 to-red-500' },
-						{ id: 'shipping', label: 'Frete', icon: '🚚', color: 'from-indigo-500 to-purple-500' }
+						{ id: 'basic', label: 'Informações', icon: '📋' },
+						{ id: 'images', label: 'Mídia', icon: '🎨' },
+						{ id: 'inventory', label: 'Estoque', icon: '📦' },
+						{ id: 'seo', label: 'SEO', icon: '🔍' },
+						{ id: 'shipping', label: 'Frete', icon: '🚚' }
 					] as tab}
 						<button
-							onclick={() => activeTab = tab.id as typeof activeTab}
-							class="group relative flex-shrink-0 px-6 py-4 font-medium text-sm transition-all duration-300 {
+							onclick={() => {
+								activeTab = tab.id as typeof activeTab;
+								// Scroll para o topo do conteúdo
+								setTimeout(() => {
+									const contentDiv = document.querySelector('.modal-content');
+									if (contentDiv) {
+										contentDiv.scrollTop = 0;
+									}
+								}, 50);
+							}}
+							class="flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors {
 								activeTab === tab.id 
-									? 'text-gray-900' 
-									: 'text-gray-500 hover:text-gray-700'
+									? 'border-green-500 text-green-600 bg-green-50' 
+									: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
 							}"
 						>
-							<!-- Background ativo -->
-							{#if activeTab === tab.id}
-								<div class="absolute inset-0 bg-gradient-to-r {tab.color} opacity-10 rounded-t-2xl" 
-									transition:scale={{ duration: 200 }}></div>
-								<div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r {tab.color} rounded-full" 
-									transition:scale={{ duration: 200 }}></div>
-							{/if}
+							<span>{tab.icon}</span>
+							<span>{tab.label}</span>
 							
-							<div class="relative flex items-center space-x-3">
-								<span class="text-xl transition-transform duration-200 {
-									activeTab === tab.id ? 'scale-110' : 'group-hover:scale-105'
-								}">{tab.icon}</span>
-								<span class="font-medium">{tab.label}</span>
-								
-								<!-- Indicador de status -->
-								{#if tab.id === 'basic' && (formData.name || formData.description)}
-									<div class="w-2 h-2 bg-green-400 rounded-full"></div>
-								{:else if tab.id === 'images' && formData.images.length > 0}
-									<div class="w-2 h-2 bg-green-400 rounded-full"></div>
-								{:else if tab.id === 'seo' && (formData.seo.title || formData.seo.description)}
-									<div class="w-2 h-2 bg-green-400 rounded-full"></div>
-								{:else}
-									<div class="w-2 h-2 bg-gray-300 rounded-full opacity-50"></div>
-								{/if}
-							</div>
+							<!-- Indicador de preenchimento -->
+							{#if tab.id === 'basic' && (formData.name || formData.description)}
+								<div class="w-2 h-2 bg-green-500 rounded-full"></div>
+							{:else if tab.id === 'images' && formData.images.length > 0}
+								<div class="w-2 h-2 bg-green-500 rounded-full"></div>
+							{:else if tab.id === 'seo' && (formData.seo.title || formData.seo.description)}
+								<div class="w-2 h-2 bg-green-500 rounded-full"></div>
+							{/if}
 						</button>
 					{/each}
-				</div>
+				</nav>
 			</div>
 			
 			<!-- Content -->
-			<div class="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
+			<div class="modal-content p-6 overflow-y-auto" style="max-height: calc(90vh - 200px);">
 				{#if activeTab === 'basic'}
 					<div class="space-y-6">
 						<!-- Nome e Slug -->
@@ -1461,7 +1431,7 @@
 									type="text"
 									bind:value={formData.name}
 									onblur={generateSlug}
-									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 									placeholder="Ex: Notebook Dell Inspiron"
 								/>
 							</div>
@@ -1472,7 +1442,7 @@
 								<input
 									type="text"
 									bind:value={formData.slug}
-									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 									placeholder="notebook-dell-inspiron"
 								/>
 							</div>
@@ -1486,7 +1456,7 @@
 							<textarea
 								bind:value={formData.description}
 								rows="4"
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 								placeholder="Descreva o produto em detalhes..."
 							></textarea>
 						</div>
@@ -1504,7 +1474,7 @@
 										bind:value={formData.price}
 										step="0.01"
 										min="0"
-										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 										placeholder="0,00"
 									/>
 								</div>
@@ -1520,7 +1490,7 @@
 										bind:value={formData.comparePrice}
 										step="0.01"
 										min="0"
-										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 										placeholder="0,00"
 									/>
 								</div>
@@ -1536,7 +1506,7 @@
 										bind:value={formData.cost}
 										step="0.01"
 										min="0"
-										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+										class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 										placeholder="0,00"
 									/>
 								</div>
@@ -1551,7 +1521,7 @@
 								</label>
 								<select
 									bind:value={formData.category}
-									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 								>
 									<option value="">Selecione uma categoria</option>
 									{#each categories as cat}
@@ -1565,7 +1535,7 @@
 								</label>
 								<select
 									bind:value={formData.status}
-									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 								>
 									<option value="draft">Rascunho</option>
 									<option value="active">Ativo</option>
@@ -1581,386 +1551,163 @@
 							<label class="block text-sm font-medium text-gray-700 mb-2">
 								Tags
 							</label>
-							<input
-								type="text"
-								bind:value={newTag}
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-								placeholder="Digite uma nova tag"
-							/>
-							<button
-								onclick={addTag}
-								class="btn btn-sm btn-ghost text-cyan-600"
-							>
-								➕ Adicionar Tag
-							</button>
-						</div>
-						
-						<!-- Variations -->
-						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-2">
-								Variations
-							</label>
-							<input
-								type="text"
-								bind:value={newVariation.name}
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-								placeholder="Nome da Variation"
-							/>
-							<input
-								type="text"
-								bind:value={newVariation.options}
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-								placeholder="Opções da Variation"
-							/>
-							<button
-								onclick={addVariation}
-								class="btn btn-sm btn-ghost text-cyan-600"
-							>
-								➕ Adicionar Variation
-							</button>
-						</div>
-						
-						<!-- Imagens -->
-						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-2">
-								Imagens
-							</label>
-							<input
-								type="file"
-								multiple
-								onchange={handleImageUpload}
-								class="file-input file-input-bordered file-input-primary w-full"
-							/>
-							<div class="mt-4">
-								{#each formData.images as image, index}
-									<div class="flex items-center gap-2">
-										<img
-											src={image}
-											alt={formData.name}
-											class="w-20 h-20 rounded-lg object-cover"
-										/>
-										<button
-											onclick={() => removeImage(index)}
-											class="btn btn-sm btn-ghost text-red-600"
-										>
-											🗑️ Remover
-										</button>
-									</div>
-								{/each}
+							<div class="flex gap-2">
+								<input
+									type="text"
+									bind:value={newTag}
+									class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="Digite uma nova tag"
+								/>
+								<button
+									onclick={addTag}
+									class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+								>
+									Adicionar
+								</button>
 							</div>
+							{#if formData.tags.length > 0}
+								<div class="mt-2 flex flex-wrap gap-2">
+									{#each formData.tags as tag}
+										<span class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+											{tag}
+											<button
+												onclick={() => removeTag(tag)}
+												class="ml-2 text-gray-500 hover:text-red-500"
+											>
+												×
+											</button>
+										</span>
+									{/each}
+								</div>
+							{/if}
 						</div>
 						
-						<!-- Enriquecimento com IA - VERSÃO ULTRA RICA -->
+						<!-- Variações -->
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Variações
+							</label>
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<input
+									type="text"
+									bind:value={newVariation.name}
+									class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="Nome da variação (ex: Cor)"
+								/>
+								<div class="flex gap-2">
+									<input
+										type="text"
+										bind:value={newVariation.options}
+										class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+										placeholder="Opções separadas por vírgula"
+									/>
+									<button
+										onclick={addVariation}
+										class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+									>
+										Adicionar
+									</button>
+								</div>
+							</div>
+							{#if formData.variations.length > 0}
+								<div class="mt-4 space-y-2">
+									{#each formData.variations as variation}
+										<div class="p-3 bg-gray-50 rounded-lg">
+											<div class="flex items-center justify-between">
+												<div>
+													<strong>{variation.name}:</strong>
+													<span class="text-gray-600">{variation.options.join(', ')}</span>
+												</div>
+												<button
+													onclick={() => removeVariation(variation.id)}
+													class="text-red-500 hover:text-red-700"
+												>
+													Remover
+												</button>
+											</div>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+						
+						<!-- Enriquecimento com IA -->
 						{#if editingProduct}
-							<div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border border-purple-200/50 shadow-xl">
-								<!-- Background decorativo -->
-								<div class="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5"></div>
-								<div class="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
-								<div class="absolute -bottom-12 -left-12 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl"></div>
-								
-								<div class="relative p-8">
-									<!-- Header da seção -->
-									<div class="text-center mb-8">
-										<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-3xl shadow-lg mb-4">
-											<svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
+								<div class="text-center mb-6">
+									<div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl mb-4">
+										<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+										</svg>
+									</div>
+									<h3 class="text-xl font-bold text-gray-900 mb-2">Enriquecimento com IA</h3>
+									<p class="text-gray-600">Use inteligência artificial para gerar conteúdo profissional automaticamente</p>
+								</div>
+
+								<!-- Botão Principal -->
+								<div class="text-center mb-6">
+									<button
+										onclick={enrichFullProduct}
+										disabled={fullEnrichmentLoading}
+										class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+									>
+										{#if fullEnrichmentLoading}
+											<svg class="animate-spin w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24">
+												<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+												<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+											</svg>
+											Enriquecendo produto...
+										{:else}
+											<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
 											</svg>
-										</div>
-										<h3 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-											Enriquecimento com IA
-										</h3>
-										<p class="text-gray-600 mt-2 max-w-2xl mx-auto">
-											Use inteligência artificial para gerar automaticamente conteúdo de qualidade profissional para todos os campos do produto
-										</p>
-									</div>
+											🎯 Enriquecer Produto Completo
+										{/if}
+									</button>
+								</div>
 
-									<!-- Botão Principal Mega Estilizado -->
-									<div class="text-center mb-10">
-										<button
-											onclick={enrichFullProduct}
-											disabled={fullEnrichmentLoading}
-											class="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-										>
-											<!-- Background animado -->
-											<div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-											
-											<div class="relative flex items-center space-x-3">
-												{#if fullEnrichmentLoading}
-													<div class="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-													<span>Enriquecendo produto...</span>
+								<!-- Campos Individuais -->
+								<div class="space-y-4">
+									<h4 class="font-semibold text-gray-800 text-center">Ou enriqueça campos específicos:</h4>
+									
+									<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+										{#each [
+											{ field: 'name', label: 'Nome' },
+											{ field: 'description', label: 'Descrição' },
+											{ field: 'category', label: 'Categoria' },
+											{ field: 'tags', label: 'Tags' },
+											{ field: 'variations', label: 'Variações' },
+											{ field: 'images', label: 'Imagens' }
+										] as item}
+											<button
+												onclick={() => enrichField(item.field)}
+												disabled={enrichmentLoading[item.field]}
+												class="p-3 bg-white rounded-lg border border-green-200 hover:border-green-400 hover:shadow-md transition-all duration-200 disabled:opacity-50"
+											>
+												{#if enrichmentLoading[item.field]}
+													<div class="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
 												{:else}
-													<svg class="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-													</svg>
-													<span>🎯 Enriquecer Produto Completo</span>
-													<svg class="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-													</svg>
+													<div class="text-2xl mb-2">✨</div>
 												{/if}
-											</div>
-										</button>
+												<div class="text-sm font-medium">{item.label}</div>
+											</button>
+										{/each}
 									</div>
+								</div>
 
-									<!-- Grid de Campos Individuais - SUPER ESTILIZADO -->
-									<div class="space-y-6">
-										<h4 class="text-lg font-semibold text-gray-800 text-center">Ou enriqueça campos específicos</h4>
-										
-										<!-- Campos Básicos -->
-										<div class="space-y-4">
-											<h5 class="text-sm font-medium text-gray-600 uppercase tracking-wider flex items-center">
-												<div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-													<span class="text-xs">📋</span>
-												</div>
-												Informações Básicas
-											</h5>
-											<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-												<!-- Nome -->
-												<div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
-													<div class="flex items-center justify-between mb-3">
-														<div class="flex items-center space-x-3">
-															{#if formData.name}
-																<div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-																	</svg>
-																</div>
-															{:else}
-																<div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-																	</svg>
-																</div>
-															{/if}
-															<div>
-																<span class="text-sm font-medium text-gray-800">Nome</span>
-																<div class="text-xs text-gray-500">Título do produto</div>
-															</div>
-														</div>
-													</div>
-													<button
-														onclick={() => enrichField('name')}
-														disabled={enrichmentLoading['name']}
-														class="w-full py-2 px-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-													>
-														{#if enrichmentLoading['name']}
-															<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
-														{:else}
-															✨ Enriquecer
-														{/if}
-													</button>
-												</div>
-
-												<!-- Descrição -->
-												<div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
-													<div class="flex items-center justify-between mb-3">
-														<div class="flex items-center space-x-3">
-															{#if formData.description}
-																<div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-																	</svg>
-																</div>
-															{:else}
-																<div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-																	</svg>
-																</div>
-															{/if}
-															<div>
-																<span class="text-sm font-medium text-gray-800">Descrição</span>
-																<div class="text-xs text-gray-500">Detalhes completos</div>
-															</div>
-														</div>
-													</div>
-													<button
-														onclick={() => enrichField('description')}
-														disabled={enrichmentLoading['description']}
-														class="w-full py-2 px-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-													>
-														{#if enrichmentLoading['description']}
-															<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
-														{:else}
-															✨ Enriquecer
-														{/if}
-													</button>
-												</div>
-
-												<!-- Categoria -->
-												<div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
-													<div class="flex items-center justify-between mb-3">
-														<div class="flex items-center space-x-3">
-															{#if formData.category}
-																<div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-																	</svg>
-																</div>
-															{:else}
-																<div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-																	</svg>
-																</div>
-															{/if}
-															<div>
-																<span class="text-sm font-medium text-gray-800">Categoria</span>
-																<div class="text-xs text-gray-500">Classificação</div>
-															</div>
-														</div>
-													</div>
-													<button
-														onclick={() => enrichField('category')}
-														disabled={enrichmentLoading['category']}
-														class="w-full py-2 px-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-													>
-														{#if enrichmentLoading['category']}
-															<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
-														{:else}
-															✨ Enriquecer
-														{/if}
-													</button>
-												</div>
-											</div>
-										</div>
-
-										<!-- Campos de Organização -->
-										<div class="space-y-4">
-											<h5 class="text-sm font-medium text-gray-600 uppercase tracking-wider flex items-center">
-												<div class="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center mr-2">
-													<span class="text-xs">🏷️</span>
-												</div>
-												Organização
-											</h5>
-											<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-												<!-- Tags -->
-												<div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
-													<div class="flex items-center justify-between mb-3">
-														<div class="flex items-center space-x-3">
-															{#if formData.tags && formData.tags.length > 0}
-																<div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-																	</svg>
-																</div>
-															{:else}
-																<div class="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-																	</svg>
-																</div>
-															{/if}
-															<div>
-																<span class="text-sm font-medium text-gray-800">Tags</span>
-																<div class="text-xs text-gray-500">Palavras-chave</div>
-															</div>
-														</div>
-													</div>
-													<button
-														onclick={() => enrichField('tags')}
-														disabled={enrichmentLoading['tags']}
-														class="w-full py-2 px-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-													>
-														{#if enrichmentLoading['tags']}
-															<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
-														{:else}
-															✨ Enriquecer
-														{/if}
-													</button>
-												</div>
-
-												<!-- Variações -->
-												<div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
-													<div class="flex items-center justify-between mb-3">
-														<div class="flex items-center space-x-3">
-															{#if formData.variations && formData.variations.length > 0}
-																<div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-																	</svg>
-																</div>
-															{:else}
-																<div class="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-																	</svg>
-																</div>
-															{/if}
-															<div>
-																<span class="text-sm font-medium text-gray-800">Variações</span>
-																<div class="text-xs text-gray-500">Opções do produto</div>
-															</div>
-														</div>
-													</div>
-													<button
-														onclick={() => enrichField('variations')}
-														disabled={enrichmentLoading['variations']}
-														class="w-full py-2 px-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-													>
-														{#if enrichmentLoading['variations']}
-															<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
-														{:else}
-															✨ Enriquecer
-														{/if}
-													</button>
-												</div>
-
-												<!-- Imagens -->
-												<div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
-													<div class="flex items-center justify-between mb-3">
-														<div class="flex items-center space-x-3">
-															{#if formData.images && formData.images.length > 0}
-																<div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-																	</svg>
-																</div>
-															{:else}
-																<div class="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-																	<svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-																	</svg>
-																</div>
-															{/if}
-															<div>
-																<span class="text-sm font-medium text-gray-800">Imagens</span>
-																<div class="text-xs text-gray-500">Fotos do produto</div>
-															</div>
-														</div>
-													</div>
-													<button
-														onclick={() => enrichField('images')}
-														disabled={enrichmentLoading['images']}
-														class="w-full py-2 px-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-													>
-														{#if enrichmentLoading['images']}
-															<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
-														{:else}
-															✨ Enriquecer
-														{/if}
-													</button>
-												</div>
-											</div>
-										</div>
-
-										<!-- Info Box -->
-										<div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-											<div class="flex items-start space-x-4">
-												<div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-													<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-													</svg>
-												</div>
-												<div class="flex-1">
-													<h4 class="text-lg font-semibold text-blue-900 mb-2">Como funciona o enriquecimento?</h4>
-													<div class="text-sm text-blue-800 space-y-2">
-														<p>• <strong>MongoDB primeiro:</strong> Busca dados existentes da migração (prioridade alta)</p>
-														<p>• <strong>IA como backup:</strong> Gera conteúdo contextual quando necessário</p>
-														<p>• <strong>Tipos inteligentes:</strong> Processa strings, arrays e objetos automaticamente</p>
-														<p>• <strong>Salva no PostgreSQL:</strong> Todos os dados são persistidos na base principal</p>
-													</div>
-												</div>
-											</div>
+								<!-- Info -->
+								<div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+									<div class="flex items-start space-x-3">
+										<svg class="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										<div class="text-sm text-blue-800">
+											<p class="font-medium mb-1">Como funciona:</p>
+											<ul class="space-y-1 text-xs">
+												<li>• MongoDB primeiro (dados da migração)</li>
+												<li>• IA como backup quando necessário</li>
+												<li>• Salva automaticamente no PostgreSQL</li>
+											</ul>
 										</div>
 									</div>
 								</div>
@@ -1968,54 +1715,124 @@
 						{/if}
 					</div>
 				{:else if activeTab === 'images'}
-					<div class="space-y-4">
-						<label class="block text-sm font-medium text-gray-700 mb-2">
-							Imagens
-						</label>
-						<input
-							type="file"
-							multiple
-							onchange={handleImageUpload}
-							class="file-input file-input-bordered file-input-primary w-full"
-						/>
-						<div class="mt-4">
-							{#each formData.images as image, index}
-								<div class="flex items-center gap-2">
-									<img
-										src={image}
-										alt={formData.name}
-										class="w-20 h-20 rounded-lg object-cover"
-									/>
-									<button
-										onclick={() => removeImage(index)}
-										class="btn btn-sm btn-ghost text-red-600"
-									>
-										🗑️ Remover
-									</button>
-								</div>
-							{/each}
+					<div class="space-y-6">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Upload de Imagens
+							</label>
+							<input
+								type="file"
+								multiple
+								accept="image/*"
+								onchange={handleImageUpload}
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							/>
 						</div>
+						
+						{#if formData.images.length > 0}
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-4">
+									Imagens do Produto ({formData.images.length})
+								</label>
+								<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+									{#each formData.images as image, index}
+										<div class="relative group">
+											<img
+												src={image}
+												alt="Produto"
+												class="w-full h-32 object-cover rounded-lg border"
+											/>
+											<div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
+												{#if index > 0}
+													<button
+														onclick={() => moveImage(index, 'up')}
+														class="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+														title="Mover para cima"
+													>
+														<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+														</svg>
+													</button>
+												{/if}
+												{#if index < formData.images.length - 1}
+													<button
+														onclick={() => moveImage(index, 'down')}
+														class="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+														title="Mover para baixo"
+													>
+														<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+														</svg>
+													</button>
+												{/if}
+												<button
+													onclick={() => removeImage(index)}
+													class="p-2 bg-red-500/80 rounded-full hover:bg-red-500 transition-colors"
+													title="Remover imagem"
+												>
+													<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+													</svg>
+												</button>
+											</div>
+											{#if index === 0}
+												<div class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+													Principal
+												</div>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					</div>
 				{:else if activeTab === 'inventory'}
-					<div class="space-y-4">
-						<label class="block text-sm font-medium text-gray-700 mb-2">
-							Estoque
-						</label>
-						<input
-							type="number"
-							bind:value={formData.stock}
-							step="1"
-							min="0"
-							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-							placeholder="Quantidade em estoque"
-						/>
+					<div class="space-y-6">
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Quantidade em Estoque *
+								</label>
+								<input
+									type="number"
+									bind:value={formData.stock}
+									step="1"
+									min="0"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="0"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									SKU *
+								</label>
+								<input
+									type="text"
+									bind:value={formData.sku}
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="Ex: PROD-001"
+								/>
+							</div>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">
+								Código de Barras
+							</label>
+							<input
+								type="text"
+								bind:value={formData.barcode}
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+								placeholder="Opcional"
+							/>
+						</div>
 					</div>
 				{:else if activeTab === 'seo'}
 					<div class="space-y-6">
 						{#if editingProduct}
-							<div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 mb-6">
-								<p class="text-sm text-purple-800">
-									🎯 <strong>SEO Inteligente:</strong> Use a IA para gerar títulos, descrições e palavras-chave otimizadas para SEO.
+							<div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4">
+								<p class="text-sm text-green-800">
+									🎯 <strong>SEO Inteligente:</strong> Use a IA para gerar títulos, descrições e palavras-chave otimizadas.
 								</p>
 							</div>
 						{/if}
@@ -2030,20 +1847,14 @@
 									<button
 										onclick={() => enrichField('seo_title')}
 										disabled={enrichmentLoading['seo_title']}
-										class="btn btn-xs btn-secondary flex items-center gap-1"
+										class="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors disabled:opacity-50"
 									>
 										{#if enrichmentLoading['seo_title']}
-											<div class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
+											Gerando...
 										{:else if formData.seo.title}
-											<svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0V9a8 8 0 1115.356 2m-15.356-2H9" />
-											</svg>
 											Atualizar
 										{:else}
-											<svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-											</svg>
-											Enriquecer
+											Gerar IA
 										{/if}
 									</button>
 								{/if}
@@ -2051,7 +1862,7 @@
 							<input
 								type="text"
 								bind:value={formData.seo.title}
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 								placeholder="Título otimizado para SEO (máximo 60 caracteres)"
 								maxlength="60"
 							/>
@@ -2070,20 +1881,14 @@
 									<button
 										onclick={() => enrichField('seo_description')}
 										disabled={enrichmentLoading['seo_description']}
-										class="btn btn-xs btn-secondary flex items-center gap-1"
+										class="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors disabled:opacity-50"
 									>
 										{#if enrichmentLoading['seo_description']}
-											<div class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
+											Gerando...
 										{:else if formData.seo.description}
-											<svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0V9a8 8 0 1115.356 2m-15.356-2H9" />
-											</svg>
 											Atualizar
 										{:else}
-											<svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-											</svg>
-											Enriquecer
+											Gerar IA
 										{/if}
 									</button>
 								{/if}
@@ -2091,7 +1896,7 @@
 							<textarea
 								bind:value={formData.seo.description}
 								rows="4"
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 								placeholder="Descrição que aparece nos resultados de busca (máximo 160 caracteres)"
 								maxlength="160"
 							></textarea>
@@ -2110,20 +1915,14 @@
 									<button
 										onclick={() => enrichField('seo_keywords')}
 										disabled={enrichmentLoading['seo_keywords']}
-										class="btn btn-xs btn-secondary flex items-center gap-1"
+										class="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors disabled:opacity-50"
 									>
 										{#if enrichmentLoading['seo_keywords']}
-											<div class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
+											Gerando...
 										{:else if formData.seo.keywords}
-											<svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0V9a8 8 0 1115.356 2m-15.356-2H9" />
-											</svg>
 											Atualizar
 										{:else}
-											<svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-											</svg>
-											Enriquecer
+											Gerar IA
 										{/if}
 									</button>
 								{/if}
@@ -2131,18 +1930,15 @@
 							<input
 								type="text"
 								bind:value={formData.seo.keywords}
-								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 								placeholder="Palavras-chave separadas por vírgula"
 							/>
-							<p class="text-xs text-gray-500 mt-1">
-								Exemplo: produto infantil, brinquedo educativo, seguro
-							</p>
 						</div>
 
 						<!-- Preview do SEO -->
 						{#if formData.seo.title || formData.seo.description}
 							<div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-								<h4 class="text-sm font-medium text-gray-700 mb-2">📱 Preview nos Resultados de Busca:</h4>
+								<h4 class="text-sm font-medium text-gray-700 mb-3">📱 Preview nos Resultados de Busca:</h4>
 								<div class="bg-white p-4 rounded border">
 									<h3 class="text-lg text-blue-600 underline cursor-pointer">
 										{formData.seo.title || formData.name || 'Título do produto'}
@@ -2158,48 +1954,131 @@
 						{/if}
 					</div>
 				{:else if activeTab === 'shipping'}
-					<div class="space-y-4">
-						<label class="block text-sm font-medium text-gray-700 mb-2">
-							Informações de Frete
-						</label>
-						<p class="text-sm text-gray-500">
-							As informações de frete são calculadas automaticamente com base no peso e dimensões do produto.
-						</p>
-						{#if formData.weight}
-							<p class="text-sm">Peso: {formData.weight} kg</p>
-						{/if}
-						{#if formData.dimensions}
-							<p class="text-sm">
-								Dimensões: {formData.dimensions.length} x {formData.dimensions.width} x {formData.dimensions.height} cm
-							</p>
-						{/if}
+					<div class="space-y-6">
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Peso (kg)
+								</label>
+								<input
+									type="number"
+									bind:value={formData.weight}
+									step="0.01"
+									min="0"
+									class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									placeholder="0.00"
+								/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-2">
+									Produto em Destaque
+								</label>
+								<div class="flex items-center">
+									<input
+										type="checkbox"
+										bind:checked={formData.featured}
+										class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">Destacar este produto</span>
+								</div>
+							</div>
+						</div>
+						
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-4">
+								Dimensões (cm)
+							</label>
+							<div class="grid grid-cols-3 gap-4">
+								<div>
+									<label class="block text-xs text-gray-500 mb-1">Comprimento</label>
+									<input
+										type="number"
+										bind:value={formData.dimensions.length}
+										step="0.1"
+										min="0"
+										class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+									/>
+								</div>
+								<div>
+									<label class="block text-xs text-gray-500 mb-1">Largura</label>
+									<input
+										type="number"
+										bind:value={formData.dimensions.width}
+										step="0.1"
+										min="0"
+										class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+									/>
+								</div>
+								<div>
+									<label class="block text-xs text-gray-500 mb-1">Altura</label>
+									<input
+										type="number"
+										bind:value={formData.dimensions.height}
+										step="0.1"
+										min="0"
+										class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+									/>
+								</div>
+							</div>
+						</div>
 					</div>
 				{/if}
 			</div>
 			
-			<!-- Footer Redesenhado e Moderno -->
-			<div class="relative bg-gradient-to-r from-gray-50 to-white border-t border-gray-100 p-8">
-				<!-- Background decorativo sutil -->
-				<div class="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-white/50"></div>
-				
-				<div class="relative flex flex-col sm:flex-row items-center justify-between gap-6">
-					<!-- Status do produto -->
-					<div class="flex items-center space-x-6">
 			<!-- Footer -->
-			<div class="bg-gray-100 p-6">
-				<div class="flex items-center justify-between">
-					<button 
-						onclick={saveProduct}
-						class="btn btn-primary"
-					>
-						Salvar
-					</button>
-					<button 
-						onclick={closeModal}
-						class="btn btn-ghost"
-					>
-						Cancelar
-					</button>
+			<div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+				<div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+					<div class="flex items-center space-x-4 text-sm text-gray-600">
+						{#if editingProduct}
+							<div class="flex items-center space-x-2">
+								<div class="w-2 h-2 bg-green-400 rounded-full"></div>
+								<span>Produto existente</span>
+							</div>
+						{:else}
+							<div class="flex items-center space-x-2">
+								<div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+								<span>Novo produto</span>
+							</div>
+						{/if}
+						
+						<div class="flex items-center space-x-2">
+							<span>Progresso:</span>
+							<div class="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+								<div 
+									class="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500"
+									style="width: {Math.min(100, (
+										(formData.name ? 25 : 0) +
+										(formData.description ? 25 : 0) +
+										(formData.price ? 25 : 0) +
+										(formData.category ? 25 : 0)
+									))}%"
+								></div>
+							</div>
+							<span class="text-xs">
+								{Math.min(100, (
+									(formData.name ? 25 : 0) +
+									(formData.description ? 25 : 0) +
+									(formData.price ? 25 : 0) +
+									(formData.category ? 25 : 0)
+								))}%
+							</span>
+						</div>
+					</div>
+					
+					<div class="flex items-center space-x-3">
+						<button 
+							onclick={closeModal}
+							class="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+						>
+							Cancelar
+						</button>
+						<button 
+							onclick={saveProduct}
+							class="px-8 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+						>
+							{editingProduct ? 'Atualizar' : 'Criar'} Produto
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
