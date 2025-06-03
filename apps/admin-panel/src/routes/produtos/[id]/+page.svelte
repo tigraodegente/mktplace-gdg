@@ -20,6 +20,7 @@
 	let productId = $derived($page.params.id);
 	let enriching = $state(false);
 	let showEnrichmentProgress = $state(false);
+	let isEnriching = $state(false);
 	
 	// Tabs disponíveis
 	const tabs = [
@@ -221,14 +222,54 @@
 		}
 	}
 	
+	// Enriquecer com IA
+	async function enrichWithAI(fields?: string[]) {
+		if (isEnriching) return;
+		
+		showEnrichmentProgress = true;
+		isEnriching = true;
+	}
+	
+	// Callback quando o enriquecimento for concluído
+	function handleEnrichmentComplete(result: any) {
+		console.log('Enriquecimento concluído:', result);
+		
+		// Aplicar os dados enriquecidos
+		if (result.enrichedData) {
+			Object.assign(formData, result.enrichedData);
+		}
+		
+		showEnrichmentProgress = false;
+		isEnriching = false;
+		toast.success('Produto enriquecido com sucesso!');
+		
+		// Salvar automaticamente
+		saveProduct();
+	}
+	
+	// Callback quando o enriquecimento for cancelado
+	function handleEnrichmentCancel() {
+		showEnrichmentProgress = false;
+		isEnriching = false;
+		toast.info('Enriquecimento cancelado');
+	}
+	
 	// Lifecycle
 	onMount(() => {
 		loadProduct();
 	});
 </script>
 
-<!-- Componente de progresso de enriquecimento -->
-<EnrichmentProgress show={showEnrichmentProgress} />
+<!-- Modal de Progresso do Enriquecimento IA -->
+{#if showEnrichmentProgress}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+		<EnrichmentProgress 
+			productData={formData}
+			onComplete={handleEnrichmentComplete}
+			onCancel={handleEnrichmentCancel}
+		/>
+	</div>
+{/if}
 
 <div class="min-h-screen bg-gray-50">
 	<!-- Header -->

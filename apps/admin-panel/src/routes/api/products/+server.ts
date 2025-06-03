@@ -27,6 +27,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     const params: any[] = [];
     let paramIndex = 1;
     
+    // Sempre excluir produtos arquivados, exceto se explicitamente solicitado
+    if (status !== 'archived') {
+      conditions.push(`p.status != 'archived'`);
+    }
+    
     if (search) {
       conditions.push(`(p.name ILIKE $${paramIndex} OR p.sku ILIKE $${paramIndex + 1} OR p.description ILIKE $${paramIndex + 2})`);
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
@@ -36,11 +41,12 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     if (status !== 'all') {
       const statusMap: Record<string, string> = {
         'active': 'p.is_active = true AND p.quantity > 0',
-        'inactive': 'p.is_active = false',
+        'inactive': 'p.is_active = false AND p.status != \'archived\'',
         'pending': 'p.status = \'pending\'',
         'draft': 'p.status = \'draft\'',
         'low_stock': 'p.quantity < 10 AND p.quantity > 0',
-        'out_of_stock': 'p.quantity = 0'
+        'out_of_stock': 'p.quantity = 0',
+        'archived': 'p.status = \'archived\''
       };
       
       if (statusMap[status]) {
@@ -119,11 +125,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     // Buscar estatísticas gerais
     const statsQuery = `
       SELECT 
-        COUNT(*) FILTER (WHERE p.is_active = true AND p.quantity > 0) as active,
-        COUNT(*) FILTER (WHERE p.is_active = false) as inactive, 
+        COUNT(*) FILTER (WHERE p.is_active = true AND p.quantity > 0 AND p.status != 'archived') as active,
+        COUNT(*) FILTER (WHERE p.is_active = false AND p.status != 'archived') as inactive, 
         COUNT(*) FILTER (WHERE p.status = 'pending') as pending,
-        COUNT(*) FILTER (WHERE p.quantity < 10 AND p.quantity > 0) as low_stock,
-        COUNT(*) as total
+        COUNT(*) FILTER (WHERE p.quantity < 10 AND p.quantity > 0 AND p.status != 'archived') as low_stock,
+        COUNT(*) FILTER (WHERE p.status != 'archived') as total
       FROM products p
       ${vendorId ? `WHERE p.seller_id = $1` : ''}
     `;

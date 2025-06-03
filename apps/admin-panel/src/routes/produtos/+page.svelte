@@ -4,6 +4,7 @@
 	import { api } from '$lib/services/api';
 	import { toast } from '$lib/stores/toast';
 	import { DataTable, Input, Select, Button } from '$lib/components/ui';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import { useDebounce } from '$lib/hooks/useDebounce';
 	import type { Product, PaginatedResponse } from '$lib/types';
@@ -15,6 +16,15 @@
 	let statusFilter = $state('all');
 	let categoryFilter = $state('all');
 	let selectedIds = $state<string[]>([]);
+	
+	// Estados do dialog de confirmação
+	let showConfirmDialog = $state(false);
+	let confirmDialogConfig = $state({
+		title: '',
+		message: '',
+		variant: 'danger' as 'danger' | 'warning' | 'info',
+		onConfirm: () => {}
+	});
 	
 	// Paginação
 	let page = $state(1);
@@ -211,38 +221,50 @@
 	
 	// Excluir produto individual
 	async function deleteProduct(product: Product) {
-		if (!confirm(`Deseja excluir o produto "${product.name}"?`)) return;
-		
-		try {
-			await api.delete(`/products/${product.id}`, {
-				showSuccess: true,
-				successMessage: 'Produto excluído com sucesso!'
-			});
-			
-			loadProducts();
-		} catch (error) {
-			console.error('Erro ao excluir produto:', error);
-		}
+		confirmDialogConfig = {
+			title: 'Excluir Produto',
+			message: `Tem certeza que deseja excluir o produto "${product.name}"? Esta ação não pode ser desfeita.`,
+			variant: 'danger',
+			onConfirm: async () => {
+				try {
+					await api.delete(`/products/${product.id}`, {
+						showSuccess: true,
+						successMessage: 'Produto excluído com sucesso!'
+					});
+					
+					loadProducts();
+				} catch (error) {
+					console.error('Erro ao excluir produto:', error);
+				}
+			}
+		};
+		showConfirmDialog = true;
 	}
 	
 	// Excluir produtos selecionados
 	async function deleteSelected() {
 		if (selectedIds.length === 0) return;
 		
-		if (!confirm(`Deseja excluir ${selectedIds.length} produto(s)?`)) return;
-		
-		try {
-			await api.delete('/products', {
-				body: JSON.stringify({ ids: selectedIds }),
-				showSuccess: true,
-				successMessage: `${selectedIds.length} produto(s) excluído(s) com sucesso!`
-			});
-			
-			selectedIds = [];
-			loadProducts();
-		} catch (error) {
-			console.error('Erro ao excluir produtos:', error);
-		}
+		confirmDialogConfig = {
+			title: 'Excluir Produtos',
+			message: `Tem certeza que deseja excluir ${selectedIds.length} produto(s)? Esta ação não pode ser desfeita.`,
+			variant: 'danger',
+			onConfirm: async () => {
+				try {
+					await api.delete('/products', {
+						body: JSON.stringify({ ids: selectedIds }),
+						showSuccess: true,
+						successMessage: `${selectedIds.length} produto(s) excluído(s) com sucesso!`
+					});
+					
+					selectedIds = [];
+					loadProducts();
+				} catch (error) {
+					console.error('Erro ao excluir produtos:', error);
+				}
+			}
+		};
+		showConfirmDialog = true;
 	}
 	
 	// Buscar categorias e marcas
@@ -270,6 +292,17 @@
 		loadFilters();
 	});
 </script>
+
+<!-- Dialog de Confirmação -->
+<ConfirmDialog
+	bind:show={showConfirmDialog}
+	title={confirmDialogConfig.title}
+	message={confirmDialogConfig.message}
+	variant={confirmDialogConfig.variant}
+	confirmText="Excluir"
+	cancelText="Cancelar"
+	onConfirm={confirmDialogConfig.onConfirm}
+/>
 
 <div class="min-h-screen bg-gray-50">
 	<!-- Header -->
