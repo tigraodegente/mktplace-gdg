@@ -1,0 +1,774 @@
+✅ Conectado ao Neon Develop:
+   Database: neondb
+   User: neondb_owner
+📊 ANÁLISE DETALHADA DE TODAS AS CATEGORIAS
+
+================================================================================
+
+📁 ALMOFADA QUARTO DE BEBÊ (almofada-quarto-de-bebe)
+   └─ Total: 413 produtos
+   └─ Ativos: 413 (100%)
+   └─ Com estoque: 413 (100%)
+   └─ Visíveis no site: 413 (100%)
+   └─ Preços: R$ 27.26 - R$ 168.32 (média: R$ 63.21)
+
+📁 QUADROS E PAINÉIS (quadros-e-paineis)
+   └─ Total: 247 produtos
+   └─ Ativos: 247 (100%)
+   └─ Com estoque: 247 (100%)
+   └─ Visíveis no site: 247 (100%)
+   └─ Preços: R$ 51.51 - R$ 212.00 (média: R$ 100.71)
+
+📁 ROUPINHAS (roupinhas)
+   └─ Total: 221 produtos
+   └─ Ativos: 221 (100%)
+   └─ Com estoque: 220 (100%)
+   └─ Visíveis no site: 220 (100%)
+   └─ Preços: R$ 9.56 - R$ 281.47 (média: R$ 66.07)
+   └─ ⚠️  Problemas: 1 sem estoque
+
+📁 ALMOFADAS DECORATIVAS (FILTRO) (almofadas-decorativas-filtro)
+   └─ Total: 142 produtos
+   └─ Ativos: 142 (100%)
+   └─ Com estoque: 142 (100%)
+   └─ Visíveis no site: 142 (100%)
+   └─ Preços: R$ 27.26 - R$ 97.67 (média: R$ 54.09)
+
+📁 LENÇOL (lencol)
+   └─ Total: 106 produtos
+   └─ Ativos: 106 (100%)
+   └─ Com estoque: 106 (100%)
+   └─ Visíveis no site: 106 (100%)
+   └─ Preços: R$ 22.77 - R$ 436.02 (média: R$ 98.54)
+
+📁 ADESIVO PAREDE QUARTO DE BEBÊ (adesivo-parede-quarto-de-bebe)
+   └─ Total: 92 produtos
+   └─ Ativos: 92 (100%)
+   └─ Com estoque: 92 (100%)
+   └─ Visíveis no site: 92 (100%)
+   └─ Preços: R$ 11.57 - R$ 296.79 (média: R$ 136.05)
+
+📁 CAPAS CARRINHO CADEIRA BEBÊ (capas-carrinho-cadeira-bebe)
+   └─ Total: 90 produtos
+   └─ Ativos: 90 (100%)
+   └─ Com estoque: 90 (100%)
+   └─ Visíveis no site: 90 (100%)
+   └─ Preços: R$ 70.00 - R$ 143.55 (média: R$ 90.38)
+
+📁 FRONHA BERÇO BEBÊ (fronha-berco-bebe)
+   └─ Total: 82 produtos
+   └─ Ativos: 82 (100%)
+   └─ Com estoque: 82 (100%)
+   └─ Visíveis no site: 82 (100%)
+   └─ Preços: R$ 7.26 - R$ 85.54 (média: R$ 27.76)
+
+📁 SAIA BERÇO (saia-berco)
+   └─ Total: 82 produtos
+   └─ Ativos: 82 (100%)
+   └─ Com estoque: 82 (100%)
+   └─ Visíveis no site: 82 (100%)
+   └─ Preços: R$ 27.67 - R$ 277.67 (média: R$ 94.85)
+
+📁 PAPEL DE PAREDE (papel-de-parede)
+   └─ Total: 80 produtos
+   └─ Ativos: 80 (100%)
+   └─ Com estoque: 80 (100%)
+   └─ Visíveis no site: 80 (100%)
+   └─ Preços: R$ 19.99 - R$ 936.83 (média: R$ 169.29)
+
+📁 BOLSA MATERNIDADE (bolsa-maternidade)
+   └─ Total: 74 produtos
+   └─ Ativos: 74 (100%)
+   └─ Com estoque: 74 (100%)
+   └─ Visíveis no site: 74 (100%)
+   └─ Preços: R$ 56.28 - R$ 588.78 (média: R$ 190.20)
+
+📁 TROCADOR (trocador)
+   └─ Total: 72 produtos
+   └─ Ativos: 72 (100%)
+   └─ Com estoque: 72 (100%)
+   └─ Visíveis no site: 72 (100%)
+   └─ Preços: R$ 42.00 - R$ 292.59 (média: R$ 123.31)
+
+📁 CORTINA QUARTO DE BEBÊ (cortina-quarto-de-bebe)
+   └─ Total: 71 produtos
+   └─ Ativos: 71 (100%)
+   └─ Com estoque: 71 (100%)
+   └─ Visíveis no site: 71 (100%)
+   └─ Preços: R$ 31.57 - R$ 342.51 (média: R$ 180.37)
+
+📁 CESTOS ORGANIZADORES (cestos-organizadores)
+   └─ Total: 68 produtos
+   └─ Ativos: 68 (100%)
+   └─ Com estoque: 68 (100%)
+   └─ Visíveis no site: 68 (100%)
+   └─ Preços: R$ 50.00 - R$ 137.79 (média: R$ 93.33)
+
+📁 OBJETOS DECORATIVOS (objetos-decorativos)
+   └─ Total: 67 produtos
+   └─ Ativos: 67 (100%)
+   └─ Com estoque: 67 (100%)
+   └─ Visíveis no site: 67 (100%)
+   └─ Preços: R$ 29.06 - R$ 93.24 (média: R$ 46.64)
+
+📁 ALMOFADA AMAMENTAÇÃO (almofada-amamentacao)
+   └─ Total: 63 produtos
+   └─ Ativos: 63 (100%)
+   └─ Com estoque: 63 (100%)
+   └─ Visíveis no site: 63 (100%)
+   └─ Preços: R$ 83.51 - R$ 250.00 (média: R$ 106.66)
+
+📁 EDREDOM (edredom)
+   └─ Total: 46 produtos
+   └─ Ativos: 46 (100%)
+   └─ Com estoque: 46 (100%)
+   └─ Visíveis no site: 46 (100%)
+   └─ Preços: R$ 79.89 - R$ 379.95 (média: R$ 148.34)
+
+📁 NINHO PARA BEBÊ (ninho-para-bebe)
+   └─ Total: 38 produtos
+   └─ Ativos: 38 (100%)
+   └─ Com estoque: 38 (100%)
+   └─ Visíveis no site: 38 (100%)
+   └─ Preços: R$ 166.56 - R$ 244.36 (média: R$ 217.20)
+
+📁 PORTA FRALDAS QUARTO DE BEBÊ (porta-fraldas-quarto-de-bebe)
+   └─ Total: 37 produtos
+   └─ Ativos: 37 (100%)
+   └─ Com estoque: 37 (100%)
+   └─ Visíveis no site: 37 (100%)
+   └─ Preços: R$ 27.67 - R$ 355.45 (média: R$ 106.83)
+
+📁 KIT BERÇO (kit-berco)
+   └─ Total: 32 produtos
+   └─ Ativos: 32 (100%)
+   └─ Com estoque: 32 (100%)
+   └─ Visíveis no site: 32 (100%)
+   └─ Preços: R$ 155.44 - R$ 947.42 (média: R$ 370.09)
+
+📁 TAPETE QUARTO DE BEBÊ (tapete-quarto-de-bebe)
+   └─ Total: 32 produtos
+   └─ Ativos: 32 (100%)
+   └─ Com estoque: 32 (100%)
+   └─ Visíveis no site: 32 (100%)
+   └─ Preços: R$ 97.41 - R$ 484.20 (média: R$ 237.93)
+
+📁 CESTAS (cestas)
+   └─ Total: 30 produtos
+   └─ Ativos: 30 (100%)
+   └─ Com estoque: 30 (100%)
+   └─ Visíveis no site: 30 (100%)
+   └─ Preços: R$ 72.66 - R$ 256.52 (média: R$ 95.88)
+
+📁 SAQUINHOS MATERNIDADE (saquinhos-maternidade)
+   └─ Total: 30 produtos
+   └─ Ativos: 30 (100%)
+   └─ Com estoque: 30 (100%)
+   └─ Visíveis no site: 30 (100%)
+   └─ Preços: R$ 27.59 - R$ 98.78 (média: R$ 47.27)
+
+📁 ORGANIZADOR DE BERÇO (organizador-de-berco)
+   └─ Total: 29 produtos
+   └─ Ativos: 29 (100%)
+   └─ Com estoque: 29 (100%)
+   └─ Visíveis no site: 29 (100%)
+   └─ Preços: R$ 26.21 - R$ 215.35 (média: R$ 130.25)
+
+📁 LIXEIRAS QUARTO DE BEBÊ (lixeiras-quarto-de-bebe)
+   └─ Total: 28 produtos
+   └─ Ativos: 28 (100%)
+   └─ Com estoque: 28 (100%)
+   └─ Visíveis no site: 28 (100%)
+   └─ Preços: R$ 80.30 - R$ 151.38 (média: R$ 102.03)
+
+📁 ALIMENTAÇÃO (alimentacao)
+   └─ Total: 26 produtos
+   └─ Ativos: 26 (100%)
+   └─ Com estoque: 26 (100%)
+   └─ Visíveis no site: 26 (100%)
+   └─ Preços: R$ 8.32 - R$ 341.06 (média: R$ 77.90)
+
+📁 MANTA E COBERTOR (manta-e-cobertor)
+   └─ Total: 24 produtos
+   └─ Ativos: 24 (100%)
+   └─ Com estoque: 24 (100%)
+   └─ Visíveis no site: 24 (100%)
+   └─ Preços: R$ 65.39 - R$ 474.93 (média: R$ 161.62)
+
+📁 FRALDA E CUEIRO (fralda-e-cueiro)
+   └─ Total: 23 produtos
+   └─ Ativos: 23 (100%)
+   └─ Com estoque: 23 (100%)
+   └─ Visíveis no site: 23 (100%)
+   └─ Preços: R$ 53.28 - R$ 101.72 (média: R$ 74.82)
+
+📁 BABADOR BEBÊ (babador-bebe)
+   └─ Total: 21 produtos
+   └─ Ativos: 21 (100%)
+   └─ Com estoque: 21 (100%)
+   └─ Visíveis no site: 21 (100%)
+   └─ Preços: R$ 35.90 - R$ 107.88 (média: R$ 44.56)
+
+📁 BRINQUEDOS (brinquedos)
+   └─ Total: 17 produtos
+   └─ Ativos: 17 (100%)
+   └─ Com estoque: 17 (100%)
+   └─ Visíveis no site: 17 (100%)
+   └─ Preços: R$ 19.89 - R$ 352.82 (média: R$ 149.77)
+
+📁 POTES QUARTO DE BEBÊ (potes-quarto-de-bebe)
+   └─ Total: 15 produtos
+   └─ Ativos: 15 (100%)
+   └─ Com estoque: 15 (100%)
+   └─ Visíveis no site: 15 (100%)
+   └─ Preços: R$ 59.78 - R$ 99.32 (média: R$ 80.04)
+
+📁 PRATELEIRAS QUARTO DE BEBÊ (prateleiras-quarto-de-bebe)
+   └─ Total: 15 produtos
+   └─ Ativos: 15 (100%)
+   └─ Com estoque: 15 (100%)
+   └─ Visíveis no site: 15 (100%)
+   └─ Preços: R$ 63.05 - R$ 206.99 (média: R$ 110.23)
+
+📁 CONJUNTOS (conjuntos)
+   └─ Total: 14 produtos
+   └─ Ativos: 14 (100%)
+   └─ Com estoque: 14 (100%)
+   └─ Visíveis no site: 14 (100%)
+   └─ Preços: R$ 97.51 - R$ 358.96 (média: R$ 263.75)
+
+📁 PORTA MATERNIDADE (porta-maternidade)
+   └─ Total: 13 produtos
+   └─ Ativos: 13 (100%)
+   └─ Com estoque: 13 (100%)
+   └─ Visíveis no site: 13 (100%)
+   └─ Preços: R$ 24.21 - R$ 183.90 (média: R$ 87.55)
+
+📁 URSINHOS E PELÚCIAS (ursinhos-e-pelucias)
+   └─ Total: 13 produtos
+   └─ Ativos: 13 (100%)
+   └─ Com estoque: 13 (100%)
+   └─ Visíveis no site: 13 (100%)
+   └─ Preços: R$ 63.22 - R$ 419.99 (média: R$ 207.27)
+
+📁 ABAJUR (abajur)
+   └─ Total: 11 produtos
+   └─ Ativos: 11 (100%)
+   └─ Com estoque: 11 (100%)
+   └─ Visíveis no site: 11 (100%)
+   └─ Preços: R$ 72.24 - R$ 312.10 (média: R$ 188.77)
+
+📁 CABIDE ROUPINHA BEBÊ (cabide-roupinha-bebe)
+   └─ Total: 11 produtos
+   └─ Ativos: 11 (100%)
+   └─ Com estoque: 11 (100%)
+   └─ Visíveis no site: 11 (100%)
+   └─ Preços: R$ 40.05 - R$ 373.08 (média: R$ 129.31)
+
+📁 FARMACINHA QUARTO DE BEBÊ (farmacinha-quarto-de-bebe)
+   └─ Total: 11 produtos
+   └─ Ativos: 11 (100%)
+   └─ Com estoque: 11 (100%)
+   └─ Visíveis no site: 11 (100%)
+   └─ Preços: R$ 93.98 - R$ 162.98 (média: R$ 138.86)
+
+📁 COLCHÕES E PROTETORES (colchoes-e-protetores)
+   └─ Total: 10 produtos
+   └─ Ativos: 10 (100%)
+   └─ Com estoque: 10 (100%)
+   └─ Visíveis no site: 10 (100%)
+   └─ Preços: R$ 25.00 - R$ 253.66 (média: R$ 121.33)
+
+📁 PELÚCIA (pelucia)
+   └─ Total: 10 produtos
+   └─ Ativos: 10 (100%)
+   └─ Com estoque: 10 (100%)
+   └─ Visíveis no site: 10 (100%)
+   └─ Preços: R$ 65.76 - R$ 202.57 (média: R$ 142.33)
+
+📁 QUADROS BASTIDORES QUARTO DE BEBÊ (quadros-bastidores-quarto-de-bebe)
+   └─ Total: 10 produtos
+   └─ Ativos: 10 (100%)
+   └─ Com estoque: 10 (100%)
+   └─ Visíveis no site: 10 (100%)
+   └─ Preços: R$ 58.12 - R$ 83.61 (média: R$ 67.65)
+
+📁 VARAL DECORATIVO (varal-decorativo)
+   └─ Total: 10 produtos
+   └─ Ativos: 10 (100%)
+   └─ Com estoque: 10 (100%)
+   └─ Visíveis no site: 10 (100%)
+   └─ Preços: R$ 51.52 - R$ 254.39 (média: R$ 93.15)
+
+📁 ACESSÓRIOS DE SEGURANÇA (acessorios-de-seguranca)
+   └─ Total: 9 produtos
+   └─ Ativos: 9 (100%)
+   └─ Com estoque: 9 (100%)
+   └─ Visíveis no site: 9 (100%)
+   └─ Preços: R$ 25.53 - R$ 334.25 (média: R$ 117.54)
+
+📁 TOALHA BEBÊ (toalha-bebe)
+   └─ Total: 9 produtos
+   └─ Ativos: 9 (100%)
+   └─ Com estoque: 9 (100%)
+   └─ Visíveis no site: 9 (100%)
+   └─ Preços: R$ 52.43 - R$ 211.77 (média: R$ 128.69)
+
+📁 CABANAS E TENDAS (cabanas-tendas)
+   └─ Total: 8 produtos
+   └─ Ativos: 8 (100%)
+   └─ Com estoque: 8 (100%)
+   └─ Visíveis no site: 8 (100%)
+   └─ Preços: R$ 308.57 - R$ 537.88 (média: R$ 406.93)
+
+📁 CUIDADOS DA MAMÃE E DO BEBÊ (cuidados-da-mamae-e-do-bebe)
+   └─ Total: 8 produtos
+   └─ Ativos: 8 (100%)
+   └─ Com estoque: 8 (100%)
+   └─ Visíveis no site: 8 (100%)
+   └─ Preços: R$ 26.94 - R$ 955.00 (média: R$ 192.13)
+
+📁 TRONINHOS E ASSENTOS (troninhos-e-assentos)
+   └─ Total: 8 produtos
+   └─ Ativos: 8 (100%)
+   └─ Com estoque: 8 (100%)
+   └─ Visíveis no site: 8 (100%)
+   └─ Preços: R$ 58.71 - R$ 133.32 (média: R$ 78.91)
+
+📁 EDREDONS (edredons)
+   └─ Total: 6 produtos
+   └─ Ativos: 6 (100%)
+   └─ Com estoque: 6 (100%)
+   └─ Visíveis no site: 6 (100%)
+   └─ Preços: R$ 110.42 - R$ 160.90 (média: R$ 147.50)
+
+📁 KIT CAMA BABÁ (kit-cama-baba)
+   └─ Total: 6 produtos
+   └─ Ativos: 6 (100%)
+   └─ Com estoque: 6 (100%)
+   └─ Visíveis no site: 6 (100%)
+   └─ Preços: R$ 329.05 - R$ 617.99 (média: R$ 478.67)
+
+📁 URSINHOS (ursinhos)
+   └─ Total: 6 produtos
+   └─ Ativos: 6 (100%)
+   └─ Com estoque: 6 (100%)
+   └─ Visíveis no site: 6 (100%)
+   └─ Preços: R$ 60.49 - R$ 184.90 (média: R$ 102.13)
+
+📁 ENFEITES PUXADOR (enfeites-puxador)
+   └─ Total: 5 produtos
+   └─ Ativos: 5 (100%)
+   └─ Com estoque: 5 (100%)
+   └─ Visíveis no site: 5 (100%)
+   └─ Preços: R$ 27.84 - R$ 50.86 (média: R$ 42.85)
+
+📁 MOSQUITEIRO BEBÊ (mosquiteiro-bebe)
+   └─ Total: 5 produtos
+   └─ Ativos: 5 (100%)
+   └─ Com estoque: 5 (100%)
+   └─ Visíveis no site: 5 (100%)
+   └─ Preços: R$ 16.70 - R$ 474.93 (média: R$ 144.69)
+
+📁 MÓBILE QUARTO DE BEBÊ (mobile-quarto-de-bebe)
+   └─ Total: 5 produtos
+   └─ Ativos: 5 (100%)
+   └─ Com estoque: 5 (100%)
+   └─ Visíveis no site: 5 (100%)
+   └─ Preços: R$ 44.33 - R$ 262.64 (média: R$ 133.68)
+
+📁 ROLINHO PROTETOR (rolinho-protetor)
+   └─ Total: 5 produtos
+   └─ Ativos: 5 (100%)
+   └─ Com estoque: 5 (100%)
+   └─ Visíveis no site: 5 (100%)
+   └─ Preços: R$ 85.98 - R$ 194.63 (média: R$ 126.70)
+
+📁 VESTIDO (vestido)
+   └─ Total: 5 produtos
+   └─ Ativos: 5 (100%)
+   └─ Com estoque: 5 (100%)
+   └─ Visíveis no site: 5 (100%)
+   └─ Preços: R$ 290.03 - R$ 354.45 (média: R$ 302.91)
+
+📁 ACESSÓRIOS PARA BANHO (acessorios-para-banho)
+   └─ Total: 4 produtos
+   └─ Ativos: 4 (100%)
+   └─ Com estoque: 4 (100%)
+   └─ Visíveis no site: 4 (100%)
+   └─ Preços: R$ 44.20 - R$ 75.90 (média: R$ 60.05)
+
+📁 PRESENTES (presentes)
+   └─ Total: 4 produtos
+   └─ Ativos: 4 (100%)
+   └─ Com estoque: 4 (100%)
+   └─ Visíveis no site: 4 (100%)
+   └─ Preços: R$ 59.90 - R$ 353.78 (média: R$ 261.18)
+
+📁 TAPETE DE ATIVIDADES (tapete-de-atividades)
+   └─ Total: 4 produtos
+   └─ Ativos: 4 (100%)
+   └─ Com estoque: 4 (100%)
+   └─ Visíveis no site: 4 (100%)
+   └─ Preços: R$ 388.12 - R$ 446.94 (média: R$ 420.47)
+
+📁 COBERTOR (cobertor)
+   └─ Total: 3 produtos
+   └─ Ativos: 3 (100%)
+   └─ Com estoque: 3 (100%)
+   └─ Visíveis no site: 3 (100%)
+   └─ Preços: R$ 46.90 - R$ 320.34 (média: R$ 159.15)
+
+📁 MESAS E CADEIRAS (mesas-e-cadeiras)
+   └─ Total: 3 produtos
+   └─ Ativos: 3 (100%)
+   └─ Com estoque: 3 (100%)
+   └─ Visíveis no site: 3 (100%)
+   └─ Preços: R$ 324.37 - R$ 324.37 (média: R$ 324.37)
+
+📁 PORTA BEBÊ (porta-bebe)
+   └─ Total: 3 produtos
+   └─ Ativos: 3 (100%)
+   └─ Com estoque: 3 (100%)
+   └─ Visíveis no site: 3 (100%)
+   └─ Preços: R$ 106.12 - R$ 202.11 (média: R$ 145.49)
+
+📁 ROUPÕES INFANTIS (roupoes-infantis)
+   └─ Total: 3 produtos
+   └─ Ativos: 3 (100%)
+   └─ Com estoque: 3 (100%)
+   └─ Visíveis no site: 3 (100%)
+   └─ Preços: R$ 88.19 - R$ 91.88 (média: R$ 89.42)
+
+📁 TAPETE MESVERSÁRIO (tapete-mesversario)
+   └─ Total: 3 produtos
+   └─ Ativos: 3 (100%)
+   └─ Com estoque: 3 (100%)
+   └─ Visíveis no site: 3 (100%)
+   └─ Preços: R$ 150.00 - R$ 161.00 (média: R$ 157.33)
+
+📁 CHUPETA (chupeta)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 14.00 - R$ 48.60 (média: R$ 31.30)
+
+📁 CUIDADOS DO BEBÊ (cuidados-do-bebe)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 59.90 - R$ 86.90 (média: R$ 73.40)
+
+📁 DOSSEL BERÇO (dossel-berco)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 175.47 - R$ 401.14 (média: R$ 288.31)
+
+📁 KIT ACESSÓRIOS QUARTO DE BEBÊ (kit-acessorios-quarto-de-bebe)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 152.04 - R$ 323.91 (média: R$ 237.97)
+
+📁 KIT MONTESSORIANO (kit-montessoriano)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 313.38 - R$ 348.73 (média: R$ 331.06)
+
+📁 LEMBRANCINHA MATERNIDADE (lembrancinha-maternidade)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 24.21 - R$ 30.27 (média: R$ 27.24)
+
+📁 LENÇOL DE BERÇO (lencol-de-berco)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 37.79 - R$ 172.21 (média: R$ 105.00)
+
+📁 MAMADEIRAS (mamadeiras)
+   └─ Total: 2 produtos
+   └─ Ativos: 2 (100%)
+   └─ Com estoque: 2 (100%)
+   └─ Visíveis no site: 2 (100%)
+   └─ Preços: R$ 17.77 - R$ 42.36 (média: R$ 30.07)
+
+📁 BANHEIRA BEBÊ (banheira-bebe)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 294.63 - R$ 294.63 (média: R$ 294.63)
+
+📁 BEBÊ CONFORTO (bebe-conforto)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 89.78 - R$ 89.78 (média: R$ 89.78)
+
+📁 BOLSA INFANTIL (bolsa-infantil)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 189.68 - R$ 189.68 (média: R$ 189.68)
+
+📁 BONECAS E BONECOS (bonecas-e-bonecos)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 164.87 - R$ 164.87 (média: R$ 164.87)
+
+📁 CADEIRINHA DE CARRO (cadeirinha-de-carro)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 3882.24 - R$ 3882.24 (média: R$ 3882.24)
+
+📁 CARRINHO DE BEBÊ (carrinho-de-bebe)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 1058.71 - R$ 1058.71 (média: R$ 1058.71)
+
+📁 CESTOS DE ROUPAS (cestos-de-roupas)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 72.36 - R$ 72.36 (média: R$ 72.36)
+
+📁 CORTINAS QUARTO DE BEBÊ (cortinas-quarto-de-bebe)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 456.11 - R$ 456.11 (média: R$ 456.11)
+
+📁 ESPELHOS (espelhos)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 183.99 - R$ 183.99 (média: R$ 183.99)
+
+📁 FANTASIA (fantasia)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 29.90 - R$ 29.90 (média: R$ 29.90)
+
+📁 JOIA (joia)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 72.28 - R$ 72.28 (média: R$ 72.28)
+
+📁 KIT BOLSAS MATERNIDADE (kit-bolsas-maternidade)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 21.90 - R$ 21.90 (média: R$ 21.90)
+
+📁 KIT MINI BERÇO + BERÇO (kit-mini-berco-berco)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 352.82 - R$ 352.82 (média: R$ 352.82)
+
+📁 LENÇOL  (lencol-)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 84.20 - R$ 84.20 (média: R$ 84.20)
+
+📁 NANINHAS E CHOCALHOS (naninhas-e-chocalhos)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 56.91 - R$ 56.91 (média: R$ 56.91)
+
+📁 QUARTO INFANTIL (quarto-infantil)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 32.11 - R$ 32.11 (média: R$ 32.11)
+
+📁 SACOS DE DORMIR (sacos-de-dormir)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 99.89 - R$ 99.89 (média: R$ 99.89)
+
+📁 SAIA BERÇO  (saia-berco-)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 82.21 - R$ 82.21 (média: R$ 82.21)
+
+📁 TAPETES REDONDOS QUARTO DE BEBÊ  (tapetes-redondos-quarto-de-bebe-)
+   └─ Total: 1 produtos
+   └─ Ativos: 1 (100%)
+   └─ Com estoque: 1 (100%)
+   └─ Visíveis no site: 1 (100%)
+   └─ Preços: R$ 371.93 - R$ 371.93 (média: R$ 371.93)
+
+
+================================================================================
+
+📁 CATEGORIAS VAZIAS (sem produtos):
+
+
+================================================================================
+
+❓ PRODUTOS SEM CATEGORIA:
+
+Total: 54 produtos
+
+   1. ASUS ROG Ally
+      SKU: LG-1748467441412-0009 | R$ 3999.00 | Estoque: 90 
+   2. ASUS ROG Strix G16
+      SKU: LG-1748467441398-0007 | R$ 12999.00 | Estoque: 66 
+   3. AirPods Pro 2ª Geração USB-C
+      SKU: APPLE-1748467441418-0010 | R$ 2249.00 | Estoque: 0 | ⚠️  sem estoque
+   4. Amiguinhas - Meia Manga - G
+      SKU: GDG-58d7-003 | R$ 31.88 | Estoque: 49 
+   5. Amiguinhos Infantil Verde
+      SKU: GDG-5bb2-004 | R$ 22.48 | Estoque: 50 
+   6. Aspirador de Pó Vertical 1200W
+      SKU: ASP-001 | R$ 299.90 | Estoque: 10 
+   7. Berço + Kit Berço 9 Peças + Colchão e Protetor
+      SKU: GDG-57c2-002 | R$ 362.33 | Estoque: 50 
+   8. Bose QuietComfort Ultra
+      SKU: LG-1748467441470-0020 | R$ 3299.00 | Estoque: 0 | ⚠️  sem estoque
+   9. Capa Premium para iPhone 15
+      SKU: CAP-001 | R$ 39.90 | Estoque: 11 
+   10. Carregador Turbo USB-C 20W
+      SKU: CAR-001 | R$ 49.90 | Estoque: 4 
+   11. Conjunto de Panelas Antiaderente 5 Peças
+      SKU: PAN-001 | R$ 189.90 | Estoque: 15 
+   12. Cru e Laranja
+      SKU: GDG-5239-000 | R$ 85.65 | Estoque: 49 
+   13. Dell XPS 15 OLED
+      SKU: SAMSUNG-1748467441360-0002 | R$ 15999.00 | Estoque: 65 
+   14. HP Spectre x360 16"
+      SKU: SAMSUNG-1748467441457-0017 | R$ 13499.00 | Estoque: 81 
+   15. JBL Tour Pro 2
+      SKU: LG-1748467441383-0005 | R$ 1499.00 | Estoque: 66 
+   16. Jogo de Cama Queen 200 Fios
+      SKU: CAM-001 | R$ 149.90 | Estoque: 32 
+   17. LG OLED evo C3 65"
+      SKU: LG-1748467441488-0023 | R$ 12999.00 | Estoque: 0 | ⚠️  sem estoque
+   18. Lenovo ThinkPad X1 Carbon
+      SKU: LG-1748467441430-0012 | R$ 11999.00 | Estoque: 98 
+   19. MacBook Pro 16" M3 Max
+      SKU: APPLE-1748467441479-0022 | R$ 24999.00 | Estoque: 26 
+   20. Menino Astronauta - 04
+      SKU: GDG-56c3-001 | R$ 14.68 | Estoque: 49 
+   21. Motorola Edge 40 Pro
+      SKU: SAMSUNG-1748467441451-0016 | R$ 3999.00 | Estoque: 14 
+   22. Nintendo Switch OLED
+      SKU: LG-1748467441491-0024 | R$ 2499.00 | Estoque: 12 
+   23. OnePlus 12 256GB
+      SKU: XIAOMI-1748467441475-0021 | R$ 4499.00 | Estoque: 47 
+   24. Organizador de Armário Modular
+      SKU: ORG-001 | R$ 79.90 | Estoque: 14 
+   25. Película de Vidro 3D Full Cover
+      SKU: PEL-001 | R$ 29.90 | Estoque: 16 
+   26. Philips Ambilight OLED 55"
+      SKU: SAMSUNG-1748467441435-0013 | R$ 9999.00 | Estoque: 0 | ⚠️  sem estoque
+   27. PlayStation 5 Slim Digital
+      SKU: SONY-1748467441440-0014 | R$ 3499.00 | Estoque: 0 | ⚠️  sem estoque
+   28. Power Bank 10000mAh com Display
+      SKU: PWR-001 | R$ 89.90 | Estoque: 49 
+   29. Produto Exemplo 1 - Celulares
+      SKU: CELULARES-001 | R$ 99.90 | Estoque: 11 
+   30. Produto Exemplo 1 - Eletrônicos
+      SKU: ELETRONICOS-001 | R$ 99.90 | Estoque: 31 
+   31. Produto Exemplo 1 - Games
+      SKU: GAMES-001 | R$ 99.90 | Estoque: 57 
+   32. Produto Exemplo 1 - Informática
+      SKU: INFORMATICA-001 | R$ 99.90 | Estoque: 46 
+   33. Produto Exemplo 1 - Monitores
+      SKU: MONITORES-001 | R$ 99.90 | Estoque: 53 
+   34. Produto Exemplo 1 - Nintendo
+      SKU: NINTENDO-001 | R$ 99.90 | Estoque: 22 
+   35. Produto Exemplo 1 - Xbox
+      SKU: XBOX-001 | R$ 99.90 | Estoque: 23 
+   36. Produto Exemplo 2 - Celulares
+      SKU: CELULARES-002 | R$ 149.90 | Estoque: 32 
+   37. Produto Exemplo 2 - Eletrônicos
+      SKU: ELETRONICOS-002 | R$ 149.90 | Estoque: 30 
+   38. Produto Exemplo 2 - Games
+      SKU: GAMES-002 | R$ 149.90 | Estoque: 35 
+   39. Produto Exemplo 2 - Informática
+      SKU: INFORMATICA-002 | R$ 149.90 | Estoque: 30 
+   40. Produto Exemplo 2 - Monitores
+      SKU: MONITORES-002 | R$ 149.90 | Estoque: 46 
+   41. Produto Exemplo 2 - Nintendo
+      SKU: NINTENDO-002 | R$ 149.90 | Estoque: 26 
+   42. Produto Exemplo 2 - Xbox
+      SKU: XBOX-002 | R$ 149.90 | Estoque: 21 
+   43. Samsung Galaxy Buds3 Pro
+      SKU: SAMSUNG-1748467441496-0025 | R$ 1799.00 | Estoque: 5 
+   44. Samsung Galaxy S24 Ultra 512GB
+      SKU: SAMSUNG-1748467441390-0006 | R$ 7499.00 | Estoque: 53 
+   45. Samsung Neo QLED 8K 75"
+      SKU: SAMSUNG-1748467441461-0018 | R$ 29999.00 | Estoque: 80 
+   46. Sony BRAVIA XR A95L 77"
+      SKU: SONY-1748467441370-0003 | R$ 34999.00 | Estoque: 90 
+   47. Sony WH-1000XM5
+      SKU: SONY-1748467441445-0015 | R$ 2799.00 | Estoque: 0 | ⚠️  sem estoque
+   48. Steam Deck OLED 1TB
+      SKU: LG-1748467441377-0004 | R$ 4999.00 | Estoque: 0 | ⚠️  sem estoque
+   49. Suporte Veicular Magnético 360°
+      SKU: SUP-001 | R$ 34.90 | Estoque: 23 
+   50. TCL Mini LED 4K 75"
+      SKU: LG-1748467441405-0008 | R$ 7999.00 | Estoque: 57 
+   51. Ventilador de Torre 40cm com Controle
+      SKU: VEN-001 | R$ 349.90 | Estoque: 16 
+   52. Xbox Series X 1TB
+      SKU: SONY-1748467441467-0019 | R$ 3999.00 | Estoque: 0 | ⚠️  sem estoque
+   53. Xiaomi 14 Pro 512GB
+      SKU: XIAOMI-1748467441424-0011 | R$ 5999.00 | Estoque: 69 
+   54. iPhone 15 Pro Max 256GB
+      SKU: APPLE-1748467441324-0001 | R$ 8999.00 | Estoque: 15 
+
+================================================================================
+
+📈 RESUMO FINAL:
+
+   Total de categorias: 119
+   Categorias com produtos: 90 (76%)
+   Categorias vazias: 29 (24%)
+   Produtos sem categoria: 54
+
+   PRODUTOS NO SISTEMA:
+   Total geral: 2727
+   Ativos: 2727 (100%)
+   Com estoque: 2718 (100%)
+   Visíveis no site: 2718 (100%)
+✅ Neon desconectado
