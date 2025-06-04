@@ -2,6 +2,47 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
+// Função para converter nomes de países para códigos ISO
+function getCountryCode(countryName: string | null): string | null {
+  if (!countryName) return null;
+  
+  const countryMap: Record<string, string> = {
+    'brasil': 'BR',
+    'brazil': 'BR',
+    'estados unidos': 'US',
+    'united states': 'US',
+    'china': 'CN',
+    'alemanha': 'DE',
+    'germany': 'DE',
+    'japão': 'JP',
+    'japan': 'JP',
+    'coreia do sul': 'KR',
+    'south korea': 'KR',
+    'itália': 'IT',
+    'italy': 'IT',
+    'frança': 'FR',
+    'france': 'FR',
+    'reino unido': 'GB',
+    'united kingdom': 'GB',
+    'canadá': 'CA',
+    'canada': 'CA',
+    'méxico': 'MX',
+    'mexico': 'MX',
+    'argentina': 'AR',
+    'chile': 'CL',
+    'uruguai': 'UY',
+    'paraguai': 'PY',
+    'venezuela': 'VE',
+    'colômbia': 'CO',
+    'peru': 'PE',
+    'equador': 'EC',
+    'bolívia': 'BO'
+  };
+  
+  const normalized = countryName.toLowerCase().trim();
+  return countryMap[normalized] || (countryName.length === 2 ? countryName.toUpperCase() : 'BR');
+}
+
 // GET - Listar produtos
 export const GET: RequestHandler = async ({ url, platform, locals }) => {
   try {
@@ -212,6 +253,32 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
+    // NOVO: Verificar se existe produto arquivado com mesmo SKU ou slug
+    const archivedProduct = await db.query`
+      SELECT id, sku, slug, status 
+      FROM products 
+      WHERE (sku = ${data.sku} OR slug = ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')})
+      AND status = 'archived'
+      LIMIT 1
+    `;
+    
+    if (archivedProduct.length > 0) {
+      console.log(`🔄 Produto arquivado encontrado com SKU/slug duplicado: ${archivedProduct[0].id}`);
+      
+      // Adicionar timestamp ao SKU e slug do produto arquivado para liberar o original
+      const timestamp = Date.now();
+      await db.query`
+        UPDATE products 
+        SET 
+          sku = sku || '_archived_' || ${timestamp}::text,
+          slug = slug || '-archived-' || ${timestamp}::text,
+          updated_at = NOW()
+        WHERE id = ${archivedProduct[0].id}::uuid
+      `;
+      
+      console.log(`✅ SKU e slug do produto arquivado foram modificados para liberar: ${data.sku}`);
+    }
+    
     // Criar produto (sem category_id)
     const result = await db.query`
       INSERT INTO products (
@@ -222,10 +289,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         brand_id, seller_id,
         status, is_active, featured, condition,
         weight, height, width, length,
-        has_free_shipping, delivery_days_min, delivery_days_max,
+        has_free_shipping, delivery_days,
         seller_state, seller_city,
         meta_title, meta_description, meta_keywords,
-        tags
+        tags, videos,
+        low_stock_alert, ncm_code, gtin, origin,
+        care_instructions, manual_link, internal_notes,
+        allow_reviews, age_restricted, is_customizable,
+        attributes, specifications, manufacturing_country, tax_class,
+        requires_shipping, is_digital
       ) VALUES (
         ${data.name},
         ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
@@ -253,14 +325,30 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         ${data.width || null},
         ${data.length || null},
         ${data.has_free_shipping || false},
-        ${data.delivery_days_min || null},
-        ${data.delivery_days_max || null},
+        ${data.delivery_days_min || data.delivery_days_max || null},
         ${data.seller_state || null},
         ${data.seller_city || null},
         ${data.meta_title || null},
         ${data.meta_description || null},
         ${data.meta_keywords || []},
-        ${data.tags || []}
+        ${data.tags || []},
+        ${data.videos || []},
+        ${data.low_stock_alert || null},
+        ${data.ncm_code || null},
+        ${data.gtin || null},
+        ${data.origin || '0'},
+        ${data.care_instructions || null},
+        ${data.manual_link || null},
+        ${data.internal_notes || null},
+        ${data.allow_reviews !== false},
+        ${data.age_restricted || false},
+        ${data.is_customizable || false},
+        ${JSON.stringify(data.attributes || {})},
+        ${JSON.stringify(data.specifications || {})},
+        ${getCountryCode(data.manufacturing_country)},
+        ${data.tax_class || 'standard'},
+        ${data.requires_shipping !== false},
+        ${data.is_digital || false}
       ) RETURNING *
     `;
     
@@ -347,6 +435,7 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
         category_id = ${data.categoryId || data.category_id || null},
         brand_id = ${data.brandId || data.brand_id || null},
         tags = ${data.tags || []},
+        videos = ${data.videos || []},
         status = ${data.status || 'active'},
         is_active = ${data.is_active !== false},
         featured = ${data.featured || false},
@@ -363,6 +452,16 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
         meta_title = ${data.meta_title || data.seo?.title || null},
         meta_description = ${data.meta_description || data.seo?.description || null},
         meta_keywords = ${data.meta_keywords || data.seo?.keywords || []},
+        low_stock_alert = ${data.low_stock_alert || null},
+        ncm_code = ${data.ncm_code || null},
+        gtin = ${data.gtin || null},
+        origin = ${data.origin || '0'},
+        care_instructions = ${data.care_instructions || null},
+        manual_link = ${data.manual_link || null},
+        internal_notes = ${data.internal_notes || null},
+        allow_reviews = ${data.allow_reviews !== false},
+        age_restricted = ${data.age_restricted || false},
+        is_customizable = ${data.is_customizable || false},
         updated_at = NOW()
       WHERE id = ${data.id}
       RETURNING *

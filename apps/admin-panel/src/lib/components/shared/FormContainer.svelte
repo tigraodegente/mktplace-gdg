@@ -1,17 +1,23 @@
 <script lang="ts">
-	export let title: string = '';
-	export let subtitle: string = '';
-	export let icon: string = '';
-	export let variant: 'primary' | 'secondary' | 'tertiary' | 'quaternary' | 'quinary' = 'primary';
-	export let columns: 1 | 2 | 3 | 4 | 6 = 2;
-	export let gap: number = 6;
-	export let padding: number = 6;
-	export let rounded: boolean = true;
-	export let shadow: boolean = false;
-	export let border: boolean = true;
-	export let fullWidth: boolean = false;
-	export let containerClass: string = '';
-	export let contentClass: string = '';
+	let { 
+		title = '', 
+		subtitle = '', 
+		icon = '',
+		variant = 'primary' as 'primary' | 'secondary' | 'tertiary' | 'quaternary' | 'quinary',
+		columns = 2 as 1 | 2 | 3 | 4 | 6,
+		gap = 6,
+		padding = 6,
+		rounded = 'lg',
+		borderStyle = 'solid',
+		showHeader = true,
+		showBorder = true,
+		maxWidth = 'full' as 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full',
+		centerContent = false,
+		customClass = '',
+		fullWidth = false,
+		containerClass = '',
+		contentClass = ''
+	} = $props();
 
 	// Variações de cores baseadas no verde principal #00BFB3
 	const variants = {
@@ -23,15 +29,14 @@
 	};
 
 	// Classes computadas
-	$: containerClasses = `
+	const containerClasses = $derived(`
 		${fullWidth ? 'w-full' : 'max-w-full'}
 		${rounded ? 'rounded-xl' : ''}
-		${shadow ? 'shadow-lg' : ''}
-		${border ? `border ${variants[variant]}` : variants[variant].split(' ').slice(0, -1).join(' ')}
+		${showBorder ? `border ${variants[variant]}` : variants[variant].split(' ').slice(0, -1).join(' ')}
 		${containerClass}
-	`.trim().replace(/\s+/g, ' ');
+	`.trim().replace(/\s+/g, ' '));
 
-	$: gridClasses = `
+	const gridClasses = $derived(`
 		grid gap-${gap}
 		${columns === 1 ? 'grid-cols-1' : ''}
 		${columns === 2 ? 'grid-cols-1 md:grid-cols-2' : ''}
@@ -39,13 +44,13 @@
 		${columns === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : ''}
 		${columns === 6 ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6' : ''}
 		${contentClass}
-	`.trim().replace(/\s+/g, ' ');
+	`.trim().replace(/\s+/g, ' '));
 
-	$: paddingClass = `p-${padding}`;
+	const paddingClass = $derived(`p-${padding}`);
 </script>
 
 <div class={containerClasses}>
-	{#if title || subtitle || icon}
+	{#if showHeader && (title || subtitle || icon)}
 		<div class={`mb-${Math.max(4, padding - 2)} ${paddingClass}`}>
 			<h4 class="font-semibold text-slate-900 flex items-center gap-2">
 				{#if icon}
@@ -61,7 +66,7 @@
 		</div>
 	{/if}
 
-	<div class={`${paddingClass} ${title || subtitle || icon ? '' : 'pt-0'}`}>
+	<div class={`${paddingClass} ${showHeader && (title || subtitle || icon) ? '' : 'pt-0'}`}>
 		<div class={gridClasses}>
 			<slot />
 		</div>

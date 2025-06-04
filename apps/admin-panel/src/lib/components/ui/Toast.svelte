@@ -2,11 +2,10 @@
 	import { toast, type Toast } from '$lib/stores/toast';
 	import { cn } from '$lib/utils/cn';
 	import { fade, fly } from 'svelte/transition';
-	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	const typeConfig = {
 		success: {
-			icon: 'Check',
+			icon: '✅',
 			bgColor: 'bg-green-50',
 			borderColor: 'border-green-200',
 			iconColor: 'text-green-600',
@@ -14,7 +13,7 @@
 			messageColor: 'text-green-700'
 		},
 		error: {
-			icon: 'AlertTriangle',
+			icon: '❌',
 			bgColor: 'bg-red-50',
 			borderColor: 'border-red-200',
 			iconColor: 'text-red-600',
@@ -22,7 +21,7 @@
 			messageColor: 'text-red-700'
 		},
 		warning: {
-			icon: 'AlertTriangle',
+			icon: '⚠️',
 			bgColor: 'bg-amber-50',
 			borderColor: 'border-amber-200',
 			iconColor: 'text-amber-600',
@@ -30,7 +29,7 @@
 			messageColor: 'text-amber-700'
 		},
 		info: {
-			icon: 'info',
+			icon: 'ℹ️',
 			bgColor: 'bg-blue-50',
 			borderColor: 'border-blue-200',
 			iconColor: 'text-blue-600',
@@ -52,8 +51,8 @@
 			)}
 		>
 			<div class="flex items-start gap-3">
-				<div class={cn("flex-shrink-0", config.iconColor)}>
-					<ModernIcon name={config.icon} size={20} />
+				<div class={cn("flex-shrink-0 text-lg", config.iconColor)}>
+					{config.icon}
 				</div>
 				
 				<div class="flex-1">
@@ -71,7 +70,7 @@
 					onclick={() => toast.remove(item.id)}
 					class="flex-shrink-0 ml-2 text-gray-400 hover:text-gray-600 transition-colors"
 				>
-					<ModernIcon name="delete" size={16} />
+					🗑️
 				</button>
 			</div>
 		</div>

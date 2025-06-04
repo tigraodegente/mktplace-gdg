@@ -2,16 +2,19 @@
 	import { goto } from '$app/navigation';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import BasicTab from '$lib/components/produtos/BasicTab.svelte';
+	import AttributesSection from '$lib/components/produtos/AttributesSection.svelte';
 	import MediaTab from '$lib/components/produtos/MediaTab.svelte';
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
 	import SeoTab from '$lib/components/produtos/SeoTab.svelte';
 	import AdvancedTab from '$lib/components/produtos/AdvancedTab.svelte';
+	import EnrichmentProgress from '$lib/components/produtos/EnrichmentProgress.svelte';
 	import { toast } from '$lib/stores/toast';
 	
 	// Estados
 	let saving = $state(false);
 	let activeTab = $state('basic');
 	let enriching = $state(false);
+	let showEnrichmentModal = $state(false);
 	let formData = $state<any>({
 		// Informações básicas
 		name: '',
@@ -50,6 +53,10 @@
 		height: 0,
 		width: 0,
 		length: 0,
+		
+		// Atributos e Especificações (NOVO)
+		attributes: {},
+		specifications: {},
 		
 		// Frete
 		has_free_shipping: false,
@@ -93,9 +100,10 @@
 		download_files: []
 	});
 	
-	// Tabs disponíveis
+	// Tabs disponíveis (ADICIONEI A ABA DE ATRIBUTOS)
 	const tabs = [
 		{ id: 'basic', label: 'Informações Básicas', icon: 'Package' },
+		{ id: 'attributes', label: 'Atributos e Especificações', icon: 'Settings' },
 		{ id: 'media', label: 'Imagens', icon: 'image' },
 		{ id: 'shipping', label: 'Frete e Entrega', icon: 'truck' },
 		{ id: 'seo', label: 'SEO', icon: 'search' },
@@ -104,71 +112,187 @@
 	
 	// Enriquecer produto completo com IA
 	async function enrichCompleteProduct() {
-		enriching = true;
-		try {
-			const response = await fetch('/api/ai/enrich', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					action: 'enrich_all',
-					currentData: formData,
-					category: formData.category_name
-				})
-			});
-			
-			if (!response.ok) throw new Error('Erro na resposta da API');
-			
-			const result = await response.json();
-			
-			if (result.success) {
-				// Aplicar dados enriquecidos
-				const enrichedData = result.data;
-				
-				// Atualizar campos com dados enriquecidos
-				if (enrichedData.enhanced_name) formData.name = enrichedData.enhanced_name;
-				if (enrichedData.slug) formData.slug = enrichedData.slug;
-				if (enrichedData.sku) formData.sku = enrichedData.sku;
-				if (enrichedData.description) formData.description = enrichedData.description;
-				if (enrichedData.short_description) formData.short_description = enrichedData.short_description;
-				if (enrichedData.model) formData.model = enrichedData.model;
-				if (enrichedData.barcode) formData.barcode = enrichedData.barcode;
-				if (enrichedData.tags) {
-					formData.tags = enrichedData.tags;
-					formData.tags_input = enrichedData.tags.join(', ');
-				}
-				
-				// Dados de frete
-				if (enrichedData.weight) formData.weight = enrichedData.weight;
-				if (enrichedData.dimensions) {
-					formData.height = enrichedData.dimensions.height;
-					formData.width = enrichedData.dimensions.width;
-					formData.length = enrichedData.dimensions.length;
-				}
-				if (enrichedData.delivery_days_min) formData.delivery_days_min = enrichedData.delivery_days_min;
-				if (enrichedData.delivery_days_max) formData.delivery_days_max = enrichedData.delivery_days_max;
-				
-				// SEO
-				if (enrichedData.meta_title) formData.meta_title = enrichedData.meta_title;
-				if (enrichedData.meta_description) formData.meta_description = enrichedData.meta_description;
-				if (enrichedData.meta_keywords) {
-					formData.meta_keywords = enrichedData.meta_keywords;
-					formData.meta_keywords_input = enrichedData.meta_keywords.join(', ');
-				}
-				
-				// Outros dados
-				if (enrichedData.cost) formData.cost = enrichedData.cost;
-				if (enrichedData.stock_location) formData.stock_location = enrichedData.stock_location;
-				
-				toast.success('🚀 Produto enriquecido com IA! Revise todas as abas antes de salvar.');
-			} else {
-				toast.error('Erro ao enriquecer produto');
-			}
-		} catch (error) {
-			console.error('Erro:', error);
-			toast.error('Erro ao conectar com o serviço de IA');
-		} finally {
-			enriching = false;
+		console.log('🚀 NOVO PRODUTO - enrichCompleteProduct CHAMADO!');
+		console.log('formData.name:', formData.name);
+		console.log('enriching:', enriching);
+		
+		if (!formData.name || formData.name.trim() === '') {
+			console.log('❌ Nome do produto vazio');
+			toast.error('Por favor, insira um nome para o produto antes de enriquecer com IA');
+			return;
 		}
+		
+		// Abrir modal de progresso
+		enriching = true;
+		showEnrichmentModal = true;
+		console.log('✅ Modal de progresso aberta');
+	}
+	
+	// Handlers da modal de progresso
+	function handleEnrichmentComplete(result: any) {
+		console.log('🎉 Enriquecimento completo recebido:', result);
+		
+		if (result.success && result.data) {
+			const enrichedData = result.data;
+			console.log('📝 Aplicando dados enriquecidos...');
+			
+			// Aplicar dados básicos
+			if (enrichedData.name) {
+				formData.name = enrichedData.name;
+				console.log('✅ Nome atualizado:', enrichedData.name);
+			}
+			if (enrichedData.slug) formData.slug = enrichedData.slug;
+			if (enrichedData.sku) formData.sku = enrichedData.sku;
+			if (enrichedData.description) formData.description = enrichedData.description;
+			if (enrichedData.short_description) formData.short_description = enrichedData.short_description;
+			if (enrichedData.model) formData.model = enrichedData.model;
+			if (enrichedData.barcode) formData.barcode = enrichedData.barcode;
+			
+			// Tags
+			if (enrichedData.tags && Array.isArray(enrichedData.tags)) {
+				formData.tags = enrichedData.tags;
+				formData.tags_input = enrichedData.tags.join(', ');
+				console.log('✅ Tags aplicadas:', enrichedData.tags);
+			}
+			
+			// Preços
+			if (enrichedData.cost) formData.cost = enrichedData.cost;
+			if (enrichedData.price) formData.price = enrichedData.price;
+			
+			// Dimensões e peso
+			if (enrichedData.weight) formData.weight = enrichedData.weight;
+			if (enrichedData.dimensions) {
+				if (enrichedData.dimensions.height) formData.height = enrichedData.dimensions.height;
+				if (enrichedData.dimensions.width) formData.width = enrichedData.dimensions.width;
+				if (enrichedData.dimensions.length) formData.length = enrichedData.dimensions.length;
+				console.log('✅ Dimensões aplicadas:', enrichedData.dimensions);
+			}
+			
+			// Entrega
+			if (enrichedData.delivery_days_min) formData.delivery_days_min = enrichedData.delivery_days_min;
+			if (enrichedData.delivery_days_max) formData.delivery_days_max = enrichedData.delivery_days_max;
+			if (enrichedData.has_free_shipping !== undefined) formData.has_free_shipping = enrichedData.has_free_shipping;
+			
+			// SEO
+			if (enrichedData.meta_title) formData.meta_title = enrichedData.meta_title;
+			if (enrichedData.meta_description) formData.meta_description = enrichedData.meta_description;
+			if (enrichedData.meta_keywords && Array.isArray(enrichedData.meta_keywords)) {
+				formData.meta_keywords = enrichedData.meta_keywords;
+				formData.meta_keywords_input = enrichedData.meta_keywords.join(', ');
+			}
+			
+			// Dados avançados
+			if (enrichedData.warranty_period) formData.warranty_period = enrichedData.warranty_period;
+			if (enrichedData.care_instructions) formData.care_instructions = enrichedData.care_instructions;
+			if (enrichedData.manufacturing_country) formData.manufacturing_country = enrichedData.manufacturing_country;
+			
+			// ===== APLICAR ATRIBUTOS E ESPECIFICAÇÕES (NOVO) =====
+			// Aplicar atributos para filtros
+			if (enrichedData.suggested_attributes && typeof enrichedData.suggested_attributes === 'object') {
+				console.log('🎯 +page: Aplicando atributos sugeridos da IA:', enrichedData.suggested_attributes);
+				
+				// Converter array de objetos para objeto simples se necessário
+				if (Array.isArray(enrichedData.suggested_attributes)) {
+					const attributesObj: Record<string, string[]> = {};
+					enrichedData.suggested_attributes.forEach((attr: any) => {
+						if (attr.name && attr.values) {
+							attributesObj[attr.name] = Array.isArray(attr.values) ? attr.values : [attr.values];
+						}
+					});
+					formData.attributes = {
+						...formData.attributes,
+						...attributesObj
+					};
+				} else {
+					formData.attributes = {
+						...formData.attributes,
+						...enrichedData.suggested_attributes
+					};
+				}
+				console.log('✅ +page: Atributos aplicados:', formData.attributes);
+			} else if (enrichedData.attributes && typeof enrichedData.attributes === 'object') {
+				console.log('🎯 +page: Aplicando atributos da IA:', enrichedData.attributes);
+				formData.attributes = {
+					...formData.attributes,
+					...enrichedData.attributes
+				};
+				console.log('✅ +page: Atributos aplicados:', formData.attributes);
+			}
+			
+			// Aplicar especificações técnicas
+			if (enrichedData.suggested_specifications && typeof enrichedData.suggested_specifications === 'object') {
+				console.log('🎯 +page: Aplicando especificações sugeridas da IA:', enrichedData.suggested_specifications);
+				formData.specifications = {
+					...formData.specifications,
+					...enrichedData.suggested_specifications
+				};
+				console.log('✅ +page: Especificações aplicadas:', formData.specifications);
+			} else if (enrichedData.specifications && typeof enrichedData.specifications === 'object') {
+				console.log('🎯 +page: Aplicando especificações da IA:', enrichedData.specifications);
+				formData.specifications = {
+					...formData.specifications,
+					...enrichedData.specifications
+				};
+				console.log('✅ +page: Especificações aplicadas:', formData.specifications);
+			}
+			
+			// ===== APLICAR CATEGORIA E MARCA =====
+			// Categoria
+			if (enrichedData.category_suggestion?.primary_category_id) {
+				console.log('🎯 +page: Aplicando categoria do enriquecimento completo:', enrichedData.category_suggestion);
+				
+				formData.category_id = enrichedData.category_suggestion.primary_category_id;
+				
+				// Aplicar múltiplas categorias se existirem
+				if (enrichedData.category_suggestion.related_categories) {
+					const relatedIds = enrichedData.category_suggestion.related_categories.map((c: any) => c.category_id);
+					formData._selected_categories = [enrichedData.category_suggestion.primary_category_id, ...relatedIds];
+					formData._related_categories = enrichedData.category_suggestion.related_categories;
+					
+					console.log('✅ +page: Categorias aplicadas:', {
+						principal: enrichedData.category_suggestion.primary_category_id,
+						relacionadas: relatedIds,
+						total: formData._selected_categories
+					});
+				} else {
+					formData._selected_categories = [enrichedData.category_suggestion.primary_category_id];
+				}
+			} else {
+				console.log('❌ +page: Nenhuma categoria encontrada no enriquecimento completo');
+			}
+			
+			// Marca
+			if (enrichedData.brand_suggestion?.brand_id) {
+				console.log('🎯 +page: Aplicando marca do enriquecimento completo:', enrichedData.brand_suggestion);
+				formData.brand_id = enrichedData.brand_suggestion.brand_id;
+				console.log('✅ +page: Marca aplicada:', enrichedData.brand_suggestion.brand_id);
+			} else if (enrichedData.brand_suggestion?.brand_name) {
+				console.log('⚠️ +page: Marca detectada mas não cadastrada:', enrichedData.brand_suggestion.brand_name);
+				// Marca detectada mas não cadastrada no sistema
+				formData.brand = enrichedData.brand_suggestion.brand_name;
+			} else {
+				console.log('❌ +page: Nenhuma marca encontrada no enriquecimento completo');
+			}
+			
+			console.log('🎉 Todos os dados aplicados com sucesso!');
+			console.log('📋 FormData atualizado:', formData);
+			
+			toast.success('🚀 Produto enriquecido com IA! Revise todas as abas antes de salvar.');
+		} else {
+			console.error('❌ Resposta sem sucesso:', result);
+			toast.error('Erro ao enriquecer produto');
+		}
+		
+		// Fechar modal
+		showEnrichmentModal = false;
+		enriching = false;
+	}
+	
+	function handleEnrichmentCancel() {
+		console.log('🛑 Enriquecimento cancelado pelo usuário');
+		showEnrichmentModal = false;
+		enriching = false;
+		toast.info('Enriquecimento cancelado');
 	}
 	
 	// Salvar produto
@@ -240,10 +364,11 @@
 					>
 						{#if enriching}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+							<span>Enriquecendo...</span>
 						{:else}
 							<ModernIcon name="robot" size={16} />
+							<span>Enriquecer com IA</span>
 						{/if}
-						Enriquecer com IA
 					</button>
 					
 					<button
@@ -296,18 +421,29 @@
 	<!-- Content -->
 	<div class="max-w-[calc(100vw-100px)] mx-auto p-6">
 		{#if activeTab === 'basic'}
-			<BasicTab {formData} />
+			<BasicTab bind:formData />
+		{:else if activeTab === 'attributes'}
+			<AttributesSection bind:formData />
 		{:else if activeTab === 'media'}
-			<MediaTab {formData} />
+			<MediaTab bind:formData productId="" />
 		{:else if activeTab === 'shipping'}
-			<ShippingTab {formData} />
+			<ShippingTab bind:formData />
 		{:else if activeTab === 'seo'}
-			<SeoTab {formData} />
+			<SeoTab bind:formData />
 		{:else if activeTab === 'advanced'}
-			<AdvancedTab {formData} />
+			<AdvancedTab bind:formData />
 		{/if}
 	</div>
 </div>
+
+<!-- Modal de Progresso do Enriquecimento IA -->
+{#if showEnrichmentModal}
+	<EnrichmentProgress 
+		productData={formData}
+		onComplete={handleEnrichmentComplete}
+		onCancel={handleEnrichmentCancel}
+	/>
+{/if}
 
 <style>
 	:global(.btn) {

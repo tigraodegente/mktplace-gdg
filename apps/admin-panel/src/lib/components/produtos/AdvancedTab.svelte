@@ -1,7 +1,9 @@
 <script lang="ts">
-	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
-	import AttributesSection from './AttributesSection.svelte';
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import SuppliersManager from './SuppliersManager.svelte';
+	import StocksManager from './StocksManager.svelte';
+	import CollectionsManager from './CollectionsManager.svelte';
 	
 	let { formData = $bindable() } = $props();
 
@@ -20,24 +22,108 @@
 	// Estados locais com $state
 	let newCustomField = $state({ key: '', value: '' });
 	let newDownloadFile = $state({ name: '', url: '' });
+	let availableProducts = $state<Array<{id: string, name: string}>>([]);
+	let loadingProducts = $state(false);
+	let loadingRelated = $state(false);
+	let loadingDownloads = $state(false);
+	let hasInitialized = $state(false);
 
-	// Lista de produtos de exemplo (deveria vir de uma API)
-	const sampleProducts = [
-		{ id: '1', name: 'Produto Exemplo 1' },
-		{ id: '2', name: 'Produto Exemplo 2' },
-		{ id: '3', name: 'Produto Exemplo 3' }
-	];
+	// Validar se productId é um UUID válido
+	function isValidUUID(id: string | undefined | null): boolean {
+		if (!id || typeof id !== 'string') return false;
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		return uuidRegex.test(id);
+	}
 
-	// Lista de países
-	const countries = [
-		'Brasil', 'Estados Unidos', 'China', 'Alemanha', 'Japão', 
-		'Coreia do Sul', 'Taiwan', 'França', 'Itália', 'Reino Unido'
-	];
+	// Carregar produtos disponíveis
+	async function loadAvailableProducts() {
+		if (loadingProducts) return;
+		loadingProducts = true;
+		
+		try {
+			// Usar exclude apenas se tiver um ID válido
+			const excludeParam = isValidUUID(formData.id) ? `&exclude=${formData.id}` : '';
+			const response = await fetch(`/api/products/related?limit=100${excludeParam}`);
+			if (response.ok) {
+				const data = await response.json();
+				if (data.success) {
+					availableProducts = data.data.map((p: any) => ({
+						id: p.id,
+						name: p.name
+					}));
+				} else {
+					console.warn('Erro ao carregar produtos:', data.error);
+					availableProducts = [];
+				}
+			} else {
+				console.warn('Erro HTTP ao carregar produtos:', response.status);
+				availableProducts = [];
+			}
+		} catch (error) {
+			console.error('Erro ao carregar produtos:', error);
+			availableProducts = [];
+		} finally {
+			loadingProducts = false;
+		}
+	}
+
+	// Carregar produtos relacionados existentes
+	async function loadRelatedProducts() {
+		if (!isValidUUID(formData.id) || loadingRelated) return;
+		loadingRelated = true;
+		
+		try {
+			const response = await fetch(`/api/products/related?productId=${formData.id}`);
+			if (response.ok) {
+				const data = await response.json();
+				if (data.success) {
+					formData.related_products = data.data.map((r: any) => r.related_product_id);
+				} else {
+					console.warn('Erro ao carregar produtos relacionados:', data.error);
+					formData.related_products = [];
+				}
+			} else {
+				console.warn('Erro HTTP ao carregar produtos relacionados:', response.status);
+				formData.related_products = [];
+			}
+		} catch (error) {
+			console.error('Erro ao carregar produtos relacionados:', error);
+			formData.related_products = [];
+		} finally {
+			loadingRelated = false;
+		}
+	}
+
+	// Carregar arquivos de download
+	async function loadDownloadFiles() {
+		if (!isValidUUID(formData.id) || loadingDownloads) return;
+		loadingDownloads = true;
+		
+		try {
+			const response = await fetch(`/api/products/downloads?productId=${formData.id}`);
+			if (response.ok) {
+				const data = await response.json();
+				if (data.success) {
+					formData.download_files = data.data;
+				} else {
+					console.warn('Erro ao carregar arquivos de download:', data.error);
+					formData.download_files = [];
+				}
+			} else {
+				console.warn('Erro HTTP ao carregar downloads:', response.status);
+				formData.download_files = [];
+			}
+		} catch (error) {
+			console.error('Erro ao carregar arquivos de download:', error);
+			formData.download_files = [];
+		} finally {
+			loadingDownloads = false;
+		}
+	}
 
 	// Adicionar campo customizado
 	function addCustomField() {
 		if (newCustomField.key.trim() && newCustomField.value.trim()) {
-			// Salvar custom_fields em specifications
 			if (!formData.specifications) formData.specifications = {};
 			if (!formData.specifications.custom_fields) formData.specifications.custom_fields = {};
 			
@@ -56,91 +142,189 @@
 	}
 
 	// Adicionar arquivo de download
-	function addDownloadFile() {
+	async function addDownloadFile() {
 		if (newDownloadFile.name.trim() && newDownloadFile.url.trim()) {
-			formData.download_files = [...(formData.download_files || []), { 
-				name: newDownloadFile.name.trim(), 
-				url: newDownloadFile.url.trim() 
-			}];
-			newDownloadFile = { name: '', url: '' };
+			if (isValidUUID(formData.id)) {
+				// Salvar no banco
+				try {
+					const response = await fetch('/api/products/downloads', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							productId: formData.id,
+							fileName: newDownloadFile.name.trim(),
+							fileUrl: newDownloadFile.url.trim()
+						})
+					});
+					
+					if (response.ok) {
+						const data = await response.json();
+						if (data.success) {
+							// Recarregar lista
+							await loadDownloadFiles();
+							newDownloadFile = { name: '', url: '' };
+						}
+					}
+				} catch (error) {
+					console.error('Erro ao adicionar arquivo:', error);
+				}
+			} else {
+				// Modo local (produto novo)
+				if (!formData.download_files) formData.download_files = [];
+				formData.download_files = [...formData.download_files, { ...newDownloadFile }];
+				newDownloadFile = { name: '', url: '' };
+			}
 		}
 	}
 
 	// Remover arquivo de download
-	function removeDownloadFile(index: number) {
-		formData.download_files = formData.download_files.filter((_: any, i: number) => i !== index);
-	}
-
-	// Estados
-	let activeVariationTab = $state('colors');
-	let showNewVariantModal = $state(false);
-	let newVariant = $state<any>({});
-	let selectedTags = $state<string[]>([]);
-	let availableTags = $state<Array<{id: string, name: string}>>([]);
-
-	// Carregar tags disponíveis
-	async function loadTags() {
-		try {
-			// Por enquanto usar tags mockadas, futuramente buscar da API
-			availableTags = [
-				{ id: '1', name: 'Promoção' },
-				{ id: '2', name: 'Lançamento' },
-				{ id: '3', name: 'Mais Vendido' },
-				{ id: '4', name: 'Exclusivo' },
-				{ id: '5', name: 'Sustentável' },
-				{ id: '6', name: 'Premium' },
-				{ id: '7', name: 'Oferta Limitada' },
-				{ id: '8', name: 'Frete Grátis' }
-			];
-			
-			// Inicializar tags selecionadas
-			if (formData.tags && Array.isArray(formData.tags)) {
-				// Mapear tags de string para IDs (temporário)
-				selectedTags = formData.tags.map((tag: any, index: number) => String(index + 1)).slice(0, availableTags.length);
+	async function removeDownloadFile(index: number, fileId?: string) {
+		if (fileId && isValidUUID(formData.id)) {
+			// Remover do banco
+			try {
+				const response = await fetch(`/api/products/downloads?id=${fileId}`, {
+					method: 'DELETE'
+				});
+				
+				if (response.ok) {
+					// Recarregar lista
+					await loadDownloadFiles();
+				}
+			} catch (error) {
+				console.error('Erro ao remover arquivo:', error);
 			}
-		} catch (error) {
-			console.error('Erro ao carregar tags:', error);
+		} else {
+			// Modo local
+			if (formData.download_files) {
+				formData.download_files = formData.download_files.filter((_: any, i: number) => i !== index);
+			}
 		}
 	}
-	
-	// Carregar tags quando o componente montar
-	$effect(() => {
-		if (availableTags.length === 0) {
-			loadTags();
+
+	// Atualizar seleção de produtos relacionados
+	async function updateRelatedProducts(productIds: string[]) {
+		formData.related_products = productIds;
+		
+		// Se tem ID do produto válido, salvar no banco
+		if (isValidUUID(formData.id)) {
+			try {
+				// Primeiro remover todos os relacionamentos existentes
+				const currentResponse = await fetch(`/api/products/related?productId=${formData.id}`);
+				if (currentResponse.ok) {
+					const currentData = await currentResponse.json();
+					if (currentData.success) {
+						// Remover relacionamentos que não estão mais selecionados
+						for (const rel of currentData.data) {
+							if (!productIds.includes(rel.related_product_id)) {
+								await fetch(`/api/products/related?productId=${formData.id}&relatedProductId=${rel.related_product_id}`, {
+									method: 'DELETE'
+								});
+							}
+						}
+					}
+				}
+				
+				// Adicionar novos relacionamentos
+				for (const relatedId of productIds) {
+					await fetch('/api/products/related', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							productId: formData.id,
+							relatedProductId: relatedId,
+							relationType: 'similar'
+						})
+					});
+				}
+			} catch (error) {
+				console.error('Erro ao salvar produtos relacionados:', error);
+			}
 		}
-	});
-	
+	}
+
+	// Atualizar seleção de produtos upsell
+	async function updateUpsellProducts(productIds: string[]) {
+		formData.upsell_products = productIds;
+		
+		// Similar ao updateRelatedProducts mas com relationType: 'upsell'
+		if (isValidUUID(formData.id)) {
+			try {
+				for (const relatedId of productIds) {
+					await fetch('/api/products/related', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							productId: formData.id,
+							relatedProductId: relatedId,
+							relationType: 'upsell'
+						})
+					});
+				}
+			} catch (error) {
+				console.error('Erro ao salvar produtos upsell:', error);
+			}
+		}
+	}
+
 	// Extrair custom_fields de specifications
 	$effect(() => {
 		if (formData.specifications?.custom_fields) {
 			formData.custom_fields = formData.specifications.custom_fields;
 		}
 	});
+
+	// Inicializar dados quando o componente montar ou produto mudar - APENAS UMA VEZ
+	$effect(() => {
+		// Só executa se não foi inicializado ou se o ID do produto mudou
+		const currentProductId = formData.id;
+		
+		// Não executar em loop - verificar se já está carregando ou se já foi inicializado para este produto
+		if (loadingProducts || loadingRelated || loadingDownloads) {
+			return;
+		}
+		
+		// Inicializar apenas uma vez ou quando produto muda
+		if (!hasInitialized) {
+			hasInitialized = true;
+			
+			// Sempre carregar produtos disponíveis
+			loadAvailableProducts();
+			
+			// Carregar dados específicos do produto apenas se tem ID
+			if (currentProductId) {
+				loadRelatedProducts();
+				loadDownloadFiles();
+			}
+		}
+	});
 </script>
 
 <div class="space-y-8">
-	<div class="mb-6">
-		<h3 class="text-xl font-semibold text-slate-900 mb-2">Configurações Avançadas</h3>
-		<p class="text-slate-600">Configurações especiais e personalizações do produto</p>
+	<!-- FORNECEDORES -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<SuppliersManager productId={formData.id} />
 	</div>
 
-	<!-- ATRIBUTOS E ESPECIFICAÇÕES -->
-	<AttributesSection bind:formData={formData} />
+	<!-- MÚLTIPLOS ESTOQUES -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<StocksManager productId={formData.id} />
+	</div>
+
+	<!-- COLEÇÕES E KITS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<CollectionsManager productId={formData.id} />
+	</div>
 
 	<!-- TIPO DE PRODUTO -->
-	<div class="bg-gradient-to-r from-[#00BFB3]/10 to-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-xl p-6">
-		<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-			<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-7l2 2m0 0l2 2m-2-2h-6m6 0V2" />
-			</svg>
-			Tipo de Produto
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="Package" size="md" /> Tipo de Produto
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<!-- Produto Digital/Físico -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-3">
-					📦 Natureza do Produto
+				<label class="block text-sm font-medium text-gray-700 mb-3">
+					Natureza do Produto
 				</label>
 				<div class="space-y-3">
 					<label class="flex items-center gap-3 cursor-pointer">
@@ -148,11 +332,13 @@
 							type="radio"
 							bind:group={formData.is_digital}
 							value={false}
-							class="w-5 h-5 text-[#00BFB3] border-slate-300 focus:ring-[#00BFB3]"
+							class="w-5 h-5 text-[#00BFB3] border-gray-300 focus:ring-[#00BFB3]"
 						/>
 						<div>
-							<span class="text-sm font-medium text-slate-900">📦 Produto Físico</span>
-							<p class="text-xs text-slate-600">Precisa de envio/frete</p>
+							<span class="text-sm font-medium text-gray-900 flex items-center gap-2">
+								<ModernIcon name="Package" size="sm" /> Produto Físico
+							</span>
+							<p class="text-xs text-gray-500 mt-1">Precisa de envio/frete</p>
 						</div>
 					</label>
 					<label class="flex items-center gap-3 cursor-pointer">
@@ -160,31 +346,34 @@
 							type="radio"
 							bind:group={formData.is_digital}
 							value={true}
-							class="w-5 h-5 text-[#00BFB3] border-slate-300 focus:ring-[#00BFB3]"
+							class="w-5 h-5 text-[#00BFB3] border-gray-300 focus:ring-[#00BFB3]"
 						/>
 						<div>
-							<span class="text-sm font-medium text-slate-900">💾 Produto Digital</span>
-							<p class="text-xs text-slate-600">Download instantâneo</p>
+							<span class="text-sm font-medium text-gray-900 flex items-center gap-2">
+								<ModernIcon name="download" size="sm" /> Produto Digital
+							</span>
+							<p class="text-xs text-gray-500 mt-1">Download instantâneo</p>
 						</div>
 					</label>
 				</div>
 			</div>
 
-			<!-- Requer Frete -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-3">
-					🚚 Configurações de Envio
+				<label class="block text-sm font-medium text-gray-700 mb-3">
+					Configurações de Envio
 				</label>
 				<div class="flex items-center">
 					<label class="flex items-center gap-3 cursor-pointer">
 						<input
 							type="checkbox"
 							bind:checked={formData.requires_shipping}
-							class="w-6 h-6 rounded border-slate-300 text-[#00BFB3] shadow-sm focus:border-[#00BFB3] focus:ring focus:ring-[#00BFB3]/20 focus:ring-opacity-50"
+							class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
 						/>
 						<div>
-							<span class="text-sm font-medium text-slate-900">📮 Requer Envio</span>
-							<p class="text-xs text-slate-600">Produto precisa ser enviado</p>
+							<span class="text-sm font-medium text-gray-900 flex items-center gap-2">
+								<ModernIcon name="truck" size="sm" /> Requer Envio
+							</span>
+							<p class="text-xs text-gray-500 mt-1">Produto precisa ser enviado</p>
 						</div>
 					</label>
 				</div>
@@ -193,23 +382,19 @@
 	</div>
 
 	<!-- INFORMAÇÕES LEGAIS -->
-	<div class="bg-gradient-to-r from-[#00BFB3]/8 to-[#00BFB3]/12 border border-[#00BFB3]/25 rounded-xl p-6">
-		<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-			<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-			</svg>
-			Informações Legais e Compliance
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="info" size="md" /> Informações Legais e Compliance
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<!-- Classe Tributária -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-2">
-					📊 Classe Tributária
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Classe Tributária
 				</label>
 				<select
 					bind:value={formData.tax_class}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				>
 					<option value="standard">Padrão</option>
 					<option value="reduced">Reduzida</option>
@@ -218,17 +403,16 @@
 					<option value="medicine">Medicamentos</option>
 					<option value="books">Livros</option>
 				</select>
-				<p class="text-xs text-slate-500 mt-1">Categoria fiscal do produto</p>
+				<p class="text-xs text-gray-500 mt-1">Categoria fiscal do produto</p>
 			</div>
 
-			<!-- País de Fabricação -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-2">
-					🌍 País de Fabricação
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					País de Fabricação
 				</label>
 				<select
 					bind:value={formData.manufacturing_country}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				>
 					<option value="">Selecione um país</option>
 					<option value="BR">🇧🇷 Brasil</option>
@@ -240,49 +424,44 @@
 					<option value="IT">🇮🇹 Itália</option>
 					<option value="FR">🇫🇷 França</option>
 				</select>
-				<p class="text-xs text-slate-500 mt-1">Local de origem do produto</p>
+				<p class="text-xs text-gray-500 mt-1">Local de origem do produto</p>
 			</div>
 
-			<!-- Período de Garantia -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-2">
-					🛡️ Período de Garantia
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Período de Garantia
 				</label>
 				<input
 					type="text"
 					bind:value={formData.warranty_period}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 					placeholder="Ex: 12 meses, 2 anos, 90 dias..."
 				/>
-				<p class="text-xs text-slate-500 mt-1">Tempo de garantia oferecida</p>
+				<p class="text-xs text-gray-500 mt-1">Tempo de garantia oferecida</p>
 			</div>
 
-			<!-- Condição do Produto -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-2">
-					🔍 Condição do Produto
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Condição do Produto
 				</label>
 				<select
 					bind:value={formData.condition}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				>
-					<option value="new">✨ Novo</option>
-					<option value="used">🔄 Usado</option>
-					<option value="refurbished">🔧 Recondicionado</option>
-					<option value="damaged">⚠️ Com defeito</option>
+					<option value="new">Novo</option>
+					<option value="used">Usado</option>
+					<option value="refurbished">Recondicionado</option>
+					<option value="damaged">Com defeito</option>
 				</select>
-				<p class="text-xs text-slate-500 mt-1">Estado atual do produto</p>
+				<p class="text-xs text-gray-500 mt-1">Estado atual do produto</p>
 			</div>
 		</div>
 	</div>
 
 	<!-- CAMPOS PERSONALIZADOS -->
-	<div class="bg-gradient-to-r from-[#00BFB3]/6 to-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-xl p-6">
-		<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-			<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-			</svg>
-			Campos Personalizados
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="Settings" size="md" /> Campos Personalizados
 		</h4>
 
 		<!-- Adicionar Campo -->
@@ -292,116 +471,94 @@
 					type="text"
 					bind:value={newCustomField.key}
 					placeholder="Nome do campo"
-					class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				/>
 				<input
 					type="text"
 					bind:value={newCustomField.value}
 					placeholder="Valor do campo"
-					class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				/>
 				<button
 					type="button"
 					onclick={addCustomField}
 					disabled={!newCustomField.key.trim() || !newCustomField.value.trim()}
-					class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+					class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
 				>
-					Adicionar
+					<ModernIcon name="Plus" size="sm" /> Adicionar
 				</button>
 			</div>
-			<p class="text-xs text-slate-500 mt-2">Adicione informações extras específicas do produto</p>
+			<p class="text-xs text-gray-500 mt-2">Adicione informações extras específicas do produto</p>
 		</div>
 
 		<!-- Campos Adicionados -->
 		{#if formData.specifications?.custom_fields && Object.keys(formData.specifications.custom_fields).length > 0}
 			<div class="space-y-3">
-				<h6 class="text-sm font-medium text-slate-700">Campos Criados</h6>
-				{#each Object.entries(formData.specifications.custom_fields) as [key, value], index}
-					<div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#00BFB3]/30">
-						<div class="flex-1 grid grid-cols-2 gap-3">
-							<div>
-								<span class="text-sm font-medium text-slate-900">{key}:</span>
-							</div>
-							<div>
-								<span class="text-sm text-slate-700">{value}</span>
-							</div>
+				<h5 class="text-sm font-medium text-gray-700">Campos Configurados:</h5>
+				{#each Object.entries(formData.specifications.custom_fields) as [key, value]}
+					<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+						<div>
+							<span class="font-medium text-gray-900">{key}:</span>
+							<span class="text-gray-600 ml-2">{value}</span>
 						</div>
 						<button
 							type="button"
 							onclick={() => removeCustomField(key)}
-							class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+							class="text-red-600 hover:text-red-800 transition-colors"
 							title="Remover campo"
 						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-							</svg>
+							<ModernIcon name="delete" size="sm" />
 						</button>
 					</div>
 				{/each}
-			</div>
-		{:else}
-			<div class="text-center py-6 border-2 border-dashed border-slate-300 rounded-lg">
-				<p class="text-slate-500 text-sm">Nenhum campo personalizado adicionado</p>
 			</div>
 		{/if}
 	</div>
 
 	<!-- PRODUTOS RELACIONADOS -->
-	<div class="bg-gradient-to-r from-[#00BFB3]/4 to-[#00BFB3]/8 border border-[#00BFB3]/15 rounded-xl p-6">
-		<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-			<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-			</svg>
-			Produtos Relacionados e Upsell
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="url" size="md" /> Produtos Relacionados
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<!-- Produtos Relacionados -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-2">
-					🔗 Produtos Relacionados
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Produtos Relacionados
 				</label>
-				<select
-					multiple
-					bind:value={formData.related_products}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					size="4"
-				>
-					{#each sampleProducts as product}
-						<option value={product.id}>{product.name}</option>
-					{/each}
-				</select>
-				<p class="text-xs text-slate-500 mt-1">Produtos similares ou complementares</p>
+				<MultiSelect
+					items={availableProducts}
+					selected={formData.related_products || []}
+					onSelectionChange={updateRelatedProducts}
+					placeholder="Selecione produtos relacionados..."
+					allowMultiple={true}
+				/>
+				<p class="text-xs text-gray-500 mt-1">Produtos similares ou complementares</p>
 			</div>
 
 			<!-- Produtos Upsell -->
 			<div>
-				<label class="block text-sm font-medium text-slate-700 mb-2">
-					📈 Produtos para Upsell
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Produtos para Upsell
 				</label>
-				<select
-					multiple
-					bind:value={formData.upsell_products}
-					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					size="4"
-				>
-					{#each sampleProducts as product}
-						<option value={product.id}>{product.name}</option>
-					{/each}
-				</select>
-				<p class="text-xs text-slate-500 mt-1">Produtos premium para sugerir</p>
+				<MultiSelect
+					items={availableProducts}
+					selected={formData.upsell_products || []}
+					onSelectionChange={updateUpsellProducts}
+					placeholder="Selecione produtos para upsell..."
+					allowMultiple={true}
+				/>
+				<p class="text-xs text-gray-500 mt-1">Produtos mais caros para sugerir</p>
 			</div>
 		</div>
 	</div>
 
-	<!-- DOWNLOADS (PRODUTOS DIGITAIS) -->
+	<!-- ARQUIVOS DIGITAIS -->
 	{#if formData.is_digital}
-		<div class="bg-gradient-to-r from-[#00BFB3]/3 to-[#00BFB3]/6 border border-[#00BFB3]/10 rounded-xl p-6">
-			<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-				<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-				</svg>
-				Arquivos para Download
+		<div class="bg-white border border-gray-200 rounded-lg p-6">
+			<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+				<ModernIcon name="save" size="md" /> Arquivos para Download
 			</h4>
 
 			<!-- Adicionar Arquivo -->
@@ -411,79 +568,72 @@
 						type="text"
 						bind:value={newDownloadFile.name}
 						placeholder="Nome do arquivo"
-						class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 					/>
 					<input
 						type="url"
 						bind:value={newDownloadFile.url}
 						placeholder="URL do arquivo"
-						class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 					/>
 					<button
 						type="button"
 						onclick={addDownloadFile}
 						disabled={!newDownloadFile.name.trim() || !newDownloadFile.url.trim()}
-						class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
 					>
-						Adicionar
+						<ModernIcon name="Plus" size="sm" /> Adicionar
 					</button>
 				</div>
-				<p class="text-xs text-slate-500 mt-2">Arquivos que serão disponibilizados após a compra</p>
+				<p class="text-xs text-gray-500 mt-2">URLs dos arquivos que serão disponibilizados para download</p>
 			</div>
 
 			<!-- Arquivos Adicionados -->
 			{#if formData.download_files && formData.download_files.length > 0}
 				<div class="space-y-3">
-					<h6 class="text-sm font-medium text-slate-700">Arquivos de Download</h6>
+					<h5 class="text-sm font-medium text-gray-700">Arquivos Configurados:</h5>
 					{#each formData.download_files as file, index}
-						<div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#00BFB3]/30">
-							<div class="flex-1">
-								<p class="text-sm font-medium text-slate-900">{file.name}</p>
-								<p class="text-xs text-slate-500 font-mono">{file.url}</p>
+						<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+							<div>
+								<span class="font-medium text-gray-900">{file.name}</span>
+								<span class="text-gray-600 ml-2 text-sm">({file.url})</span>
 							</div>
 							<button
 								type="button"
-								onclick={() => removeDownloadFile(index)}
-								class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+								onclick={() => removeDownloadFile(index, file.id)}
+								class="text-red-600 hover:text-red-800 transition-colors"
 								title="Remover arquivo"
 							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-								</svg>
+								<ModernIcon name="delete" size="sm" />
 							</button>
 						</div>
 					{/each}
-				</div>
-			{:else}
-				<div class="text-center py-6 border-2 border-dashed border-slate-300 rounded-lg">
-					<p class="text-slate-500 text-sm">Nenhum arquivo de download adicionado</p>
 				</div>
 			{/if}
 		</div>
 	{/if}
 
-	<!-- RESUMO CONFIGURAÇÕES -->
-	<div class="bg-gradient-to-r from-slate-50 to-gray-50 border border-slate-200 rounded-xl p-6">
-		<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-			<svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-			</svg>
-			Resumo das Configurações
+	<!-- RESUMO DAS CONFIGURAÇÕES -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="preview" size="md" /> Resumo das Configurações
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-			<!-- Tipo -->
-			<div class="bg-white rounded-lg p-4 border border-slate-200">
-				<h5 class="font-medium text-slate-900 mb-2">📦 Tipo</h5>
-				<p class="text-sm text-slate-600">
+			<div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+				<h5 class="font-medium text-gray-900 mb-2 flex items-center gap-2">
+					<ModernIcon name="Package" size="sm" /> Tipo
+				</h5>
+				<p class="text-sm text-gray-600">
 					{formData.is_digital ? 'Digital' : 'Físico'}
 				</p>
 			</div>
 
-			<!-- Condição -->
-			<div class="bg-white rounded-lg p-4 border border-slate-200">
-				<h5 class="font-medium text-slate-900 mb-2">🏷️ Condição</h5>
-				<p class="text-sm text-slate-600">
+			<div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+				<h5 class="font-medium text-gray-900 mb-2 flex items-center gap-2">
+					<ModernIcon name="sku" size="sm" /> Condição
+				</h5>
+				<p class="text-sm text-gray-600">
 					{formData.condition === 'new' ? 'Novo' : 
 					 formData.condition === 'used' ? 'Usado' :
 					 formData.condition === 'refurbished' ? 'Recondicionado' :
@@ -491,423 +641,21 @@
 				</p>
 			</div>
 
-			<!-- Garantia -->
-			<div class="bg-white rounded-lg p-4 border border-slate-200">
-				<h5 class="font-medium text-slate-900 mb-2">🛡️ Garantia</h5>
-				<p class="text-sm text-slate-600">
+			<div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+				<h5 class="font-medium text-gray-900 mb-2 flex items-center gap-2">
+					<ModernIcon name="info" size="sm" /> Garantia
+				</h5>
+				<p class="text-sm text-gray-600">
 					{formData.warranty_period || 'Não definido'}
 				</p>
 			</div>
 
-			<!-- Campos Customizados -->
-			<div class="bg-white rounded-lg p-4 border border-slate-200">
-				<h5 class="font-medium text-slate-900 mb-2">⚙️ Campos</h5>
-				<p class="text-sm text-slate-600">
+			<div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+				<h5 class="font-medium text-gray-900 mb-2 flex items-center gap-2">
+					<ModernIcon name="Settings" size="sm" /> Campos
+				</h5>
+				<p class="text-sm text-gray-600">
 					{Object.keys(formData.specifications?.custom_fields || {}).length} personalizados
-				</p>
-			</div>
-		</div>
-	</div>
-
-	<!-- GESTÃO DE ESTOQUE -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="Package" size={20} color="#00BFB3" />
-			Gestão Avançada de Estoque
-		</h4>
-		
-		<div class="space-y-6">
-			<!-- Alerta de Estoque Baixo -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					⚠️ Quantidade Mínima para Alerta
-				</label>
-				<input
-					type="number"
-					bind:value={formData.low_stock_alert}
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="10"
-				/>
-				<p class="text-xs text-gray-500 mt-1">Receba alerta quando o estoque estiver abaixo deste valor</p>
-			</div>
-		</div>
-	</div>
-	
-	<!-- INFORMAÇÕES FISCAIS -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="document" size={20} color="#00BFB3" />
-			Informações Fiscais
-		</h4>
-		
-		<div class="space-y-6">
-			<!-- Código NCM -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🏷️ Código NCM
-					<span class="text-xs text-gray-500 ml-2">Nomenclatura Comum do Mercosul</span>
-				</label>
-				<input
-					type="text"
-					bind:value={formData.ncm_code}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="0000.00.00"
-				/>
-			</div>
-			
-			<!-- Código EAN/GTIN -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🏷️ Código EAN/GTIN
-					<span class="text-xs text-gray-500 ml-2">Código de barras global</span>
-				</label>
-				<input
-					type="text"
-					bind:value={formData.gtin}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="7890000000000"
-				/>
-			</div>
-			
-			<!-- Origem do Produto -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🌍 Origem do Produto
-				</label>
-				<select
-					bind:value={formData.origin}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-				>
-					<option value="">Selecione a origem</option>
-					<option value="0">Nacional</option>
-					<option value="1">Estrangeira - Importação direta</option>
-					<option value="2">Estrangeira - Adquirida no mercado interno</option>
-					<option value="3">Nacional com conteúdo importado superior a 40%</option>
-					<option value="4">Nacional com conteúdo importado inferior a 40%</option>
-					<option value="5">Nacional com conteúdo importado inferior a 70%</option>
-					<option value="6">Estrangeira - Importação direta sem similar nacional</option>
-					<option value="7">Estrangeira - Adquirida no mercado interno sem similar nacional</option>
-					<option value="8">Nacional - Mercadoria ou bem com conteúdo de importação superior a 70%</option>
-				</select>
-			</div>
-		</div>
-	</div>
-	
-	<!-- GARANTIA E SUPORTE -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="shield" size={20} color="#00BFB3" />
-			Garantia e Suporte
-		</h4>
-		
-		<div class="space-y-6">
-			<!-- Período de Garantia -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🛡️ Período de Garantia
-				</label>
-				<input
-					type="text"
-					bind:value={formData.warranty_period}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Ex: 12 meses, 90 dias, 2 anos"
-				/>
-			</div>
-			
-			<!-- Instruções de Cuidado -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					📋 Instruções de Cuidado/Uso
-				</label>
-				<textarea
-					bind:value={formData.care_instructions}
-					rows="4"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Descreva cuidados especiais, modo de uso, manutenção..."
-				></textarea>
-			</div>
-			
-			<!-- Manual do Usuário -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					📄 Link do Manual
-					<span class="text-xs text-gray-500 ml-2">URL do manual online</span>
-				</label>
-				<input
-					type="url"
-					bind:value={formData.manual_link}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="https://exemplo.com/manual.pdf"
-				/>
-			</div>
-		</div>
-	</div>
-	
-	<!-- ENVIO E ENTREGA -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="truck" size={20} color="#00BFB3" />
-			Envio e Entrega
-		</h4>
-		
-		<div class="space-y-6">
-			<!-- Frete Grátis -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.has_free_shipping}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Frete Grátis</span>
-						<p class="text-xs text-gray-500">Oferecer entrega gratuita para este produto</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Prazo de Entrega -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					📅 Prazo de Entrega (dias úteis)
-				</label>
-				<input
-					type="number"
-					bind:value={formData.delivery_days}
-					min="1"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="3"
-				/>
-			</div>
-			
-			<!-- Localização do Vendedor -->
-			<div class="grid grid-cols-2 gap-4">
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-2">
-						📍 Estado do Vendedor
-					</label>
-					<input
-						type="text"
-						bind:value={formData.seller_state}
-						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="SP"
-						maxlength="2"
-					/>
-				</div>
-				
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-2">
-						🏙️ Cidade do Vendedor
-					</label>
-					<input
-						type="text"
-						bind:value={formData.seller_city}
-						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="São Paulo"
-					/>
-				</div>
-			</div>
-		</div>
-	</div>
-	
-	<!-- CONFIGURAÇÕES AVANÇADAS -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="Settings" size={20} color="#00BFB3" />
-			Configurações Avançadas
-		</h4>
-		
-		<div class="space-y-6">
-			<!-- Permitir Avaliações -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.allow_reviews}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Permitir Avaliações</span>
-						<p class="text-xs text-gray-500">Clientes podem avaliar o produto</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Requer Idade Mínima -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.age_restricted}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Produto com Restrição de Idade</span>
-						<p class="text-xs text-gray-500">Apenas para maiores de 18 anos</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Produto Personalizado -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.is_customizable}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Aceita Personalização</span>
-						<p class="text-xs text-gray-500">Cliente pode personalizar o produto</p>
-					</div>
-				</label>
-			</div>
-		</div>
-	</div>
-	
-	<!-- NOTAS INTERNAS -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="note" size={20} color="#00BFB3" />
-			Notas Internas
-		</h4>
-		
-		<div>
-			<label class="block text-sm font-medium text-gray-700 mb-2">
-				📝 Observações (não visível para clientes)
-			</label>
-			<textarea
-				bind:value={formData.internal_notes}
-				rows="4"
-				class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-				placeholder="Anotações internas sobre o produto, fornecedor, etc..."
-			></textarea>
-		</div>
-	</div>
-	
-	<!-- VARIAÇÕES SUGERIDAS PELA IA -->
-	{#if formData._suggested_variations && formData._suggested_variations.length > 0}
-	<div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
-		<h4 class="font-semibold text-purple-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="robot" size={20} color="#9333ea" />
-			Variações Sugeridas pela IA
-		</h4>
-		
-		<div class="space-y-4">
-			<p class="text-sm text-purple-700">
-				A IA identificou que este produto pode ter as seguintes variações:
-			</p>
-			
-			{#each formData._suggested_variations as variation}
-			<div class="bg-white rounded-lg p-4 border border-purple-200">
-				<h5 class="font-medium text-purple-900 mb-2">{variation.type}</h5>
-				<div class="flex flex-wrap gap-2">
-					{#each variation.options as option}
-					<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-						{option}
-					</span>
-					{/each}
-				</div>
-			</div>
-			{/each}
-			
-			<div class="mt-4 p-3 bg-purple-100 rounded-lg">
-				<p class="text-xs text-purple-800">
-					<strong>💡 Dica:</strong> Para criar variações, vá para a aba "Variações" após salvar o produto principal.
-				</p>
-			</div>
-		</div>
-	</div>
-	{/if}
-
-	<!-- TAGS E LABELS -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="tag" size={20} color="#00BFB3" />
-			Tags e Rótulos
-		</h4>
-		
-		<div class="space-y-6">
-			<!-- Tags do Sistema -->
-			<div>
-				<MultiSelect
-					items={availableTags}
-					selected={selectedTags}
-					onSelectionChange={(selected: string[]) => {
-						selectedTags = selected;
-						// Por enquanto, salvar as tags como strings
-						formData.tags = selected.map((id: string) => 
-							availableTags.find((t: any) => t.id === id)?.name || ''
-						).filter(Boolean);
-					}}
-					label="Tags do Sistema"
-					placeholder="Selecione tags..."
-					hierarchical={false}
-					allowMultiple={true}
-				/>
-				<p class="text-xs text-gray-500 mt-2">
-					Tags ajudam a destacar produtos em buscas e filtros
-				</p>
-			</div>
-			
-			<!-- Tags Customizadas -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Tags Customizadas
-					<span class="text-xs text-gray-500 ml-2">Separe por vírgula</span>
-				</label>
-				<input
-					type="text"
-					bind:value={formData.tags_input}
-					onblur={() => {
-						const customTags = formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [];
-						// Mesclar com tags do sistema
-						const systemTags = selectedTags.map((id: string) => 
-							availableTags.find((t: any) => t.id === id)?.name || ''
-						).filter(Boolean);
-						formData.tags = [...new Set([...systemTags, ...customTags])];
-					}}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="oferta, novidade, exclusivo online"
-				/>
-			</div>
-		</div>
-	</div>
-
-	<!-- RELACIONAMENTOS FUTUROS -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="link" size={20} color="#00BFB3" />
-			Relacionamentos (Em Breve)
-		</h4>
-		
-		<div class="space-y-4">
-			<div class="p-4 bg-gray-50 rounded-lg">
-				<h5 class="font-medium text-gray-700 mb-2">🛍️ Produtos Relacionados</h5>
-				<p class="text-sm text-gray-600">
-					Vincule produtos complementares, similares ou da mesma coleção
-				</p>
-			</div>
-			
-			<div class="p-4 bg-gray-50 rounded-lg">
-				<h5 class="font-medium text-gray-700 mb-2">🏭 Múltiplos Fornecedores</h5>
-				<p class="text-sm text-gray-600">
-					Gerencie diferentes fornecedores para o mesmo produto
-				</p>
-			</div>
-			
-			<div class="p-4 bg-gray-50 rounded-lg">
-				<h5 class="font-medium text-gray-700 mb-2">🏢 Múltiplos Estoques</h5>
-				<p class="text-sm text-gray-600">
-					Controle estoque em diferentes locais/armazéns
-				</p>
-			</div>
-			
-			<div class="p-4 bg-gray-50 rounded-lg">
-				<h5 class="font-medium text-gray-700 mb-2">🎯 Coleções e Kits</h5>
-				<p class="text-sm text-gray-600">
-					Agrupe produtos em coleções temáticas ou kits promocionais
 				</p>
 			</div>
 		</div>

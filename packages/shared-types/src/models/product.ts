@@ -40,6 +40,18 @@ export interface Product {
     estimated_days?: number;
     shipping_cost?: number;
   };
+  // Campos SEO
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string[];
+  canonical_url?: string;
+  robots_meta?: string;
+  schema_type?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  seo_index?: boolean;
+  seo_follow?: boolean;
   created_at: Date;
   updated_at: Date;
 }

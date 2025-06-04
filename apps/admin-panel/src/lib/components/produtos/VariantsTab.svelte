@@ -1,5 +1,4 @@
 <script lang="ts">
-	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import { toast } from '$lib/stores/toast';
 	
 	let { formData = $bindable() } = $props();
@@ -314,8 +313,8 @@
 	<div class="mb-6">
 		<div class="flex items-center justify-between">
 			<div>
-				<h3 class="text-xl font-semibold text-slate-900 mb-2">Variações do Produto</h3>
-				<p class="text-slate-600">Configure diferentes opções como cores, tamanhos, voltagens, etc.</p>
+				<h3 class="text-xl font-semibold text-gray-900 mb-2">Variações do Produto</h3>
+				<p class="text-gray-600">Configure diferentes opções como cores, tamanhos, voltagens, etc.</p>
 			</div>
 			<button
 				type="button"
@@ -328,7 +327,7 @@
 					<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 					<span>Analisando...</span>
 				{:else}
-					<ModernIcon name="robot" size={18} color="white" />
+					🤖
 					<span>Sugerir com IA</span>
 				{/if}
 			</button>
@@ -336,16 +335,13 @@
 	</div>
 
 	<!-- ATIVAR VARIAÇÕES -->
-	<div class="bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-xl p-6">
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<div class="flex items-center justify-between">
 			<div>
-				<h4 class="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-					<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a1 1 0 01-1-1V9a1 1 0 011-1h1a2 2 0 100-4H4a1 1 0 01-1-1V4a1 1 0 011-1h3a1 1 0 011 1v1z" />
-					</svg>
-					Produto com Variações
+				<h4 class="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+					🎨 Produto com Variações
 				</h4>
-				<p class="text-slate-600 text-sm">
+				<p class="text-gray-600 text-sm">
 					{formData.has_variants 
 						? 'Este produto possui diferentes variações (cor, tamanho, etc.)'
 						: 'Ative para criar variações como cor, tamanho, voltagem, etc.'
@@ -357,10 +353,10 @@
 				<input
 					type="checkbox"
 					bind:checked={formData.has_variants}
-					on:change={toggleVariants}
-					class="w-6 h-6 rounded border-slate-300 text-[#00BFB3] shadow-sm focus:border-[#00BFB3] focus:ring focus:ring-[#00BFB3]/20 focus:ring-opacity-50"
+					onchange={toggleVariants}
+					class="w-6 h-6 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
 				/>
-				<span class="text-sm font-medium text-slate-900">
+				<span class="text-sm font-medium text-gray-900">
 					{formData.has_variants ? 'Ativado' : 'Desativado'}
 				</span>
 			</label>
@@ -369,23 +365,20 @@
 
 	{#if formData.has_variants}
 		<!-- OPÇÕES PREDEFINIDAS -->
-		<div class="bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-xl p-6">
-			<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-				<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-7l2 2m0 0l2 2m-2-2h-6m6 0V2m-8 4h6m-4 0v8m0 0H5m0 0l-2-2m2 2l-2 2m2-2V8" />
-				</svg>
-				Opções Rápidas
+		<div class="bg-white border border-gray-200 rounded-lg p-6">
+			<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+				⚡ Opções Rápidas
 			</h4>
 
 			<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
 				{#each commonOptions as option}
 					<button
 						type="button"
-						on:click={() => addCommonOption(option.name, option.values)}
-						class="p-3 text-left border border-slate-300 rounded-lg hover:border-[#00BFB3] hover:bg-[#00BFB3]/5 transition-colors"
+						onclick={() => addCommonOption(option.name, option.values)}
+						class="p-3 text-left border border-gray-300 rounded-lg hover:border-[#00BFB3] hover:bg-gray-50 transition-colors"
 					>
-						<div class="font-medium text-slate-900">{option.name}</div>
-						<div class="text-xs text-slate-500 mt-1">
+						<div class="font-medium text-gray-900">{option.name}</div>
+						<div class="text-xs text-gray-500 mt-1">
 							{option.values.slice(0, 3).join(', ')}{option.values.length > 3 ? '...' : ''}
 						</div>
 					</button>
@@ -394,12 +387,9 @@
 		</div>
 
 		<!-- OPÇÃO CUSTOMIZADA -->
-		<div class="bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-xl p-6">
-			<h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-				<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-				</svg>
-				Criar Opção Personalizada
+		<div class="bg-white border border-gray-200 rounded-lg p-6">
+			<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+				➕ Criar Opção Personalizada
 			</h4>
 
 			<div class="flex gap-3">
@@ -407,13 +397,13 @@
 					type="text"
 					bind:value={newOptionName}
 					placeholder="Nome da opção (ex: Material, Voltagem...)"
-					class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				/>
 				<button
 					type="button"
-					on:click={addCustomOption}
+					onclick={addCustomOption}
 					disabled={!newOptionName.trim()}
-					class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+					class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Criar
 				</button>
@@ -424,66 +414,62 @@
 		{#if formData.product_options.length > 0}
 			<div class="space-y-6">
 				{#each formData.product_options as option, optionIndex}
-					<div class="bg-white border border-slate-200 rounded-xl p-6">
+					<div class="bg-white border border-gray-200 rounded-lg p-6">
 						<div class="flex items-center justify-between mb-4">
-							<h5 class="font-semibold text-slate-900 flex items-center gap-2">
-								<span class="w-6 h-6 bg-[#00BFB3]/10 text-[#00BFB3] rounded-full flex items-center justify-center text-sm font-bold">
+							<h5 class="font-semibold text-gray-900 flex items-center gap-2">
+								<span class="w-6 h-6 bg-gray-100 text-gray-700 rounded-full flex items-center justify-center text-sm font-bold">
 									{optionIndex + 1}
 								</span>
 								{option.name}
 							</h5>
 							<button
 								type="button"
-								on:click={() => removeOption(optionIndex)}
+								onclick={() => removeOption(optionIndex)}
 								class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
 								title="Remover opção"
 							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-								</svg>
+								🗑️
 							</button>
 						</div>
 
 						<!-- Adicionar Valor -->
 						<div class="mb-4">
-							<label class="block text-sm font-medium text-slate-700 mb-2">
+							<label class="block text-sm font-medium text-gray-700 mb-2">
 								Adicionar Valor
 							</label>
 							<input
 								type="text"
 								placeholder="Digite um valor e pressione Enter"
-								on:keydown={(e) => handleNewValueKeydown(e, optionIndex)}
-								class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+								onkeydown={(e) => handleNewValueKeydown(e, optionIndex)}
+								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 							/>
 						</div>
 
 						<!-- Valores da Opção -->
 						{#if option.values.length > 0}
 							<div class="space-y-2">
-								<h6 class="text-sm font-medium text-slate-700">
+								<h6 class="text-sm font-medium text-gray-700">
 									Valores ({option.values.length})
 								</h6>
 								<div class="flex flex-wrap gap-2">
 									{#each option.values as value, valueIndex}
-										<span class="inline-flex items-center gap-2 px-3 py-2 bg-[#00BFB3]/10 text-[#00BFB3] rounded-lg text-sm">
+										<span class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">
 											<span>{value.value}</span>
 											<button
 												type="button"
-												on:click={() => removeValueFromOption(optionIndex, valueIndex)}
-												class="text-[#00BFB3] hover:text-red-600 transition-colors"
+												onclick={() => removeValueFromOption(optionIndex, valueIndex)}
+												class="text-gray-700 hover:text-red-600 transition-colors"
 												title="Remover valor"
 											>
-												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-												</svg>
+												✕
 											</button>
 										</span>
 									{/each}
 								</div>
 							</div>
 						{:else}
-							<div class="text-center py-4 border-2 border-dashed border-slate-300 rounded-lg">
-								<p class="text-slate-500 text-sm">Nenhum valor adicionado para "{option.name}"</p>
+							<div class="text-center py-4 border-2 border-dashed border-gray-300 rounded-lg">
+								<p class="text-gray-500 text-sm">Nenhum valor adicionado para "{option.name}"</p>
 							</div>
 						{/if}
 					</div>

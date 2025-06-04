@@ -23,29 +23,22 @@
 		onCancel = () => {}
 	}: Props = $props();
 	
-	// Cores baseadas na variante
+	// Ícones baseados na variante
 	const variants = {
 		danger: {
-			icon: 'alert' as const,
-			color: 'text-red-600',
-			bgColor: 'bg-red-100',
-			buttonClass: 'bg-red-600 hover:bg-red-700 text-white'
+			icon: 'delete' as const,
+			iconColor: 'text-red-500'
 		},
 		warning: {
 			icon: 'warning' as const,
-			color: 'text-amber-600',
-			bgColor: 'bg-amber-100', 
-			buttonClass: 'bg-amber-600 hover:bg-amber-700 text-white'
+			iconColor: 'text-yellow-500'
 		},
 		info: {
 			icon: 'info' as const,
-			color: 'text-blue-600',
-			bgColor: 'bg-blue-100',
-			buttonClass: 'bg-blue-600 hover:bg-blue-700 text-white'
+			iconColor: 'text-blue-500'
 		}
 	} as const;
 	
-	// Use $derived ao invés de $:
 	const currentVariant = $derived(variants[variant]);
 	
 	function handleConfirm() {
@@ -78,40 +71,40 @@
 		
 		<!-- Dialog -->
 		<div class="flex min-h-full items-center justify-center p-4">
-			<div class="relative transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all w-full max-w-md animate-scale-in">
+			<div class="relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all w-full max-w-md animate-scale-in">
 				<!-- Content -->
 				<div class="p-6">
-					<!-- Icon -->
-					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full {currentVariant.bgColor}">
-						<ModernIcon name={currentVariant.icon} size={24} color={currentVariant.color} />
-					</div>
-					
-					<!-- Text -->
-					<div class="mt-4 text-center">
+					<!-- Header com ícone -->
+					<div class="flex items-center gap-3 mb-4">
+						<div class="flex-shrink-0">
+							<ModernIcon name={currentVariant.icon} size="md" />
+						</div>
 						<h3 class="text-lg font-semibold text-gray-900">
 							{title}
 						</h3>
-						<p class="mt-2 text-sm text-gray-600">
-							{message}
-						</p>
+					</div>
+					
+					<!-- Mensagem -->
+					<div class="text-sm text-gray-600 leading-relaxed">
+						{message}
 					</div>
 				</div>
 				
 				<!-- Actions -->
-				<div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:gap-3">
-					<button
-						type="button"
-						onclick={handleConfirm}
-						class="inline-flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:w-auto {currentVariant.buttonClass}"
-					>
-						{confirmText}
-					</button>
+				<div class="bg-gray-50 px-6 py-4 flex justify-end gap-3">
 					<button
 						type="button"
 						onclick={handleCancel}
-						class="mt-3 inline-flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-2 sm:mt-0 sm:w-auto"
+						class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
 					>
 						{cancelText}
+					</button>
+					<button
+						type="button"
+						onclick={handleConfirm}
+						class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors text-sm font-medium"
+					>
+						{confirmText}
 					</button>
 				</div>
 			</div>

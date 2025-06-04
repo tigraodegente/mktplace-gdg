@@ -4,16 +4,17 @@
 	import { toast } from '$lib/stores/toast';
 	import TabsForm from '$lib/components/shared/TabsForm.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import type { ProductFormData } from '$lib/types/products.types';
 	
 	// Import das tabs
 	import BasicTab from './BasicTab.svelte';
 	import PricingTab from './PricingTab.svelte';
 	import InventoryTab from './InventoryTab.svelte';
-	import CategoriesTab from './CategoriesTab.svelte';
 	import ImagesTab from './ImagesTab.svelte';
 	import SeoTab from './SeoTab.svelte';
 	import AdvancedTab from './AdvancedTab.svelte';
 	import VariantsTab from './VariantsTab.svelte';
+	import ShippingTab from './ShippingTab.svelte';
 
 	interface Props {
 		productId?: string | null;
@@ -30,8 +31,37 @@
 	// Estados
 	let loading = $state(true);
 	let saving = $state(false);
-	let formData = $state<any>({});
-	let originalData = $state<any>({});
+	let formData = $state<ProductFormData>({
+		// Campos básicos
+		name: '',
+		sku: '',
+		slug: '',
+		description: '',
+		short_description: '',
+		price: 0,
+		original_price: 0,
+		cost: 0,
+		quantity: 0,
+		status: 'active',
+		featured: false,
+		brand_id: '',
+		category_id: '',
+		seller_id: '',
+		// Campos SEO com valores padrão
+		meta_title: '',
+		meta_description: '',
+		meta_keywords: [],
+		tags: [],
+		canonical_url: '',
+		robots_meta: 'index,follow',
+		schema_type: 'Product',
+		og_title: '',
+		og_description: '',
+		og_image: '',
+		seo_index: true,
+		seo_follow: true
+	});
+	let originalData = $state<ProductFormData | {}>({});
 	let showConfirmDialog = $state(false);
 	let pendingAction = $state<(() => void) | null>(null);
 
@@ -65,16 +95,16 @@
 			description: 'Inventário e dimensões'
 		},
 		{ 
-			id: 'categories', 
-			name: 'Categorias', 
-			icon: '📂',
-			description: 'Tags e SEO'
-		},
-		{ 
 			id: 'images', 
 			name: 'Imagens', 
 			icon: '🖼️',
 			description: 'Galeria de fotos'
+		},
+		{ 
+			id: 'shipping', 
+			name: 'Frete e Entrega', 
+			icon: '🚚',
+			description: 'Configurações de envio'
 		},
 		{ 
 			id: 'variants', 
@@ -183,14 +213,8 @@
 			
 			// Preparar dados para envio
 			const dataToSend = {
-				...formData,
-				// Garantir que enviamos category_ids ao invés de category_id
-				category_ids: formData.category_ids || (formData.category_id ? [formData.category_id] : []),
-				primary_category_id: formData.primary_category_id || formData.category_ids?.[0] || formData.category_id
+				...formData
 			};
-			
-			// Remover category_id se estiver presente (campo legado)
-			delete dataToSend.category_id;
 			
 			const response = await fetch(url, {
 				method,
@@ -209,13 +233,13 @@
 				if (onSave) {
 					await onSave();
 				}
-				// Mostrar notificação de sucesso
+				toast.success(productId ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
 			} else {
 				throw new Error('Erro ao salvar produto');
 			}
 		} catch (error) {
 			console.error('Erro ao salvar:', error);
-			// Mostrar notificação de erro
+			toast.error('Erro ao salvar produto');
 		} finally {
 			saving = false;
 		}
@@ -317,10 +341,10 @@
 						<PricingTab {formData} />
 					{:else if activeTab === 'inventory'}
 						<InventoryTab {formData} />
-					{:else if activeTab === 'categories'}
-						<CategoriesTab {formData} />
 					{:else if activeTab === 'images'}
 						<ImagesTab {formData} />
+					{:else if activeTab === 'shipping'}
+						<ShippingTab {formData} />
 					{:else if activeTab === 'variants'}
 						<VariantsTab {formData} />
 					{:else if activeTab === 'seo'}

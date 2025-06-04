@@ -9,6 +9,8 @@
  * - Cache inteligente
  * - Peso real vs peso cubado
  * - Modalidades: Expressa (por item) e Agrupada (por remessa)
+ * 
+ * ATUALIZADO: Usa nova estrutura de banco via ModernShippingAdapter
  */
 
 import type { CartItem } from '$lib/types/cart';
@@ -21,6 +23,9 @@ import type {
   ShippingBreakdown
 } from './unifiedShippingService.types';
 
+// Importar o novo adaptador
+import { ModernShippingAdapter } from './modernShippingAdapter';
+
 // Re-export types for compatibility
 export type { 
   UnifiedShippingItem,
@@ -31,10 +36,10 @@ export type {
 } from './unifiedShippingService.types';
 
 // ============================================================================
-// TIPOS UNIFICADOS
+// TYPES E INTERFACES
 // ============================================================================
 
-// Definindo Product interface localmente para evitar problemas de import
+// Definindo Product localmente até resolver imports
 interface Product {
   id: string;
   name: string;
@@ -46,6 +51,14 @@ interface Product {
   width?: number;
   length?: number;
   [key: string]: any;
+}
+
+interface ProductShippingConfig {
+  product_id: string;
+  shipping_pac: boolean;
+  shipping_sedex: boolean;
+  shipping_carrier: boolean;
+  shipping_pickup: boolean;
 }
 
 // ============================================================================
@@ -216,49 +229,8 @@ export class UnifiedShippingService {
     db: any,
     postalCode: string
   ): Promise<any> {
-    const cleanPostalCode = postalCode.replace(/\D/g, '').padStart(8, '0');
-    
-    // Primeiro tentar função RPC se existir
-    try {
-      const result = await db.queryOne`
-        SELECT * FROM find_shipping_zone_advanced(${cleanPostalCode})
-      `;
-      
-      if (result) return result;
-    } catch (error) {
-      console.log('RPC não disponível, usando query direta');
-    }
-    
-    // Fallback para query direta
-    const zones = await db.query`
-      SELECT 
-        z.*,
-        c.id as carrier_id,
-        c.name as carrier_name,
-        c.type as carrier_type
-      FROM shipping_zones z
-      INNER JOIN shipping_carriers c ON c.id = z.carrier_id
-      WHERE z.is_active = true 
-      AND c.is_active = true
-    `;
-    
-    // Filtrar por CEP nas faixas
-    for (const zone of zones || []) {
-      if (this.isPostalCodeInZone(cleanPostalCode, zone.postal_code_ranges)) {
-        return {
-          zone_id: zone.id,
-          zone_name: zone.name,
-          uf: zone.uf,
-          carrier_id: zone.carrier_id,
-          carrier_name: zone.carrier_name,
-          carrier_type: zone.carrier_type,
-          delivery_days_min: zone.delivery_days_min,
-          delivery_days_max: zone.delivery_days_max
-        };
-      }
-    }
-    
-    return null;
+    console.log('🔍 Buscando zona via ModernShippingAdapter');
+    return await ModernShippingAdapter.findZoneByPostalCode(db, postalCode);
   }
   
   private static async getShippingOptions(
@@ -270,23 +242,18 @@ export class UnifiedShippingService {
     items: UnifiedShippingItem[]
   ): Promise<UnifiedShippingOption[]> {
     
-    // Buscar modalidades e taxas
-    const modalities = await db.query`
-      SELECT 
-        co.*,
-        m.id as modality_id,
-        m.name as modality_name,
-        m.description as modality_description,
-        m.pricing_type as modality_pricing_type,
-        m.priority as modality_priority
-      FROM shipping_calculated_options co
-      INNER JOIN shipping_modalities m ON m.id = co.modality_id
-      WHERE co.zone_id = ${zone.zone_id}
-      AND co.is_active = true
-      AND m.is_active = true
-      ORDER BY m.priority
-    `;
+    console.log('🚛 Buscando opções via ModernShippingAdapter');
     
+    // Buscar modalidades usando novo adaptador
+    const modalities = await ModernShippingAdapter.getShippingOptions(
+      db,
+      zone,
+      sellerId,
+      totalWeight,
+      totalValue,
+      items
+    );
+
     const options: UnifiedShippingOption[] = [];
     
     for (const modality of modalities || []) {
@@ -524,33 +491,8 @@ export class UnifiedShippingService {
     sellerId?: string,
     zoneId?: string
   ): Promise<any> {
-    
-    let query = `
-      SELECT * FROM shipping_modality_configs
-      WHERE modality_id = $1
-      AND is_enabled = true
-    `;
-    const params = [modalityId];
-    
-    // Buscar config mais específica primeiro
-    if (sellerId) {
-      query += ` AND seller_id = $2`;
-      params.push(sellerId);
-    } else {
-      query += ` AND seller_id IS NULL`;
-    }
-    
-    if (zoneId) {
-      query += ` AND zone_id = $${params.length + 1}`;
-      params.push(zoneId);
-    } else {
-      query += ` AND zone_id IS NULL`;
-    }
-    
-    query += ` LIMIT 1`;
-    
-    const result = await db.queryOne(query, ...params);
-    return result;
+    console.log('⚙️ Buscando configuração via ModernShippingAdapter');
+    return await ModernShippingAdapter.getShippingConfig(db, modalityId, sellerId, zoneId);
   }
   
   private static async checkFreeShipping(
@@ -776,5 +718,57 @@ export class UnifiedShippingService {
       return clean.replace(/(\d{5})(\d{1,3})/, '$1-$2');
     }
     return clean;
+  }
+
+  /**
+   * Buscar configurações de shipping dos produtos
+   */
+  static async getProductsShippingConfig(db: any, productIds: string[]): Promise<ProductShippingConfig[]> {
+    console.log('📦 Buscando config de produtos via ModernShippingAdapter');
+    return await ModernShippingAdapter.getProductsShippingConfig(db, productIds);
+  }
+
+  /**
+   * Filtrar opções de shipping baseado nas configurações dos produtos
+   */
+  static filterUnifiedShippingOptions(
+    options: UnifiedShippingOption[], 
+    productsConfig: ProductShippingConfig[]
+  ): UnifiedShippingOption[] {
+    if (productsConfig.length === 0) return options;
+    
+    // Verificar quais métodos estão habilitados para TODOS os produtos
+    const allProductsConfig = {
+      shipping_pac: productsConfig.every(p => p.shipping_pac),
+      shipping_sedex: productsConfig.every(p => p.shipping_sedex), 
+      shipping_carrier: productsConfig.every(p => p.shipping_carrier),
+      shipping_pickup: productsConfig.every(p => p.shipping_pickup)
+    };
+    
+    console.log('🎯 Filtros unified shipping por produto:', allProductsConfig);
+    
+    return options.filter(option => {
+      const modalityLower = option.modalityName.toLowerCase();
+      
+      // Mapear modalidades para campos de configuração
+      if (modalityLower.includes('pac') || modalityLower.includes('econômic')) {
+        return allProductsConfig.shipping_pac;
+      }
+      
+      if (modalityLower.includes('sedex') || modalityLower.includes('express') || modalityLower.includes('rápid')) {
+        return allProductsConfig.shipping_sedex;
+      }
+      
+      if (modalityLower.includes('transportadora') || modalityLower.includes('premium')) {
+        return allProductsConfig.shipping_carrier;
+      }
+      
+      if (modalityLower.includes('retirada') || modalityLower.includes('pickup') || modalityLower.includes('loja')) {
+        return allProductsConfig.shipping_pickup;
+      }
+      
+      // Se não conseguir identificar, deixa passar (segurança)
+      return true;
+    });
   }
 } 

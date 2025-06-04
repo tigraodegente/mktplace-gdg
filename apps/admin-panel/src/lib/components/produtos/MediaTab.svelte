@@ -1,14 +1,28 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import { toast } from '$lib/stores/toast';
 	
-	let { formData = $bindable() } = $props();
+	let { formData = $bindable(), productId = '' } = $props();
 	
 	// Inicializar arrays se não existirem
 	if (!formData.images) formData.images = [];
+	if (!formData.videos) formData.videos = [];
 	
 	// Estados locais
 	let uploading = $state(false);
+	let uploadingVideo = $state(false);
 	let dragOver = $state(false);
+	let dragOverVideo = $state(false);
+	let removing = $state(false);
+	
+	// Estados do modal de confirmação
+	let showConfirmDialog = $state(false);
+	let confirmDialogConfig = $state({
+		title: '',
+		message: '',
+		onConfirm: () => {}
+	});
 	
 	// Upload de imagem
 	async function handleImageUpload(files: FileList | null) {
@@ -34,10 +48,16 @@
 				
 				if (response.ok) {
 					const data = await response.json();
-					// Adicionar URL da imagem ao array
-					formData.images = [...formData.images, data.url];
+					if (data.success && data.url) {
+						formData.images = [...formData.images, data.url];
+						// Salvar automaticamente no banco após upload
+						await saveToDatabase();
+					} else {
+						alert(`Erro no upload: ${data.error || 'Resposta inválida'}`);
+					}
 				} else {
-					alert('Erro ao fazer upload da imagem');
+					const errorData = await response.json().catch(() => ({}));
+					alert(`Erro ao fazer upload da imagem: ${errorData.error || 'Erro desconhecido'}`);
 				}
 			}
 		} catch (error) {
@@ -48,9 +68,151 @@
 		}
 	}
 	
-	// Remover imagem
-	function removeImage(index: number) {
-		formData.images = formData.images.filter((_: any, i: number) => i !== index);
+	// Upload de vídeo
+	async function handleVideoUpload(files: FileList | null) {
+		if (!files || files.length === 0) return;
+		
+		uploadingVideo = true;
+		try {
+			for (const file of files) {
+				if (!file.type.startsWith('video/')) {
+					alert('Por favor, selecione apenas vídeos');
+					continue;
+				}
+				
+				// Verificar tamanho (máximo 50MB)
+				if (file.size > 50 * 1024 * 1024) {
+					alert('Vídeo muito grande. Máximo 50MB');
+					continue;
+				}
+				
+				// Criar FormData
+				const uploadData = new FormData();
+				uploadData.append('file', file);
+				
+				// Fazer upload
+				const response = await fetch('/api/upload', {
+					method: 'POST',
+					body: uploadData
+				});
+				
+				if (response.ok) {
+					const data = await response.json();
+					if (data.success && data.url) {
+						formData.videos = [...formData.videos, data.url];
+						// Salvar automaticamente no banco após upload
+						await saveToDatabase();
+					} else {
+						alert(`Erro no upload: ${data.error || 'Resposta inválida'}`);
+					}
+				} else {
+					const errorData = await response.json().catch(() => ({}));
+					alert(`Erro ao fazer upload do vídeo: ${errorData.error || 'Erro desconhecido'}`);
+				}
+			}
+		} catch (error) {
+			console.error('Erro no upload:', error);
+			alert('Erro ao fazer upload dos vídeos');
+		} finally {
+			uploadingVideo = false;
+		}
+	}
+	
+	// Salvar alterações no banco
+	async function saveToDatabase(customImages?: string[], customVideos?: string[]) {
+		if (!productId) {
+			console.warn('Produto ainda não foi salvo, não é possível atualizar mídia');
+			return false;
+		}
+		
+		try {
+			const response = await fetch(`/api/products/${productId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: formData.name || 'Produto sem nome',
+					sku: formData.sku || 'SKU-' + Date.now(),
+					price: formData.price || 0,
+					images: customImages || formData.images,
+					videos: customVideos || formData.videos
+				})
+			});
+			
+			if (!response.ok) {
+				throw new Error('Erro ao salvar no banco');
+			}
+			
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.error || 'Erro na resposta da API');
+			}
+			
+			return true;
+		} catch (error) {
+			console.error('Erro ao salvar no banco:', error);
+			toast.error('Erro ao atualizar no banco de dados');
+			return false;
+		}
+	}
+	
+	// Confirmar remoção de imagem
+	function confirmRemoveImage(index: number) {
+		confirmDialogConfig = {
+			title: 'Remover Imagem',
+			message: `Tem certeza que deseja remover esta imagem? Esta ação não pode ser desfeita e será excluída do banco de dados.`,
+			onConfirm: async () => {
+				removing = true;
+				try {
+					// Criar cópia temporária sem a imagem
+					const newImages = formData.images.filter((_: any, i: number) => i !== index);
+					
+					// Tentar salvar no banco primeiro
+					const success = await saveToDatabase(newImages);
+					if (success) {
+						// Só atualiza a interface se salvou com sucesso
+						formData.images = newImages;
+						toast.success('Imagem removida com sucesso!');
+					}
+				} catch (error) {
+					console.error('Erro ao remover imagem:', error);
+					toast.error('Erro ao remover imagem');
+				} finally {
+					removing = false;
+				}
+			}
+		};
+		showConfirmDialog = true;
+	}
+	
+	// Confirmar remoção de vídeo
+	function confirmRemoveVideo(index: number) {
+		confirmDialogConfig = {
+			title: 'Remover Vídeo',
+			message: `Tem certeza que deseja remover este vídeo? Esta ação não pode ser desfeita e será excluído do banco de dados.`,
+			onConfirm: async () => {
+				removing = true;
+				try {
+					// Criar cópia temporária sem o vídeo
+					const newVideos = formData.videos.filter((_: any, i: number) => i !== index);
+					
+					// Tentar salvar no banco primeiro
+					const success = await saveToDatabase(undefined, newVideos);
+					if (success) {
+						// Só atualiza a interface se salvou com sucesso
+						formData.videos = newVideos;
+						toast.success('Vídeo removido com sucesso!');
+					}
+				} catch (error) {
+					console.error('Erro ao remover vídeo:', error);
+					toast.error('Erro ao remover vídeo');
+				} finally {
+					removing = false;
+				}
+			}
+		};
+		showConfirmDialog = true;
 	}
 	
 	// Definir imagem principal (primeira do array)
@@ -60,6 +222,8 @@
 		formData.images.splice(index, 1);
 		formData.images.unshift(image);
 		formData.images = [...formData.images];
+		// Salvar automaticamente no banco após reordenação
+		saveToDatabase();
 	}
 	
 	// Reordenar imagens
@@ -68,9 +232,11 @@
 		const [removed] = newImages.splice(from, 1);
 		newImages.splice(to, 0, removed);
 		formData.images = newImages;
+		// Salvar automaticamente no banco após reordenação
+		saveToDatabase();
 	}
 	
-	// Drag and Drop
+	// Drag and Drop para imagens
 	function handleDragOver(e: DragEvent) {
 		e.preventDefault();
 		dragOver = true;
@@ -90,33 +256,67 @@
 			handleImageUpload(files);
 		}
 	}
+	
+	// Drag and Drop para vídeos
+	function handleDragOverVideo(e: DragEvent) {
+		e.preventDefault();
+		dragOverVideo = true;
+	}
+	
+	function handleDragLeaveVideo(e: DragEvent) {
+		e.preventDefault();
+		dragOverVideo = false;
+	}
+	
+	function handleDropVideo(e: DragEvent) {
+		e.preventDefault();
+		dragOverVideo = false;
+		
+		const files = e.dataTransfer?.files;
+		if (files) {
+			handleVideoUpload(files);
+		}
+	}
 </script>
+
+<!-- Modal de Confirmação -->
+<ConfirmDialog
+	show={showConfirmDialog}
+	title={confirmDialogConfig.title}
+	message={confirmDialogConfig.message}
+	variant="danger"
+	confirmText="Remover"
+	cancelText="Cancelar"
+	onConfirm={confirmDialogConfig.onConfirm}
+	onCancel={() => showConfirmDialog = false}
+/>
 
 <div class="space-y-8">
 	<!-- UPLOAD DE IMAGENS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="image" size={20} color="#00BFB3" />
-			Imagens do Produto
+			<ModernIcon name="image" size="md" /> Imagens do Produto
 		</h4>
 		
 		<!-- Área de Upload -->
 		<div
+			role="button"
+			tabindex="0"
 			ondragover={handleDragOver}
 			ondragleave={handleDragLeave}
 			ondrop={handleDrop}
 			class="border-2 border-dashed rounded-lg p-8 text-center transition-all {dragOver ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-300'}"
 		>
-			<ModernIcon name="Upload" size={48} color="#9CA3AF" />
-			<p class="mt-2 text-sm text-gray-600">
+			<div class="text-4xl text-gray-400 mb-2"><ModernIcon name="Upload" size="lg" /></div>
+			<p class="text-sm text-gray-600 mb-2">
 				Arraste imagens aqui ou
 			</p>
-			<label class="mt-2 inline-block">
+			<label class="inline-block">
 				<input
 					type="file"
 					multiple
 					accept="image/*"
-					onchange={(e) => handleImageUpload(e.currentTarget.files)}
+					onchange={(e: Event) => handleImageUpload((e.target as HTMLInputElement).files)}
 					disabled={uploading}
 					class="hidden"
 				/>
@@ -125,12 +325,11 @@
 						<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						Enviando...
 					{:else}
-						<ModernIcon name="Upload" size={16} />
-						Selecionar Imagens
+						<ModernIcon name="Plus" size="sm" /> Selecionar Imagens
 					{/if}
 				</span>
 			</label>
-			<p class="mt-2 text-xs text-gray-500">
+			<p class="text-xs text-gray-500 mt-2">
 				JPG, PNG, GIF ou WebP. Máximo 5MB por imagem.
 			</p>
 		</div>
@@ -144,30 +343,30 @@
 				<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
 					{#each formData.images as image, index}
 						<div class="relative group">
-							<!-- Imagem -->
 							<img
 								src={image}
 								alt="Imagem {index + 1}"
 								class="w-full aspect-square object-cover rounded-lg border-2 {index === 0 ? 'border-[#00BFB3]' : 'border-gray-200'}"
 							/>
 							
-							<!-- Badge Principal -->
 							{#if index === 0}
 								<span class="absolute top-2 left-2 px-2 py-1 bg-[#00BFB3] text-white text-xs rounded">
 									Principal
 								</span>
 							{/if}
 							
-							<!-- Ações -->
 							<div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
 								{#if index !== 0}
 									<button
 										type="button"
 										onclick={() => setMainImage(index)}
-										class="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-										title="Definir como principal"
+										class="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors relative group/tooltip"
+										title="Definir como imagem principal"
 									>
-										<ModernIcon name="star" size={16} />
+										<ModernIcon name="star" size="sm" />
+										<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+											Tornar principal
+										</div>
 									</button>
 								{/if}
 								
@@ -175,10 +374,13 @@
 									<button
 										type="button"
 										onclick={() => moveImage(index, index - 1)}
-										class="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+										class="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors relative group/tooltip"
 										title="Mover para esquerda"
 									>
-										<ModernIcon name="ChevronLeft" size={16} />
+										<ModernIcon name="ChevronLeft" size="sm" />
+										<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+											Mover ←
+										</div>
 									</button>
 								{/if}
 								
@@ -186,20 +388,26 @@
 									<button
 										type="button"
 										onclick={() => moveImage(index, index + 1)}
-										class="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+										class="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors relative group/tooltip"
 										title="Mover para direita"
 									>
-										<ModernIcon name="ChevronRight" size={16} />
+										<ModernIcon name="ChevronRight" size="sm" />
+										<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+											Mover →
+										</div>
 									</button>
 								{/if}
 								
 								<button
 									type="button"
-									onclick={() => removeImage(index)}
-									class="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+									onclick={() => confirmRemoveImage(index)}
+									class="p-2 bg-white text-gray-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors relative group/tooltip"
 									title="Remover imagem"
 								>
-									<ModernIcon name="delete" size={16} />
+									<ModernIcon name="delete" size="sm" />
+									<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+										Excluir imagem
+									</div>
 								</button>
 							</div>
 						</div>
@@ -208,18 +416,17 @@
 			</div>
 		{:else}
 			<div class="mt-6 text-center py-8 bg-gray-50 rounded-lg">
-				<ModernIcon name="image" size={48} color="#D1D5DB" />
-				<p class="mt-2 text-gray-500">Nenhuma imagem adicionada</p>
+				<div class="text-4xl text-gray-300 mb-2"><ModernIcon name="image" size="lg" /></div>
+				<p class="text-gray-500">Nenhuma imagem adicionada</p>
 			</div>
 		{/if}
 		
 		<!-- Dicas -->
-		<div class="mt-6 p-4 bg-blue-50 rounded-lg">
-			<h5 class="font-medium text-blue-900 mb-2 flex items-center gap-2">
-				<ModernIcon name="info" size={16} color="#1E40AF" />
-				Dicas para melhores resultados
+		<div class="mt-6 p-4 bg-gray-50 rounded-lg">
+			<h5 class="font-medium text-gray-900 mb-2 flex items-center gap-2">
+				<ModernIcon name="info" size="md" /> Dicas para melhores resultados
 			</h5>
-			<ul class="text-sm text-blue-700 space-y-1">
+			<ul class="text-sm text-gray-600 space-y-1">
 				<li>• Use imagens com pelo menos 800x800 pixels</li>
 				<li>• Fundo branco ou neutro para produtos</li>
 				<li>• Mostre o produto de diferentes ângulos</li>
@@ -231,18 +438,17 @@
 	<!-- URLs EXTERNAS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="url" size={20} color="#00BFB3" />
-			Adicionar por URL
+			<ModernIcon name="url" size="md" /> Adicionar por URL
 		</h4>
 		
 		<div class="flex gap-2">
 			<input
 				type="url"
 				placeholder="https://exemplo.com/imagem.jpg"
-				onkeydown={(e) => {
+				onkeydown={(e: KeyboardEvent) => {
 					if (e.key === 'Enter') {
 						e.preventDefault();
-						const input = e.currentTarget;
+						const input = e.currentTarget as HTMLInputElement;
 						if (input.value.trim()) {
 							formData.images = [...formData.images, input.value.trim()];
 							input.value = '';
@@ -253,8 +459,9 @@
 			/>
 			<button
 				type="button"
-				onclick={(e) => {
-					const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+				onclick={(e: Event) => {
+					const button = e.currentTarget as HTMLButtonElement;
+					const input = button.previousElementSibling as HTMLInputElement;
 					if (input.value.trim()) {
 						formData.images = [...formData.images, input.value.trim()];
 						input.value = '';
@@ -268,5 +475,133 @@
 		<p class="text-xs text-gray-500 mt-2">
 			Cole a URL direta da imagem
 		</p>
+	</div>
+	
+	<!-- UPLOAD DE VÍDEOS -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="image" size="md" /> Vídeos do Produto
+		</h4>
+		
+		<!-- Área de Upload de Vídeo -->
+		<div
+			role="button"
+			tabindex="0"
+			ondragover={handleDragOverVideo}
+			ondragleave={handleDragLeaveVideo}
+			ondrop={handleDropVideo}
+			class="border-2 border-dashed rounded-lg p-8 text-center transition-all {dragOverVideo ? 'border-[#00BFB3] bg-[#00BFB3]/5' : 'border-gray-300'}"
+		>
+			<div class="text-4xl text-gray-400 mb-2"><ModernIcon name="Upload" size="lg" /></div>
+			<p class="text-sm text-gray-600 mb-2">
+				Arraste vídeos aqui ou
+			</p>
+			<label class="inline-block">
+				<input
+					type="file"
+					multiple
+					accept="video/*"
+					onchange={(e: Event) => handleVideoUpload((e.target as HTMLInputElement).files)}
+					disabled={uploadingVideo}
+					class="hidden"
+				/>
+				<span class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg cursor-pointer inline-flex items-center gap-2 transition-colors">
+					{#if uploadingVideo}
+						<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						Enviando...
+					{:else}
+						<ModernIcon name="Plus" size="sm" /> Selecionar Vídeos
+					{/if}
+				</span>
+			</label>
+			<p class="text-xs text-gray-500 mt-2">
+				MP4, WebM, MOV. Máximo 50MB por vídeo.
+			</p>
+		</div>
+		
+		<!-- Galeria de Vídeos -->
+		{#if formData.videos && formData.videos.length > 0}
+			<div class="mt-6">
+				<h5 class="text-sm font-medium text-gray-700 mb-3">
+					Vídeos Adicionados ({formData.videos.length})
+				</h5>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{#each formData.videos as video, index}
+						<div class="relative group">
+							<video
+								src={video}
+								class="w-full aspect-video object-cover rounded-lg border-2 border-gray-200"
+								controls
+								preload="metadata"
+							>
+								<track kind="captions" />
+							</video>
+							
+							<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+								<button
+									type="button"
+									onclick={() => confirmRemoveVideo(index)}
+									class="p-2 bg-white text-gray-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors relative group/tooltip"
+									title="Remover vídeo"
+								>
+									<ModernIcon name="delete" size="sm" />
+									<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+										Excluir vídeo
+									</div>
+								</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{:else}
+			<div class="mt-6 text-center py-8 bg-gray-50 rounded-lg">
+				<div class="text-4xl text-gray-300 mb-2"><ModernIcon name="image" size="lg" /></div>
+				<p class="text-gray-500">Nenhum vídeo adicionado</p>
+			</div>
+		{/if}
+		
+		<!-- URLs Externas para Vídeos -->
+		<div class="mt-6 border-t pt-6">
+			<h5 class="font-medium text-gray-900 mb-3 flex items-center gap-2">
+				<ModernIcon name="url" size="sm" /> Adicionar Vídeo por URL
+			</h5>
+			<div class="flex gap-2">
+				<input
+					type="url"
+					placeholder="https://exemplo.com/video.mp4"
+					onkeydown={(e: KeyboardEvent) => {
+						if (e.key === 'Enter') {
+							e.preventDefault();
+							const input = e.currentTarget as HTMLInputElement;
+							if (input.value.trim()) {
+								if (!formData.videos) formData.videos = [];
+								formData.videos = [...formData.videos, input.value.trim()];
+								input.value = '';
+							}
+						}
+					}}
+					class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+				/>
+				<button
+					type="button"
+					onclick={(e: Event) => {
+						const button = e.currentTarget as HTMLButtonElement;
+						const input = button.previousElementSibling as HTMLInputElement;
+						if (input.value.trim()) {
+							if (!formData.videos) formData.videos = [];
+							formData.videos = [...formData.videos, input.value.trim()];
+							input.value = '';
+						}
+					}}
+					class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors"
+				>
+					Adicionar
+				</button>
+			</div>
+			<p class="text-xs text-gray-500 mt-2">
+				Cole a URL direta do vídeo (MP4, WebM, MOV)
+			</p>
+		</div>
 	</div>
 </div> 

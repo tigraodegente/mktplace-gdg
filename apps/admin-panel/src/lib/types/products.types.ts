@@ -19,6 +19,19 @@ export interface Product {
 	brand_id?: string | null;
 	category_id?: string | null;
 	seller_id?: string | null;
+	// Campos SEO
+	meta_title?: string;
+	meta_description?: string;
+	meta_keywords?: string[];
+	tags?: string[];
+	canonical_url?: string;
+	robots_meta?: string;
+	schema_type?: string;
+	og_title?: string;
+	og_description?: string;
+	og_image?: string;
+	seo_index?: boolean;
+	seo_follow?: boolean;
 	created_at: Date | string;
 	updated_at: Date | string;
 	// Relacionamentos
@@ -78,6 +91,19 @@ export interface ProductFormData {
 	brand_id?: string;
 	category_id?: string;
 	seller_id?: string;
+	// Campos SEO
+	meta_title?: string;
+	meta_description?: string;
+	meta_keywords?: string[];
+	tags?: string[];
+	canonical_url?: string;
+	robots_meta?: string;
+	schema_type?: string;
+	og_title?: string;
+	og_description?: string;
+	og_image?: string;
+	seo_index?: boolean;
+	seo_follow?: boolean;
 	// Campos avançados
 	requires_shipping?: boolean;
 	is_digital?: boolean;

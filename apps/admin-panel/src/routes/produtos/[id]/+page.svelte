@@ -5,6 +5,7 @@
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import EnrichmentProgress from '$lib/components/produtos/EnrichmentProgress.svelte';
 	import BasicTab from '$lib/components/produtos/BasicTab.svelte';
+	import AttributesSection from '$lib/components/produtos/AttributesSection.svelte';
 	import MediaTab from '$lib/components/produtos/MediaTab.svelte';
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
 	import SeoTab from '$lib/components/produtos/SeoTab.svelte';
@@ -24,6 +25,7 @@
 	// Tabs disponíveis
 	const tabs = [
 		{ id: 'basic', label: 'Informações Básicas', icon: 'Package' },
+		{ id: 'attributes', label: 'Atributos e Especificações', icon: 'Settings' },
 		{ id: 'media', label: 'Imagens', icon: 'image' },
 		{ id: 'shipping', label: 'Frete e Entrega', icon: 'truck' },
 		{ id: 'seo', label: 'SEO', icon: 'search' },
@@ -32,9 +34,72 @@
 	
 	// Enriquecer produto completo com IA
 	async function enrichCompleteProduct() {
-		if (isEnriching) return;
-		showEnrichmentProgress = true;
+		console.log('🚀 enrichCompleteProduct CHAMADO!');
+		console.log('isEnriching:', isEnriching);
+		console.log('showEnrichmentProgress:', showEnrichmentProgress);
+		console.log('formData.name:', formData.name);
+		
+		if (isEnriching) {
+			console.log('❌ Já está enriquecendo, ignorando...');
+			return;
+		}
+		
+		if (!formData.name || formData.name.trim() === '') {
+			console.log('❌ Nome do produto vazio');
+			toast.error('Por favor, insira um nome para o produto antes de enriquecer com IA');
+			return;
+		}
+		
+		console.log('✅ Iniciando enriquecimento completo...');
+		
 		isEnriching = true;
+		showEnrichmentProgress = true;
+		
+		console.log('📝 Estados atualizados:');
+		console.log('isEnriching:', isEnriching);
+		console.log('showEnrichmentProgress:', showEnrichmentProgress);
+		
+		// Toast de debug
+		toast.info(`🚀 Iniciando enriquecimento para "${formData.name}"`);
+		
+		try {
+			console.log('📡 Fazendo chamada para API...');
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					...formData,
+					fetchCategories: true,
+					fetchBrands: true,
+					action: 'enrich_all'
+				})
+			});
+			
+			console.log('📡 Resposta da API:', response.status);
+			
+			if (!response.ok) {
+				const errorData = await response.json();
+				console.error('❌ Erro da API:', errorData);
+				throw new Error(errorData.error || 'Erro ao enriquecer produto');
+			}
+			
+			const result = await response.json();
+			console.log('✅ Resultado da API:', result);
+			
+			if (result.success) {
+				// Simular progresso para mostrar as etapas
+				await new Promise(resolve => setTimeout(resolve, 2000));
+				
+				handleEnrichmentComplete(result);
+			} else {
+				throw new Error(result.error || 'Erro ao enriquecer produto');
+			}
+		} catch (error: any) {
+			console.error('❌ Erro no enriquecimento:', error);
+			toast.error('❌ ' + error.message);
+			showEnrichmentProgress = false;
+			isEnriching = false;
+		}
 	}
 	
 	// Carregar produto
@@ -47,12 +112,30 @@
 				if (result.success) {
 					formData = result.data;
 					
+					// Inicializar arrays vazios se não existirem
+					formData.tags = formData.tags || [];
+					formData.meta_keywords = formData.meta_keywords || [];
+					formData.images = formData.images || [];
+					formData.categories = formData.categories || [];
+					formData.variations = formData.variations || [];
+					
+					// Inicializar atributos e especificações (NOVO)
+					formData.attributes = formData.attributes || {};
+					formData.specifications = formData.specifications || {};
+					
 					// Preparar campos especiais
 					if (formData.tags && Array.isArray(formData.tags)) {
 						formData.tags_input = formData.tags.join(', ');
+					} else {
+						formData.tags = [];
+						formData.tags_input = '';
 					}
+					
 					if (formData.meta_keywords && Array.isArray(formData.meta_keywords)) {
 						formData.meta_keywords_input = formData.meta_keywords.join(', ');
+					} else {
+						formData.meta_keywords = [];
+						formData.meta_keywords_input = '';
 					}
 					
 					// Preparar imagens
@@ -194,6 +277,60 @@
 			if (enrichedData.cost) formData.cost = enrichedData.cost;
 			if (enrichedData.stock_location) formData.stock_location = enrichedData.stock_location;
 			
+			// ===== APLICAR ATRIBUTOS E ESPECIFICAÇÕES (NOVO) =====
+			// Aplicar atributos para filtros
+			if (enrichedData.suggested_attributes && typeof enrichedData.suggested_attributes === 'object') {
+				console.log('🎯 Aplicando atributos sugeridos da IA:', enrichedData.suggested_attributes);
+				if (!formData.attributes) formData.attributes = {};
+				
+				// Converter array de objetos para objeto simples se necessário
+				if (Array.isArray(enrichedData.suggested_attributes)) {
+					const attributesObj: Record<string, string[]> = {};
+					enrichedData.suggested_attributes.forEach((attr: any) => {
+						if (attr.name && attr.values) {
+							attributesObj[attr.name] = Array.isArray(attr.values) ? attr.values : [attr.values];
+						}
+					});
+					formData.attributes = {
+						...formData.attributes,
+						...attributesObj
+					};
+				} else {
+					formData.attributes = {
+						...formData.attributes,
+						...enrichedData.suggested_attributes
+					};
+				}
+				console.log('✅ Atributos aplicados:', formData.attributes);
+			} else if (enrichedData.attributes && typeof enrichedData.attributes === 'object') {
+				console.log('🎯 Aplicando atributos da IA:', enrichedData.attributes);
+				if (!formData.attributes) formData.attributes = {};
+				formData.attributes = {
+					...formData.attributes,
+					...enrichedData.attributes
+				};
+				console.log('✅ Atributos aplicados:', formData.attributes);
+			}
+			
+			// Aplicar especificações técnicas
+			if (enrichedData.suggested_specifications && typeof enrichedData.suggested_specifications === 'object') {
+				console.log('🎯 Aplicando especificações sugeridas da IA:', enrichedData.suggested_specifications);
+				if (!formData.specifications) formData.specifications = {};
+				formData.specifications = {
+					...formData.specifications,
+					...enrichedData.suggested_specifications
+				};
+				console.log('✅ Especificações aplicadas:', formData.specifications);
+			} else if (enrichedData.specifications && typeof enrichedData.specifications === 'object') {
+				console.log('🎯 Aplicando especificações da IA:', enrichedData.specifications);
+				if (!formData.specifications) formData.specifications = {};
+				formData.specifications = {
+					...formData.specifications,
+					...enrichedData.specifications
+				};
+				console.log('✅ Especificações aplicadas:', formData.specifications);
+			}
+			
 			// Aplicar sugestões de categoria e marca
 			if (enrichedData.category_suggestion) {
 				// Categoria principal
@@ -253,73 +390,89 @@
 
 <!-- Modal de Progresso do Enriquecimento IA -->
 {#if showEnrichmentProgress}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+	{console.log('🎭 MODAL SENDO RENDERIZADA!')}
+	<div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+		{console.log('🎭 DIV DA MODAL CRIADO!')}
 		<EnrichmentProgress 
 			productData={formData}
 			onComplete={handleEnrichmentComplete}
 			onCancel={handleEnrichmentCancel}
 		/>
 	</div>
+{:else}
+	{console.log('🚫 Modal NÃO sendo renderizada - showEnrichmentProgress:', showEnrichmentProgress)}
+	<!-- Debug: mostrar se a modal deveria estar visível -->
+	<div style="display: none;">
+		Modal hidden - showEnrichmentProgress: {showEnrichmentProgress}, isEnriching: {isEnriching}
+	</div>
 {/if}
 
 <div class="min-h-screen bg-gray-50">
-	<!-- Header -->
+	<!-- Header com Ações -->
 	<div class="bg-white border-b">
-		<div class="max-w-[calc(100vw-100px)] mx-auto px-4 py-4">
+		<div class="max-w-[calc(100vw-100px)] mx-auto px-4 py-6">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-4">
-					<button
-						type="button"
-						onclick={() => goto('/produtos')}
-						class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-					>
-						<ModernIcon name="ChevronLeft" size={20} />
+					<button onclick={() => goto('/produtos')} class="p-2 hover:bg-gray-100 rounded-lg">
+						<ModernIcon name="ChevronLeft" size="md" />
 					</button>
 					<div>
 						<h1 class="text-2xl font-bold text-gray-900">
 							{loading ? 'Carregando...' : `Editar: ${formData.name || 'Produto'}`}
 						</h1>
-						<p class="text-sm text-gray-600">
+						<p class="text-sm text-gray-500">
 							{loading ? '...' : `SKU: ${formData.sku || 'N/A'}`}
 						</p>
 					</div>
 				</div>
 				
-				<div class="flex items-center gap-2">
+				<div class="flex items-center gap-3">
+					<!-- Botão de Enriquecimento Completo com IA -->
 					<button
 						type="button"
-						onclick={enrichCompleteProduct}
+						onclick={() => enrichCompleteProduct()}
 						disabled={isEnriching || loading || !formData.name}
-						class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-						title="Enriquecer com IA"
+						class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
 					>
 						{#if isEnriching}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+							Enriquecendo...
 						{:else}
-							<ModernIcon name="robot" size={16} />
+							<ModernIcon name="robot" size="sm" />
+							Enriquecer com IA
 						{/if}
-						Enriquecer com IA
 					</button>
 					
 					<button
 						type="button"
 						onclick={() => goto('/produtos')}
-						class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+						class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
 					>
+						<ModernIcon name="ChevronLeft" size="sm" />
 						Cancelar
 					</button>
+					
 					<button
 						type="button"
 						onclick={saveProduct}
 						disabled={saving || loading}
-						class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+						class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
 					>
 						{#if saving}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+							Salvando...
 						{:else}
-							<ModernIcon name="Save" size={16} />
+							<ModernIcon name="save" size="sm" />
+							Salvar
 						{/if}
-						Salvar
+					</button>
+					
+					<button
+						onclick={() => window.open(`/produto/${formData.slug}`, '_blank')}
+						class="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+					>
+						<ModernIcon name="preview" size="sm" />
+						Ver na Loja
 					</button>
 				</div>
 			</div>
@@ -356,15 +509,17 @@
 		<!-- Content -->
 		<div class="max-w-[calc(100vw-100px)] mx-auto p-6">
 			{#if activeTab === 'basic'}
-				<BasicTab {formData} />
+				<BasicTab bind:formData />
+			{:else if activeTab === 'attributes'}
+				<AttributesSection bind:formData />
 			{:else if activeTab === 'media'}
-				<MediaTab {formData} />
+				<MediaTab bind:formData {productId} />
 			{:else if activeTab === 'shipping'}
-				<ShippingTab {formData} />
+				<ShippingTab bind:formData />
 			{:else if activeTab === 'seo'}
-				<SeoTab {formData} />
+				<SeoTab bind:formData />
 			{:else if activeTab === 'advanced'}
-				<AdvancedTab {formData} />
+				<AdvancedTab bind:formData />
 			{/if}
 		</div>
 	{/if}

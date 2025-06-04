@@ -68,6 +68,11 @@
 	
 	// Construir árvore hierárquica
 	function buildTree(items: Item[]): Item[] {
+		// Proteção: garantir que items é um array válido
+		if (!Array.isArray(items) || items.length === 0) {
+			return [];
+		}
+		
 		const map = new Map<string, Item>();
 		const roots: Item[] = [];
 		
@@ -219,7 +224,7 @@
 	
 	<!-- Dropdown -->
 	{#if isOpen}
-		<div class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+		<div class="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
 			<!-- Busca -->
 			<div class="p-3 border-b">
 				<input
@@ -287,7 +292,7 @@
 <!-- Overlay para fechar dropdown -->
 {#if isOpen}
 	<div 
-		class="fixed inset-0 z-40" 
+		class="fixed inset-0 z-[9998]" 
 		onclick={() => isOpen = false}
 	></div>
 {/if} 

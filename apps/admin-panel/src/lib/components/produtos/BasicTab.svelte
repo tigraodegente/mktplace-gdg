@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import { toast } from '$lib/stores/toast';
 	
 	let { formData = $bindable() } = $props();
@@ -15,29 +15,420 @@
 	let selectedCategories = $state<string[]>([]);
 	let primaryCategory = $state<string | null>(null);
 	
-	// Estados de loading para IA
-	let aiLoading = $state<Record<string, boolean>>({
-		name: false,
-		description: false,
-		shortDescription: false,
-		sku: false,
-		tags: false,
-		category: false,
-		brand: false,
-		barcode: false
+	// Estados de loading para IA individual
+	let aiLoading = $state<Record<string, boolean>>({});
+	let aiStatus = $state<Record<string, 'none' | 'success' | 'partial' | 'error'>>({});
+	let aiMessages = $state<Record<string, string>>({});
+	
+	// Garantir que formData.tags seja sempre um array
+	$effect(() => {
+		if (!Array.isArray(formData.tags)) {
+			formData.tags = [];
+		}
+		if (typeof formData.tags_input !== 'string') {
+			formData.tags_input = '';
+		}
+		
+		// Inicializar categorias selecionadas do formData
+		if (formData.category_id && !selectedCategories.includes(formData.category_id)) {
+			selectedCategories = [formData.category_id];
+			primaryCategory = formData.category_id;
+		}
+		
+		// Suportar múltiplas categorias se existir
+		if (formData._selected_categories && Array.isArray(formData._selected_categories)) {
+			selectedCategories = formData._selected_categories;
+			primaryCategory = formData.category_id || selectedCategories[0] || null;
+		}
 	});
 	
-	// Função de enriquecimento com IA
+	// Função para obter ícone de status da IA
+	function getStatusInfo(field: string) {
+		switch (aiStatus[field]) {
+			case 'success':
+				return { 
+					iconName: 'Check', 
+					className: 'text-gray-600', 
+					message: aiMessages[field] || 'Preenchido com IA' 
+				};
+			case 'partial':
+				return { 
+					iconName: 'warning', 
+					className: 'text-gray-600', 
+					message: aiMessages[field] || 'Analisado pela IA' 
+				};
+			case 'error':
+				return { 
+					iconName: 'AlertTriangle', 
+					className: 'text-gray-600', 
+					message: aiMessages[field] || 'Erro na IA' 
+				};
+			default:
+				return null;
+		}
+	}
+	
+	// Função de enriquecimento individual por campo
 	async function enrichField(field: string) {
+		console.log(`🤖 Frontend: Iniciando enriquecimento do campo: ${field}`);
+		console.log(`📦 Frontend: Dados atuais:`, {
+			name: formData.name,
+			description: formData.description,
+			category: categories.find(c => c.id === formData.category_id)?.name,
+			price: formData.price
+		});
+		
 		aiLoading[field] = true;
+		aiStatus[field] = 'none';
+		aiMessages[field] = '';
+		
+		try {
+			const requestBody = {
+				field,
+				currentData: formData,
+				category: categories.find(c => c.id === formData.category_id)?.name
+			};
+			
+			console.log(`📤 Frontend: Enviando requisição para API:`, requestBody);
+			
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(requestBody)
+			});
+			
+			console.log(`📥 Frontend: Resposta recebida - Status: ${response.status}`);
+			
+			if (!response.ok) {
+				throw new Error('Erro na resposta da API');
+			}
+			
+			const result = await response.json();
+			console.log(`✅ Frontend: Resultado processado para ${field}:`, result);
+			
+			if (result.success && result.data) {
+				let applied = false;
+				
+				console.log(`🔍 Frontend: Processando resultado para campo "${field}":`, result.data);
+				
+				// Aplicar resultado específico do campo
+				switch (field) {
+					case 'name':
+						if (result.data.name || result.data.enhanced_name) {
+							const newName = result.data.name || result.data.enhanced_name;
+							console.log(`📝 Frontend: Aplicando novo nome: "${formData.name}" → "${newName}"`);
+							formData.name = newName;
+							applied = true;
+						}
+						break;
+					case 'description':
+						if (result.data.description) {
+							console.log(`📝 Frontend: Aplicando nova descrição (${result.data.description.length} chars)`);
+							formData.description = result.data.description;
+							applied = true;
+						}
+						break;
+					case 'short_description':
+						if (result.data.short_description) {
+							console.log(`📝 Frontend: Aplicando nova descrição curta (${result.data.short_description.length} chars)`);
+							formData.short_description = result.data.short_description;
+							applied = true;
+						}
+						break;
+					case 'sku':
+						if (result.data.sku) {
+							console.log(`📝 Frontend: Aplicando novo SKU: "${formData.sku}" → "${result.data.sku}"`);
+							formData.sku = result.data.sku;
+							applied = true;
+						}
+						break;
+					case 'tags':
+						if (result.data.tags && Array.isArray(result.data.tags)) {
+							console.log(`📝 Frontend: Aplicando ${result.data.tags.length} tags:`, result.data.tags);
+							formData.tags = result.data.tags;
+							formData.tags_input = result.data.tags.join(', ');
+							applied = true;
+						} else if (typeof result.data === 'string') {
+							// Fallback para resposta como string
+							const tags = result.data.split(',').map((tag: string) => tag.trim().replace(/"/g, ''));
+							console.log(`📝 Frontend: Aplicando tags (fallback):`, tags);
+							formData.tags = tags;
+							formData.tags_input = tags.join(', ');
+							applied = true;
+						}
+						break;
+					case 'model':
+						if (result.data.model || typeof result.data === 'string') {
+							const newModel = result.data.model || result.data;
+							console.log(`📝 Frontend: Aplicando novo modelo: "${formData.model}" → "${newModel}"`);
+							formData.model = newModel;
+							applied = true;
+						}
+						break;
+					case 'barcode':
+						if (result.data.barcode || typeof result.data === 'string') {
+							const newBarcode = result.data.barcode || result.data;
+							console.log(`📝 Frontend: Aplicando novo código de barras: "${formData.barcode}" → "${newBarcode}"`);
+							formData.barcode = newBarcode;
+							applied = true;
+						}
+						break;
+					case 'category':
+						// Para campo específico, a resposta vem diretamente em result.data
+						const suggestion = result.data.category_suggestion || result.data;
+						
+						if (suggestion && suggestion.primary_category_id) {
+							// Aplicar categoria principal
+							primaryCategory = suggestion.primary_category_id;
+							formData.category_id = suggestion.primary_category_id;
+							selectedCategories = [suggestion.primary_category_id];
+							applied = true;
+							
+							// Aplicar categorias relacionadas
+							if (suggestion.related_categories && Array.isArray(suggestion.related_categories)) {
+								const relatedIds = suggestion.related_categories
+									.map((cat: any) => cat.category_id)
+									.filter((id: string) => categories.some(c => c.id === id));
+								
+								if (relatedIds.length > 0) {
+									selectedCategories = [...new Set([primaryCategory, ...relatedIds].filter(Boolean))];
+									applied = true;
+								}
+							}
+							
+							// Salvar dados adicionais
+							formData._selected_categories = selectedCategories;
+							if (suggestion.related_categories) {
+								formData._related_categories = suggestion.related_categories;
+							}
+							
+							// Definir mensagem detalhada
+							const mainCat = categories.find(c => c.id === primaryCategory)?.name;
+							const relatedCount = selectedCategories.length - 1;
+							aiMessages[field] = `Principal: ${mainCat}${relatedCount > 0 ? ` + ${relatedCount} relacionada(s)` : ''}`;
+							console.log(`✅ Categorias aplicadas: Principal=${mainCat}, Relacionadas=${relatedCount}`);
+						} else {
+							console.log('❌ Resposta da IA não contém primary_category_id:', suggestion);
+						}
+						break;
+					case 'brand':
+						// Para campo de marca, a resposta pode vir como brand_suggestion ou diretamente
+						const brandSuggestion = result.data.brand_suggestion || result.data;
+						
+						if (brandSuggestion && brandSuggestion.brand_id) {
+							// Marca encontrada no banco de dados
+							const brand = brands.find(b => b.id === brandSuggestion.brand_id);
+							if (brand) {
+								formData.brand_id = brandSuggestion.brand_id;
+								aiMessages[field] = `Marca "${brand.name}" identificada e aplicada`;
+								applied = true;
+								console.log(`✅ Marca aplicada: ${brand.name} (ID: ${brandSuggestion.brand_id})`);
+							}
+						} else if (brandSuggestion && brandSuggestion.brand_name) {
+							// Marca detectada mas não cadastrada
+							aiMessages[field] = `Marca "${brandSuggestion.brand_name}" detectada, mas não está cadastrada no sistema`;
+							applied = false; // Marca detectada mas não aplicada
+							console.log(`⚠️ Marca detectada mas não cadastrada: ${brandSuggestion.brand_name}`);
+						} else if (brandSuggestion && brandSuggestion.detected_brand) {
+							// Formato alternativo da resposta
+							const detectedBrand = brandSuggestion.detected_brand;
+							const brand = brands.find(b => 
+								b.name.toLowerCase() === detectedBrand.toLowerCase() ||
+								b.name.toLowerCase().includes(detectedBrand.toLowerCase())
+							);
+							
+							if (brand) {
+								formData.brand_id = brand.id;
+								aiMessages[field] = `Marca "${brand.name}" identificada e aplicada`;
+								applied = true;
+								console.log(`✅ Marca encontrada por busca: ${brand.name} (ID: ${brand.id})`);
+							} else {
+								aiMessages[field] = `Marca "${detectedBrand}" detectada, mas não está cadastrada no sistema`;
+								applied = false;
+								console.log(`⚠️ Marca detectada mas não cadastrada: ${detectedBrand}`);
+							}
+						} else {
+							console.log('❌ Resposta da IA não contém informações de marca:', brandSuggestion);
+						}
+						break;
+				}
+				
+				if (applied) {
+					aiStatus[field] = 'success';
+					if (!aiMessages[field]) {
+						aiMessages[field] = 'Preenchido com sucesso';
+					}
+					toast.success(`✅ ${field === 'category' ? 'Categorias sugeridas' : `Campo "${field}" enriquecido`} com IA!`);
+				} else {
+					aiStatus[field] = 'partial';
+					aiMessages[field] = 'IA analisou mas não encontrou melhorias';
+					toast.info(`ℹ️ ${field === 'category' ? 'Categorias analisadas' : `Campo "${field}" analisado`} pela IA`);
+				}
+			} else {
+				aiStatus[field] = 'error';
+				aiMessages[field] = 'Erro na resposta da IA';
+				toast.error(`❌ Erro ao ${field === 'category' ? 'sugerir categorias' : `enriquecer "${field}"`}`);
+			}
+		} catch (error: any) {
+			console.error(`❌ Erro ao enriquecer ${field}:`, error);
+			aiStatus[field] = 'error';
+			aiMessages[field] = `Erro: ${error.message}`;
+			toast.error(`❌ Erro ao conectar com IA para ${field === 'category' ? 'categorias' : `"${field}"`}`);
+		} finally {
+			aiLoading[field] = false;
+		}
+	}
+	
+	// Carregar dados para os selects
+	async function loadSelectData() {
+		try {
+			const [categoriesRes, brandsRes, sellersRes] = await Promise.all([
+				fetch('/api/categories'),
+				fetch('/api/brands'),
+				fetch('/api/sellers')
+			]);
+			
+			if (categoriesRes.ok) {
+				const data = await categoriesRes.json();
+				console.log('📦 BasicTab: dados de categorias recebidos:', data);
+				
+				// Suportar diferentes estruturas da API
+				if (data.success && data.data) {
+					if (data.data.categories && Array.isArray(data.data.categories)) {
+						// Estrutura: { success: true, data: { categories: [...] } }
+						categories = data.data.categories.map((cat: any) => ({
+							id: cat.id,
+							name: cat.name,
+							parent_id: cat.parentId || cat.parent_id || null
+						}));
+					} else if (Array.isArray(data.data)) {
+						// Estrutura: { success: true, data: [...] }
+						categories = data.data.map((cat: any) => ({
+							id: cat.id,
+							name: cat.name,
+							parent_id: cat.parentId || cat.parent_id || null
+						}));
+					} else {
+						categories = [];
+					}
+				} else {
+					categories = [];
+				}
+				console.log('✅ BasicTab: categorias processadas:', categories.length);
+			}
+			
+			if (brandsRes.ok) {
+				const data = await brandsRes.json();
+				// Suportar diferentes estruturas
+				if (data.success && data.data) {
+					brands = Array.isArray(data.data) ? data.data : (data.data.brands || []);
+				} else {
+					brands = [];
+				}
+			}
+			
+			if (sellersRes.ok) {
+				const data = await sellersRes.json();
+				// Suportar diferentes estruturas
+				if (data.success && data.data) {
+					sellers = Array.isArray(data.data) ? data.data : (data.data.sellers || []);
+				} else {
+					sellers = [];
+				}
+			}
+		} catch (error) {
+			console.error('Erro ao carregar dados:', error);
+			categories = [];
+			brands = [];
+			sellers = [];
+		} finally {
+			loading = false;
+		}
+	}
+	
+	// Carregar dados na inicialização
+	$effect(() => {
+		console.log('🔄 BasicTab $effect executado - iniciando loadSelectData');
+		loadSelectData();
+	});
+	
+	// Sincronizar categorias selecionadas
+	$effect(() => {
+		if (formData.category_id) {
+			selectedCategories = [formData.category_id];
+			primaryCategory = formData.category_id;
+		}
+	});
+	
+	// Atualizar categoria principal quando seleção muda
+	function handleCategoryChange(selected: string[]) {
+		selectedCategories = selected;
+		if (selected.length > 0) {
+			// Se não há categoria principal ou ela não está nas selecionadas, definir a primeira como principal
+			if (!primaryCategory || !selected.includes(primaryCategory)) {
+				primaryCategory = selected[0];
+			}
+			formData.category_id = primaryCategory;
+		} else {
+			primaryCategory = null;
+			formData.category_id = '';
+		}
+		
+		// Salvar múltiplas categorias para outras abas
+		formData._selected_categories = selected;
+	}
+	
+	// Função para definir categoria principal
+	function handlePrimaryChange(categoryId: string | null) {
+		primaryCategory = categoryId;
+		if (categoryId) {
+			formData.category_id = categoryId;
+		}
+	}
+	
+	// Função para remover uma categoria específica
+	function removeCategory(categoryId: string | null) {
+		if (!categoryId) return;
+		
+		// Remover da lista de selecionadas
+		selectedCategories = selectedCategories.filter(id => id !== categoryId);
+		
+		// Se removeu a categoria principal, definir nova principal
+		if (primaryCategory === categoryId) {
+			primaryCategory = selectedCategories.length > 0 ? selectedCategories[0] : null;
+			formData.category_id = primaryCategory || '';
+		}
+		
+		// Atualizar formData
+		formData._selected_categories = selectedCategories;
+		
+		// Se removeu todas as categorias, limpar status da IA
+		if (selectedCategories.length === 0) {
+			aiStatus.category = 'none';
+			aiMessages.category = '';
+		}
+	}
+	
+	// Função para definir uma categoria relacionada como principal
+	function setPrimaryCategory(categoryId: string) {
+		if (!selectedCategories.includes(categoryId)) return;
+		
+		primaryCategory = categoryId;
+		formData.category_id = categoryId;
+	}
+	
+	// Função para enriquecimento completo
+	async function enrichCompleteProduct() {
+		const allFields = Object.keys(aiLoading);
+		allFields.forEach(field => aiLoading[field] = true);
 		
 		try {
 			const response = await fetch('/api/ai/enrich', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					field,
-					currentData: formData,
+					action: 'enrich_all',
+					...formData,
 					category: categories.find(c => c.id === formData.category_id)?.name
 				})
 			});
@@ -47,78 +438,167 @@
 			const result = await response.json();
 			
 			if (result.success) {
-				// Aplicar o resultado ao campo específico
-				switch (field) {
-					case 'name':
-						formData.name = result.data;
-						formData.slug = generateSlug(result.data);
-						break;
-					case 'description':
-						formData.description = result.data;
-						break;
-					case 'short_description':
-						formData.short_description = result.data;
-						break;
-					case 'sku':
-						formData.sku = result.data;
-						break;
-					case 'tags':
-						formData.tags = result.data;
-						formData.tags_input = result.data.join(', ');
-						break;
-					case 'category':
-						if (result.data) {
-							// Se tiver categoria principal sugerida
-							if (result.data.primary_category_id) {
-								selectedCategories = [result.data.primary_category_id];
-								primaryCategory = result.data.primary_category_id;
-								formData.category_id = result.data.primary_category_id;
-								formData._selected_categories = [result.data.primary_category_id];
-								
-								// Adicionar categorias relacionadas se houver
-								if (result.data.related_categories) {
-									const relatedIds = result.data.related_categories.map((c: any) => c.category_id);
-									selectedCategories = [...new Set([result.data.primary_category_id, ...relatedIds])];
-									formData._selected_categories = selectedCategories;
-									formData._related_categories = result.data.related_categories;
-								}
-								
-								toast.success(`Categorias identificadas! Principal: ${result.data.primary_category_name}`);
-							} else if (result.data.category_id) {
-								// Formato antigo de resposta
-								selectedCategories = [result.data.category_id];
-								primaryCategory = result.data.category_id;
-								formData.category_id = result.data.category_id;
-								formData._selected_categories = [result.data.category_id];
-								toast.success(`Categoria identificada: ${result.data.category_name} (${Math.round(result.data.confidence * 100)}% de certeza)`);
-							}
-						} else {
-							toast.error('Não foi possível identificar categorias');
-						}
-						break;
-					case 'brand':
-						if (result.data && result.data.brand_id) {
-							formData.brand_id = result.data.brand_id;
-							toast.success(`Marca identificada: ${result.data.brand_name} (${Math.round(result.data.confidence * 100)}% de certeza)`);
-						} else {
-							toast.info('Nenhuma marca conhecida foi identificada');
-						}
-						break;
-					case 'barcode':
-						formData.barcode = result.data;
-						toast.success('Código de barras gerado com IA!');
-						break;
+				const data = result.data;
+				
+				// Aplicar todos os dados enriquecidos
+				if (data.name) {
+					formData.name = data.name;
+					formData.slug = data.slug || generateSlug(data.name);
+				}
+				if (data.sku) formData.sku = data.sku;
+				if (data.description) formData.description = data.description;
+				if (data.short_description) formData.short_description = data.short_description;
+				if (data.model) formData.model = data.model;
+				if (data.barcode) formData.barcode = data.barcode;
+				if (data.price) formData.price = parseFloat(data.price);
+				if (data.cost) formData.cost = parseFloat(data.cost);
+				if (data.weight) formData.weight = parseFloat(data.weight);
+				if (data.dimensions) {
+					formData.height = data.dimensions.height;
+					formData.width = data.dimensions.width;
+					formData.length = data.dimensions.length;
+				}
+				if (data.care_instructions) formData.care_instructions = data.care_instructions;
+				if (data.age_group) formData.age_group = data.age_group;
+				if (data.warranty_period) formData.warranty_period = data.warranty_period;
+				if (data.manufacturing_country) formData.manufacturing_country = data.manufacturing_country;
+				if (data.ncm_code) formData.ncm_code = data.ncm_code;
+				if (data.stock_location) formData.stock_location = data.stock_location;
+				if (data.delivery_days_min) formData.delivery_days_min = data.delivery_days_min;
+				if (data.delivery_days_max) formData.delivery_days_max = data.delivery_days_max;
+				
+				// Aplicar tags
+				if (data.tags && Array.isArray(data.tags)) {
+					formData.tags = data.tags;
+					formData.tags_input = data.tags.join(', ');
 				}
 				
-				toast.success(`${field === 'short_description' ? 'Descrição curta' : field.charAt(0).toUpperCase() + field.slice(1)} enriquecido com IA!`);
+				// APLICAR ATRIBUTOS PARA FILTROS (NOVO)
+				if (data.suggested_attributes && typeof data.suggested_attributes === 'object') {
+					console.log('🎯 Aplicando atributos sugeridos da IA:', data.suggested_attributes);
+					if (!formData.attributes) formData.attributes = {};
+					
+					// Converter array de objetos para objeto simples se necessário
+					if (Array.isArray(data.suggested_attributes)) {
+						const attributesObj: Record<string, string[]> = {};
+						data.suggested_attributes.forEach((attr: any) => {
+							if (attr.name && attr.values) {
+								attributesObj[attr.name] = Array.isArray(attr.values) ? attr.values : [attr.values];
+							}
+						});
+						formData.attributes = {
+							...formData.attributes,
+							...attributesObj
+						};
+					} else {
+						formData.attributes = {
+							...formData.attributes,
+							...data.suggested_attributes
+						};
+					}
+					console.log('✅ Atributos aplicados:', formData.attributes);
+				} else if (data.attributes && typeof data.attributes === 'object') {
+					console.log('🎯 Aplicando atributos da IA:', data.attributes);
+					if (!formData.attributes) formData.attributes = {};
+					formData.attributes = {
+						...formData.attributes,
+						...data.attributes
+					};
+					console.log('✅ Atributos aplicados:', formData.attributes);
+				}
+				
+				// APLICAR ESPECIFICAÇÕES TÉCNICAS (NOVO)
+				if (data.suggested_specifications && typeof data.suggested_specifications === 'object') {
+					console.log('🎯 Aplicando especificações sugeridas da IA:', data.suggested_specifications);
+					if (!formData.specifications) formData.specifications = {};
+					formData.specifications = {
+						...formData.specifications,
+						...data.suggested_specifications
+					};
+					console.log('✅ Especificações aplicadas:', formData.specifications);
+				} else if (data.specifications && typeof data.specifications === 'object') {
+					console.log('🎯 Aplicando especificações da IA:', data.specifications);
+					if (!formData.specifications) formData.specifications = {};
+					formData.specifications = {
+						...formData.specifications,
+						...data.specifications
+					};
+					console.log('✅ Especificações aplicadas:', formData.specifications);
+				}
+				
+				// Aplicar categoria sugerida
+				if (data.category_suggestion?.primary_category_id) {
+					console.log('🎯 BasicTab: Aplicando categoria do enriquecimento completo:', data.category_suggestion);
+					
+					selectedCategories = [data.category_suggestion.primary_category_id];
+					primaryCategory = data.category_suggestion.primary_category_id;
+					formData.category_id = data.category_suggestion.primary_category_id;
+					formData._selected_categories = [data.category_suggestion.primary_category_id];
+					
+					if (data.category_suggestion.related_categories) {
+						const relatedIds = data.category_suggestion.related_categories.map((c: any) => c.category_id);
+						selectedCategories = [...new Set([data.category_suggestion.primary_category_id, ...relatedIds])];
+						formData._selected_categories = selectedCategories;
+						formData._related_categories = data.category_suggestion.related_categories;
+						
+						console.log('✅ BasicTab: Categorias aplicadas:', {
+							principal: primaryCategory,
+							relacionadas: relatedIds,
+							total: selectedCategories
+						});
+					}
+					
+					// Marcar como sucesso para feedback visual
+					aiStatus.category = 'success';
+					const mainCat = categories.find(c => c.id === primaryCategory)?.name;
+					const relatedCount = selectedCategories.length - 1;
+					aiMessages.category = `Principal: ${mainCat}${relatedCount > 0 ? ` + ${relatedCount} relacionada(s)` : ''}`;
+					
+					console.log('🎉 BasicTab: Status da categoria atualizado:', {
+						status: aiStatus.category,
+						message: aiMessages.category
+					});
+				} else {
+					console.log('❌ BasicTab: Nenhuma categoria encontrada no enriquecimento completo');
+				}
+				
+				// Aplicar marca sugerida
+				if (data.brand_suggestion?.brand_id) {
+					console.log('🎯 BasicTab: Aplicando marca do enriquecimento completo:', data.brand_suggestion);
+					formData.brand_id = data.brand_suggestion.brand_id;
+					aiStatus.brand = 'success';
+					const brand = brands.find(b => b.id === data.brand_suggestion.brand_id);
+					aiMessages.brand = `Marca "${brand?.name || 'Desconhecida'}" identificada e aplicada`;
+					
+					console.log('✅ BasicTab: Marca aplicada:', {
+						brand_id: data.brand_suggestion.brand_id,
+						brand_name: brand?.name
+					});
+				} else if (data.brand_suggestion?.brand_name) {
+					console.log('⚠️ BasicTab: Marca detectada mas não cadastrada:', data.brand_suggestion.brand_name);
+					// Marca detectada mas não cadastrada
+					formData.brand = data.brand_suggestion.brand_name;
+					aiStatus.brand = 'partial';
+					aiMessages.brand = `Marca "${data.brand_suggestion.brand_name}" detectada, mas não está cadastrada no sistema`;
+				} else {
+					console.log('❌ BasicTab: Nenhuma marca encontrada no enriquecimento completo');
+				}
+				
+				// Salvar dados para outras abas
+				if (data._suggested_variations) formData._suggested_variations = data._suggested_variations;
+				if (data.meta_title) formData.meta_title = data.meta_title;
+				if (data.meta_description) formData.meta_description = data.meta_description;
+				if (data.meta_keywords) formData.meta_keywords = data.meta_keywords;
+				
+				toast.success('🎉 Produto enriquecido completamente com IA! Incluindo atributos e especificações.');
 			} else {
-				toast.error('Erro ao enriquecer com IA');
+				toast.error('Erro ao enriquecer produto completo');
 			}
 		} catch (error) {
 			console.error('Erro:', error);
 			toast.error('Erro ao conectar com o serviço de IA');
 		} finally {
-			aiLoading[field] = false;
+			allFields.forEach(field => aiLoading[field] = false);
 		}
 	}
 	
@@ -138,79 +618,17 @@
 			formData.slug = generateSlug(formData.name);
 		}
 	});
-	
-	// Carregar dados de seleção
-	async function loadSelectData() {
-		loading = true;
-		try {
-			// Carregar categorias
-			const catResponse = await fetch('/api/categories');
-			if (catResponse.ok) {
-				const catData = await catResponse.json();
-				// Converter parentId para parent_id
-				categories = (catData.data?.categories || catData.data || []).map((cat: any) => ({
-					id: cat.id,
-					name: cat.name,
-					parent_id: cat.parentId,
-					slug: cat.slug,
-					description: cat.description,
-					imageUrl: cat.imageUrl,
-					isActive: cat.isActive,
-					productCount: cat.productCount,
-					subcategoryCount: cat.subcategoryCount,
-					level: cat.level
-				}));
-			}
-			
-			// Carregar marcas
-			const brandResponse = await fetch('/api/brands');
-			if (brandResponse.ok) {
-				const brandData = await brandResponse.json();
-				brands = brandData.data?.brands || brandData.data || [];
-			}
-			
-			// Carregar vendedores
-			const sellerResponse = await fetch('/api/sellers');
-			if (sellerResponse.ok) {
-				const sellerData = await sellerResponse.json();
-				sellers = sellerData.data?.sellers || sellerData.data || [];
-			}
-		} catch (error) {
-			console.error('Erro ao carregar dados:', error);
-		} finally {
-			loading = false;
-		}
-	}
-	
-	// Lifecycle
-	// Carregar dados quando o componente montar
-	$effect(() => {
-		if (categories.length === 0 && brands.length === 0 && sellers.length === 0) {
-			loadSelectData();
-		}
-	});
-	
-	// Inicializar categorias selecionadas quando carregar dados
-	$effect(() => {
-		if (formData.category_id && !selectedCategories.includes(formData.category_id)) {
-			selectedCategories = [formData.category_id];
-			primaryCategory = formData.category_id;
-			
-			// Se tiver categorias relacionadas sugeridas, adicionar também
-			if (formData._related_categories) {
-				const relatedIds = formData._related_categories.map((c: any) => c.category_id);
-				selectedCategories = [...new Set([...selectedCategories, ...relatedIds])];
-			}
-		}
-	});
 </script>
+
+<style>
+	/* CSS removido - sem tooltips */
+</style>
 
 <div class="space-y-8">
 	<!-- INFORMAÇÕES BÁSICAS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="Package" size={20} color="#00BFB3" />
-			Informações do Produto
+			<ModernIcon name="product" size="md" /> Informações do Produto
 		</h4>
 		
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -218,27 +636,38 @@
 			<div class="md:col-span-2">
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Nome do Produto *
+					{#if getStatusInfo('name')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('name')?.message}</span>
+						</span>
+					{/if}
 				</label>
 				<div class="flex gap-2">
-					<input
-						type="text"
-						bind:value={formData.name}
-						required
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="Ex: Cesto Organizador para Brinquedos"
-					/>
+					<div class="flex-1 relative">
+						<input
+							type="text"
+							bind:value={formData.name}
+							required
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.name === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="Ex: Smartphone Samsung Galaxy S24"
+						/>
+						{#if getStatusInfo('name')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
 					<button
 						type="button"
 						onclick={() => enrichField('name')}
 						disabled={aiLoading.name || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Melhorar nome do produto com IA"
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50"
 					>
 						{#if aiLoading.name}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
+							<ModernIcon name="robot" size="xs" />
 						{/if}
 					</button>
 				</div>
@@ -254,16 +683,15 @@
 						type="text"
 						bind:value={formData.slug}
 						required
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-colors"
 						placeholder="cesto-organizador-brinquedos"
 					/>
 					<button
 						type="button"
 						onclick={() => formData.slug = generateSlug(formData.name || '')}
-						class="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
-						title="Gerar automaticamente"
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors"
 					>
-						<ModernIcon name="refresh" size={20} />
+						<ModernIcon name="refresh" size="sm" />
 					</button>
 				</div>
 			</div>
@@ -271,28 +699,38 @@
 			<!-- SKU -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					SKU (Código do Produto) *
+					SKU (Código do Produto)
+					{#if getStatusInfo('sku')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('sku')?.message}</span>
+						</span>
+					{/if}
 				</label>
 				<div class="flex gap-2">
-					<input
-						type="text"
-						bind:value={formData.sku}
-						required
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="PROD-001"
-					/>
+					<div class="flex-1 relative">
+						<input
+							type="text"
+							bind:value={formData.sku}
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.sku === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="SAM-GAL-S24-128"
+						/>
+						{#if getStatusInfo('sku')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
 					<button
 						type="button"
 						onclick={() => enrichField('sku')}
 						disabled={aiLoading.sku || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Gerar SKU com IA"
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50"
 					>
 						{#if aiLoading.sku}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
+							<ModernIcon name="robot" size="xs" />
 						{/if}
 					</button>
 				</div>
@@ -301,27 +739,38 @@
 			<!-- Código de Barras -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Código de Barras (EAN/UPC)
+					Código de Barras (EAN)
+					{#if getStatusInfo('barcode')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('barcode')?.message}</span>
+						</span>
+					{/if}
 				</label>
 				<div class="flex gap-2">
-					<input
-						type="text"
-						bind:value={formData.barcode}
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="7891234567890"
-					/>
+					<div class="flex-1 relative">
+						<input
+							type="text"
+							bind:value={formData.barcode}
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.barcode === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="7891234567890"
+						/>
+						{#if getStatusInfo('barcode')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
 					<button
 						type="button"
 						onclick={() => enrichField('barcode')}
 						disabled={aiLoading.barcode || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Gerar código de barras com IA"
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50"
 					>
 						{#if aiLoading.barcode}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
+							<ModernIcon name="robot" size="xs" />
 						{/if}
 					</button>
 				</div>
@@ -331,13 +780,40 @@
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Modelo
+					{#if getStatusInfo('model')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('model')?.message}</span>
+						</span>
+					{/if}
 				</label>
-				<input
-					type="text"
-					bind:value={formData.model}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="MX-2024"
-				/>
+				<div class="flex gap-2">
+					<div class="flex-1 relative">
+						<input
+							type="text"
+							bind:value={formData.model}
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.model === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="Galaxy S24"
+						/>
+						{#if getStatusInfo('model')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
+					<button
+						type="button"
+						onclick={() => enrichField('model')}
+						disabled={aiLoading.model || !formData.name}
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50"
+					>
+						{#if aiLoading.model}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size="xs" />
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Condição -->
@@ -347,12 +823,52 @@
 				</label>
 				<select
 					bind:value={formData.condition}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent transition-colors"
 				>
 					<option value="new">Novo</option>
 					<option value="used">Usado</option>
 					<option value="refurbished">Recondicionado</option>
 				</select>
+			</div>
+			
+			<!-- Tags -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Tags (separadas por vírgula)
+					{#if getStatusInfo('tags')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('tags')?.message}</span>
+						</span>
+					{/if}
+				</label>
+				<div class="flex gap-2">
+					<div class="flex-1 relative">
+						<input
+							type="text"
+							bind:value={formData.tags_input}
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.tags === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="smartphone, samsung, android, 5g"
+						/>
+						{#if getStatusInfo('tags')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
+					<button
+						type="button"
+						onclick={() => enrichField('tags')}
+						disabled={aiLoading.tags || !formData.name}
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50"
+					>
+						{#if aiLoading.tags}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size="xs" />
+						{/if}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -360,8 +876,7 @@
 	<!-- DESCRIÇÕES -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="description" size={20} color="#00BFB3" />
-			Descrições
+			<ModernIcon name="fullDescription" size="md" /> Descrições
 		</h4>
 		
 		<div class="space-y-6">
@@ -370,26 +885,37 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Descrição Curta
 					<span class="text-xs text-gray-500 ml-2">Aparece nos cards de produto</span>
+					{#if getStatusInfo('short_description')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('short_description')?.message}</span>
+						</span>
+					{/if}
 				</label>
 				<div class="flex gap-2">
-					<textarea
-						bind:value={formData.short_description}
-						rows="3"
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="Uma breve descrição do produto..."
-					></textarea>
+					<div class="flex-1 relative">
+						<textarea
+							bind:value={formData.short_description}
+							rows="3"
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent resize-none {aiStatus.short_description === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="Uma breve descrição atrativa do produto..."
+						></textarea>
+						{#if getStatusInfo('short_description')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
 					<button
 						type="button"
 						onclick={() => enrichField('short_description')}
-						disabled={aiLoading.shortDescription || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Gerar descrição curta com IA"
+						disabled={aiLoading.short_description || !formData.name}
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 self-start"
 					>
-						{#if aiLoading.shortDescription}
+						{#if aiLoading.short_description}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
+							<ModernIcon name="robot" size="xs" />
 						{/if}
 					</button>
 				</div>
@@ -398,28 +924,38 @@
 			<!-- Descrição Completa -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Descrição Completa *
+					Descrição Completa
+					{#if getStatusInfo('description')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('description')?.message}</span>
+						</span>
+					{/if}
 				</label>
 				<div class="flex gap-2">
-					<textarea
-						bind:value={formData.description}
-						rows="6"
-						required
-						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="Descrição detalhada do produto..."
-					></textarea>
+					<div class="flex-1 relative">
+						<textarea
+							bind:value={formData.description}
+							rows="8"
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent resize-none {aiStatus.description === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+							placeholder="Descrição detalhada com especificações, benefícios e características..."
+						></textarea>
+						{#if getStatusInfo('description')}
+							<div class="absolute right-3 top-3">
+								<ModernIcon name="Check" size="xs" />
+							</div>
+						{/if}
+					</div>
 					<button
 						type="button"
 						onclick={() => enrichField('description')}
 						disabled={aiLoading.description || !formData.name}
-						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-						title="Gerar descrição completa com IA"
+						class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 self-start"
 					>
 						{#if aiLoading.description}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="robot" size={20} color="white" />
-							<span class="text-sm font-medium">IA</span>
+							<ModernIcon name="robot" size="xs" />
 						{/if}
 					</button>
 				</div>
@@ -430,291 +966,277 @@
 	<!-- CATEGORIZAÇÃO -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="category" size={20} color="#00BFB3" />
-			Categorização
+			<ModernIcon name="category" size="md" /> Categorização
 		</h4>
 		
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-			<!-- Categorias (múltiplas) -->
-			<div class="md:col-span-3">
-				<div class="flex items-start gap-2">
-					<div class="flex-1">
-						<MultiSelect
-							items={categories}
-							selected={selectedCategories}
-							onSelectionChange={(selected) => {
-								selectedCategories = selected;
-								// Atualizar formData com a categoria principal
-								formData.category_id = primaryCategory || selected[0] || null;
-								// Guardar todas as categorias selecionadas para uso futuro
-								formData._selected_categories = selected;
-							}}
-							primarySelection={primaryCategory}
-							onPrimaryChange={(id) => {
-								primaryCategory = id;
-								formData.category_id = id;
-							}}
-							label="Categorias"
-							placeholder="Selecione as categorias..."
-							hierarchical={true}
-							allowMultiple={true}
-						/>
-						{#if selectedCategories.length > 0 && !primaryCategory}
-							<p class="text-xs text-amber-600 mt-1">
-								⚠️ Selecione uma categoria principal clicando em "Definir"
-							</p>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<!-- Categoria -->
+			<div>
+				{#if loading}
+					<div class="w-full h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+				{:else}
+					<div class="space-y-3">
+						<div class="flex items-center justify-between">
+							<label class="block text-sm font-medium text-gray-700">
+								Categoria Principal *
+								{#if getStatusInfo('category')}
+									<span class="inline-flex items-center gap-1 ml-2">
+										<ModernIcon name="Check" size="xs" />
+										<span class="text-xs text-gray-600">{getStatusInfo('category')?.message}</span>
+									</span>
+								{/if}
+							</label>
+							<button
+								type="button"
+								onclick={() => enrichField('category')}
+								disabled={aiLoading.category || !formData.name}
+								class="px-3 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 text-sm"
+							>
+								{#if aiLoading.category}
+									<div class="flex items-center gap-2">
+										<div class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+										<span class="text-xs">Analisando...</span>
+									</div>
+								{:else}
+									<div class="flex items-center gap-2">
+										<ModernIcon name="robot" size="xs" />
+										<span class="text-xs">IA</span>
+									</div>
+								{/if}
+							</button>
+						</div>
+						
+						<div class="relative z-[9999]" style="overflow: visible;">
+							<MultiSelect
+								items={Array.isArray(categories) ? categories : []}
+								selected={selectedCategories}
+								onSelectionChange={handleCategoryChange}
+								primarySelection={primaryCategory}
+								onPrimaryChange={handlePrimaryChange}
+								label=""
+								placeholder="Selecione categorias..."
+								hierarchical={true}
+								allowMultiple={true}
+								searchable={true}
+							/>
+						</div>
+						
+						<!-- Área de Categorias Selecionadas -->
+						<div class="space-y-2">
+							{#if selectedCategories.length > 0}
+								<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+									<div class="flex items-center justify-between mb-2">
+										<span class="text-sm font-medium text-gray-700">Categorias Selecionadas:</span>
+										<span class="text-xs text-gray-500">{selectedCategories.length} categoria(s)</span>
+									</div>
+									
+									<!-- Explicação do Sistema -->
+									<div class="bg-gray-50 border border-gray-200 rounded-lg p-2 mb-3">
+										<div class="flex items-start gap-2">
+											<ModernIcon name="info" size="sm" />
+											<div class="text-xs text-gray-600">
+												<p><strong>Principal:</strong> Categoria principal para SEO e navegação</p>
+												<p><strong>Relacionadas:</strong> Categorias extras onde o produto também aparece</p>
+												<p>💡 Clique no <strong>X</strong> para remover ou no <strong>nome</strong> para tornar principal</p>
+											</div>
+										</div>
+									</div>
+									
+									<div class="space-y-2">
+										{#if primaryCategory}
+											<div class="flex items-center gap-2">
+												<ModernIcon name="Check" size="xs" />
+												<span class="text-sm font-semibold text-gray-900">Principal:</span>
+												<div class="flex items-center gap-1 bg-[#00BFB3] px-2 py-1 rounded border border-[#00A89D] text-white">
+													<span class="text-sm font-semibold">
+														{categories.find(c => c.id === primaryCategory)?.name || 'Categoria não encontrada'}
+													</span>
+													<button
+														type="button"
+														onclick={() => removeCategory(primaryCategory)}
+														class="ml-1 w-4 h-4 text-white hover:text-red-200 rounded-full hover:bg-red-500 flex items-center justify-center"
+													>
+														<ModernIcon name="AlertTriangle" size="xs" />
+													</button>
+												</div>
+											</div>
+										{/if}
+										
+										{#if selectedCategories.filter(id => id !== primaryCategory).length > 0}
+											<div class="flex items-start gap-2">
+												<ModernIcon name="Check" size="xs" />
+												<span class="text-sm font-medium text-gray-700">Relacionadas:</span>
+												<div class="flex-1 flex flex-wrap gap-1">
+													{#each selectedCategories.filter(id => id !== primaryCategory) as categoryId}
+														<div class="flex items-center gap-1 bg-white px-2 py-1 rounded border hover:border-[#00BFB3] transition-colors group">
+															<button
+																type="button"
+																onclick={() => setPrimaryCategory(categoryId)}
+																class="text-sm text-gray-600 hover:text-green-600 transition-colors"
+															>
+																{categories.find(c => c.id === categoryId)?.name || 'N/A'}
+															</button>
+															<button
+																type="button"
+																onclick={() => removeCategory(categoryId)}
+																class="w-4 h-4 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center"
+															>
+																<ModernIcon name="AlertTriangle" size="xs" />
+															</button>
+														</div>
+													{/each}
+												</div>
+											</div>
+											<div class="text-xs text-gray-500 mt-1 ml-4">
+												💡 Clique no nome de uma categoria relacionada para torná-la principal
+											</div>
+										{/if}
+									</div>
+								</div>
+							{:else}
+								<div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+									<div class="flex items-center gap-2">
+										<ModernIcon name="warning" size="sm" />
+										<span class="text-sm text-gray-600">Nenhuma categoria selecionada</span>
+									</div>
+									<p class="text-xs text-gray-600 mt-1">
+										Selecione pelo menos uma categoria ou use a IA para sugerir automaticamente.
+									</p>
+								</div>
+							{/if}
+						</div>
+						
+						{#if aiStatus.category === 'success' && selectedCategories.length > 0}
+							<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+								<div class="flex items-start gap-2">
+									<ModernIcon name="Check" size="sm" />
+									<div class="flex-1 min-w-0">
+										<p class="text-sm font-medium text-gray-600">✅ Categorias sugeridas pela IA</p>
+										<p class="text-xs text-gray-600 mt-1">
+											As categorias foram analisadas e selecionadas automaticamente com base no nome e descrição do produto.
+										</p>
+									</div>
+								</div>
+							</div>
 						{/if}
 					</div>
-					<button
-						type="button"
-						onclick={() => enrichField('category')}
-						disabled={aiLoading.category || !formData.name}
-						class="mt-8 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-						title="Identificar categorias com IA"
-					>
-						<ModernIcon name="robot" size={16} color="white" />
-						IA
-					</button>
-				</div>
+				{/if}
 			</div>
 			
 			<!-- Marca -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Marca
+					{#if getStatusInfo('brand')}
+						<span class="inline-flex items-center gap-1 ml-2">
+							<ModernIcon name="Check" size="xs" />
+							<span class="text-xs text-gray-600">{getStatusInfo('brand')?.message}</span>
+						</span>
+					{/if}
 				</label>
-				<div class="flex gap-2">
-					<select
-						bind:value={formData.brand_id}
-						class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3]"
-					>
-						<option value="">Selecione uma marca</option>
-						{#each brands as brand}
-							<option value={brand.id}>{brand.name}</option>
-						{/each}
-					</select>
-					<button
-						type="button"
-						onclick={() => enrichField('brand')}
-						disabled={aiLoading.brand || !formData.name}
-						class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-						title="Detectar marca com IA"
-					>
-						<ModernIcon name="robot" size={16} color="white" />
-						IA
-					</button>
-				</div>
-				{#if formData.brand && !formData.brand_id}
-					<p class="text-xs text-amber-600 mt-1">
-						⚠️ Marca detectada: "{formData.brand}" - não encontrada no sistema
-					</p>
+				{#if loading}
+					<div class="w-full h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+				{:else}
+					<div class="space-y-3">
+						<div class="flex gap-2">
+							<div class="flex-1 relative">
+								<select
+									bind:value={formData.brand_id}
+									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.brand === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+								>
+									<option value="">Selecione uma marca</option>
+									{#each brands as brand}
+										<option value={brand.id}>{brand.name}</option>
+									{/each}
+								</select>
+								{#if getStatusInfo('brand')}
+									<div class="absolute right-3 top-3">
+										<ModernIcon name="Check" size="xs" />
+									</div>
+								{/if}
+							</div>
+							<button
+								type="button"
+								onclick={() => enrichField('brand')}
+								disabled={aiLoading.brand || !formData.name}
+								class="px-3 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50"
+							>
+								{#if aiLoading.brand}
+									<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+								{:else}
+									<ModernIcon name="robot" size="xs" />
+								{/if}
+							</button>
+						</div>
+
+						<!-- Feedback da IA para Marca -->
+						{#if aiStatus.brand === 'success'}
+							<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+								<div class="flex items-start gap-2">
+									<ModernIcon name="Check" size="sm" />
+									<div class="flex-1 min-w-0">
+										<p class="text-sm font-medium text-gray-600">✅ Marca detectada pela IA</p>
+										<p class="text-xs text-gray-600 mt-1">
+											{aiMessages.brand || 'Marca identificada automaticamente no nome do produto.'}
+										</p>
+									</div>
+								</div>
+							</div>
+						{:else if aiStatus.brand === 'partial'}
+							<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+								<div class="flex items-start gap-2">
+									<ModernIcon name="warning" size="sm" />
+									<div class="flex-1 min-w-0">
+										<p class="text-sm font-medium text-gray-600">⚠️ Marca não encontrada</p>
+										<p class="text-xs text-gray-600 mt-1">
+											{aiMessages.brand || 'IA analisou mas não identificou uma marca cadastrada.'}
+										</p>
+									</div>
+								</div>
+							</div>
+						{:else if aiStatus.brand === 'error'}
+							<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+								<div class="flex items-start gap-2">
+									<ModernIcon name="AlertTriangle" size="sm" />
+									<div class="flex-1 min-w-0">
+										<p class="text-sm font-medium text-gray-600">❌ Erro ao detectar marca</p>
+										<p class="text-xs text-gray-600 mt-1">
+											{aiMessages.brand || 'Erro ao conectar com o serviço de IA.'}
+										</p>
+									</div>
+								</div>
+							</div>
+						{/if}
+					</div>
 				{/if}
 			</div>
 			
 			<!-- Vendedor -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Vendedor *
+					Vendedor
 				</label>
-				<select
-					bind:value={formData.seller_id}
-					required
-					disabled={loading}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors disabled:bg-gray-100"
-				>
-					<option value="">Selecione um vendedor</option>
-					{#each sellers as seller}
-						<option value={seller.id}>{seller.company_name}</option>
-					{/each}
-				</select>
-			</div>
-		</div>
-		
-		<!-- Tags -->
-		<div class="mt-6">
-			<label class="block text-sm font-medium text-gray-700 mb-2">
-				Tags
-				<span class="text-xs text-gray-500 ml-2">Separe por vírgula</span>
-			</label>
-			<div class="flex gap-2">
-				<input
-					type="text"
-					bind:value={formData.tags_input}
-					onblur={() => formData.tags = formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || []}
-					class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="decoração, organização, infantil"
-				/>
-				<button
-					type="button"
-					onclick={() => enrichField('tags')}
-					disabled={aiLoading.tags || !formData.name}
-					class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-					title="Gerar tags relevantes com IA"
-				>
-					{#if aiLoading.tags}
-						<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-					{:else}
-						<ModernIcon name="robot" size={20} color="white" />
-						<span class="text-sm font-medium">IA</span>
-					{/if}
-				</button>
+				{#if loading}
+					<div class="w-full h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+				{:else}
+					<select
+						bind:value={formData.seller_id}
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
+					>
+						<option value="">Selecione um vendedor</option>
+						{#each sellers as seller}
+							<option value={seller.id}>{seller.company_name}</option>
+						{/each}
+					</select>
+				{/if}
 			</div>
 		</div>
 	</div>
 	
-	<!-- PREÇOS -->
+	<!-- STATUS E CONFIGURAÇÕES -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="price" size={20} color="#00BFB3" />
-			Preços e Valores
-		</h4>
-		
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-			<!-- Preço de Venda -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Preço de Venda *
-				</label>
-				<div class="relative">
-					<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-					<input
-						type="number"
-						bind:value={formData.price}
-						required
-						step="0.01"
-						min="0"
-						class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="0,00"
-					/>
-				</div>
-			</div>
-			
-			<!-- Preço Original -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Preço Original
-					<span class="text-xs text-gray-500 ml-2">Para mostrar desconto</span>
-				</label>
-				<div class="relative">
-					<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-					<input
-						type="number"
-						bind:value={formData.original_price}
-						step="0.01"
-						min="0"
-						class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="0,00"
-					/>
-				</div>
-			</div>
-			
-			<!-- Preço de Custo -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Preço de Custo
-					<span class="text-xs text-gray-500 ml-2">Para cálculo de lucro</span>
-				</label>
-				<div class="relative">
-					<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-					<input
-						type="number"
-						bind:value={formData.cost}
-						step="0.01"
-						min="0"
-						class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-						placeholder="0,00"
-					/>
-				</div>
-			</div>
-		</div>
-		
-		<!-- Cálculo de Margem -->
-		{#if formData.price && formData.cost}
-			<div class="mt-4 p-4 bg-gray-50 rounded-lg">
-				<div class="flex items-center justify-between">
-					<span class="text-sm text-gray-600">Margem de Lucro:</span>
-					<span class="font-semibold text-green-600">
-						R$ {(formData.price - formData.cost).toFixed(2)} 
-						({((formData.price - formData.cost) / formData.price * 100).toFixed(1)}%)
-					</span>
-				</div>
-			</div>
-		{/if}
-	</div>
-	
-	<!-- ESTOQUE -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="stock" size={20} color="#00BFB3" />
-			Controle de Estoque
-		</h4>
-		
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<!-- Quantidade -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Quantidade em Estoque *
-				</label>
-				<input
-					type="number"
-					bind:value={formData.quantity}
-					required
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="0"
-				/>
-			</div>
-			
-			<!-- Localização -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Localização no Estoque
-				</label>
-				<input
-					type="text"
-					bind:value={formData.stock_location}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="A1-B2-C3"
-				/>
-			</div>
-			
-			<!-- Controle de Inventário -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.track_inventory}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Controlar Inventário</span>
-						<p class="text-xs text-gray-500">Diminuir estoque automaticamente nas vendas</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Permitir Pedido sem Estoque -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.allow_backorder}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Permitir Backorder</span>
-						<p class="text-xs text-gray-500">Aceitar pedidos mesmo sem estoque</p>
-					</div>
-				</label>
-			</div>
-		</div>
-	</div>
-	
-	<!-- STATUS E VISIBILIDADE -->
-	<div class="bg-white border border-gray-200 rounded-lg p-6">
-		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="status" size={20} color="#00BFB3" />
-			Status e Visibilidade
+			<ModernIcon name="status" size="md" /> Status e Configurações
 		</h4>
 		
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -725,55 +1247,67 @@
 				</label>
 				<select
 					bind:value={formData.status}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
 				>
 					<option value="draft">Rascunho</option>
-					<option value="active">Ativo</option>
-					<option value="inactive">Inativo</option>
+					<option value="published">Publicado</option>
+					<option value="archived">Arquivado</option>
 				</select>
 			</div>
 			
-			<!-- Data de Publicação -->
+			<!-- Condição -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Data de Publicação
+					Condição
 				</label>
+				<select
+					bind:value={formData.condition}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
+				>
+					<option value="new">Novo</option>
+					<option value="used">Usado</option>
+					<option value="refurbished">Recondicionado</option>
+				</select>
+			</div>
+		</div>
+		
+		<!-- Checkboxes -->
+		<div class="mt-6 space-y-4">
+			<label class="flex items-center gap-3">
 				<input
-					type="datetime-local"
-					bind:value={formData.published_at}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					type="checkbox"
+					bind:checked={formData.is_active}
+					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
 				/>
-			</div>
+				<span class="text-sm font-medium text-gray-700">Produto ativo</span>
+			</label>
 			
-			<!-- Produto Ativo -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.is_active}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Produto Ativo</span>
-						<p class="text-xs text-gray-500">Visível na loja</p>
-					</div>
-				</label>
-			</div>
+			<label class="flex items-center gap-3">
+				<input
+					type="checkbox"
+					bind:checked={formData.featured}
+					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
+				/>
+				<span class="text-sm font-medium text-gray-700">Produto em destaque</span>
+			</label>
 			
-			<!-- Produto em Destaque -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.featured}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Produto em Destaque</span>
-						<p class="text-xs text-gray-500">Aparece na página inicial</p>
-					</div>
-				</label>
-			</div>
+			<label class="flex items-center gap-3">
+				<input
+					type="checkbox"
+					bind:checked={formData.track_inventory}
+					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
+				/>
+				<span class="text-sm font-medium text-gray-700">Controlar estoque</span>
+			</label>
+			
+			<label class="flex items-center gap-3">
+				<input
+					type="checkbox"
+					bind:checked={formData.allow_backorder}
+					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
+				/>
+				<span class="text-sm font-medium text-gray-700">Permitir backorder</span>
+			</label>
 		</div>
 	</div>
 </div> 

@@ -2,6 +2,47 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
+// Função para converter nomes de países para códigos ISO
+function getCountryCode(countryName: string | null): string | null {
+  if (!countryName) return null;
+  
+  const countryMap: Record<string, string> = {
+    'brasil': 'BR',
+    'brazil': 'BR',
+    'estados unidos': 'US',
+    'united states': 'US',
+    'china': 'CN',
+    'alemanha': 'DE',
+    'germany': 'DE',
+    'japão': 'JP',
+    'japan': 'JP',
+    'coreia do sul': 'KR',
+    'south korea': 'KR',
+    'itália': 'IT',
+    'italy': 'IT',
+    'frança': 'FR',
+    'france': 'FR',
+    'reino unido': 'GB',
+    'united kingdom': 'GB',
+    'canadá': 'CA',
+    'canada': 'CA',
+    'méxico': 'MX',
+    'mexico': 'MX',
+    'argentina': 'AR',
+    'chile': 'CL',
+    'uruguai': 'UY',
+    'paraguai': 'PY',
+    'venezuela': 'VE',
+    'colômbia': 'CO',
+    'peru': 'PE',
+    'equador': 'EC',
+    'bolívia': 'BO'
+  };
+  
+  const normalized = countryName.toLowerCase().trim();
+  return countryMap[normalized] || (countryName.length === 2 ? countryName.toUpperCase() : 'BR');
+}
+
 // GET - Buscar produto por ID
 export const GET: RequestHandler = async ({ params, platform }) => {
   try {
@@ -111,9 +152,28 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     // Processar campos JSONB
     const product = result[0];
     
-    // Garantir que attributes e specifications sejam objetos
-    product.attributes = product.attributes || {};
-    product.specifications = product.specifications || {};
+    // Garantir que attributes e specifications sejam objetos parseados corretamente
+    try {
+      if (typeof product.attributes === 'string') {
+        product.attributes = JSON.parse(product.attributes);
+      } else if (!product.attributes) {
+        product.attributes = {};
+      }
+    } catch (error) {
+      console.error('Erro ao parsear attributes:', error);
+      product.attributes = {};
+    }
+    
+    try {
+      if (typeof product.specifications === 'string') {
+        product.specifications = JSON.parse(product.specifications);
+      } else if (!product.specifications) {
+        product.specifications = {};
+      }
+    } catch (error) {
+      console.error('Erro ao parsear specifications:', error);
+      product.specifications = {};
+    }
     
     // Extrair custom_fields de specifications se existir
     if (product.specifications.custom_fields) {
@@ -154,7 +214,7 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
     
     console.log('Atualizando produto:', id, data);
     
-    // Atualizar produto
+    // Atualizar produto - apenas campos básicos existentes
     const result = await db.query`
       UPDATE products SET
         name = ${data.name},
@@ -186,31 +246,27 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         meta_title = ${data.meta_title || null},
         meta_description = ${data.meta_description || null},
         meta_keywords = ${data.meta_keywords || []},
-        
-        -- Novos campos
+        published_at = ${data.published_at || null},
+        low_stock_alert = ${data.low_stock_alert || null},
         has_free_shipping = ${data.has_free_shipping === true},
-        delivery_days = ${data.delivery_days || 3},
-        seller_state = ${data.seller_state || null},
-        seller_city = ${data.seller_city || null},
-        is_digital = ${data.is_digital === true},
-        requires_shipping = ${data.requires_shipping !== false},
-        tax_class = ${data.tax_class || 'standard'},
         ncm_code = ${data.ncm_code || null},
         gtin = ${data.gtin || null},
         origin = ${data.origin || '0'},
-        manufacturing_country = ${data.manufacturing_country || null},
-        low_stock_alert = ${data.low_stock_alert || null},
+        allow_reviews = ${data.allow_reviews !== false},
+        age_restricted = ${data.age_restricted || false},
+        is_customizable = ${data.is_customizable || false},
+        attributes = ${JSON.stringify(data.attributes || {})},
+        specifications = ${JSON.stringify(data.specifications || {})},
+        manufacturing_country = ${getCountryCode(data.manufacturing_country)},
+        tax_class = ${data.tax_class || 'standard'},
+        requires_shipping = ${data.requires_shipping !== false},
+        is_digital = ${data.is_digital || false},
         care_instructions = ${data.care_instructions || null},
         manual_link = ${data.manual_link || null},
-        allow_reviews = ${data.allow_reviews !== false},
-        age_restricted = ${data.age_restricted === true},
-        is_customizable = ${data.is_customizable === true},
         internal_notes = ${data.internal_notes || null},
-        
-        -- Campos JSONB
-        attributes = ${data.attributes || {}},
-        specifications = ${data.specifications || {}},
-        
+        delivery_days = ${data.delivery_days_min || data.delivery_days_max || null},
+        seller_state = ${data.seller_state || null},
+        seller_city = ${data.seller_city || null},
         updated_at = NOW()
       WHERE id = ${id}::uuid
       RETURNING *`;
@@ -281,6 +337,23 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       }
     }
     
+    // Atualizar imagens se fornecidas
+    if (data.images && Array.isArray(data.images)) {
+      // Remover imagens antigas
+      await db.query`DELETE FROM product_images WHERE product_id = ${id}::uuid`;
+      
+      // Inserir novas imagens
+      for (let i = 0; i < data.images.length; i++) {
+        const imageUrl = data.images[i];
+        const isPrimary = i === 0; // Primeira imagem é sempre a principal
+        
+        await db.query`
+          INSERT INTO product_images (product_id, url, position, is_primary, alt_text)
+          VALUES (${id}::uuid, ${imageUrl}, ${i}, ${isPrimary}, ${'Imagem do produto'})
+        `;
+      }
+    }
+    
     await db.close();
     return json({ 
       success: true, 
@@ -299,24 +372,69 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
 };
 
 // DELETE - Excluir produto por ID
-export const DELETE: RequestHandler = async ({ params, platform }) => {
+export const DELETE: RequestHandler = async ({ params, url, platform }) => {
   try {
     const db = getDatabase(platform);
     const { id } = params;
     
-    // Soft delete - apenas marcar como inativo
-    await db.query`
-      UPDATE products 
-      SET is_active = false, status = 'archived', updated_at = NOW()
-      WHERE id = ${id}
-    `;
+    // Verificar se é hard delete (query parameter ?force=true)
+    const forceDelete = url.searchParams.get('force') === 'true';
     
-    await db.close();
-    
-    return json({
-      success: true,
-      message: 'Produto arquivado com sucesso!'
-    });
+    if (forceDelete) {
+      console.log(`🗑️ Hard delete solicitado para produto: ${id}`);
+      
+      // Remover dependências primeiro
+      await db.query`DELETE FROM product_categories WHERE product_id = ${id}::uuid`;
+      await db.query`DELETE FROM product_images WHERE product_id = ${id}::uuid`;
+      await db.query`DELETE FROM product_related WHERE product_id = ${id}::uuid OR related_product_id = ${id}::uuid`;
+      await db.query`DELETE FROM product_upsells WHERE product_id = ${id}::uuid OR upsell_product_id = ${id}::uuid`;
+      await db.query`DELETE FROM product_downloads WHERE product_id = ${id}::uuid`;
+      
+      // Remover produto definitivamente
+      const result = await db.query`
+        DELETE FROM products 
+        WHERE id = ${id}::uuid
+        RETURNING name, sku
+      `;
+      
+      if (result[0]) {
+        console.log(`✅ Produto removido definitivamente: ${result[0].name} (${result[0].sku})`);
+        await db.close();
+        return json({
+          success: true,
+          message: `Produto "${result[0].name}" removido definitivamente do banco de dados!`
+        });
+      } else {
+        await db.close();
+        return json({ 
+          success: false, 
+          error: 'Produto não encontrado' 
+        }, { status: 404 });
+      }
+    } else {
+      // Soft delete padrão - apenas marcar como arquivado
+      const result = await db.query`
+        UPDATE products 
+        SET is_active = false, status = 'archived', updated_at = NOW()
+        WHERE id = ${id}::uuid
+        RETURNING name, sku
+      `;
+      
+      if (result[0]) {
+        console.log(`📦 Produto arquivado: ${result[0].name} (${result[0].sku})`);
+        await db.close();
+        return json({
+          success: true,
+          message: `Produto "${result[0].name}" arquivado com sucesso!`
+        });
+      } else {
+        await db.close();
+        return json({ 
+          success: false, 
+          error: 'Produto não encontrado' 
+        }, { status: 404 });
+      }
+    }
     
   } catch (error) {
     console.error('Erro ao excluir produto:', error);

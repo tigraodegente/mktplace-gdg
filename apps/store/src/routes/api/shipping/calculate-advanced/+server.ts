@@ -33,6 +33,86 @@ interface AdvancedShippingOption {
     zone_name: string;
 }
 
+interface ProductShippingConfig {
+    product_id: string;
+    shipping_pac: boolean;
+    shipping_sedex: boolean;
+    shipping_carrier: boolean;
+    shipping_pickup: boolean;
+}
+
+/**
+ * Buscar configurações de shipping dos produtos
+ */
+async function getProductsShippingConfig(db: any, productIds: string[]): Promise<ProductShippingConfig[]> {
+    if (productIds.length === 0) return [];
+    
+    try {
+        const products = await db.query`
+            SELECT id as product_id, shipping_pac, shipping_sedex, shipping_carrier, shipping_pickup
+            FROM products 
+            WHERE id = ANY(${productIds}::uuid[])
+            AND is_active = true
+        `;
+        
+        return products || [];
+    } catch (error) {
+        console.error('Erro ao buscar configurações de shipping dos produtos:', error);
+        // Se der erro, assume que todos os métodos estão habilitados
+        return productIds.map(id => ({
+            product_id: id,
+            shipping_pac: true,
+            shipping_sedex: true,
+            shipping_carrier: true,
+            shipping_pickup: true
+        }));
+    }
+}
+
+/**
+ * Filtrar opções de shipping baseado nas configurações dos produtos
+ */
+function filterShippingOptionsByProducts(
+    options: AdvancedShippingOption[], 
+    productsConfig: ProductShippingConfig[]
+): AdvancedShippingOption[] {
+    if (productsConfig.length === 0) return options;
+    
+    // Verificar quais métodos estão habilitados para TODOS os produtos
+    const allProductsConfig = {
+        shipping_pac: productsConfig.every(p => p.shipping_pac),
+        shipping_sedex: productsConfig.every(p => p.shipping_sedex), 
+        shipping_carrier: productsConfig.every(p => p.shipping_carrier),
+        shipping_pickup: productsConfig.every(p => p.shipping_pickup)
+    };
+    
+    console.log('🎯 Filtros de shipping por produto:', allProductsConfig);
+    
+    return options.filter(option => {
+        const modalityLower = option.modality_name.toLowerCase();
+        
+        // Mapear modalidades para campos de configuração
+        if (modalityLower.includes('pac') || modalityLower.includes('econômic')) {
+            return allProductsConfig.shipping_pac;
+        }
+        
+        if (modalityLower.includes('sedex') || modalityLower.includes('express') || modalityLower.includes('rápid')) {
+            return allProductsConfig.shipping_sedex;
+        }
+        
+        if (modalityLower.includes('transportadora') || modalityLower.includes('premium')) {
+            return allProductsConfig.shipping_carrier;
+        }
+        
+        if (modalityLower.includes('retirada') || modalityLower.includes('pickup') || modalityLower.includes('loja')) {
+            return allProductsConfig.shipping_pickup;
+        }
+        
+        // Se não conseguir identificar, deixa passar (segurança)
+        return true;
+    });
+}
+
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
         console.log('🚛 Shipping Calculate Advanced - Estratégia híbrida iniciada');
@@ -57,10 +137,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             }, { status: 400 });
         }
 
+        // **NOVA FUNCIONALIDADE**: Buscar configurações de shipping dos produtos
+        const productIds = items.map(item => item.product_id);
+        const db = getDatabase(platform);
+        const productsConfig = await getProductsShippingConfig(db, productIds);
+        
+        console.log('📦 Configurações de shipping dos produtos:', productsConfig);
+
         // Tentar calcular frete avançado com timeout
         try {
-            const db = getDatabase(platform);
-            
             // Promise com timeout de 6 segundos
             const queryPromise = (async () => {
                 // STEP 1: Buscar zona por CEP (query simplificada)
@@ -170,12 +255,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     }
                 }
 
+                // **NOVA FUNCIONALIDADE**: Filtrar opções baseado nas configurações dos produtos
+                const filteredOptions = filterShippingOptionsByProducts(shippingOptions, productsConfig);
+                
+                console.log(`🎯 Opções antes do filtro: ${shippingOptions.length}, depois: ${filteredOptions.length}`);
+
                 // Ordenar por preço
-            shippingOptions.sort((a, b) => a.price - b.price);
+            filteredOptions.sort((a, b) => a.price - b.price);
 
             return {
                 success: true,
-                options: shippingOptions,
+                options: filteredOptions,
                 zone_info: {
                     zone_id: zone.zone_id,
                     zone_name: zone.zone_name,
@@ -188,7 +278,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     cubic_weight: cubicWeight,
                     effective_weight: effectiveWeight,
                     postal_code: cleanPostalCode,
-                    items_count: items.length
+                    items_count: items.length,
+                    products_shipping_config: productsConfig
                 }
             };
             })();
@@ -269,9 +360,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 }
             ];
             
+            // **NOVA FUNCIONALIDADE**: Filtrar opções fallback baseado nas configurações dos produtos
+            const filteredMockOptions = filterShippingOptionsByProducts(mockOptions, productsConfig);
+            
+            console.log(`🎯 Opções fallback antes do filtro: ${mockOptions.length}, depois: ${filteredMockOptions.length}`);
+            
             return json({
                 success: true,
-                options: mockOptions,
+                options: filteredMockOptions,
                 zone_info: {
                     zone_id: cepRegion,
                     zone_name: regionName,
@@ -284,7 +380,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     cubic_weight: cubicWeight,
                     effective_weight: effectiveWeight,
                     postal_code: cleanPostalCode,
-                    items_count: items.length
+                    items_count: items.length,
+                    products_shipping_config: productsConfig
                 },
                 source: 'fallback'
             });
