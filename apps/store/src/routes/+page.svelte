@@ -104,13 +104,10 @@
       if (countdownData && countdownService.isValidCountdown(countdownData)) {
         activeCountdown = countdownData;
         showCountdown = true;
-        console.log(`✅ Countdown ativo: ${countdownData.name} - termina ${new Date(countdownData.endTime).toLocaleString()}`);
       } else {
         showCountdown = false;
-        console.log('ℹ️ Nenhum countdown ativo');
       }
       
-      console.log(`✅ Conteúdo dinâmico carregado: ${homeBanners.length} banners home, ${deliveryBanners.length} delivery, countdown: ${showCountdown ? 'ativo' : 'inativo'}`);
     } catch (err) {
       console.warn('Usando conteúdo padrão:', err);
       // Keep fallback content
@@ -190,6 +187,14 @@
       </div>
     </section>
   {/if}
+
+  <!-- Banner de Entrega Rápida -->
+  <FastDeliveryBanner 
+    slides={fastDeliverySlides}
+    title="Produtos que chegam <strong>rapidinho</strong>"
+    autoPlay={true}
+    autoPlayInterval={6000}
+  />
   
   <!-- Produtos em Destaque -->
   {#if data.featuredProducts && data.featuredProducts.length > 0}
@@ -214,14 +219,6 @@
     </section>
   {/if}
 
-  <!-- Banner de Entrega Rápida -->
-  <FastDeliveryBanner 
-    slides={fastDeliverySlides}
-    title="Produtos que chegam <strong>rapidinho</strong>"
-    autoPlay={true}
-    autoPlayInterval={6000}
-  />
-  
   <!-- Newsletter simples -->
   <section class="py-12 bg-teal-500 text-white">
     <div class="container mx-auto px-4 text-center">

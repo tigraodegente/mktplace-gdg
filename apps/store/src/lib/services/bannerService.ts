@@ -1,4 +1,4 @@
-import type { BannerSlide } from '$lib/types/banner';
+import type { BannerSlide } from '../types/banner';
 
 // Cache configuration
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -91,6 +91,7 @@ class BannerService {
       throw new Error(result.error?.message || 'Banner API returned error');
     }
 
+    // API already returns data in correct format
     return result.data;
   }
 
