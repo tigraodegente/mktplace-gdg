@@ -55,16 +55,30 @@
 	const isOutOfStock = $derived(() => product.stock === 0);
 	
 	const discount = $derived(() => {
-		if (product.discount) return product.discount;
-		if (product.original_price && product.original_price > product.price) {
+		// Lógica correta: original_price deve ser maior que price
+		if (product.original_price && product.price && product.original_price > product.price) {
 			return Math.round(((product.original_price - product.price) / product.original_price) * 100);
 		}
+		
+		// Fallback para discount direto
+		if (product.discount) return product.discount;
+		
 		return 0;
 	});
 	
 	const finalPrice = $derived(() => {
+		// Preço final é sempre o campo 'price'
 		const basePrice = product.price;
 		return product.discount ? basePrice * (1 - product.discount / 100) : basePrice;
+	});
+	
+	const originalPrice = $derived(() => {
+		// Só mostrar original_price se for maior que price
+		if (product.original_price && product.price && product.original_price > product.price) {
+			return product.original_price;
+		}
+		
+		return null;
 	});
 	
 	const installmentPrice = $derived(() => finalPrice() / INSTALLMENTS);
@@ -276,24 +290,26 @@
 		
 		<!-- Preços -->
 		<div class="pricing">
-			<!-- Preço PIX (principal e destacado) -->
-			<p class="pix-price">
-				<strong>{formatCurrency(pixPrice())}</strong> 
-				<span class="pix-label">no pix ou boleto</span>
-			</p>
-			
-			<!-- Preço original riscado -->
-			{#if product.original_price && product.original_price > product.price}
-				<p class="original-price">de {formatCurrency(product.original_price)}</p>
+			<!-- Primeiro: Preço original riscado - "de R$ 68,83" -->
+			{#if originalPrice()}
+				<p class="original-price">
+					de {formatCurrency(originalPrice() || 0)}
+				</p>
 			{/if}
 			
-			<!-- Parcelamento -->
+			<!-- Segundo: Parcelamento - "por 5x de R$ XX,XX" -->
 			<div class="installment-price">
-				<span class="label">ou</span>
+				<span class="label">por</span>
 				<span class="count">{INSTALLMENTS}x</span>
 				<span class="label">de</span>
 				<span class="value">{formatCurrency(installmentPrice())}</span>
 			</div>
+			
+			<!-- Terceiro: Preço PIX - "R$ 48,24 no pix ou boleto" -->
+			<p class="pix-price">
+				<strong>{formatCurrency(pixPrice())}</strong> 
+				<span class="pix-label">no pix ou boleto</span>
+			</p>
 		</div>
 		
 		<!-- Badges inferiores -->
@@ -305,10 +321,10 @@
 				
 				{#if product.has_fast_delivery}
 					<div class="badge badge--delivery">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+						<svg xmlns="http://www.w3.org/2000/svg" width="9" height="14" viewBox="0 0 9 14" fill="none">
+							<path d="M8.50446 5.40097C8.44526 5.29319 8.33418 5.2249 8.21202 5.22119L5.23016 5.13067L6.57478 1.43905C6.61296 1.33376 6.5986 1.21623 6.53629 1.12333C6.47399 1.03031 6.37116 0.973146 6.25989 0.969652L2.79821 0.864572C2.64532 0.860048 2.50773 0.957055 2.45939 1.10333L0.173823 8.0212L0.173819 8.02132C0.139141 8.1259 0.155541 8.24103 0.218155 8.33159C0.280886 8.42204 0.382373 8.47741 0.491797 8.48062L3.60749 8.57519L3.472 13.1127C3.46712 13.2723 3.57018 13.4149 3.72235 13.4589C3.87453 13.503 4.03693 13.4373 4.11681 13.2995L8.50035 5.74639C8.56246 5.64019 8.56407 5.50864 8.50452 5.40085L8.50446 5.40097Z" fill="#FF8403"/>
 						</svg>
-						Entrega rápida
+						Chega rapidinho
 					</div>
 				{/if}
 			</div>
@@ -438,10 +454,18 @@
 	}
 	
 	.badge--delivery {
-		background: #ff8403;
+		background: #FBE7D1;
+		border-radius: 4.49px;
 		display: flex;
 		align-items: center;
 		gap: 4px;
+		color: #E07709;
+		font-family: Lato;
+		font-size: 9.879px;
+		font-style: normal;
+		font-weight: 600;
+		line-height: normal;
+		letter-spacing: 0.198px;
 	}
 	
 	/* Overlay */
@@ -575,54 +599,86 @@
 		margin-top: auto;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 1px;
 	}
 	
-	/* Preço PIX (principal e destacado) */
-	.pix-price {
-		font-size: 1.1rem;
-		color: #00bfb3;
-		margin: 0;
-		font-weight: 400;
-		line-height: 1.2;
-	}
-	
-	.pix-price strong {
-		font-weight: 800;
-		font-size: 1.15rem;
-	}
-	
-	.pix-label {
-		font-size: 0.8rem;
-		font-weight: 400;
-		color: #00a89d;
-	}
-	
-	/* Preço original riscado */
+	/* Preço original riscado - "de R$ 68,83" */
 	.original-price {
-		color: #999;
-		font-size: 0.8rem;
-		text-decoration: line-through;
+		color: #818181;
+		font-family: Lato;
+		font-size: 11px;
+		font-style: normal;
+		font-weight: 700;
+		line-height: 21.635px; /* 196.682% */
+		letter-spacing: 0.22px;
+		text-decoration-line: line-through;
 		margin: 0;
-		font-weight: 400;
+		flex-shrink: 0;
 	}
 	
-	/* Parcelamento (menor hierarquia) */
+	/* Parcelamento - "por 5x de R$ XX,XX" */
 	.installment-price {
-		font-size: 0.8rem;
-		color: #666;
-		margin: 0;
+		color: #000;
+		font-family: Lato;
+		font-size: 14px;
+		font-style: normal;
 		font-weight: 400;
+		line-height: 21.635px; /* 154.536% */
+		letter-spacing: 0.28px;
+		margin: 0;
+		flex-shrink: 0;
+		display: flex;
+		gap: 4px;
+		white-space: nowrap;
 	}
 	
 	.installment-price .label {
-		color: #999;
+		color: #000;
+		font-weight: 400;
 	}
 	
 	.installment-price .count,
 	.installment-price .value {
-		font-weight: 600;
-		color: #333;
+		color: #000;
+		font-family: Lato;
+		font-size: 14px;
+		font-style: normal;
+		font-weight: 900;
+		line-height: 21.635px;
+		letter-spacing: 0.28px;
+	}
+	
+	/* Preço PIX - "R$ 48,24 no pix ou boleto" */
+	.pix-price {
+		color: #000;
+		font-family: Lato;
+		font-size: 14px;
+		font-style: normal;
+		font-weight: 400;
+		line-height: 21.635px; /* 154.536% */
+		letter-spacing: 0.28px;
+		margin: 0;
+		flex-shrink: 0;
+	}
+	
+	.pix-price strong {
+		color: #000;
+		font-family: Lato;
+		font-size: 14px;
+		font-style: normal;
+		font-weight: 900;
+		line-height: 21.635px;
+		letter-spacing: 0.28px;
+	}
+	
+	.pix-label {
+		color: #000;
+		font-family: Lato;
+		font-size: 14px;
+		font-style: normal;
+		font-weight: 400;
+		line-height: 21.635px;
+		letter-spacing: 0.28px;
 	}
 	
 	/* Badges inferiores */

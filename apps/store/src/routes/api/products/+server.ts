@@ -81,7 +81,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         }
         
         if (hasDiscount) {
-          conditions.push('p.original_price > 0 AND p.price < p.original_price');
+          conditions.push('p.original_price > 0 AND p.original_price > p.price');
         }
         
         if (searchQuery) {
