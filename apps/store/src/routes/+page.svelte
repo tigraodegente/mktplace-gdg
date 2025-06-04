@@ -10,6 +10,7 @@
   import BenefitsSection from '$lib/components/layout/BenefitsSection.svelte';
   import FastDeliveryBanner from '$lib/components/layout/FastDeliveryBanner.svelte';
   import OfferCountdown from '$lib/components/layout/OfferCountdown.svelte';
+  import CategorySection from '$lib/components/category/CategorySection.svelte';
   import { invalidateAll } from '$app/navigation';
   
   // Services for dynamic content
@@ -165,28 +166,8 @@
   <!-- Seção de Benefícios -->
   <BenefitsSection />
 
-  <!-- Categorias -->
-  {#if data.categories && data.categories.length > 0}
-    <section class="py-12 bg-white">
-      <div class="container mx-auto px-4">
-        <h2 class="text-2xl font-bold text-gray-900 mb-8 text-center">
-          Categorias Populares
-        </h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {#each data.categories as category}
-            <a 
-              href="/categoria/{category.slug || category.name.toLowerCase().replace(/ /g, '-')}"
-              class="text-center p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
-            >
-              <div class="text-4xl mb-2">{category.icon || '📦'}</div>
-              <h3 class="font-medium text-gray-900">{category.name}</h3>
-              <p class="text-sm text-gray-500">{category.count} produtos</p>
-            </a>
-          {/each}
-        </div>
-      </div>
-    </section>
-  {/if}
+  <!-- Compre por Categoria -->
+  <CategorySection />
 
   <!-- Banner de Entrega Rápida -->
   <FastDeliveryBanner 

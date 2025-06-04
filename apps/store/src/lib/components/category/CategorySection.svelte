@@ -6,7 +6,7 @@
 		LOADING_DELAY,
 		type CategoryItem,
 		type CategoryGroup 
-	} from './categoryData.js';
+	} from './categoryData';
 	
 	// =============================================================================
 	// TYPES
@@ -38,30 +38,13 @@
 	}: CategorySectionProps = $props();
 	
 	// =============================================================================
-	// STATE
-	// =============================================================================
-	
-	let activeTab = $state(DEFAULT_ACTIVE_TAB);
-	let isLoading = $state(true);
-	let isMobile = $state(false);
-	let isTablet = $state(false);
-	let sliderPosition = $state(0);
-	let currentItemIndex = $state(0);
-	let carouselOffset = $state(0);
-	let isTransitioning = $state(false);
-	
-	// =============================================================================
-	// VARIABLES
-	// =============================================================================
-	
-	let tabsContainer: HTMLElement;
-	let gridContainer = $state<HTMLElement>();
-	let resizeTimer: NodeJS.Timeout;
-	let intersectionObserver: IntersectionObserver;
-	
-	// =============================================================================
 	// CONSTANTS
 	// =============================================================================
+	
+	const INTERSECTION_THRESHOLD = 0.6;
+	const SETUP_DELAY = 100;
+	const TRANSITION_DELAY = 300;
+	const RESIZE_DEBOUNCE = 100;
 	
 	const SLIDER_CONFIG: SliderConfig = {
 		thumbPercentage: 12.5,
@@ -73,6 +56,27 @@
 		tablet: 1024,
 		desktop: 1440
 	} as const;
+	
+	// =============================================================================
+	// STATE
+	// =============================================================================
+	
+	let activeTab = $state(DEFAULT_ACTIVE_TAB);
+	let isLoading = $state(true);
+	let isMobile = $state(false);
+	let isTablet = $state(false);
+	let sliderPosition = $state(0);
+	let currentItemIndex = $state(0);
+	let carouselOffset = $state(0);
+	
+	// =============================================================================
+	// VARIABLES
+	// =============================================================================
+	
+	let tabsContainer = $state<HTMLElement>();
+	let gridContainer = $state<HTMLElement>();
+	let resizeTimer: NodeJS.Timeout;
+	let intersectionObserver: IntersectionObserver;
 	
 	// =============================================================================
 	// DERIVED
@@ -95,20 +99,18 @@
 		
 		if (width < BREAKPOINTS.mobile) {
 			return { cardWidth: 280, gap: 16, visibleCards: 1.2 };
-		} else if (width < 900) {
+		} else if (width < BREAKPOINTS.tablet) {
 			return { 
-				cardWidth: Math.min(Math.max(width * 0.3, 220), 280), 
-				gap: Math.max(width * 0.015, 16),
-				visibleCards: 2.5
-			};
-		} else if (width < 1200) {
-			return { 
-				cardWidth: Math.min(Math.max(width * 0.25, 240), 300), 
-				gap: Math.max(width * 0.018, 18),
-				visibleCards: 3.5
+				cardWidth: Math.min(Math.max(width * 0.35, 250), 320), 
+				gap: Math.max(width * 0.02, 16),
+				visibleCards: 2.2
 			};
 		} else if (width < BREAKPOINTS.desktop) {
-			return { cardWidth: 280, gap: 20, visibleCards: 4 };
+			return { 
+				cardWidth: Math.min(Math.max(width * 0.28, 280), 350), 
+				gap: Math.max(width * 0.02, 20),
+				visibleCards: 3.2
+			};
 		} else {
 			return { cardWidth: 350, gap: 24, visibleCards: 4 };
 		}
@@ -133,9 +135,8 @@
 	}
 	
 	function handleTabChange(tabId: string): void {
-		if (tabId === activeTab || isTransitioning) return;
+		if (tabId === activeTab) return;
 		
-		isTransitioning = true;
 		activeTab = tabId;
 		currentItemIndex = 0;
 		
@@ -147,11 +148,7 @@
 		// Reconfigurar intersection observer após mudança de categoria
 		setTimeout(() => {
 			setupIntersectionObserver();
-		}, 100);
-		
-		setTimeout(() => {
-			isTransitioning = false;
-		}, 300);
+		}, SETUP_DELAY);
 	}
 	
 	function updateSliderPosition(): void {
@@ -196,11 +193,12 @@
 			isMobile = newIsMobile;
 			isTablet = newIsTablet;
 			updateSliderPosition();
+			updateCSSVariables();
 			
 			// Reconfigurar intersection observer após mudança de viewport
 			setTimeout(() => {
 				setupIntersectionObserver();
-			}, 100);
+			}, SETUP_DELAY);
 		}
 	}
 	
@@ -211,13 +209,13 @@
 		
 		resizeTimer = setTimeout(() => {
 			checkViewport();
-		}, 100);
+			updateCSSVariables();
+		}, RESIZE_DEBOUNCE);
 	}
 	
 	function navigateItem(direction: number): void {
-		if (!hasMultipleItems || isTransitioning) return;
+		if (!hasMultipleItems) return;
 		
-		isTransitioning = true;
 		const totalItems = currentItems.length;
 		let newIndex = currentItemIndex + direction;
 		
@@ -229,14 +227,10 @@
 		
 		currentItemIndex = newIndex;
 		updateSliderPosition();
-		
-		setTimeout(() => {
-			isTransitioning = false;
-		}, 300);
 	}
 	
 	function handleKeyDown(event: KeyboardEvent): void {
-		if (!hasMultipleItems || isTransitioning) return;
+		if (!hasMultipleItems) return;
 		
 		switch (event.key) {
 			case 'ArrowLeft':
@@ -250,46 +244,46 @@
 		}
 	}
 	
-	function handleTabsScroll(): void {
-		// Mantida para compatibilidade, mas não mais necessária
-	}
-	
 	function setupIntersectionObserver(): void {
 		if (typeof window === 'undefined') return;
 		
-		// Limpar observer existente
-		if (intersectionObserver) {
-			intersectionObserver.disconnect();
-		}
-		
-		// Apenas ativar no mobile e tablet
-		if (!isMobile && !isTablet) return;
-		
-		// Verificar se gridContainer existe
-		if (!gridContainer) return;
-		
-		intersectionObserver = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
-						const cardElement = entry.target as HTMLElement;
-						const cardIndex = parseInt(cardElement.dataset.index || '0');
-						currentItemIndex = cardIndex;
-					}
-				});
-			},
-			{
-				root: gridContainer,
-				rootMargin: '0px',
-				threshold: [0.6]
+		try {
+			// Limpar observer existente
+			if (intersectionObserver) {
+				intersectionObserver.disconnect();
 			}
-		);
-		
-		// Observar todos os cards
-		const cards = gridContainer.querySelectorAll('.category__card');
-		cards.forEach((card) => {
-			intersectionObserver.observe(card);
-		});
+			
+			// Apenas ativar no mobile e tablet
+			if (!isMobile && !isTablet) return;
+			
+			// Verificar se gridContainer existe
+			if (!gridContainer) return;
+			
+			intersectionObserver = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						if (entry.isIntersecting && entry.intersectionRatio > INTERSECTION_THRESHOLD) {
+							const cardElement = entry.target as HTMLElement;
+							const cardIndex = parseInt(cardElement.dataset.index || '0');
+							currentItemIndex = cardIndex;
+						}
+					});
+				},
+				{
+					root: gridContainer,
+					rootMargin: '0px',
+					threshold: [INTERSECTION_THRESHOLD]
+				}
+			);
+			
+			// Observar todos os cards
+			const cards = gridContainer.querySelectorAll('.category__card');
+			cards.forEach((card) => {
+				intersectionObserver.observe(card);
+			});
+		} catch (error) {
+			console.warn('Failed to setup intersection observer:', error);
+		}
 	}
 	
 	function cleanupIntersectionObserver(): void {
@@ -307,35 +301,40 @@
 		}
 	}
 	
+	function updateCSSVariables(): void {
+		if (typeof document === 'undefined') return;
+		
+		const config = carouselConfig();
+		const root = document.documentElement;
+		
+		root.style.setProperty('--dynamic-card-width', `${config.cardWidth}px`);
+		root.style.setProperty('--dynamic-gap', `${config.gap}px`);
+		root.style.setProperty('--dynamic-visible-cards', config.visibleCards.toString());
+	}
+	
 	// =============================================================================
 	// LIFECYCLE
 	// =============================================================================
 	
 	onMount(() => {
 		checkViewport();
+		updateCSSVariables();
 		
 		window.addEventListener('resize', handleResize);
 		window.addEventListener('keydown', handleKeyDown);
 		
-		if (tabsContainer) {
-			tabsContainer.addEventListener('scroll', handleTabsScroll);
-		}
-		
 		const loadingTimer = setTimeout(() => {
 			isLoading = false;
+			updateCSSVariables();
 			// Setup intersection observer após loading
 			setTimeout(() => {
 				setupIntersectionObserver();
-			}, 100);
+			}, SETUP_DELAY);
 		}, LOADING_DELAY);
 		
 		return () => {
 			window.removeEventListener('resize', handleResize);
 			window.removeEventListener('keydown', handleKeyDown);
-			
-			if (tabsContainer) {
-				tabsContainer.removeEventListener('scroll', handleTabsScroll);
-			}
 			
 			if (resizeTimer) {
 				clearTimeout(resizeTimer);
@@ -376,12 +375,10 @@
 				<button
 					class="category__tab"
 					class:category__tab--active={activeTab === group.id}
-					class:category__tab--transitioning={isTransitioning}
 					onclick={() => handleTabChange(group.id)}
 					role="tab"
 					aria-selected={activeTab === group.id}
 					aria-controls="category-content-{group.id}"
-					disabled={isTransitioning}
 				>
 					{group.name}
 				</button>
@@ -415,7 +412,6 @@
 				<div class="category__carousel-container">
 					<div 
 						class="category__grid"
-						class:category__grid--transitioning={isTransitioning}
 						style="transform: translateX({(isMobile || isTablet) ? 0 : carouselOffset}px); transition: transform {SLIDER_CONFIG.transitionDuration} ease;"
 						bind:this={gridContainer}
 					>
@@ -423,7 +419,6 @@
 							<article 
 								class="category__card"
 								class:category__card--active={index === currentItemIndex}
-								class:category__card--transitioning={isTransitioning}
 								aria-labelledby="card-title-{item.id}"
 								data-index={index}
 							>
@@ -489,7 +484,6 @@
 					class="category__nav-button category__nav-button--prev"
 					onclick={() => navigateItem(-1)}
 					aria-label="Produto anterior"
-					disabled={isTransitioning}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none" aria-hidden="true">
 						<circle cx="17.5" cy="17.5" r="16.333" stroke="currentColor" stroke-width="1.7864"/>
@@ -501,7 +495,6 @@
 					class="category__nav-button category__nav-button--next"
 					onclick={() => navigateItem(1)}
 					aria-label="Próximo produto"
-					disabled={isTransitioning}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none" aria-hidden="true">
 						<circle cx="17.5" cy="17.5" r="16.333" stroke="currentColor" stroke-width="1.7864"/>
@@ -520,10 +513,10 @@
 	
 	.category {
 		/* Colors */
-		--color-primary: #2A86A4;
-		--color-primary-light: #DFF7FF;
-		--color-primary-dark: #1F6E7C;
-		--color-secondary: #6EB0C6;
+		--color-primary: #00BFB3;
+		--color-primary-light: #E0F7F6;
+		--color-primary-dark: #00A89D;
+		--color-secondary: #B3F0ED;
 		--color-accent: #FF8403;
 		--color-text: #000000;
 		--color-text-light: #333333;
@@ -532,7 +525,7 @@
 		--color-border-hover: #B0B0B0;
 		--color-background: #FFFFFF;
 		--color-background-light: #F8F9FA;
-		--color-background-card: #DFF7FF;
+		--color-background-card: #E0F7F6;
 		--color-shadow: rgba(0, 0, 0, 0.08);
 		--color-shadow-hover: rgba(0, 0, 0, 0.12);
 		--color-loading-bg: #F0F0F0;
@@ -553,7 +546,7 @@
 		--font-size-title-mobile: 28px;
 		--font-size-title-tablet: 32px;
 		--font-size-title-desktop: 36px;
-		--font-size-tab: 12.061px;
+		--font-size-tab: 12px;
 		--font-size-card-title: 17px;
 		--font-size-card-description: 12px;
 		--font-size-card-price: 13px;
@@ -563,19 +556,19 @@
 		--font-weight-bold: 700;
 		--font-weight-extra-bold: 800;
 		--line-height-normal: normal;
-		--line-height-card-title: 17.104px;
-		--line-height-card-description: 13.157px;
-		--line-height-tab: 22.398px;
+		--line-height-card-title: 1.2;
+		--line-height-card-description: 1.1;
+		--line-height-tab: 1.4;
 		--letter-spacing-title: 0.5px;
-		--letter-spacing-tab: 0.241px;
+		--letter-spacing-tab: 0.24px;
 		--letter-spacing-card-title: 0.34px;
 		--letter-spacing-card-description: 0.24px;
 		--letter-spacing-card-price: 0.26px;
 		
 		/* Dimensions */
 		--container-max-width: 1440px; /* Alinhado com header */
-		--tab-width: 182.632px;
-		--tab-height: 41.351px;
+		--tab-width: 182px;
+		--tab-height: 50px;
 		--card-width-mobile: 280px;
 		--card-width-desktop: 350px;
 		--card-body-min-height: 140px;
@@ -583,14 +576,14 @@
 		--button-height: 36px;
 		--nav-button-size: 35px;
 		--slider-height: 2px;
-		--slider-thumb-height: 1.786px;
+		--slider-thumb-height: 2px;
 		
 		/* Border radius */
 		--border-radius-sm: 6px;
 		--border-radius-md: 12px;
-		--border-radius-lg: 27.567px;
-		--border-radius-xl: 28.582px;
-		--border-radius-button: 8.4px;
+		--border-radius-lg: 28px;
+		--border-radius-xl: 28px;
+		--border-radius-button: 8px;
 		
 		/* Transitions */
 		--transition-fast: 200ms ease-out;
@@ -657,7 +650,7 @@
 		gap: var(--spacing-sm);
 		margin-bottom: var(--spacing-3xl);
 		overflow-x: auto;
-		padding: 0 var(--spacing-md);
+		padding: var(--spacing-md) var(--spacing-xl);
 		scrollbar-width: none;
 		-ms-overflow-style: none;
 		scroll-behavior: smooth;
@@ -677,9 +670,10 @@
 		flex-direction: column;
 		justify-content: center;
 		flex-shrink: 0;
+		padding: var(--spacing-sm) var(--spacing-md);
 		
 		border-radius: var(--border-radius-lg);
-		border: 0.861px solid var(--color-border);
+		border: 1px solid var(--color-border);
 		background: var(--color-background);
 		
 		font-family: var(--font-family);
@@ -691,19 +685,17 @@
 		text-align: center;
 		
 		cursor: pointer;
-		transition: all var(--transition-base);
+		transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 		white-space: nowrap;
 		outline: none;
 		user-select: none;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		box-sizing: border-box;
 	}
 	
 	.category__tab:hover:not(.category__tab--active):not(:disabled) {
 		background: var(--color-background-light);
 		color: var(--color-text-light);
 		border-color: var(--color-border-hover);
-		transform: translateY(-1px);
 	}
 	
 	.category__tab:focus {
@@ -715,23 +707,15 @@
 		background: var(--color-primary-light);
 		color: var(--color-primary);
 		border-color: var(--color-primary);
-		box-shadow: 0 2px 8px rgba(42, 134, 164, 0.2);
-	}
-	
-	.category__tab--active:hover {
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		border-color: var(--color-primary);
 	}
 	
 	.category__tab:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
-		transform: none;
 	}
 	
-	.category__tab--transitioning {
-		pointer-events: none;
+	.category__tab:last-child {
+		margin-right: 0;
 	}
 	
 	/* =============================================================================
@@ -759,9 +743,9 @@
 	
 	.category__grid {
 		display: flex;
-		gap: var(--spacing-md);
+		gap: var(--dynamic-gap, var(--spacing-md));
 		overflow-x: auto;
-		padding: 0 var(--spacing-md);
+		padding: 0 var(--spacing-md) 0 var(--spacing-md);
 		scrollbar-width: none;
 		-ms-overflow-style: none;
 		scroll-behavior: smooth;
@@ -773,10 +757,6 @@
 		display: none;
 	}
 	
-	.category__grid--transitioning {
-		pointer-events: none;
-	}
-	
 	/* =============================================================================
 	   CARDS
 	   ============================================================================= */
@@ -786,33 +766,26 @@
 		border-radius: var(--border-radius-md);
 		box-shadow: 0 2px 8px var(--color-shadow);
 		overflow: hidden;
-		transition: all var(--transition-base);
+		transition: box-shadow 0.2s ease, border-color 0.2s ease;
 		border: 1px solid var(--color-loading-bg);
 		display: flex;
 		flex-direction: column;
 		flex-shrink: 0;
-		width: var(--card-width-mobile);
-		will-change: transform;
+		width: var(--dynamic-card-width, var(--card-width-mobile));
 	}
 	
-	.category__card:hover:not(.category__card--loading) {
-		transform: translateY(-4px);
-		box-shadow: 0 8px 25px var(--color-shadow-hover);
+	.category__card:hover {
+		box-shadow: 0 4px 12px var(--color-shadow-hover);
 	}
 	
 	.category__card--active {
-		transform: translateY(-2px);
-		box-shadow: 0 6px 20px var(--color-shadow-hover);
+		box-shadow: 0 4px 12px var(--color-shadow-hover);
 		border-color: var(--color-primary);
 	}
 	
 	.category__card--loading {
 		pointer-events: none;
 		opacity: 0.8;
-	}
-	
-	.category__card--transitioning {
-		transition: none;
 	}
 	
 	/* =============================================================================
@@ -832,14 +805,14 @@
 		height: 100%;
 		object-fit: cover;
 		object-position: center;
-		transition: transform var(--transition-base);
+		transition: none;
 		user-select: none;
 		-webkit-user-select: none;
 		-webkit-user-drag: none;
 	}
 	
 	.category__card:hover .category__card-image img {
-		transform: scale(1.05);
+		transform: none;
 	}
 	
 	/* =============================================================================
@@ -868,7 +841,7 @@
 	.category__card-description {
 		display: -webkit-box;
 		width: 100%;
-		height: 26.314px;
+		min-height: 26px;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
@@ -921,14 +894,14 @@
 		border: none;
 		
 		text-decoration: none;
-		transition: all var(--transition-base);
+		transition: background-color 0.2s ease;
 		outline: none;
 	}
 	
 	.category__card-button span {
 		display: flex;
 		width: 65px;
-		height: 10px;
+		height: auto;
 		flex-direction: column;
 		justify-content: center;
 		flex-shrink: 0;
@@ -937,21 +910,19 @@
 		font-family: var(--font-family);
 		font-size: var(--font-size-button);
 		font-weight: var(--font-weight-bold);
-		line-height: 0px;
+		line-height: 1;
 		text-align: center;
 	}
 	
 	.category__card-button svg {
-		width: 2.625px;
-		height: 6.3px;
+		width: 3px;
+		height: 6px;
 		flex-shrink: 0;
 		color: var(--color-background);
 	}
 	
 	.category__card-button:hover {
 		background: var(--color-primary-dark);
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(42, 134, 164, 0.3);
 	}
 	
 	.category__card-button:focus {
@@ -1061,15 +1032,14 @@
 		border: none;
 		padding: 0;
 		cursor: pointer;
-		transition: all var(--transition-base);
+		transition: opacity 0.2s ease;
 		color: var(--color-secondary);
 		outline: none;
 		border-radius: 50%;
 	}
 	
 	.category__nav-button:hover:not(:disabled) {
-		opacity: 0.8;
-		transform: scale(1.05);
+		opacity: 0.7;
 	}
 	
 	.category__nav-button:focus {
@@ -1080,18 +1050,17 @@
 	.category__nav-button:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
-		transform: none;
 	}
 	
 	/* =============================================================================
 	   RESPONSIVE BREAKPOINTS
 	   ============================================================================= */
 	
-	/* Mobile pequeno: até 767px */
+	/* Mobile: até 767px */
 	@media (max-width: 767px) {
 		.category__tabs {
 			justify-content: flex-start;
-			padding: 0 var(--spacing-lg) 0 var(--spacing-xl);
+			padding: var(--spacing-md) var(--spacing-xl);
 			overflow-x: auto;
 			-webkit-overflow-scrolling: touch;
 		}
@@ -1114,7 +1083,7 @@
 		}
 		
 		.category__grid {
-			padding: 0 var(--spacing-lg) 0 var(--spacing-xl);
+			padding: 0 var(--spacing-xl) 0 var(--spacing-xl);
 			scroll-snap-type: x mandatory;
 			-webkit-overflow-scrolling: touch;
 			scroll-behavior: smooth;
@@ -1126,35 +1095,21 @@
 		}
 		
 		.category__card:hover {
-			transform: translateY(-4px);
-			box-shadow: 0 8px 25px var(--color-shadow-hover);
+			box-shadow: 0 4px 12px var(--color-shadow-hover);
 		}
 		
 		.category__card--active {
-			transform: translateY(-2px);
-			box-shadow: 0 6px 20px var(--color-shadow-hover);
+			box-shadow: 0 4px 12px var(--color-shadow-hover);
 			border-color: var(--color-primary);
 		}
 		
 		.category__card:last-child {
-			margin-right: var(--spacing-xl);
+			margin-right: var(--spacing-3xl);
 		}
 	}
 	
-	/* Tablets em geral: 768px - 1023px */
+	/* Tablet: 768px - 1023px */
 	@media (min-width: 768px) and (max-width: 1023px) {
-		.category__tabs {
-			max-width: 100%;
-			box-sizing: border-box;
-		}
-		
-		.category__tab {
-			box-sizing: border-box;
-		}
-	}
-	
-	/* Tablet pequeno: 768px - 899px */
-	@media (min-width: 768px) and (max-width: 899px) {
 		.category {
 			padding: var(--spacing-2xl) 0;
 		}
@@ -1168,8 +1123,10 @@
 		}
 		
 		.category__tabs {
+			max-width: 100%;
+			box-sizing: border-box;
 			gap: var(--spacing-sm);
-			padding: 0 var(--spacing-md);
+			padding: var(--spacing-md) var(--spacing-xl);
 			justify-content: flex-start;
 			overflow-x: auto;
 			-webkit-overflow-scrolling: touch;
@@ -1178,10 +1135,11 @@
 		.category__tab {
 			width: var(--tab-width);
 			flex-shrink: 0;
+			box-sizing: border-box;
 		}
 		
 		.category__tab:last-child {
-			margin-right: var(--spacing-md);
+			margin-right: var(--spacing-xl);
 		}
 		
 		.category__content {
@@ -1198,16 +1156,9 @@
 		
 		.category__grid {
 			padding: 0 var(--spacing-md);
-			gap: var(--spacing-md);
 			overflow-x: auto;
 			transform: none !important;
 			transition: none !important;
-		}
-		
-		.category__card {
-			width: 30vw;
-			min-width: 220px;
-			max-width: 280px;
 		}
 		
 		.category__card:hover {
@@ -1222,8 +1173,8 @@
 		}
 	}
 	
-	/* Tablet médio: 900px - 1023px */
-	@media (min-width: 900px) and (max-width: 1023px) {
+	/* Desktop: 1024px+ */
+	@media (min-width: 1024px) {
 		.category {
 			padding: var(--spacing-3xl) 0;
 		}
@@ -1233,20 +1184,16 @@
 		}
 		
 		.category__title {
-			font-size: var(--font-size-title-tablet);
+			font-size: var(--font-size-title-desktop);
 		}
 		
 		.category__tabs {
-			gap: var(--spacing-sm);
-			padding: 0;
+			padding: var(--spacing-md) var(--spacing-2xl);
 			justify-content: center;
-			overflow-x: auto;
-			-webkit-overflow-scrolling: touch;
 		}
 		
-		.category__tab {
-			width: var(--tab-width);
-			flex-shrink: 0;
+		.category__tab:last-child {
+			margin-right: 0;
 		}
 		
 		.category__content {
@@ -1258,112 +1205,13 @@
 		
 		.category__carousel-container {
 			width: 100%;
+			margin: 0 auto;
 			overflow: visible;
 		}
 		
 		.category__grid {
 			padding: 0 var(--spacing-md);
-			gap: var(--spacing-lg);
-			overflow-x: auto;
-			transform: none !important;
-			transition: none !important;
-		}
-		
-		.category__card {
-			width: 25vw;
-			min-width: 240px;
-			max-width: 300px;
-		}
-		
-		.category__card:hover {
-			transform: none;
-			box-shadow: 0 2px 8px var(--color-shadow);
-		}
-		
-		.category__card--active {
-			transform: none;
-			box-shadow: 0 2px 8px var(--color-shadow);
-			border-color: var(--color-loading-bg);
-		}
-	}
-	
-	/* Desktop pequeno: 1024px - 1199px */
-	@media (min-width: 1024px) and (max-width: 1199px) {
-		.category {
-			padding: var(--spacing-3xl) 0;
-		}
-		
-		.category__container {
-			padding: 0 var(--spacing-2xl);
-		}
-		
-		.category__title {
-			font-size: var(--font-size-title-desktop);
-		}
-		
-		.category__content {
-			padding: 0;
-			margin: 0 auto;
-			width: 100%;
-			overflow: hidden;
-		}
-		
-		.category__carousel-container {
-			width: 100%;
-			max-width: calc(4 * 260px + 3 * 18px + 2 * var(--spacing-md));
-			margin: 0 auto;
-			overflow: hidden;
-		}
-		
-		.category__grid {
-			padding: 0;
-			gap: 18px;
 			overflow-x: visible;
-			width: calc(8 * 260px + 7 * 18px);
-		}
-		
-		.category__card {
-			width: 260px;
-		}
-	}
-	
-	/* Desktop médio: 1200px - 1439px */
-	@media (min-width: 1200px) and (max-width: 1439px) {
-		.category {
-			padding: var(--spacing-4xl) 0;
-		}
-		
-		.category__container {
-			padding: 0 var(--spacing-2xl);
-		}
-		
-		.category__title {
-			font-size: var(--font-size-title-desktop);
-		}
-		
-		.category__content {
-			padding: 0;
-			margin: 0 auto;
-			width: 100%;
-			overflow: hidden;
-		}
-		
-		.category__carousel-container {
-			width: 100%;
-			max-width: calc(4 * 280px + 3 * 20px + 2 * var(--spacing-md));
-			margin: 0 auto;
-			overflow: hidden;
-		}
-		
-		.category__grid {
-			padding: 0;
-			gap: 20px;
-			overflow-x: visible;
-			width: calc(8 * 280px + 7 * 20px);
-		}
-		
-		.category__card {
-			width: 280px;
 		}
 	}
 	
@@ -1377,37 +1225,20 @@
 			padding: 0 var(--spacing-3xl);
 		}
 		
-		.category__title {
-			font-size: var(--font-size-title-desktop);
-		}
-		
-		.category__content {
-			padding: 0;
-			margin: 0 auto;
-			width: 100%;
-			overflow: hidden;
+		.category__tabs {
+			padding: var(--spacing-md) var(--spacing-3xl);
 		}
 		
 		.category__carousel-container {
-			width: 100%;
-			max-width: calc(4 * 350px + 3 * 24px + 2 * var(--spacing-md));
-			margin: 0 auto;
-			overflow: hidden;
+			max-width: calc(4 * 350px + 3 * 24px + var(--spacing-3xl));
 		}
 		
 		.category__grid {
-			padding: 0;
-			gap: var(--spacing-xl);
-			overflow-x: visible;
-			width: calc(8 * 350px + 7 * 24px);
-		}
-		
-		.category__card {
-			width: var(--card-width-desktop);
+			padding: 0 var(--spacing-lg);
 		}
 	}
 	
-	/* Mobile: padding extra para evitar corte do hover */
+	/* Padding extra para evitar corte do hover */
 	@media (max-width: 1023px) {
 		.category__grid {
 			padding-top: var(--spacing-xs);
@@ -1419,7 +1250,6 @@
 		}
 	}
 	
-	/* Desktop: padding extra para evitar corte do hover */
 	@media (min-width: 1024px) {
 		.category__content {
 			padding: var(--spacing-sm) 0;
