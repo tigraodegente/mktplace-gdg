@@ -28,6 +28,10 @@
 		userMenuOpen = !userMenuOpen;
 	}
 	
+	function closeUserMenu() {
+		userMenuOpen = false;
+	}
+	
 	// Controlar mini carrinho apenas com clique
 	function toggleMiniCart() {
 		miniCartVisible = !miniCartVisible;
@@ -127,6 +131,7 @@
 									<div class="px-1">
 										<a 
 											href="/minha-conta"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -138,6 +143,7 @@
 										
 										<a
 											href="/meus-pedidos"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -155,6 +161,7 @@
 									<div class="px-1">
 										<a
 											href="/listas-presentes?user_id={$user?.id}"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -166,6 +173,7 @@
 										
 										<a
 											href="/notificacoes"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -183,6 +191,7 @@
 									<div class="px-1">
 										<a
 											href="/chat"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -194,6 +203,7 @@
 										
 										<a
 											href="/suporte"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -205,6 +215,7 @@
 										
 										<a
 											href="/devolucoes"
+											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
@@ -221,7 +232,7 @@
 									<!-- Botão Sair -->
 									<div class="px-1">
 										<button 
-											onclick={onLogout}
+											onclick={() => { closeUserMenu(); onLogout(); }}
 											class="flex items-center gap-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
 										>
