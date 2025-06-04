@@ -31,19 +31,29 @@
 	}
 	
 	onMount(() => {
-		// Carregar categorias imediatamente sem delay
 		loadCategories();
 	});
 	
+	// iPad-specific: controle de scroll e body overflow
 	$effect(() => {
 		if (isOpen) {
+			// Para iPad, precisamos ser mais específicos
 			document.body.style.overflow = 'hidden';
+			document.body.style.position = 'fixed';
+			document.body.style.width = '100%';
+			document.body.style.height = '100%';
 		} else {
 			document.body.style.overflow = '';
+			document.body.style.position = '';
+			document.body.style.width = '';
+			document.body.style.height = '';
 		}
 		
 		return () => {
 			document.body.style.overflow = '';
+			document.body.style.position = '';
+			document.body.style.width = '';
+			document.body.style.height = '';
 		};
 	});
 	
@@ -55,6 +65,14 @@
 			newExpanded.add(categoryId);
 		}
 		expandedCategories = newExpanded;
+	}
+	
+	// Helper para calcular total de produtos das subcategorias
+	function getTotalProductCount(category: Category): number {
+		if (!category.subcategories?.length) {
+			return category.product_count || 0;
+		}
+		return category.subcategories.reduce((total, sub) => total + (sub.product_count || 0), 0);
 	}
 	
 	async function handleLogout() {
@@ -69,9 +87,10 @@
 </script>
 
 {#if isOpen}
-	<!-- Overlay -->
+	<!-- Overlay - iPad específico -->
 	<div
-		class="fixed inset-0 bg-black/50 z-40 md:hidden"
+		class="fixed inset-0 bg-black/50 z-[9998] lg:hidden"
+		style="z-index: 9998 !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; -webkit-transform: translate3d(0,0,0);"
 		onclick={onClose}
 		onkeydown={(e) => e.key === 'Escape' && onClose()}
 		transition:fade={{ duration: 200 }}
@@ -80,9 +99,10 @@
 		aria-label="Fechar menu"
 	></div>
 	
-	<!-- Menu -->
+	<!-- Menu - iPad específico -->
 	<div
-		class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] bg-white z-50 md:hidden overflow-y-auto"
+		class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] bg-white z-[9999] lg:hidden overflow-y-auto"
+		style="z-index: 9999 !important; position: fixed !important; top: 0 !important; left: 0 !important; height: 100vh !important; -webkit-transform: translate3d(0,0,0); -webkit-overflow-scrolling: touch;"
 		transition:fly={{ x: -320, duration: 300 }}
 	>
 		<!-- Header -->
@@ -94,7 +114,8 @@
 			<div class="flex justify-end">
 				<button
 					onclick={onClose}
-					class="text-white p-2"
+					class="text-white p-2 touch-manipulation"
+					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Fechar menu"
 				>
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,8 +140,8 @@
 				<a
 					href="/login"
 					onclick={onClose}
-					class="block w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-center text-gray-800 font-medium shadow-sm hover:bg-gray-50 transition-colors"
-					style="font-family: 'Lato', sans-serif;"
+					class="block w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-center text-gray-800 font-medium shadow-sm hover:bg-gray-50 transition-colors touch-manipulation"
+					style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 				>
 					Entre ou cadastre-se
 				</a>
@@ -143,22 +164,22 @@
 					</div>
 				</div>
 			{:else if categories.length > 0}
-				{#each categories as category}
-					<div class="border-b border-gray-100">
-						{#if category.subcategories.length > 0}
+				<div class="px-1">
+					{#each categories as category (category.id)}
+						{#if category.subcategories && category.subcategories.length > 0}
 							<button
 								onclick={() => toggleCategory(category.id)}
-								class="w-full px-4 py-3 flex items-center justify-between text-gray-800 hover:bg-gray-50 transition-colors"
-								style="font-family: 'Lato', sans-serif;"
+								class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 mb-1 touch-manipulation"
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 							>
 								<span class="flex items-center gap-2">
-									{category.name}
-									{#if category.product_count && category.product_count > 0}
-										<span class="text-xs text-gray-500">({category.product_count})</span>
+									<span>{category.name}</span>
+									{#if getTotalProductCount(category) > 0}
+										<span class="text-xs text-gray-500 font-normal">({getTotalProductCount(category)})</span>
 									{/if}
 								</span>
 								<svg 
-									class="w-5 h-5 text-gray-400 transition-transform {expandedCategories.has(category.id) ? 'rotate-180' : ''}"
+									class="w-4 h-4 text-gray-500 transition-transform {expandedCategories.has(category.id) ? 'rotate-180' : ''}"
 									fill="none" 
 									stroke="currentColor" 
 									viewBox="0 0 24 24"
@@ -168,17 +189,20 @@
 							</button>
 							
 							{#if expandedCategories.has(category.id)}
-								<div class="bg-gray-50">
-									{#each category.subcategories as subcategory}
+								<div class="mx-2 mb-2 bg-gray-50 rounded-lg">
+									{#each category.subcategories as subcategory (subcategory.id)}
 										<a
 											href="/busca?categoria={subcategory.slug}"
-											class="block py-2 pl-12 pr-4 text-sm text-gray-600 hover:bg-gray-50 hover:text-[#00BFB3] transition-colors"
+											class="block py-2 pl-8 pr-4 text-sm text-gray-600 hover:text-[#00BFB3] transition-colors first:rounded-t-lg last:rounded-b-lg touch-manipulation"
 											onclick={onClose}
+											style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 										>
-											{subcategory.name}
+											<span class="flex items-center gap-2">
+												<span>{subcategory.name}</span>
 											{#if subcategory.product_count && subcategory.product_count > 0}
-												<span class="text-xs text-gray-400 ml-1">({subcategory.product_count})</span>
+													<span class="text-xs text-gray-400">({subcategory.product_count})</span>
 											{/if}
+											</span>
 										</a>
 									{/each}
 								</div>
@@ -186,17 +210,20 @@
 						{:else}
 							<a
 								href="/busca?categoria={category.slug}"
-								class="block py-3 px-4 text-gray-700 hover:bg-gray-50 hover:text-[#00BFB3] transition-colors font-medium"
+								class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 mb-1 touch-manipulation"
 								onclick={onClose}
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 							>
-								{category.name}
-								{#if category.product_count && category.product_count > 0}
-									<span class="text-xs text-gray-500 ml-1">({category.product_count})</span>
+								<span class="flex items-center gap-2">
+									<span>{category.name}</span>
+									{#if getTotalProductCount(category) > 0}
+										<span class="text-xs text-gray-500 font-normal">({getTotalProductCount(category)})</span>
 								{/if}
+								</span>
 							</a>
 						{/if}
+					{/each}
 					</div>
-				{/each}
 			{:else}
 				<div class="px-4 py-4 text-center text-gray-500 text-sm">
 					Nenhuma categoria disponível
@@ -212,141 +239,150 @@
 				</h3>
 			</div>
 			
+			<div class="px-1">
 			<a
 				href="/listas-presentes"
 				onclick={onClose}
-				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-				style="font-family: 'Lato', sans-serif;"
+					class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+					style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+				>
+					<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+					</svg>
+					<span>Listas de Presentes</span>
+				</a>
+				
+				<a
+					href="/promocoes"
+					onclick={onClose}
+					class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+					style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 			>
-				<span class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-[#FF8403]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+					</svg>
+					<span>Promoções</span>
+				</a>
+				
+				<a
+					href="/blog"
+					onclick={onClose}
+					class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+					style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+				>
+					<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.168 18.477 18.582 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
 					</svg>
-					Listas de Presentes
-				</span>
+					<span>Blog</span>
 			</a>
+			</div>
 		</div>
 		
 		<!-- Links da Conta (se autenticado) -->
 		{#if $isAuthenticated}
 			<div class="border-t border-gray-200 py-2">
-				<div class="px-4 py-2">
-					<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider" style="font-family: 'Lato', sans-serif;">
-						Minha Conta
-					</h3>
-				</div>
-				
+				<!-- Seção Principal da Conta -->
+				<div class="px-1">
 				<a
 					href="/minha-conta"
 					onclick={onClose}
-					class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-					style="font-family: 'Lato', sans-serif;"
+						class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+						style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 				>
-					<span class="flex items-center gap-3">
-						<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 						</svg>
-						Meus Dados
-					</span>
+						<span>Minha Conta</span>
 				</a>
 				
 				<a
 					href="/meus-pedidos"
 					onclick={onClose}
-					class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-					style="font-family: 'Lato', sans-serif;"
+						class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+						style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 				>
-					<span class="flex items-center gap-3">
-						<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+						<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
 						</svg>
-						Meus Pedidos
-					</span>
+						<span>Meus Pedidos</span>
 				</a>
 				
 				<a
 					href="/favoritos"
 					onclick={onClose}
-					class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-					style="font-family: 'Lato', sans-serif;"
+						class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+						style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 				>
-					<span class="flex items-center gap-3">
-						<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
 						</svg>
-						Favoritos
-					</span>
+						<span>Favoritos</span>
 				</a>
-				
-				<a
-					href="/listas-presentes?user_id={$user?.id}"
-					onclick={onClose}
-					class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-					style="font-family: 'Lato', sans-serif;"
-				>
-					<span class="flex items-center gap-3">
-						<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 0v1.5a2 2 0 108 8 2 2 0 11-4 0V8a2 2 0 11-4 0zM9 21V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z" />
-						</svg>
-						🎁 Minhas Listas
-					</span>
-				</a>
-				
-				<button
-					onclick={handleLogout}
-					class="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors"
-					style="font-family: 'Lato', sans-serif;"
-				>
-					<span class="flex items-center gap-3">
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-						</svg>
-						Sair
-					</span>
-				</button>
+				</div>
 			</div>
 		{/if}
 		
 		<!-- Ajuda -->
-		<div class="border-t border-gray-200 py-2 mb-4">
+		<div class="border-t border-gray-200 py-2">
 			<div class="px-4 py-2">
 				<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider" style="font-family: 'Lato', sans-serif;">
 					Ajuda
 				</h3>
 			</div>
 			
+			<div class="px-1">
 			<a
 				href="/central-ajuda"
 				onclick={onClose}
-				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-				style="font-family: 'Lato', sans-serif;"
+					class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+					style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 			>
-				<span class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
-					Central de Ajuda
-				</span>
+					<span>Central de Ajuda</span>
 			</a>
 			
 			<a
 				href="/fale-conosco"
 				onclick={onClose}
-				class="block px-4 py-3 text-gray-800 hover:bg-gray-50 transition-colors"
-				style="font-family: 'Lato', sans-serif;"
+					class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 touch-manipulation"
+					style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 			>
-				<span class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
 					</svg>
-					Fale Conosco
-				</span>
+					<span>Fale Conosco</span>
 			</a>
+			</div>
 		</div>
+		
+		<!-- Botão Sair - Sempre no final (se autenticado) -->
+		{#if $isAuthenticated}
+			<div class="border-t border-gray-200 py-2 mb-4">
+				<div class="px-1">
+					<button
+						onclick={handleLogout}
+						class="flex items-center gap-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 active:text-red-700 active:bg-red-50 rounded-lg transition-all mx-2 touch-manipulation"
+						style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+					>
+						<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+						</svg>
+						<span>Sair</span>
+					</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 {/if}
 
 <style>
+	/* iPad-specific optimizations */
+	:global(.touch-manipulation) {
+		touch-action: manipulation;
+	}
+	
 	/* Animação de rotação */
 	:global(.rotate-180) {
 		transform: rotate(180deg);
@@ -366,8 +402,11 @@
 		animation: spin 1s linear infinite;
 	}
 	
-	/* Prevenir scroll do backdrop */
-	:global(body.menu-open) {
-		overflow: hidden;
+	/* iOS Safari specific fixes */
+	@supports (-webkit-touch-callout: none) {
+		:global(.fixed) {
+			-webkit-transform: translate3d(0,0,0);
+			transform: translate3d(0,0,0);
+		}
 	}
 </style> 

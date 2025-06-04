@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
       
       const queryPromise = (async () => {
         let baseQuery = `
-          SELECT id, user_id, subject, status, priority, category,
+          SELECT id, user_id, subject, status, priority, category_id,
                  created_at, updated_at
           FROM support_tickets
           WHERE 1=1
@@ -58,7 +58,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
           subject: 'Problema com entrega',
           status: 'open',
           priority: 'medium',
-          category: 'shipping',
+          category_id: 'shipping',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
@@ -105,13 +105,13 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
         // STEP 2: Criar ticket
         const ticketInserts = await db.query`
         INSERT INTO support_tickets (
-          user_id, ticket_number, subject, category, order_id, 
+          user_id, ticket_number, subject, category_id, order_id, 
           description, status, priority, created_at, updated_at
           ) VALUES (
             ${userId}, ${ticketNumber}, ${subject}, ${category || 'Outros'}, ${order_id || null},
             ${message}, 'open', ${priority || 3}, NOW(), NOW()
           )
-        RETURNING id, ticket_number, subject, category, order_id, status, priority, created_at
+        RETURNING id, ticket_number, subject, category_id, order_id, status, priority, created_at
         `;
 
         const ticket = ticketInserts[0];
@@ -135,7 +135,7 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
           id: ticket.id,
           ticket_number: ticket.ticket_number,
           subject: ticket.subject,
-          category: ticket.category,
+          category_id: ticket.category_id,
           order_id: ticket.order_id,
           status: ticket.status,
           priority: parseInt(ticket.priority),
@@ -171,7 +171,7 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
           id: `ticket-${Date.now()}`,
           ticket_number: ticketNumber,
           subject: subject,
-          category: category || 'Outros',
+          category_id: category || 'Outros',
           order_id: order_id || null,
           status: 'open',
           priority: priority || 3,

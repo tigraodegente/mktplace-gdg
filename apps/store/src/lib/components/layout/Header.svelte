@@ -129,29 +129,29 @@
 								>
 									<!-- Seção Principal da Conta -->
 									<div class="px-1">
-										<a 
-											href="/minha-conta"
+									<a 
+										href="/minha-conta"
 											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
-											role="menuitem"
-										>
+										role="menuitem"
+									>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 											</svg>
 											<span>Minha Conta</span>
-										</a>
+									</a>
 										
-										<a
-											href="/meus-pedidos"
+									<a
+										href="/meus-pedidos"
 											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
-										>
+									>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-											</svg>
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+										</svg>
 											<span>Meus Pedidos</span>
-										</a>
+									</a>
 									</div>
 									
 									<!-- Divisor -->
@@ -159,24 +159,24 @@
 									
 									<!-- Seção de Recursos -->
 									<div class="px-1">
-										<a
-											href="/listas-presentes?user_id={$user?.id}"
+									<a
+										href="/listas-presentes?user_id={$user?.id}"
 											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
-										>
+									>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-											</svg>
+										</svg>
 											<span>Minhas Listas</span>
-										</a>
+									</a>
 										
-										<a
-											href="/notificacoes"
+									<a
+										href="/notificacoes"
 											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
-										>
+									>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 2a7 7 0 00-7 7v4.586l-.293.293A1 1 0 003 15h14a1 1 0 00.293-1.121L17 13.586V9a7 7 0 00-7-7zM8 20a2 2 0 104 0" />
 											</svg>
@@ -197,33 +197,33 @@
 										>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-											</svg>
+										</svg>
 											<span>Chat & Suporte</span>
-										</a>
+									</a>
 										
-										<a
-											href="/suporte"
+									<a
+										href="/suporte"
 											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
-										>
+									>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-											</svg>
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
 											<span>FAQ & Base de Conhecimento</span>
-										</a>
+									</a>
 										
-										<a
-											href="/devolucoes"
+									<a
+										href="/devolucoes"
 											onclick={closeUserMenu}
 											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
 											role="menuitem"
-										>
+									>
 											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-											</svg>
+										</svg>
 											<span>Devoluções & Trocas</span>
-										</a>
+									</a>
 									</div>
 									
 									<!-- Divisor para Sair -->
@@ -231,16 +231,16 @@
 									
 									<!-- Botão Sair -->
 									<div class="px-1">
-										<button 
+									<button 
 											onclick={() => { closeUserMenu(); onLogout(); }}
 											class="flex items-center gap-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 group mx-2"
-											role="menuitem"
-										>
+										role="menuitem"
+									>
 											<svg class="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
 											</svg>
 											<span>Sair</span>
-										</button>
+									</button>
 									</div>
 								</div>
 							{/if}
