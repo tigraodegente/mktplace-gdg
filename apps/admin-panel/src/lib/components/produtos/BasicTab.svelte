@@ -23,7 +23,8 @@
 		sku: false,
 		tags: false,
 		category: false,
-		brand: false
+		brand: false,
+		barcode: false
 	});
 	
 	// Função de enriquecimento com IA
@@ -102,6 +103,10 @@
 						} else {
 							toast.info('Nenhuma marca conhecida foi identificada');
 						}
+						break;
+					case 'barcode':
+						formData.barcode = result.data;
+						toast.success('Código de barras gerado com IA!');
 						break;
 				}
 				
@@ -298,12 +303,28 @@
 				<label class="block text-sm font-medium text-gray-700 mb-2">
 					Código de Barras (EAN/UPC)
 				</label>
-				<input
-					type="text"
-					bind:value={formData.barcode}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="7891234567890"
-				/>
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={formData.barcode}
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="7891234567890"
+					/>
+					<button
+						type="button"
+						onclick={() => enrichField('barcode')}
+						disabled={aiLoading.barcode || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Gerar código de barras com IA"
+					>
+						{#if aiLoading.barcode}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size={20} color="white" />
+							<span class="text-sm font-medium">IA</span>
+						{/if}
+					</button>
+				</div>
 			</div>
 			
 			<!-- Modelo -->

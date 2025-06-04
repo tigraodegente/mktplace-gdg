@@ -81,7 +81,6 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           p.original_price,
           p.cost,
           p.quantity as stock,
-          p.category_id,
           p.brand_id,
           p.seller_id,
           p.description,
@@ -93,6 +92,8 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
           p.sales_count,
           p.created_at,
           p.updated_at,
+          -- Categoria primária
+          pc_primary.category_id,
           c.name as category_name,
           c.slug as category_slug,
           b.name as brand_name,
@@ -106,7 +107,8 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
             LIMIT 1
           ) as image
         FROM products p
-        LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN product_categories pc_primary ON pc_primary.product_id = p.id AND pc_primary.is_primary = true
+        LEFT JOIN categories c ON c.id = pc_primary.category_id
         LEFT JOIN brands b ON b.id = p.brand_id
         LEFT JOIN sellers s ON s.id = p.seller_id
         ${whereClause}
@@ -210,14 +212,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
-    // Criar produto
+    // Criar produto (sem category_id)
     const result = await db.query`
       INSERT INTO products (
         name, slug, sku, barcode, model,
         description, short_description,
         price, original_price, cost, currency,
         quantity, stock_location, track_inventory, allow_backorder,
-        category_id, brand_id, seller_id,
+        brand_id, seller_id,
         status, is_active, featured, condition,
         weight, height, width, length,
         has_free_shipping, delivery_days_min, delivery_days_max,
@@ -240,7 +242,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         ${data.stock_location || null},
         ${data.track_inventory !== false},
         ${data.allow_backorder || false},
-        ${data.category_id || null},
         ${data.brand_id || null},
         ${data.seller_id || null},
         ${data.status || 'draft'},
@@ -265,6 +266,28 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     
     const newProduct = result[0];
     console.log('Produto criado:', newProduct);
+    
+    // Adicionar categorias usando a nova tabela N:N
+    if (data.category_ids && Array.isArray(data.category_ids) && data.category_ids.length > 0) {
+      // Primeira categoria é a primária por padrão
+      const primaryCategoryId = data.primary_category_id || data.category_ids[0];
+      
+      for (let i = 0; i < data.category_ids.length; i++) {
+        const categoryId = data.category_ids[i];
+        const isPrimary = categoryId === primaryCategoryId;
+        
+        await db.query`
+          INSERT INTO product_categories (product_id, category_id, is_primary)
+          VALUES (${newProduct.id}, ${categoryId}, ${isPrimary})
+        `;
+      }
+    } else if (data.category_id) {
+      // Compatibilidade com código antigo (categoria única)
+      await db.query`
+        INSERT INTO product_categories (product_id, category_id, is_primary)
+        VALUES (${newProduct.id}, ${data.category_id}, true)
+      `;
+    }
     
     // Adicionar imagens se fornecidas
     if (data.images && Array.isArray(data.images) && data.images.length > 0) {

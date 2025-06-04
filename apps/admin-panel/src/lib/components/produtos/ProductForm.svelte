@@ -181,12 +181,23 @@
 			const method = productId ? 'PUT' : 'POST';
 			const url = productId ? `/api/products/${productId}` : '/api/products';
 			
+			// Preparar dados para envio
+			const dataToSend = {
+				...formData,
+				// Garantir que enviamos category_ids ao invés de category_id
+				category_ids: formData.category_ids || (formData.category_id ? [formData.category_id] : []),
+				primary_category_id: formData.primary_category_id || formData.category_ids?.[0] || formData.category_id
+			};
+			
+			// Remover category_id se estiver presente (campo legado)
+			delete dataToSend.category_id;
+			
 			const response = await fetch(url, {
 				method,
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(formData)
+				body: JSON.stringify(dataToSend)
 			});
 
 			if (response.ok) {

@@ -1,5 +1,8 @@
 <script lang="ts">
-	export let formData: any;
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import { toast } from '$lib/stores/toast';
+	
+	let { formData = $bindable() } = $props();
 
 	interface OptionValue {
 		id: number;
@@ -33,12 +36,13 @@
 	if (!formData.product_variants) formData.product_variants = [];
 	if (!formData.has_variants) formData.has_variants = false;
 
-	// Estados locais
-	let newOptionName = '';
-	let newOptionValue = '';
-	let selectedOptionIndex = -1;
-	let editingVariant: ProductVariant | null = null;
-	let showVariantForm = false;
+	// Estados locais com $state
+	let newOptionName = $state('');
+	let newOptionValue = $state('');
+	let selectedOptionIndex = $state(-1);
+	let editingVariant = $state<ProductVariant | null>(null);
+	let showVariantForm = $state(false);
+	let aiLoading = $state(false);
 
 	// Opções comuns predefinidas
 	const commonOptions = [
@@ -51,7 +55,7 @@
 	];
 
 	// Dados para formulário de variant
-	let variantFormData: ProductVariant = {
+	let variantFormData = $state<ProductVariant>({
 		id: 0,
 		sku: '',
 		price: '',
@@ -62,7 +66,62 @@
 		barcode: '',
 		is_active: true,
 		option_values: {}
-	};
+	});
+
+	// Sugerir variações com IA
+	async function suggestVariationsWithAI() {
+		if (!formData.name) {
+			toast.error('Por favor, preencha o nome do produto primeiro');
+			return;
+		}
+
+		aiLoading = true;
+		try {
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					field: 'variations',
+					currentData: {
+						name: formData.name,
+						description: formData.description,
+						category: formData.category_ids?.[0] || formData.category
+					}
+				})
+			});
+
+			if (!response.ok) throw new Error('Erro ao sugerir variações');
+
+			const result = await response.json();
+			if (result.success && result.data) {
+				// Aplicar sugestões de variações
+				formData.has_variants = true;
+				
+				// Adicionar cada tipo de variação sugerida
+				for (const variation of result.data) {
+					const newOption: ProductOption = {
+						id: Date.now().toString() + Math.random(),
+						name: variation.type,
+						position: formData.product_options.length,
+						values: variation.options.map((value: string, index: number) => ({
+							id: Date.now() + index + Math.random(),
+							value,
+							position: index
+						}))
+					};
+					formData.product_options = [...formData.product_options, newOption];
+				}
+				
+				generateVariants();
+				toast.success('Variações sugeridas com sucesso!');
+			}
+		} catch (error) {
+			console.error('Erro ao sugerir variações:', error);
+			toast.error('Erro ao sugerir variações com IA');
+		} finally {
+			aiLoading = false;
+		}
+	}
 
 	// Adicionar opção predefinida
 	function addCommonOption(optionName: string, values: string[]) {
@@ -253,8 +312,27 @@
 
 <div class="space-y-8">
 	<div class="mb-6">
-		<h3 class="text-xl font-semibold text-slate-900 mb-2">Variações do Produto</h3>
-		<p class="text-slate-600">Configure diferentes opções como cores, tamanhos, voltagens, etc.</p>
+		<div class="flex items-center justify-between">
+			<div>
+				<h3 class="text-xl font-semibold text-slate-900 mb-2">Variações do Produto</h3>
+				<p class="text-slate-600">Configure diferentes opções como cores, tamanhos, voltagens, etc.</p>
+			</div>
+			<button
+				type="button"
+				onclick={suggestVariationsWithAI}
+				disabled={aiLoading || !formData.name}
+				class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+				title="Sugerir variações com IA"
+			>
+				{#if aiLoading}
+					<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+					<span>Analisando...</span>
+				{:else}
+					<ModernIcon name="robot" size={18} color="white" />
+					<span>Sugerir com IA</span>
+				{/if}
+			</button>
+		</div>
 	</div>
 
 	<!-- ATIVAR VARIAÇÕES -->

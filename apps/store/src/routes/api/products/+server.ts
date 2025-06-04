@@ -47,8 +47,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         
         if (categories.length > 0) {
           conditions.push(`EXISTS (
-            SELECT 1 FROM categories c 
-            WHERE c.id = p.category_id 
+            SELECT 1 FROM product_categories pc
+            JOIN categories c ON c.id = pc.category_id
+            WHERE pc.product_id = p.id
             AND (
               c.slug = ANY($${paramIndex}) OR 
               EXISTS (
@@ -139,9 +140,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           WITH filtered_products AS (
             SELECT 
               p.id, p.name, p.slug, p.description, p.price, p.original_price,
-              p.category_id, p.brand_id, p.seller_id, p.quantity, p.rating_average,
+              p.brand_id, p.seller_id, p.quantity, p.rating_average,
               p.rating_count, p.sales_count, p.tags, p.sku, p.featured,
               p.is_active, p.created_at, p.updated_at, p.weight,
+              -- Categoria primária
+              pc_primary.category_id,
               c.name as category_name,
               c.slug as category_slug,
               b.name as brand_name,
@@ -149,7 +152,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
               s.company_name as seller_name,
               COUNT(*) OVER() as total_count
             FROM products p
-            LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN product_categories pc_primary ON pc_primary.product_id = p.id AND pc_primary.is_primary = true
+            LEFT JOIN categories c ON c.id = pc_primary.category_id
             LEFT JOIN brands b ON b.id = p.brand_id
             LEFT JOIN sellers s ON s.id = p.seller_id
             WHERE ${whereClause}
@@ -332,7 +336,10 @@ async function getFacets(db: any, searchQuery: string) {
           c.slug,
           c.parent_id,
           c.position,
-          (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = true) as count
+          (SELECT COUNT(DISTINCT pc.product_id) 
+           FROM product_categories pc 
+           JOIN products p ON p.id = pc.product_id 
+           WHERE pc.category_id = c.id AND p.is_active = true) as count
         FROM categories c
         WHERE c.is_active = true
       ),

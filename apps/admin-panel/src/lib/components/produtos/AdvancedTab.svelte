@@ -1,16 +1,17 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
+	import AttributesSection from './AttributesSection.svelte';
 	
 	let { formData = $bindable() } = $props();
 
 	// Inicializar campos avançados se não existirem
-	if (!formData.requires_shipping) formData.requires_shipping = true;
 	if (!formData.is_digital) formData.is_digital = false;
+	if (!formData.requires_shipping) formData.requires_shipping = true;
 	if (!formData.tax_class) formData.tax_class = 'standard';
 	if (!formData.warranty_period) formData.warranty_period = '';
 	if (!formData.manufacturing_country) formData.manufacturing_country = '';
-	if (!formData.product_condition) formData.product_condition = 'new';
+	if (!formData.condition) formData.condition = 'new';
 	if (!formData.custom_fields) formData.custom_fields = {};
 	if (!formData.related_products) formData.related_products = [];
 	if (!formData.upsell_products) formData.upsell_products = [];
@@ -36,16 +37,22 @@
 	// Adicionar campo customizado
 	function addCustomField() {
 		if (newCustomField.key.trim() && newCustomField.value.trim()) {
-			formData.custom_fields[newCustomField.key.trim()] = newCustomField.value.trim();
-			formData.custom_fields = { ...formData.custom_fields };
+			// Salvar custom_fields em specifications
+			if (!formData.specifications) formData.specifications = {};
+			if (!formData.specifications.custom_fields) formData.specifications.custom_fields = {};
+			
+			formData.specifications.custom_fields[newCustomField.key.trim()] = newCustomField.value.trim();
+			formData.specifications = { ...formData.specifications };
 			newCustomField = { key: '', value: '' };
 		}
 	}
 
 	// Remover campo customizado
 	function removeCustomField(key: string) {
-		delete formData.custom_fields[key];
-		formData.custom_fields = { ...formData.custom_fields };
+		if (formData.specifications?.custom_fields) {
+			delete formData.specifications.custom_fields[key];
+			formData.specifications = { ...formData.specifications };
+		}
 	}
 
 	// Adicionar arquivo de download
@@ -102,6 +109,13 @@
 			loadTags();
 		}
 	});
+	
+	// Extrair custom_fields de specifications
+	$effect(() => {
+		if (formData.specifications?.custom_fields) {
+			formData.custom_fields = formData.specifications.custom_fields;
+		}
+	});
 </script>
 
 <div class="space-y-8">
@@ -109,6 +123,9 @@
 		<h3 class="text-xl font-semibold text-slate-900 mb-2">Configurações Avançadas</h3>
 		<p class="text-slate-600">Configurações especiais e personalizações do produto</p>
 	</div>
+
+	<!-- ATRIBUTOS E ESPECIFICAÇÕES -->
+	<AttributesSection bind:formData={formData} />
 
 	<!-- TIPO DE PRODUTO -->
 	<div class="bg-gradient-to-r from-[#00BFB3]/10 to-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-xl p-6">
@@ -246,7 +263,7 @@
 					🔍 Condição do Produto
 				</label>
 				<select
-					bind:value={formData.product_condition}
+					bind:value={formData.condition}
 					class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 				>
 					<option value="new">✨ Novo</option>
@@ -296,10 +313,10 @@
 		</div>
 
 		<!-- Campos Adicionados -->
-		{#if Object.keys(formData.custom_fields || {}).length > 0}
+		{#if formData.specifications?.custom_fields && Object.keys(formData.specifications.custom_fields).length > 0}
 			<div class="space-y-3">
 				<h6 class="text-sm font-medium text-slate-700">Campos Criados</h6>
-				{#each Object.entries(formData.custom_fields || {}) as [key, value], index}
+				{#each Object.entries(formData.specifications.custom_fields) as [key, value], index}
 					<div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#00BFB3]/30">
 						<div class="flex-1 grid grid-cols-2 gap-3">
 							<div>
@@ -467,9 +484,10 @@
 			<div class="bg-white rounded-lg p-4 border border-slate-200">
 				<h5 class="font-medium text-slate-900 mb-2">🏷️ Condição</h5>
 				<p class="text-sm text-slate-600">
-					{formData.product_condition === 'new' ? 'Novo' : 
-					 formData.product_condition === 'used_like_new' ? 'Usado - Como Novo' :
-					 formData.product_condition || 'Não definido'}
+					{formData.condition === 'new' ? 'Novo' : 
+					 formData.condition === 'used' ? 'Usado' :
+					 formData.condition === 'refurbished' ? 'Recondicionado' :
+					 formData.condition || 'Não definido'}
 				</p>
 			</div>
 
@@ -485,7 +503,7 @@
 			<div class="bg-white rounded-lg p-4 border border-slate-200">
 				<h5 class="font-medium text-slate-900 mb-2">⚙️ Campos</h5>
 				<p class="text-sm text-slate-600">
-					{Object.keys(formData.custom_fields).length} personalizados
+					{Object.keys(formData.specifications?.custom_fields || {}).length} personalizados
 				</p>
 			</div>
 		</div>
@@ -495,53 +513,10 @@
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
 			<ModernIcon name="Package" size={20} color="#00BFB3" />
-			Gestão de Estoque
+			Gestão Avançada de Estoque
 		</h4>
 		
 		<div class="space-y-6">
-			<!-- Rastreamento de Estoque -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.track_inventory}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Rastrear Estoque</span>
-						<p class="text-xs text-gray-500">Controlar quantidade disponível</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Permitir Backorder -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.allow_backorder}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Permitir Backorder</span>
-						<p class="text-xs text-gray-500">Vender mesmo sem estoque disponível</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Localização no Estoque -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					📍 Localização no Estoque
-				</label>
-				<input
-					type="text"
-					bind:value={formData.stock_location}
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="Ex: Prateleira A-15, Corredor 3"
-				/>
-			</div>
-			
 			<!-- Alerta de Estoque Baixo -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
@@ -554,6 +529,7 @@
 					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 					placeholder="10"
 				/>
+				<p class="text-xs text-gray-500 mt-1">Receba alerta quando o estoque estiver abaixo deste valor</p>
 			</div>
 		</div>
 	</div>
@@ -668,44 +644,81 @@
 		</div>
 	</div>
 	
+	<!-- ENVIO E ENTREGA -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			<ModernIcon name="truck" size={20} color="#00BFB3" />
+			Envio e Entrega
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Frete Grátis -->
+			<div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={formData.has_free_shipping}
+						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+					/>
+					<div>
+						<span class="text-sm font-medium text-gray-900">Frete Grátis</span>
+						<p class="text-xs text-gray-500">Oferecer entrega gratuita para este produto</p>
+					</div>
+				</label>
+			</div>
+			
+			<!-- Prazo de Entrega -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					📅 Prazo de Entrega (dias úteis)
+				</label>
+				<input
+					type="number"
+					bind:value={formData.delivery_days}
+					min="1"
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="3"
+				/>
+			</div>
+			
+			<!-- Localização do Vendedor -->
+			<div class="grid grid-cols-2 gap-4">
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">
+						📍 Estado do Vendedor
+					</label>
+					<input
+						type="text"
+						bind:value={formData.seller_state}
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="SP"
+						maxlength="2"
+					/>
+				</div>
+				
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">
+						🏙️ Cidade do Vendedor
+					</label>
+					<input
+						type="text"
+						bind:value={formData.seller_city}
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="São Paulo"
+					/>
+				</div>
+			</div>
+		</div>
+	</div>
+	
 	<!-- CONFIGURAÇÕES AVANÇADAS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			<ModernIcon name="settings" size={20} color="#00BFB3" />
+			<ModernIcon name="Settings" size={20} color="#00BFB3" />
 			Configurações Avançadas
 		</h4>
 		
 		<div class="space-y-6">
-			<!-- Produto em Destaque -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.featured}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Produto em Destaque</span>
-						<p class="text-xs text-gray-500">Exibir na página inicial e vitrines</p>
-					</div>
-				</label>
-			</div>
-			
-			<!-- Produto Digital -->
-			<div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={formData.is_digital}
-						class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
-					/>
-					<div>
-						<span class="text-sm font-medium text-gray-900">Produto Digital</span>
-						<p class="text-xs text-gray-500">Download ou acesso online</p>
-					</div>
-				</label>
-			</div>
-			
 			<!-- Permitir Avaliações -->
 			<div>
 				<label class="flex items-center gap-3 cursor-pointer">

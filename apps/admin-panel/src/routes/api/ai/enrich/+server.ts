@@ -240,7 +240,7 @@ async function enrichSpecificField(field: string, prompt: string, currentData: a
 				const categories = await db.query`SELECT id, name, slug FROM categories WHERE is_active = true`;
 				await db.close();
 				
-				specificPrompt = `Analise este produto e sugira a categoria mais apropriada:
+				specificPrompt = `Analise este produto e sugira MÚLTIPLAS categorias apropriadas:
 Nome: "${currentData.name}"
 Descrição: "${currentData.description || 'N/A'}"
 Tags: ${currentData.tags?.join(', ') || 'N/A'}
@@ -248,7 +248,30 @@ Tags: ${currentData.tags?.join(', ') || 'N/A'}
 CATEGORIAS DISPONÍVEIS:
 ${categories.map((c: any) => `- ${c.name} (ID: ${c.id})`).join('\n')}
 
-Retorne APENAS um JSON: {"category_id": "id-escolhido", "category_name": "nome", "confidence": 0.95}`;
+IMPORTANTE:
+1. Identifique a categoria PRINCIPAL mais apropriada
+2. Sugira até 3 categorias RELACIONADAS onde o produto também se encaixa
+3. Ordene por relevância (mais relevante primeiro)
+4. Considere categorias pai e subcategorias quando apropriado
+
+Retorne APENAS um JSON no formato:
+{
+  "primary_category_id": "id-da-categoria-principal",
+  "primary_category_name": "Nome da Categoria Principal",
+  "related_categories": [
+    {
+      "category_id": "id-categoria-relacionada-1",
+      "category_name": "Nome Categoria Relacionada 1",
+      "relevance": 0.9
+    },
+    {
+      "category_id": "id-categoria-relacionada-2",
+      "category_name": "Nome Categoria Relacionada 2",
+      "relevance": 0.7
+    }
+  ],
+  "confidence": 0.95
+}`;
 				break;
 				
 			case 'brand':
@@ -316,6 +339,83 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 				specificPrompt = `Estime as dimensões (altura, largura, comprimento em cm) para: "${currentData.name}". Retorne JSON: {"height": 10, "width": 20, "length": 30}`;
 				break;
 				
+			case 'barcode':
+				specificPrompt = `Para o produto "${currentData.name}" na categoria ${category}, gere um código de barras EAN-13 realista.
+
+IMPORTANTE:
+- Use o padrão brasileiro que começa com 789 
+- Deve ter exatamente 13 dígitos
+- O último dígito é verificador
+- Formato: 789XXXXXXXXXX
+
+Se o produto parece ser importado, use:
+- USA: 0-1 no início
+- Europa: 3-4 no início  
+- China: 69 no início
+
+Retorne APENAS o número do código de barras (13 dígitos).`;
+				break;
+				
+			case 'variations':
+				specificPrompt = `Analise este produto e sugira variações apropriadas:
+Nome: "${currentData.name}"
+Descrição: "${currentData.description || 'N/A'}"
+Categoria: ${currentData.category || 'N/A'}
+
+IMPORTANTE:
+- Sugira APENAS variações que fazem sentido para este produto específico
+- Seja realista e prático
+- Máximo 3 tipos de variação
+- Entre 2-8 opções por variação
+
+Exemplos de variações comuns:
+- Eletrônicos: Voltagem, Capacidade, Cor
+- Roupas: Tamanho, Cor, Material
+- Móveis: Cor, Material, Tamanho
+- Alimentos: Sabor, Peso, Embalagem
+
+Retorne APENAS um JSON no formato:
+[
+  {
+    "type": "Cor",
+    "options": ["Preto", "Branco", "Azul"]
+  },
+  {
+    "type": "Tamanho",
+    "options": ["P", "M", "G", "GG"]
+  }
+]`;
+				break;
+				
+			case 'attributes':
+				specificPrompt = `Analise este produto e sugira especificações técnicas/atributos apropriados:
+Nome: "${currentData.name}"
+Descrição: "${currentData.description || 'N/A'}"
+Categoria: ${currentData.category || 'N/A'}
+
+IMPORTANTE:
+- Sugira APENAS atributos que fazem sentido para este produto
+- Seja técnico e específico
+- Use unidades de medida apropriadas
+- Entre 5-15 atributos relevantes
+
+Exemplos por categoria:
+- Eletrônicos: Processador, RAM, Armazenamento, Tela, Bateria
+- Roupas: Composição, Cuidados, Modelagem, Detalhes
+- Móveis: Material, Dimensões, Peso suportado, Montagem
+- Alimentos: Ingredientes, Validade, Informação nutricional
+
+Retorne APENAS um JSON no formato:
+{
+  "Marca": "Samsung",
+  "Modelo": "Galaxy S21",
+  "Tela": "6.2 polegadas AMOLED",
+  "Processador": "Exynos 2100",
+  "RAM": "8GB",
+  "Armazenamento": "128GB"
+}`;
+				break;
+				
 			default:
 				throw new Error('Campo não suportado');
 		}
@@ -345,7 +445,7 @@ Evite clichês e seja natural. Retorne apenas a descrição.`;
 				// Se não for JSON válido, dividir por vírgula
 				processedData = aiResponse.split(',').map(tag => tag.trim().replace(/"/g, ''));
 			}
-		} else if (field === 'category' || field === 'brand' || field === 'dimensions') {
+		} else if (field === 'category' || field === 'brand' || field === 'dimensions' || field === 'variations' || field === 'attributes') {
 			processedData = JSON.parse(aiResponse);
 		}
 
