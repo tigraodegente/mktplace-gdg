@@ -6,6 +6,9 @@
   import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   
+  // Estado para expansão de texto
+  let mostrarMais = false;
+  
   interface Order {
     id: string;
     orderNumber: string;
@@ -125,58 +128,144 @@
     }).format(new Date(dateString));
   }
   
-  function getStatusIcon(status: string): string {
-    const icons: Record<string, string> = {
-      'pending': '⏳',
-      'confirmed': '✅',
-      'processing': '📦',
-      'shipped': '🚚',
-      'delivered': '✔️',
-      'cancelled': '❌',
-      'refunded': '💰'
+  function getStatusIcon(status: string): { icon: string; color: string } {
+    const statusMap: Record<string, { icon: string; color: string }> = {
+      'pending': { 
+        icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 
+        color: 'text-orange-500' 
+      },
+      'confirmed': { 
+        icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 
+        color: 'text-green-500' 
+      },
+      'processing': { 
+        icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', 
+        color: 'text-blue-500' 
+      },
+      'shipped': { 
+        icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', 
+        color: 'text-indigo-500' 
+      },
+      'delivered': { 
+        icon: 'M5 13l4 4L19 7', 
+        color: 'text-green-600' 
+      },
+      'cancelled': { 
+        icon: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z', 
+        color: 'text-red-500' 
+      },
+      'refunded': { 
+        icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1', 
+        color: 'text-purple-500' 
+      }
     };
-    return icons[status] || '📋';
+    
+    return statusMap[status] || { 
+      icon: 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', 
+      color: 'text-gray-500' 
+    };
+  }
+  
+  function toggleMostrarMais() {
+    mostrarMais = !mostrarMais;
   }
 </script>
 
 <svelte:head>
-  <title>Meus Pedidos - Marketplace GDG</title>
-  <meta name="description" content="Acompanhe todos os seus pedidos" />
+  <title>Meus Pedidos - Grão de Gente Marketplace</title>
+  <meta name="description" content="Acompanhe todos os seus pedidos e compras no Marketplace Grão de Gente" />
+  <meta name="keywords" content="meus pedidos, compras, histórico, status, grão de gente, marketplace" />
 </svelte:head>
 
-<main class="min-h-screen bg-gray-50">
-  <!-- Header -->
-  <div class="bg-white shadow-sm">
+<!-- Header Padrão do Projeto -->
+<div class="bg-white shadow-sm border-b border-gray-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Meus Pedidos</h1>
-          <p class="mt-1 text-gray-600">Acompanhe o status dos seus pedidos</p>
+        <h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Meus Pedidos</h1>
+        <p class="mt-1 text-gray-600" style="font-family: 'Lato', sans-serif;">
+          {#if loading}
+            Carregando seus pedidos...
+          {:else if orders.length === 0}
+            Acompanhe todas as suas compras em um só lugar
+          {:else}
+            {orders.length} {orders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
+          {/if}
+        </p>
         </div>
         
         <a 
           href="/" 
-          class="text-primary hover:text-primary/80 font-medium transition-colors"
+        class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors"
+        style="font-family: 'Lato', sans-serif;"
         >
           ← Continuar Comprando
         </a>
       </div>
+    
+    <!-- Descrição expandível -->
+    <div class="mt-6 pt-6 border-t border-gray-200">
+      <div class="text-center">
+        <p class="text-gray-600 text-base leading-relaxed mb-4" style="font-family: 'Lato', sans-serif;">
+          Acompanhe todos os seus pedidos em tempo real e tenha controle completo das suas compras. 
+          Receba notificações sobre cada etapa do processo de entrega.
+        </p>
+        
+        <button
+          onclick={toggleMostrarMais}
+          class="inline-flex items-center gap-2 text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm"
+          style="font-family: 'Lato', sans-serif;"
+        >
+          <span>{mostrarMais ? 'Ver Menos' : 'Ver Mais'}</span>
+          <svg 
+            class="w-4 h-4 transition-transform {mostrarMais ? 'rotate-180' : ''}" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {#if mostrarMais}
+          <div class="mt-4 text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
+            <p>
+              Aqui você pode acompanhar desde o momento da confirmação do pagamento até a entrega do produto. 
+              Filtre por status, veja detalhes completos de cada pedido e tenha acesso ao histórico completo 
+              de todas as suas compras. Também pode acompanhar códigos de rastreamento e prazos de entrega.
+            </p>
+          </div>
+        {/if}
+      </div>
+    </div>
     </div>
   </div>
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<!-- Conteúdo Principal -->
+<main class="py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Filtros -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div class="flex-1">
-          <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-2">
-            Filtrar por Status:
+      <div class="flex items-center gap-3 mb-4">
+        <svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
+        </svg>
+        <h2 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
+          Filtrar Pedidos
+        </h2>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+        <div>
+          <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
+            Status do Pedido:
           </label>
           <select 
             id="status-filter"
             bind:value={selectedStatus}
             onchange={handleStatusChange}
-            class="w-full sm:w-auto rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#00BFB3] focus:outline-none focus:ring-1 focus:ring-[#00BFB3]"
+            style="font-family: 'Lato', sans-serif;"
           >
             {#each statusOptions as option}
               <option value={option.value}>{option.label}</option>
@@ -184,7 +273,7 @@
           </select>
         </div>
         
-        <div class="text-sm text-gray-500">
+        <div class="text-sm text-gray-500" style="font-family: 'Lato', sans-serif;">
           {#if !loading}
             {orders.length > 0 ? `${orders.length} pedido${orders.length !== 1 ? 's' : ''} encontrado${orders.length !== 1 ? 's' : ''}` : 'Nenhum pedido encontrado'}
           {/if}
@@ -205,50 +294,77 @@
       />
       
     {:else if orders.length === 0}
-      <!-- Empty State -->
+      <!-- Estado vazio -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <svg class="mx-auto h-16 w-16 text-gray-400 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-        <h3 class="text-xl font-medium text-gray-900 mb-2">Nenhum pedido encontrado</h3>
-        <p class="text-gray-600 mb-6">
-          {selectedStatus ? 'Não há pedidos com este status.' : 'Você ainda não fez nenhum pedido.'}
+        <h2 class="text-xl font-medium text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">
+          {selectedStatus ? 'Nenhum pedido encontrado' : 'Nenhum pedido ainda'}
+        </h2>
+        <p class="text-gray-600 mb-8 max-w-md mx-auto" style="font-family: 'Lato', sans-serif;">
+          {selectedStatus 
+            ? 'Não há pedidos com este status. Tente filtrar por outro status ou ver todos os pedidos.' 
+            : 'Você ainda não fez nenhum pedido. Explore nossos produtos e faça sua primeira compra!'
+          }
         </p>
         
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           {#if selectedStatus}
             <button 
               onclick={() => { selectedStatus = ''; handleStatusChange(); }}
-              class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              class="inline-flex items-center px-6 py-2 bg-white text-[#00BFB3] text-sm font-medium rounded-md border border-[#00BFB3] hover:bg-[#00BFB3] hover:text-white transition-colors"
+              style="font-family: 'Lato', sans-serif;"
             >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
               Ver Todos os Pedidos
             </button>
           {/if}
           
           <a
             href="/"
-            class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 transition-colors"
+            class="inline-flex items-center px-6 py-2 bg-[#00BFB3] text-white text-sm font-medium rounded-md hover:bg-[#00A89D] transition-colors"
+            style="font-family: 'Lato', sans-serif;"
           >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
             Começar a Comprar
           </a>
         </div>
       </div>
       
     {:else}
-      <!-- Orders List -->
+      <!-- Lista de Pedidos -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center gap-3 mb-6">
+          <svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <h3 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
+            Seus Pedidos
+          </h3>
+        </div>
+        
       <div class="space-y-6">
         {#each orders as order}
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
             <!-- Order Header -->
-            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+              <div class="px-6 py-4 bg-white border-b border-gray-200">
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center space-x-4">
-                  <span class="text-2xl">{getStatusIcon(order.status)}</span>
+                    <div class="flex-shrink-0">
+                      <svg class="h-6 w-6 {getStatusIcon(order.status).color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={getStatusIcon(order.status).icon} />
+                      </svg>
+                    </div>
                   <div>
-                    <h3 class="text-lg font-semibold text-gray-900">
+                      <h3 class="text-lg font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">
                       Pedido #{order.orderNumber}
                     </h3>
-                    <p class="text-sm text-gray-500">
+                      <p class="text-sm text-gray-500" style="font-family: 'Lato', sans-serif;">
                       {formatDate(order.createdAt)}
                     </p>
                   </div>
@@ -269,13 +385,15 @@
                         class:bg-red-100={order.statusColor === 'red'}
                         class:text-red-800={order.statusColor === 'red'}
                         class:bg-gray-50={order.statusColor === 'gray'}
-                        class:text-gray-800={order.statusColor === 'gray'}>
+                          class:text-gray-800={order.statusColor === 'gray'}
+                          style="font-family: 'Lato', sans-serif;">
                     {order.statusLabel}
                   </span>
                   
                   <a
                     href="/meus-pedidos/{order.id}"
                     class="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                      style="font-family: 'Lato', sans-serif;"
                   >
                     Ver Detalhes
                     <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,30 +409,30 @@
               <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Items Preview -->
                 <div class="lg:col-span-2">
-                  <h4 class="font-medium text-gray-900 mb-3">
+                    <h4 class="font-medium text-gray-900 mb-3" style="font-family: 'Lato', sans-serif;">
                     {order.itemsCount} {order.itemsCount === 1 ? 'item' : 'itens'}
                   </h4>
                   
                   <div class="flex flex-wrap gap-2">
                     {#each order.items.slice(0, 4) as item}
-                      <div class="flex items-center space-x-2 bg-gray-50 rounded-lg p-2">
+                        <div class="flex items-center space-x-2 bg-white rounded-lg p-2 border border-gray-200">
                         <img 
                           src={item.productImage} 
                           alt={item.productName}
                           class="w-10 h-10 object-cover rounded"
                         />
                         <div class="text-sm">
-                          <p class="font-medium text-gray-900 truncate max-w-32">
+                            <p class="font-medium text-gray-900 truncate max-w-32" style="font-family: 'Lato', sans-serif;">
                             {item.productName}
                           </p>
-                          <p class="text-gray-500">Qtd: {item.quantity}</p>
+                            <p class="text-gray-500" style="font-family: 'Lato', sans-serif;">Qtd: {item.quantity}</p>
                         </div>
                       </div>
                     {/each}
                     
                     {#if order.items.length > 4}
-                      <div class="flex items-center justify-center bg-gray-50 rounded-lg p-2 w-20 h-16">
-                        <span class="text-sm text-gray-600">
+                        <div class="flex items-center justify-center bg-white rounded-lg p-2 w-20 h-16 border border-gray-200">
+                          <span class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
                           +{order.items.length - 4}
                         </span>
                       </div>
@@ -326,34 +444,35 @@
                 <div class="lg:text-right">
                   <div class="space-y-2">
                     <div class="flex justify-between lg:justify-end lg:flex-col lg:text-right">
-                      <span class="text-gray-600">Subtotal:</span>
-                      <span>{formatCurrency(order.totalAmount - order.shippingCost + order.discountAmount)}</span>
+                        <span class="text-gray-600" style="font-family: 'Lato', sans-serif;">Subtotal:</span>
+                        <span style="font-family: 'Lato', sans-serif;">{formatCurrency(order.totalAmount - order.shippingCost + order.discountAmount)}</span>
                     </div>
                     
                     {#if order.shippingCost > 0}
                       <div class="flex justify-between lg:justify-end lg:flex-col lg:text-right">
-                        <span class="text-gray-600">Frete:</span>
-                        <span>{formatCurrency(order.shippingCost)}</span>
+                          <span class="text-gray-600" style="font-family: 'Lato', sans-serif;">Frete:</span>
+                          <span style="font-family: 'Lato', sans-serif;">{formatCurrency(order.shippingCost)}</span>
                       </div>
                     {/if}
                     
                     {#if order.discountAmount > 0}
                       <div class="flex justify-between lg:justify-end lg:flex-col lg:text-right text-green-600">
-                        <span>Desconto:</span>
-                        <span>-{formatCurrency(order.discountAmount)}</span>
+                          <span style="font-family: 'Lato', sans-serif;">Desconto:</span>
+                          <span style="font-family: 'Lato', sans-serif;">-{formatCurrency(order.discountAmount)}</span>
                       </div>
                     {/if}
                     
                     <div class="flex justify-between lg:justify-end lg:flex-col lg:text-right text-lg font-bold border-t border-gray-200 pt-2">
-                      <span>Total:</span>
-                      <span class="text-primary">{formatCurrency(order.totalAmount)}</span>
+                        <span style="font-family: 'Lato', sans-serif;">Total:</span>
+                        <span class="text-[#00BFB3]" style="font-family: 'Lato', sans-serif;">{formatCurrency(order.totalAmount)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          {/each}
           </div>
-        {/each}
       </div>
       
       <!-- Pagination -->
@@ -363,6 +482,7 @@
             onclick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
             class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="font-family: 'Lato', sans-serif;"
           >
             Anterior
           </button>
@@ -372,18 +492,19 @@
               <button 
                 onclick={() => goToPage(pageNum)}
                 class="px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                class:bg-primary={pageNum === currentPage}
+                class:bg-[#00BFB3]={pageNum === currentPage}
                 class:text-white={pageNum === currentPage}
                 class:bg-white={pageNum !== currentPage}
                 class:text-gray-700={pageNum !== currentPage}
                 class:border={pageNum !== currentPage}
                 class:border-gray-300={pageNum !== currentPage}
                 class:hover:bg-gray-50={pageNum !== currentPage}
+                style="font-family: 'Lato', sans-serif;"
               >
                 {pageNum}
               </button>
             {:else if Math.abs(pageNum - currentPage) === 3}
-              <span class="px-2 text-gray-500">...</span>
+              <span class="px-2 text-gray-500" style="font-family: 'Lato', sans-serif;">...</span>
             {/if}
           {/each}
           
@@ -391,6 +512,7 @@
             onclick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages}
             class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="font-family: 'Lato', sans-serif;"
           >
             Próxima
           </button>
@@ -399,3 +521,30 @@
     {/if}
   </div>
 </main> 
+
+<style>
+  /* Animação suave para os pedidos */
+  .space-y-6 > * {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style> 
