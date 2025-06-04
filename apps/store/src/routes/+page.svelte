@@ -5,7 +5,6 @@
   import ProductCard from '$lib/components/product/ProductCard.svelte';
   import type { PageData } from './$types';
   import '../app.css';
-  import FeaturedProducts from '$lib/components/product/FeaturedProducts.svelte';
   import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
   import HomeBanner from '$lib/components/layout/HomeBanner.svelte';
   import BenefitsSection from '$lib/components/layout/BenefitsSection.svelte';
@@ -199,9 +198,11 @@
         <h2 class="text-2xl font-bold text-gray-900 mb-8 text-center">
           Produtos em Destaque
         </h2>
-        <FeaturedProducts 
-          products={data.featuredProducts}
-        />
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {#each data.featuredProducts as product}
+            <ProductCard {product} />
+          {/each}
+        </div>
       </div>
     </section>
   {:else if !data.error}
