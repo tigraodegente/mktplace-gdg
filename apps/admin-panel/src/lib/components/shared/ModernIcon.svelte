@@ -1,14 +1,24 @@
 <script lang="ts">
 	import { MODERN_ICONS, MODERN_COLORS, ICON_SIZES } from '$lib/icons-modern';
 	
-	export let name: keyof typeof MODERN_ICONS = 'product';
-	export let color: keyof typeof MODERN_COLORS | string = 'primary';
-	export let size: number | keyof typeof ICON_SIZES = 'md';
-	export let className: string = '';
-	export let title: string = '';
+	interface Props {
+		name?: keyof typeof MODERN_ICONS;
+		color?: keyof typeof MODERN_COLORS | string;
+		size?: number | keyof typeof ICON_SIZES;
+		className?: string;
+		title?: string;
+	}
+	
+	let {
+		name = 'product',
+		color = 'primary',
+		size = 'md',
+		className = '',
+		title = ''
+	}: Props = $props();
 	
 	// Obter o ícone (pode ser string ou objeto)
-	const iconData = MODERN_ICONS[name];
+	const iconData = MODERN_ICONS[name as keyof typeof MODERN_ICONS];
 	let iconSvg = '';
 	
 	if (typeof iconData === 'string') {

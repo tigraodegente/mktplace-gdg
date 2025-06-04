@@ -16,9 +16,9 @@
 	if (!formData.upsell_products) formData.upsell_products = [];
 	if (!formData.download_files) formData.download_files = [];
 
-	// Estados locais
-	let newCustomField = { key: '', value: '' };
-	let newDownloadFile = { name: '', url: '' };
+	// Estados locais com $state
+	let newCustomField = $state({ key: '', value: '' });
+	let newDownloadFile = $state({ name: '', url: '' });
 
 	// Lista de produtos de exemplo (deveria vir de uma API)
 	const sampleProducts = [
@@ -89,16 +89,18 @@
 			// Inicializar tags selecionadas
 			if (formData.tags && Array.isArray(formData.tags)) {
 				// Mapear tags de string para IDs (temporário)
-				selectedTags = formData.tags.map((tag, index) => String(index + 1)).slice(0, availableTags.length);
+				selectedTags = formData.tags.map((tag: any, index: number) => String(index + 1)).slice(0, availableTags.length);
 			}
 		} catch (error) {
 			console.error('Erro ao carregar tags:', error);
 		}
 	}
 	
-	import { onMount } from 'svelte';
-	onMount(() => {
-		loadTags();
+	// Carregar tags quando o componente montar
+	$effect(() => {
+		if (availableTags.length === 0) {
+			loadTags();
+		}
 	});
 </script>
 
@@ -283,7 +285,7 @@
 				/>
 				<button
 					type="button"
-					on:click={addCustomField}
+					onclick={addCustomField}
 					disabled={!newCustomField.key.trim() || !newCustomField.value.trim()}
 					class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 				>
@@ -309,7 +311,7 @@
 						</div>
 						<button
 							type="button"
-							on:click={() => removeCustomField(key)}
+							onclick={() => removeCustomField(key)}
 							class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
 							title="Remover campo"
 						>
@@ -402,7 +404,7 @@
 					/>
 					<button
 						type="button"
-						on:click={addDownloadFile}
+						onclick={addDownloadFile}
 						disabled={!newDownloadFile.name.trim() || !newDownloadFile.url.trim()}
 						class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 					>
@@ -424,7 +426,7 @@
 							</div>
 							<button
 								type="button"
-								on:click={() => removeDownloadFile(index)}
+								onclick={() => removeDownloadFile(index)}
 								class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
 								title="Remover arquivo"
 							>
@@ -819,11 +821,11 @@
 				<MultiSelect
 					items={availableTags}
 					selected={selectedTags}
-					onSelectionChange={(selected) => {
+					onSelectionChange={(selected: string[]) => {
 						selectedTags = selected;
 						// Por enquanto, salvar as tags como strings
-						formData.tags = selected.map(id => 
-							availableTags.find(t => t.id === id)?.name || ''
+						formData.tags = selected.map((id: string) => 
+							availableTags.find((t: any) => t.id === id)?.name || ''
 						).filter(Boolean);
 					}}
 					label="Tags do Sistema"
@@ -848,8 +850,8 @@
 					onblur={() => {
 						const customTags = formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [];
 						// Mesclar com tags do sistema
-						const systemTags = selectedTags.map(id => 
-							availableTags.find(t => t.id === id)?.name || ''
+						const systemTags = selectedTags.map((id: string) => 
+							availableTags.find((t: any) => t.id === id)?.name || ''
 						).filter(Boolean);
 						formData.tags = [...new Set([...systemTags, ...customTags])];
 					}}

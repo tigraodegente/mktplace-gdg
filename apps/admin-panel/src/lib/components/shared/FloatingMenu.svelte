@@ -21,47 +21,51 @@
 	} from '$lib/stores/menuStore';
 
 	// Props
-	export let user: any = null;
+	interface Props {
+		user?: any;
+	}
+	
+	let { user = null }: Props = $props();
 
 	// Estados locais
-	let showMenu = false;
-	let buttonPosition = { x: 0, y: 0 };
-	let isDragging = false;
-	let dragStart = { x: 0, y: 0, buttonX: 0, buttonY: 0 };
-	let hovering = false;
-	let autoHideTimer: number;
-	let searchInput = '';
+	let showMenu = $state(false);
+	let buttonPosition = $state({ x: 0, y: 0 });
+	let isDragging = $state(false);
+	let dragStart = $state({ x: 0, y: 0, buttonX: 0, buttonY: 0 });
+	let hovering = $state(false);
+	let autoHideTimer: ReturnType<typeof setTimeout>;
+	let searchInput = $state('');
 
 	// Menu items filtrados por role
-	$: filteredMenuItems = user ? baseMenuItems.filter(item => item.roles.includes(user.role)) : [];
+	const filteredMenuItems = $derived(user ? baseMenuItems.filter(item => item.roles.includes(user.role)) : []);
 
 	// Menu items com badges dinâmicos
-	$: menuItemsWithBadges = filteredMenuItems.map(item => ({
+	const menuItemsWithBadges = $derived(filteredMenuItems.map(item => ({
 		...item,
 		badge: item.badgeKey && $menuStats ? getStatValue($menuStats, item.badgeKey) : undefined,
 		isFavorite: $menuSettings.favorites.includes(item.href)
-	}));
+	})));
 
 	// Filtrar por busca
-	$: searchedItems = searchInput.trim() 
+	const searchedItems = $derived(searchInput.trim() 
 		? menuItemsWithBadges.filter(item => 
 			item.label.toLowerCase().includes(searchInput.toLowerCase()) ||
 			item.category?.toLowerCase().includes(searchInput.toLowerCase())
 		)
-		: menuItemsWithBadges;
+		: menuItemsWithBadges);
 
 	// Quick access items (favoritos + mais usados)
-	$: quickAccessItems = menuItemsWithBadges
+	const quickAccessItems = $derived(menuItemsWithBadges
 		.filter(item => $menuSettings.favorites.includes(item.href))
-		.slice(0, 6);
+		.slice(0, 6));
 
 	// Agrupar por categoria
-	$: categorizedItems = searchedItems.reduce((acc, item) => {
+	const categorizedItems = $derived(searchedItems.reduce((acc, item) => {
 		const category = item.category || 'other';
 		if (!acc[category]) acc[category] = [];
 		acc[category].push(item);
 		return acc;
-	}, {} as Record<string, typeof menuItemsWithBadges>);
+	}, {} as Record<string, typeof menuItemsWithBadges>));
 
 	// Nomes das categorias
 	const categoryNames = {
@@ -215,11 +219,11 @@
 	class:cursor-grabbing={isDragging}
 >
 	<button
-		on:click={toggleMenu}
-		on:mousedown={handleDragStart}
-		on:touchstart={handleDragStart}
-		on:mouseenter={() => { hovering = true; stopAutoHide(); }}
-		on:mouseleave={() => { hovering = false; startAutoHide(); }}
+		onclick={toggleMenu}
+		onmousedown={handleDragStart}
+		ontouchstart={handleDragStart}
+		onmouseenter={() => { hovering = true; stopAutoHide(); }}
+		onmouseleave={() => { hovering = false; startAutoHide(); }}
 		class="w-16 h-16 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 border-2 border-white/20 flex items-center justify-center relative"
 		title="Menu Principal (arraste para mover)"
 	>
@@ -272,7 +276,7 @@
 	>
 		<!-- Botão para expandir -->
 		<button
-			on:click={toggleMinimized}
+			onclick={toggleMinimized}
 			class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#00BFB3] to-[#00A89D] text-white hover:scale-105 transition-all duration-200"
 			title="Expandir Menu"
 		>
@@ -302,7 +306,7 @@
 	<!-- Backdrop -->
 	<div 
 		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-		on:click={toggleMenu}
+		onclick={toggleMenu}
 		transition:fade={{ duration: 300 }}
 	></div>
 
@@ -323,7 +327,7 @@
 				</div>
 			</div>
 			<button
-				on:click={toggleMenu}
+				onclick={toggleMenu}
 				class="p-2 rounded-lg hover:bg-gray-100 text-slate-600 hover:text-slate-900 transition-all duration-200"
 				title="Fechar Menu"
 			>
@@ -359,7 +363,7 @@
 					{#each searchedItems as item}
 						<a
 							href={item.href}
-							on:click={toggleMenu}
+							onclick={toggleMenu}
 							class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10 transition-all duration-200 {isActiveRoute(item.href) ? 'bg-gradient-to-r from-[#00BFB3]/20 to-[#00BFB3]/10 text-[#00BFB3] font-semibold border-l-4 border-[#00BFB3]' : ''}"
 						>
 							<span class="text-lg">{item.icon}</span>
@@ -367,7 +371,7 @@
 							
 							<!-- Favorito -->
 							<button
-								on:click={(e) => toggleFavorite(item.href, e)}
+								onclick={(e) => toggleFavorite(item.href, e)}
 								class="p-1 rounded-lg hover:bg-gray-200 transition-colors {item.isFavorite ? 'text-yellow-500' : 'text-gray-400'}"
 								title={item.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
 							>
@@ -393,7 +397,7 @@
 							{#each items as item}
 								<a
 									href={item.href}
-									on:click={toggleMenu}
+									onclick={toggleMenu}
 									class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10 transition-all duration-200 {isActiveRoute(item.href) ? 'bg-gradient-to-r from-[#00BFB3]/20 to-[#00BFB3]/10 text-[#00BFB3] font-semibold border-l-4 border-[#00BFB3]' : ''}"
 								>
 									<span class="text-lg">{item.icon}</span>
@@ -401,7 +405,7 @@
 									
 									<!-- Favorito -->
 									<button
-										on:click={(e) => toggleFavorite(item.href, e)}
+										onclick={(e) => toggleFavorite(item.href, e)}
 										class="p-1 rounded-lg hover:bg-gray-200 transition-colors {item.isFavorite ? 'text-yellow-500' : 'text-gray-400'}"
 										title={item.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
 									>
@@ -426,7 +430,7 @@
 			<!-- Configurações -->
 			<div class="grid grid-cols-2 gap-2">
 				<button
-					on:click={menuActions.toggleAutoHide}
+					onclick={menuActions.toggleAutoHide}
 					class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 hover:bg-gray-100 transition-all duration-200 {$menuSettings.autoHide ? 'bg-[#00BFB3]/10 text-[#00BFB3]' : ''}"
 					title="Auto-esconder menu"
 				>
@@ -435,7 +439,7 @@
 				</button>
 				
 				<button
-					on:click={menuActions.toggleQuickAccess}
+					onclick={menuActions.toggleQuickAccess}
 					class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 hover:bg-gray-100 transition-all duration-200 {$menuSettings.quickAccess ? 'bg-[#00BFB3]/10 text-[#00BFB3]' : ''}"
 					title="Quick access no hover"
 				>
@@ -447,7 +451,7 @@
 			<!-- Botões de ação -->
 			<div class="flex gap-2">
 				<button
-					on:click={toggleMinimized}
+					onclick={toggleMinimized}
 					class="flex-1 flex items-center gap-2 px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-gray-100 transition-all duration-200 text-sm"
 				>
 					<span>📌</span>
@@ -455,7 +459,7 @@
 				</button>
 				
 				<button
-					on:click={toggleMenu}
+					onclick={toggleMenu}
 					class="flex-1 flex items-center gap-2 px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-gray-100 transition-all duration-200 text-sm"
 				>
 					<span>✕</span>

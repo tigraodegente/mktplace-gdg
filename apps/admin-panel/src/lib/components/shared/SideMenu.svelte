@@ -3,11 +3,15 @@
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { slide } from 'svelte/transition';
+	import ModernIcon from './ModernIcon.svelte';
 	
 	// Stores
 	import { 
+		menuState,
 		menuSettings,
 		menuStats,
+		searchQuery,
 		baseMenuItems,
 		menuActions,
 		getStatValue,
@@ -16,37 +20,44 @@
 	} from '$lib/stores/menuStore';
 
 	// Props
-	export let user: any = null;
-	export let isOpen: boolean = false;
+	interface Props {
+		user?: any;
+		isOpen?: boolean;
+	}
+	
+	let { user = null, isOpen = false }: Props = $props();
 
 	// Estados locais
-	let searchInput = '';
+	let expandedSections = $state<Set<string>>(new Set(['principal']));
+	let searchTerm = $state('');
 
-	// Menu items filtrados por role
-	$: filteredMenuItems = user ? baseMenuItems.filter(item => item.roles.includes(user.role)) : [];
+	// Filtrar itens do menu baseado no role do usuário
+	const filteredMenuItems = $derived(
+		user ? baseMenuItems.filter(item => item.roles.includes(user.role)) : []
+	);
 
 	// Menu items com badges dinâmicos
-	$: menuItemsWithBadges = filteredMenuItems.map(item => ({
+	const menuItemsWithBadges = $derived(filteredMenuItems.map(item => ({
 		...item,
 		badge: item.badgeKey && $menuStats ? getStatValue($menuStats, item.badgeKey) : undefined,
 		isFavorite: $menuSettings.favorites.includes(item.href)
-	}));
+	})));
 
 	// Filtrar por busca
-	$: searchedItems = searchInput.trim() 
+	const searchedItems = $derived(searchTerm.trim() 
 		? menuItemsWithBadges.filter(item => 
-			item.label.toLowerCase().includes(searchInput.toLowerCase()) ||
-			item.category?.toLowerCase().includes(searchInput.toLowerCase())
+			item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			item.category?.toLowerCase().includes(searchTerm.toLowerCase())
 		)
-		: menuItemsWithBadges;
+		: menuItemsWithBadges);
 
 	// Agrupar por categoria
-	$: categorizedItems = searchedItems.reduce((acc, item) => {
+	const categorizedItems = $derived(searchedItems.reduce((acc, item) => {
 		const category = item.category || 'other';
 		if (!acc[category]) acc[category] = [];
 		acc[category].push(item);
 		return acc;
-	}, {} as Record<string, typeof menuItemsWithBadges>);
+	}, {} as Record<string, typeof menuItemsWithBadges>));
 
 	// Nomes das categorias
 	const categoryNames: Record<string, string> = {
@@ -125,7 +136,7 @@
 			<div class="relative">
 				<input
 					type="text"
-					bind:value={searchInput}
+					bind:value={searchTerm}
 					placeholder="Buscar no menu..."
 					class="w-full px-3 lg:px-4 py-2 lg:py-3 pl-8 lg:pl-10 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors text-sm"
 				/>
@@ -137,7 +148,7 @@
 
 		<!-- Navigation -->
 		<nav class="flex-1 overflow-y-auto p-3 lg:p-4 space-y-3 lg:space-y-4">
-			{#if searchInput.trim()}
+			{#if searchTerm.trim()}
 				<!-- Resultados da busca -->
 				<div class="space-y-2">
 					<h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">

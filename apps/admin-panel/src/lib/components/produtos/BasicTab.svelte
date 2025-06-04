@@ -16,7 +16,7 @@
 	let primaryCategory = $state<string | null>(null);
 	
 	// Estados de loading para IA
-	let aiLoading = $state({
+	let aiLoading = $state<Record<string, boolean>>({
 		name: false,
 		description: false,
 		shortDescription: false,
@@ -142,7 +142,19 @@
 			const catResponse = await fetch('/api/categories');
 			if (catResponse.ok) {
 				const catData = await catResponse.json();
-				categories = catData.data?.categories || catData.data || [];
+				// Converter parentId para parent_id
+				categories = (catData.data?.categories || catData.data || []).map((cat: any) => ({
+					id: cat.id,
+					name: cat.name,
+					parent_id: cat.parentId,
+					slug: cat.slug,
+					description: cat.description,
+					imageUrl: cat.imageUrl,
+					isActive: cat.isActive,
+					productCount: cat.productCount,
+					subcategoryCount: cat.subcategoryCount,
+					level: cat.level
+				}));
 			}
 			
 			// Carregar marcas
@@ -166,9 +178,11 @@
 	}
 	
 	// Lifecycle
-	import { onMount } from 'svelte';
-	onMount(() => {
-		loadSelectData();
+	// Carregar dados quando o componente montar
+	$effect(() => {
+		if (categories.length === 0 && brands.length === 0 && sellers.length === 0) {
+			loadSelectData();
+		}
 	});
 	
 	// Inicializar categorias selecionadas quando carregar dados
@@ -176,12 +190,12 @@
 		if (formData.category_id && !selectedCategories.includes(formData.category_id)) {
 			selectedCategories = [formData.category_id];
 			primaryCategory = formData.category_id;
-		}
-		
-		// Se tiver categorias relacionadas sugeridas, adicionar também
-		if (formData._related_categories) {
-			const relatedIds = formData._related_categories.map((c: any) => c.category_id);
-			selectedCategories = [...new Set([...selectedCategories, ...relatedIds])];
+			
+			// Se tiver categorias relacionadas sugeridas, adicionar também
+			if (formData._related_categories) {
+				const relatedIds = formData._related_categories.map((c: any) => c.category_id);
+				selectedCategories = [...new Set([...selectedCategories, ...relatedIds])];
+			}
 		}
 	});
 </script>

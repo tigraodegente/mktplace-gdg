@@ -7,48 +7,59 @@
 		parent_id?: string | null;
 		children?: Item[];
 		level?: number;
+		[key: string]: any;
 	}
 	
 	interface Props {
-		node: Item;
-		selected: string[];
-		primarySelection: string | null;
-		expandedCategories: Set<string>;
-		allowMultiple: boolean;
-		onToggleSelection: (id: string) => void;
-		onToggleExpand: (id: string, e: Event) => void;
-		onSetPrimary: (id: string, e: Event) => void;
-		onPrimaryChange?: (id: string | null) => void;
+		item?: Item;
+		selected?: string[];
+		primarySelection?: string | null;
+		expandedItems?: Set<string>;
+		allowMultiple?: boolean;
+		onToggleSelection?: (id: string) => void;
+		onToggleExpand?: (id: string) => void;
+		onSetPrimary?: (id: string) => void;
+		onPrimaryChange?: ((id: string | null) => void) | undefined;
 	}
 	
 	let {
-		node,
-		selected,
-		primarySelection,
-		expandedCategories,
-		allowMultiple,
-		onToggleSelection,
-		onToggleExpand,
-		onSetPrimary,
-		onPrimaryChange
+		item = { id: '', name: '', level: 0 },
+		selected = [],
+		primarySelection = null,
+		expandedItems = new Set<string>(),
+		allowMultiple = true,
+		onToggleSelection = () => {},
+		onToggleExpand = () => {},
+		onSetPrimary = () => {},
+		onPrimaryChange = undefined
 	}: Props = $props();
 	
-	let isSelected = $derived(selected.includes(node.id));
-	let isPrimary = $derived(primarySelection === node.id);
-	let hasChildren = $derived(node.children && node.children.length > 0);
-	let isExpanded = $derived(expandedCategories.has(node.id));
+	const isExpanded = $derived(expandedItems.has(item.id));
+	const isSelected = $derived(selected.includes(item.id));
+	const isPrimary = $derived(primarySelection === item.id);
+	const hasChildren = $derived(item.children && item.children.length > 0);
+	
+	function handleToggleExpand(e: Event) {
+		e.stopPropagation();
+		onToggleExpand(item.id);
+	}
+	
+	function handleSetPrimary(e: Event) {
+		e.stopPropagation();
+		onSetPrimary(item.id);
+	}
 </script>
 
 <div class="select-none">
 	<div 
 		class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer {isSelected ? 'bg-[#00BFB3]/10' : ''}"
-		style="padding-left: {(node.level || 0) * 20 + 12}px"
+		style="padding-left: {(item.level || 0) * 20 + 12}px"
 	>
 		{#if hasChildren}
 			<button 
 				type="button" 
 				class="p-1 hover:bg-gray-200 rounded"
-				onclick={(e) => onToggleExpand(node.id, e)}
+				onclick={handleToggleExpand}
 			>
 				<ModernIcon name={isExpanded ? 'ChevronDown' : 'ChevronRight'} size={12} />
 			</button>
@@ -61,18 +72,18 @@
 				type={allowMultiple ? 'checkbox' : 'radio'}
 				name="category-select"
 				checked={isSelected}
-				onchange={() => onToggleSelection(node.id)}
+				onchange={() => onToggleSelection(item.id)}
 				class="w-4 h-4 text-[#00BFB3] rounded border-gray-300 focus:ring-[#00BFB3]"
 			/>
 			<span class="text-sm {isSelected ? 'font-medium' : ''}">
-				{node.name}
+				{item.name}
 			</span>
 		</label>
 		
 		{#if allowMultiple && onPrimaryChange && isSelected}
 			<button
 				type="button"
-				onclick={(e) => onSetPrimary(node.id, e)}
+				onclick={handleSetPrimary}
 				class="px-2 py-1 text-xs rounded {isPrimary ? 'bg-[#00BFB3] text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}"
 				title={isPrimary ? 'Categoria principal' : 'Definir como principal'}
 			>
@@ -81,14 +92,14 @@
 		{/if}
 	</div>
 	
-	{#if hasChildren && isExpanded && node.children}
+	{#if hasChildren && isExpanded && item.children}
 		<div class="ml-4">
-			{#each node.children as child}
+			{#each item.children as child}
 				<svelte:self 
-					node={child}
+					item={child}
 					{selected}
 					{primarySelection}
-					{expandedCategories}
+					{expandedItems}
 					{allowMultiple}
 					{onToggleSelection}
 					{onToggleExpand}

@@ -8,6 +8,7 @@
 		parent_id?: string | null;
 		children?: Item[];
 		level?: number;
+		[key: string]: any;
 	}
 	
 	interface Props {
@@ -20,6 +21,9 @@
 		allowMultiple?: boolean;
 		primarySelection?: string | null;
 		onPrimaryChange?: (id: string | null) => void;
+		searchable?: boolean;
+		maxHeight?: string;
+		class?: string;
 	}
 	
 	let {
@@ -31,12 +35,36 @@
 		hierarchical = true,
 		allowMultiple = true,
 		primarySelection = null,
-		onPrimaryChange = () => {}
+		onPrimaryChange = () => {},
+		searchable = true,
+		maxHeight = '300px',
+		class: className = ''
 	}: Props = $props();
 	
-	let showDropdown = $state(false);
-	let searchTerm = $state('');
-	let expandedCategories = $state<Set<string>>(new Set());
+	let isOpen = $state(false);
+	let searchQuery = $state('');
+	let dropdownRef = $state<HTMLDivElement>();
+	
+	// Computed values using $derived
+	const selectedItems = $derived(
+		items.filter(item => selected.includes(item.id))
+	);
+	
+	const rootItems = $derived(
+		hierarchical 
+			? items.filter(item => !item.parent_id || item.parent_id === null)
+			: items
+	);
+	
+	const filteredItems = $derived(
+		searchQuery
+			? items.filter(item => 
+					item.name.toLowerCase().includes(searchQuery.toLowerCase())
+				)
+			: rootItems
+	);
+	
+	let expandedItems = $state(new Set<string>());
 	
 	// Construir árvore hierárquica
 	function buildTree(items: Item[]): Item[] {
@@ -68,7 +96,7 @@
 	}
 	
 	let tree = $derived(hierarchical ? buildTree(items) : items.map(i => ({ ...i, level: 0 })));
-	let filteredTree = $derived(filterTree(tree, searchTerm));
+	let filteredTree = $derived(filterTree(tree, searchQuery));
 	
 	// Filtrar árvore baseado no termo de busca
 	function filterTree(nodes: Item[], term: string): Item[] {
@@ -90,54 +118,70 @@
 		return filtered;
 	}
 	
-	// Toggle seleção
-	function toggleSelection(id: string) {
-		if (allowMultiple) {
-			if (selected.includes(id)) {
-				onSelectionChange(selected.filter(s => s !== id));
-			} else {
-				onSelectionChange([...selected, id]);
-			}
-		} else {
-			onSelectionChange([id]);
-			showDropdown = false;
-		}
-	}
-	
-	// Definir como primário
-	function setPrimary(id: string, e: Event) {
-		e.stopPropagation();
-		if (onPrimaryChange) {
-			onPrimaryChange(id === primarySelection ? null : id);
-		}
-	}
-	
-	// Toggle expansão de categoria
-	function toggleExpand(id: string, e: Event) {
-		e.stopPropagation();
-		const newExpanded = new Set(expandedCategories);
+	function toggleExpanded(id: string) {
+		const newExpanded = new Set(expandedItems);
 		if (newExpanded.has(id)) {
 			newExpanded.delete(id);
 		} else {
 			newExpanded.add(id);
 		}
-		expandedCategories = newExpanded;
+		expandedItems = newExpanded;
+	}
+	
+	function handleItemToggle(id: string) {
+		if (allowMultiple) {
+			const newSelected = selected.includes(id)
+				? selected.filter(s => s !== id)
+				: [...selected, id];
+			onSelectionChange(newSelected);
+		} else {
+			const newSelected = selected.includes(id) ? [] : [id];
+			onSelectionChange(newSelected);
+			if (newSelected.length === 0 && onPrimaryChange) {
+				onPrimaryChange(null);
+			}
+		}
+	}
+	
+	function handlePrimarySet(id: string) {
+		if (!selected.includes(id)) {
+			onSelectionChange([...selected, id]);
+		}
+		if (onPrimaryChange) {
+			onPrimaryChange(id);
+		}
+	}
+	
+	function removeItem(id: string) {
+		const newSelected = selected.filter(s => s !== id);
+		onSelectionChange(newSelected);
+		
+		if (primarySelection === id && onPrimaryChange) {
+			onPrimaryChange(newSelected[0] || null);
+		}
 	}
 	
 	// Obter nome do item por ID
 	function getItemName(id: string): string {
-		const findItem = (nodes: Item[]): string | null => {
-			for (const node of nodes) {
-				if (node.id === id) return node.name;
-				if (node.children) {
-					const found = findItem(node.children);
-					if (found) return found;
-				}
-			}
-			return null;
-		};
-		return findItem(tree) || 'Desconhecido';
+		const item = items.find(i => i.id === id);
+		return item?.name || 'Desconhecido';
 	}
+	
+	function handleClickOutside(event: MouseEvent) {
+		if (dropdownRef && !dropdownRef.contains(event.target as Node)) {
+			isOpen = false;
+		}
+	}
+	
+	// Setup global click handler
+	$effect(() => {
+		if (isOpen) {
+			document.addEventListener('click', handleClickOutside);
+			return () => {
+				document.removeEventListener('click', handleClickOutside);
+			};
+		}
+	});
 </script>
 
 <div class="relative">
@@ -150,7 +194,7 @@
 	<!-- Trigger -->
 	<button
 		type="button"
-		onclick={() => showDropdown = !showDropdown}
+		onclick={() => isOpen = !isOpen}
 		class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-left flex items-center justify-between hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]"
 	>
 		<span class="flex-1 truncate">
@@ -174,13 +218,13 @@
 	</button>
 	
 	<!-- Dropdown -->
-	{#if showDropdown}
+	{#if isOpen}
 		<div class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
 			<!-- Busca -->
 			<div class="p-3 border-b">
 				<input
 					type="text"
-					bind:value={searchTerm}
+					bind:value={searchQuery}
 					placeholder="Buscar..."
 					class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00BFB3]"
 				/>
@@ -195,14 +239,14 @@
 				{:else}
 					{#each filteredTree as node}
 						<TreeItem 
-							{node}
+							item={node}
 							{selected}
 							{primarySelection}
-							{expandedCategories}
+							{expandedItems}
 							{allowMultiple}
-							onToggleSelection={toggleSelection}
-							onToggleExpand={toggleExpand}
-							onSetPrimary={setPrimary}
+							onToggleSelection={handleItemToggle}
+							onToggleExpand={toggleExpanded}
+							onSetPrimary={handlePrimarySet}
 							{onPrimaryChange}
 						/>
 					{/each}
@@ -228,7 +272,7 @@
 						</button>
 						<button
 							type="button"
-							onclick={() => showDropdown = false}
+							onclick={() => isOpen = false}
 							class="px-3 py-1 text-sm bg-[#00BFB3] text-white rounded hover:bg-[#00A89D]"
 						>
 							Fechar
@@ -241,9 +285,9 @@
 </div>
 
 <!-- Overlay para fechar dropdown -->
-{#if showDropdown}
+{#if isOpen}
 	<div 
 		class="fixed inset-0 z-40" 
-		onclick={() => showDropdown = false}
+		onclick={() => isOpen = false}
 	></div>
 {/if} 

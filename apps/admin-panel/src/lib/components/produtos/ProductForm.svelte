@@ -1,5 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { db } from '$lib/db/client';
+	import { toast } from '$lib/stores/toast';
+	import TabsForm from '$lib/components/shared/TabsForm.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	
+	// Import das tabs
 	import BasicTab from './BasicTab.svelte';
 	import PricingTab from './PricingTab.svelte';
 	import InventoryTab from './InventoryTab.svelte';
@@ -9,77 +15,28 @@
 	import AdvancedTab from './AdvancedTab.svelte';
 	import VariantsTab from './VariantsTab.svelte';
 
-	export let productId: string | null = null;
-	export let onSave: (() => Promise<void>) | null = null;
-	export let onCancel: (() => void) | null = null;
-
-	// Estados do formulário
-	let formData: any = {
-		name: '',
-		description: '',
-		short_description: '',
-		sku: '',
-		slug: '',
-		status: 'draft',
-		is_active: false,
-		featured: false,
-		sale_price: '',
-		cost_price: '',
-		regular_price: '',
-		markup_percentage: '',
-		min_price: '',
-		max_price: '',
-		stock_quantity: 0,
-		weight: '',
-		length: '',
-		width: '',
-		height: '',
-		track_stock: true,
-		allow_backorders: false,
-		low_stock_threshold: 5,
-		reserved_quantity: 0,
-		next_restock_date: '',
-		brand_id: '',
-		category_id: '',
-		seller_id: '',
-		published_at: '',
-		// Campos de categorização
-		primary_category: '',
-		subcategory: '',
-		tags: [],
-		meta_keywords: [],
-		searchable: true,
-		seo_indexable: true,
-		collections: '',
-		// Campos de imagens
-		images: [],
-		enable_zoom: true,
-		enable_lightbox: true,
-		// Campos SEO
-		meta_title: '',
-		meta_description: '',
-		robots_meta: 'index,follow',
-		canonical_url: '',
-		schema_type: 'Product',
-		og_title: '',
-		og_description: '',
-		// Campos avançados
-		requires_shipping: true,
-		is_digital: false,
-		tax_class: 'standard',
-		warranty_period: '',
-		manufacturing_country: '',
-		product_condition: 'new',
-		custom_fields: {},
-		related_products: [],
-		upsell_products: [],
-		download_files: []
-	};
+	interface Props {
+		productId?: string | null;
+		onSave?: (() => Promise<void>) | null;
+		onCancel?: (() => void) | null;
+	}
+	
+	let {
+		productId = null,
+		onSave = null,
+		onCancel = null
+	}: Props = $props();
+	
+	// Estados
+	let loading = $state(true);
+	let saving = $state(false);
+	let formData = $state<any>({});
+	let originalData = $state<any>({});
+	let showConfirmDialog = $state(false);
+	let pendingAction = $state<(() => void) | null>(null);
 
 	// Estados da interface
 	let activeTab = 'basic';
-	let loading = false;
-	let saving = false;
 	let enrichingField = '';
 	let aiProcessing = false;
 

@@ -1,41 +1,52 @@
 <script lang="ts">
 	import ModernIcon from '../shared/ModernIcon.svelte';
 	
-	export let show = false;
-	export let title = 'Confirmar ação';
-	export let message = 'Tem certeza que deseja continuar?';
-	export let confirmText = 'Confirmar';
-	export let cancelText = 'Cancelar';
-	export let variant: 'danger' | 'warning' | 'info' = 'warning';
-	export let onConfirm: () => void = () => {};
-	export let onCancel: () => void = () => {};
+	interface Props {
+		show?: boolean;
+		title?: string;
+		message?: string;
+		confirmText?: string;
+		cancelText?: string;
+		variant?: 'danger' | 'warning' | 'info';
+		onConfirm?: () => void;
+		onCancel?: () => void;
+	}
+	
+	let {
+		show = false,
+		title = 'Confirmar ação',
+		message = 'Tem certeza que deseja continuar?',
+		confirmText = 'Confirmar',
+		cancelText = 'Cancelar',
+		variant = 'warning',
+		onConfirm = () => {},
+		onCancel = () => {}
+	}: Props = $props();
 	
 	// Cores baseadas na variante
-	const variantStyles = {
+	const variants = {
 		danger: {
-			icon: 'AlertTriangle',
-			iconColor: '#DC2626',
-			bgColor: 'bg-red-50',
-			borderColor: 'border-red-200',
-			buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+			icon: 'alert' as const,
+			color: 'text-red-600',
+			bgColor: 'bg-red-100',
+			buttonClass: 'bg-red-600 hover:bg-red-700 text-white'
 		},
 		warning: {
-			icon: 'AlertTriangle',
-			iconColor: '#D97706',
-			bgColor: 'bg-amber-50',
-			borderColor: 'border-amber-200',
-			buttonClass: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
+			icon: 'warning' as const,
+			color: 'text-amber-600',
+			bgColor: 'bg-amber-100', 
+			buttonClass: 'bg-amber-600 hover:bg-amber-700 text-white'
 		},
 		info: {
-			icon: 'info',
-			iconColor: '#2563EB',
-			bgColor: 'bg-blue-50',
-			borderColor: 'border-blue-200',
-			buttonClass: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+			icon: 'info' as const,
+			color: 'text-blue-600',
+			bgColor: 'bg-blue-100',
+			buttonClass: 'bg-blue-600 hover:bg-blue-700 text-white'
 		}
-	};
+	} as const;
 	
-	$: style = variantStyles[variant];
+	// Use $derived ao invés de $:
+	const currentVariant = $derived(variants[variant]);
 	
 	function handleConfirm() {
 		onConfirm();
@@ -43,8 +54,8 @@
 	}
 	
 	function handleCancel() {
-		onCancel();
 		show = false;
+		onCancel();
 	}
 	
 	// Fechar com ESC
@@ -55,7 +66,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if show}
 	<div class="fixed inset-0 z-50 overflow-y-auto">
@@ -71,8 +82,8 @@
 				<!-- Content -->
 				<div class="p-6">
 					<!-- Icon -->
-					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full {style.bgColor}">
-						<ModernIcon name={style.icon} size={24} color={style.iconColor} />
+					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full {currentVariant.bgColor}">
+						<ModernIcon name={currentVariant.icon} size={24} color={currentVariant.color} />
 					</div>
 					
 					<!-- Text -->
@@ -91,7 +102,7 @@
 					<button
 						type="button"
 						onclick={handleConfirm}
-						class="inline-flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:w-auto {style.buttonClass}"
+						class="inline-flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:w-auto {currentVariant.buttonClass}"
 					>
 						{confirmText}
 					</button>
