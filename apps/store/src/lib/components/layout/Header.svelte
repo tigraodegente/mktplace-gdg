@@ -98,7 +98,7 @@
 						<div class="relative user-menu-container">
 							<button 
 								onclick={toggleUserMenu}
-								class="flex items-center gap-1 lg:gap-2 text-white hover:text-white/80 transition p-1 text-sm lg:text-base"
+								class="flex items-center gap-1 lg:gap-2 text-white hover:text-white/90 transition-all duration-200 ease-out p-2 text-sm lg:text-base rounded-lg hover:bg-white/10"
 								aria-expanded={userMenuOpen}
 								aria-haspopup="true"
 								aria-label="Menu do usuário"
@@ -112,85 +112,125 @@
 										Olá, {#if $user?.name}{$user.name.split(' ')[0]}{:else}faça login{/if}
 									</span>
 								</div>
-								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" class="lg:w-3 lg:h-3 transition-transform" class:rotate-180={userMenuOpen} viewBox="0 0 16 9" fill="none" aria-hidden="true">
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" class="lg:w-3 lg:h-3 transition-transform duration-300 ease-out" class:rotate-180={userMenuOpen} viewBox="0 0 16 9" fill="none" aria-hidden="true">
 									<path d="M15.0078 1.00013L8.00391 7.53711L1 1.00013" stroke="white" stroke-width="1.75098"/>
 								</svg>
 							</button>
 							
 							{#if userMenuOpen}
 								<div 
-									class="absolute top-full left-0 w-44 lg:w-48 xl:w-52 bg-white shadow-lg rounded-lg py-2 transition-all duration-200 z-50"
+									class="absolute top-full left-0 w-48 lg:w-52 xl:w-56 bg-white shadow-xl rounded-xl border border-gray-100 py-3 transition-all duration-300 ease-out z-50 backdrop-blur-sm"
+									style="box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);"
 									role="menu"
 								>
-									<a 
-										href="/minha-conta"
-										class="block px-3 lg:px-4 py-2 text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-										role="menuitem"
-									>
-										Minha Conta
-									</a>
-									<a
-										href="/meus-pedidos"
-										class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-									>
-										<svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-										</svg>
-										<span class="text-xs lg:text-sm">Meus Pedidos</span>
-									</a>
-									<a
-										href="/chat"
-										class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-									>
-										<svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-										</svg>
-										<span class="text-xs lg:text-sm">Chat & Suporte</span>
-									</a>
-									<a
-										href="/listas-presentes?user_id={$user?.id}"
-										class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-									>
-										<svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 0v1.5a2 2 0 108 8 2 2 0 11-4 0V8a2 2 0 11-4 0zM9 21V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z" />
-										</svg>
-										<span class="text-xs lg:text-sm">🎁 Minhas Listas</span>
-									</a>
-									<a
-										href="/notificacoes"
-										class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-									>
-										<svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM11.613 15.552c-.86.097-1.74-.013-2.613-.373a8.547 8.547 0 01-1.928-1.176" />
-										</svg>
-										<span class="text-xs lg:text-sm">Notificações</span>
-									</a>
-									<a
-										href="/suporte"
-										class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-									>
-										<svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-										</svg>
-										<span class="text-xs lg:text-sm">FAQ & Base de Conhecimento</span>
-									</a>
-									<a
-										href="/devolucoes"
-										class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-									>
-										<svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
-										</svg>
-										<span class="text-xs lg:text-sm">Devoluções & Trocas</span>
-									</a>
-									<div class="border-t border-gray-100 my-1"></div>
-									<button 
-										onclick={onLogout}
-										class="block w-full text-left px-3 lg:px-4 py-3 text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-										role="menuitem"
-									>
-										Sair
-									</button>
+									<!-- Seção Principal da Conta -->
+									<div class="px-1">
+										<a 
+											href="/minha-conta"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+											</svg>
+											<span>Minha Conta</span>
+										</a>
+										
+										<a
+											href="/meus-pedidos"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+											</svg>
+											<span>Meus Pedidos</span>
+										</a>
+									</div>
+									
+									<!-- Divisor -->
+									<div class="my-2 mx-4 border-t border-gray-100"></div>
+									
+									<!-- Seção de Recursos -->
+									<div class="px-1">
+										<a
+											href="/listas-presentes?user_id={$user?.id}"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+											</svg>
+											<span>Minhas Listas</span>
+										</a>
+										
+										<a
+											href="/notificacoes"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 2a7 7 0 00-7 7v4.586l-.293.293A1 1 0 003 15h14a1 1 0 00.293-1.121L17 13.586V9a7 7 0 00-7-7zM8 20a2 2 0 104 0" />
+											</svg>
+											<span>Notificações</span>
+										</a>
+									</div>
+									
+									<!-- Divisor -->
+									<div class="my-2 mx-4 border-t border-gray-100"></div>
+									
+									<!-- Seção de Suporte -->
+									<div class="px-1">
+										<a
+											href="/chat"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+											</svg>
+											<span>Chat & Suporte</span>
+										</a>
+										
+										<a
+											href="/suporte"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+											</svg>
+											<span>FAQ & Base de Conhecimento</span>
+										</a>
+										
+										<a
+											href="/devolucoes"
+											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+											</svg>
+											<span>Devoluções & Trocas</span>
+										</a>
+									</div>
+									
+									<!-- Divisor para Sair -->
+									<div class="my-2 mx-4 border-t border-gray-200"></div>
+									
+									<!-- Botão Sair -->
+									<div class="px-1">
+										<button 
+											onclick={onLogout}
+											class="flex items-center gap-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 group mx-2"
+											role="menuitem"
+										>
+											<svg class="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+											</svg>
+											<span>Sair</span>
+										</button>
+									</div>
 								</div>
 							{/if}
 						</div>
