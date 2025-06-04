@@ -38,50 +38,46 @@
 <div class="min-h-screen bg-white">
 	<div class="w-full max-w-[1440px] mx-auto px-4 lg:px-8 py-8">
 		<!-- Header da página -->
-		<div class="mb-8">
-			<h1 class="text-3xl font-bold text-[var(--text-color)] mb-2">Meus Favoritos</h1>
+		<div class="mb-8 text-center">
+			<h1 class="text-3xl font-bold text-[var(--text-color)] mb-2">
+				Meus <span class="text-[#00BFB3]">Favoritos</span>
+			</h1>
 			<p class="text-[var(--gray300)]">
 				{#if $isWishlistEmpty}
 					Você ainda não tem produtos favoritos
 				{:else}
-					{$wishlistStore.length} {$wishlistStore.length === 1 ? 'produto' : 'produtos'} na sua lista
+					{$wishlistStore.length} {$wishlistStore.length === 1 ? 'produto adicionado' : 'produtos adicionados'} à sua lista
 				{/if}
 			</p>
 		</div>
 		
 		{#if !$isWishlistEmpty}
 			<!-- Ações da wishlist -->
-			<div class="flex flex-wrap gap-4 mb-8">
+			<div class="flex flex-wrap justify-center gap-3 mb-8">
 				<button 
 					onclick={addAllToCart}
-					class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium"
+					class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-all duration-200 text-sm font-medium border border-gray-200 hover:border-gray-300"
 				>
-					Adicionar Todos ao Carrinho
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5-6m0 0h15M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+					</svg>
+					Adicionar todos
 				</button>
 				<button 
 					onclick={clearWishlist}
-					class="px-6 py-3 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors font-medium"
+					class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-200 text-sm font-medium border border-gray-200 hover:border-red-200"
 				>
-					Limpar Favoritos
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+					</svg>
+					Limpar lista
 				</button>
 			</div>
 			
 			<!-- Grid de produtos -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 				{#each $wishlistStore as product (product.id)}
-					<div class="relative">
-						<ProductCard {product} />
-						<!-- Botão de remover específico -->
-						<button
-							onclick={() => wishlistStore.removeItem(product.id)}
-							class="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow z-10"
-							aria-label="Remover dos favoritos"
-						>
-							<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-							</svg>
-						</button>
-					</div>
+					<ProductCard {product} />
 				{/each}
 			</div>
 		{:else}
