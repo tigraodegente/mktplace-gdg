@@ -325,7 +325,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
-	<div class="w-full max-w-[1440px] mx-auto px-8 py-6">
+	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 main-container">
 		<!-- Breadcrumb alinhado com a identidade visual -->
 		<nav class="mb-4" aria-label="Breadcrumb" style="font-family: 'Lato', sans-serif;">
 			<div class="flex items-center gap-2 text-sm">
@@ -357,41 +357,51 @@
 		</nav>
 		
 		<!-- Header Padrão seguindo identidade das outras páginas -->
-		<div class="bg-white shadow-sm border-b border-gray-200">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-				<div class="flex items-center gap-3">
-					<svg class="h-6 w-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<div class="bg-white shadow-sm border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6">
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+					<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 					</svg>
-					<div>
-						<h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">
-							{#if urlParams.searchQuery}
-								Resultados para "{urlParams.searchQuery}"
-							{:else if urlParams.selectedCategories.length}
-								{@const categoryNames = urlParams.selectedCategories.map(id => {
-									const cat = stableFacets?.categories.find(c => (c.slug || c.id) === id || c.id === id);
-									return cat?.name || id;
-								})}
-								{categoryNames.join(', ')}
-							{:else}
-								Busca de Produtos
-							{/if}
-						</h1>
-						<p class="mt-1 text-gray-600" style="font-family: 'Lato', sans-serif;">
-							{#if searchResult && !isLoading}
-								{searchResult.totalCount} {searchResult.totalCount === 1 ? 'produto encontrado' : 'produtos encontrados'}
-							{:else if isLoading}
-								Buscando produtos...
-							{:else}
-								Encontre os melhores produtos em nossa loja
-							{/if}
-						</p>
-					</div>
+				</div>
+				<div>
+					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">
+						{#if urlParams.searchQuery}
+							Resultados para "{urlParams.searchQuery}"
+						{:else if urlParams.selectedCategories.length}
+							{@const categoryNames = urlParams.selectedCategories.map(id => {
+								const cat = stableFacets?.categories.find(c => (c.slug || c.id) === id || c.id === id);
+								return cat?.name || id;
+							})}
+							{categoryNames.join(', ')}
+						{:else}
+							Busca de Produtos
+						{/if}
+					</h1>
+					<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
+						{#if searchResult && !isLoading}
+							{searchResult.totalCount} {searchResult.totalCount === 1 ? 'produto encontrado' : 'produtos encontrados'}
+						{:else if isLoading}
+							Buscando produtos...
+						{:else}
+							Encontre os melhores produtos em nossa loja
+						{/if}
+					</p>
+				</div>
+			</div>
+			
+			<!-- Descrição expandível -->
+			<div class="mt-6 pt-6 border-t border-gray-200">
+				<div class="text-center">
+					<p class="text-gray-600 text-base leading-relaxed mb-4" style="font-family: 'Lato', sans-serif;">
+						Use os filtros para refinar sua busca e encontre exatamente o que procura. 
+						Navegue por categorias, marcas e aproveite as melhores ofertas!
+					</p>
 				</div>
 			</div>
 		</div>
 								
-		<div class="flex gap-6 mt-6">
+		<div class="flex gap-4 lg:gap-6 mt-6">
 			<!-- Filtros Desktop -->
 			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
 				<FilterSidebar
@@ -481,10 +491,11 @@
 			<!-- Produtos -->
 			<div class="flex-1">
 				<!-- Barra de controles com identidade visual padrão -->
-				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6" style="font-family: 'Lato', sans-serif;">
-					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6" style="font-family: 'Lato', sans-serif;">
+					<!-- Layout compacto para mobile -->
+					<div class="flex items-center justify-between gap-2 sm:gap-3">
 						<!-- Lado esquerdo - Filtros e View Mode -->
-						<div class="flex items-center gap-2 sm:gap-3">
+						<div class="flex items-center gap-2">
 							<!-- Toggle filtros desktop -->
 							{#if !showDesktopFilters}
 								<button 
@@ -501,62 +512,55 @@
 							<!-- Filtros mobile -->
 							<button 
 								onclick={() => showMobileFilters = true}
-								class="lg:hidden flex items-center gap-2 px-3 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
+								class="lg:hidden flex items-center gap-1.5 px-3 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors text-sm"
 							>
-								<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
 								</svg>
-								<span class="text-sm sm:text-base">Filtros</span>
+								<span>Filtros</span>
 								{#if hasActiveFilters()}
-									<span class="bg-white text-[#00BFB3] text-xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center">
+									<span class="bg-white text-[#00BFB3] text-xs px-1.5 py-0.5 rounded-full font-semibold min-w-[18px] text-center">
 										{urlParams.selectedCategories.length + urlParams.selectedBrands.length + urlParams.selectedTags.length + (urlParams.hasDiscount ? 1 : 0) + (urlParams.hasFreeShipping ? 1 : 0) + Object.values(dynamicOptions).reduce((sum, values) => sum + values.length, 0)}
 									</span>
 								{/if}
 							</button>
 							
-							<!-- View mode com melhor visual -->
-							<div class="flex items-center gap-1">
-								<span class="text-sm text-gray-600 font-medium mr-2 hidden lg:inline">Visualização:</span>
-								<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
-									<button
-										onclick={() => updateURL({ visualizar: undefined })}
-										class="p-2 {urlParams.viewMode === 'grid' ? 'bg-[#00BFB3] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#00BFB3]'} transition-all duration-200"
-										aria-label="Visualização em grade"
-										title="Visualização em grade"
-									>
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-										</svg>
-									</button>
-									<div class="w-px bg-gray-300"></div>
-									<button
-										onclick={() => updateURL({ visualizar: 'lista' })}
-										class="p-2 {urlParams.viewMode === 'list' ? 'bg-[#00BFB3] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#00BFB3]'} transition-all duration-200"
-										aria-label="Visualização em lista"
-										title="Visualização em lista"
-									>
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-										</svg>
-									</button>
-								</div>
+							<!-- View mode compacto -->
+							<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
+								<button
+									onclick={() => updateURL({ visualizar: undefined })}
+									class="p-2 {urlParams.viewMode === 'grid' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-all"
+									aria-label="Grade"
+									title="Visualização em grade"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+									</svg>
+								</button>
+								<div class="w-px bg-gray-300"></div>
+								<button
+									onclick={() => updateURL({ visualizar: 'lista' })}
+									class="p-2 {urlParams.viewMode === 'list' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-all"
+									aria-label="Lista"
+									title="Visualização em lista"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+									</svg>
+								</button>
 							</div>
 							
-							<!-- Contador de resultados - visível apenas em telas maiores -->
+							<!-- Contador compacto mobile -->
 							{#if searchResult}
-								<div class="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-600">
-									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-									</svg>
+								<div class="lg:hidden flex items-center gap-1 px-2 py-1 bg-gray-50 rounded text-xs text-gray-600">
 									<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span>
-									<span>produto{searchResult.totalCount !== 1 ? 's' : ''}</span>
 								</div>
 							{/if}
 						</div>
 						
-						<!-- Lado direito - Dropdowns com visual premium -->
-						<div class="flex items-center gap-2 sm:gap-3">
-							<!-- Items por página - oculto em mobile -->
+						<!-- Lado direito - Ordenação -->
+						<div class="flex items-center gap-2">
+							<!-- Items por página - desktop -->
 							<div class="hidden sm:flex items-center gap-2">
 								<div class="flex items-center gap-1.5 text-sm text-gray-600">
 									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -568,8 +572,7 @@
 									<select 
 										value={urlParams.itemsPerPage}
 										onchange={(e) => updateURL({ itens: e.currentTarget.value })}
-										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer"
-										style="font-family: 'Lato', sans-serif; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;"
+										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer select-custom"
 									>
 										<option value={20}>20</option>
 										<option value={40}>40</option>
@@ -584,20 +587,27 @@
 								</div>
 							</div>
 							
-							<!-- Ordenação com ícone e estilo premium -->
-							<div class="flex items-center gap-2">
-								<div class="flex items-center gap-1.5 text-sm text-gray-600">
+							<!-- Contador desktop -->
+							{#if searchResult}
+								<div class="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-600">
 									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
 									</svg>
-									<span class="font-medium whitespace-nowrap hidden sm:inline">Ordenar por:</span>
+									<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span>
+									<span>produto{searchResult.totalCount !== 1 ? 's' : ''}</span>
 								</div>
+							{/if}
+							
+							<!-- Ordenação compacta -->
+							<div class="flex items-center gap-1 sm:gap-2">
+								<svg class="w-4 h-4 text-[#00BFB3] hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+								</svg>
 								<div class="relative">
 									<select 
 										value={urlParams.sortBy}
 										onchange={(e) => updateURL({ ordenar: e.currentTarget.value })}
-										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer min-w-[160px] sm:min-w-[180px]"
-										style="font-family: 'Lato', sans-serif; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;"
+										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer min-w-[140px] sm:min-w-[180px] select-custom"
 									>
 										{#each sortOptions as option}
 											<option value={option.value}>{option.label}</option>
@@ -612,25 +622,12 @@
 							</div>
 						</div>
 					</div>
-					
-					<!-- Contador mobile -->
-					{#if searchResult}
-						<div class="sm:hidden mt-3 pt-3 border-t border-gray-200" style="font-family: 'Lato', sans-serif;">
-							<div class="flex items-center gap-2 text-sm text-gray-600">
-								<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-								</svg>
-								<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span> 
-								<span>produto{searchResult.totalCount !== 1 ? 's' : ''} encontrado{searchResult.totalCount !== 1 ? 's' : ''}</span>
-							</div>
-						</div>
-					{/if}
 				</div>
 				
 				<!-- Grid/Lista de produtos -->
 				{#key totalPages}
 				{#if isLoading}
-					<div class="{urlParams.viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4' : 'space-y-4'}">
+					<div class="{urlParams.viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6' : 'space-y-4'}">
 						{#each Array(urlParams.itemsPerPage) as _}
 							{#if urlParams.viewMode === 'grid'}
 								<ProductCardSkeleton />
@@ -656,38 +653,51 @@
 						{/each}
 					</div>
 				{:else if !searchResult || sortedProducts.length === 0}
-					<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center" style="font-family: 'Lato', sans-serif;">
-						<div class="flex flex-col items-center gap-4">
-							<div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-								<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center" style="font-family: 'Lato', sans-serif;">
+						<div class="w-16 h-16 sm:w-20 sm:h-20 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+							<svg class="w-8 h-8 sm:w-10 sm:h-10 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+							</svg>
+						</div>
+						<h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3" style="font-family: 'Lato', sans-serif;">Nenhum produto encontrado</h3>
+						<p class="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto leading-relaxed" style="font-family: 'Lato', sans-serif;">
+							{#if urlParams.searchQuery}
+								Não encontramos produtos para "{urlParams.searchQuery}". Tente ajustar os filtros ou use outros termos de busca.
+							{:else}
+								Tente ajustar os filtros ou fazer uma busca para encontrar produtos.
+							{/if}
+						</p>
+						
+						<div class="flex flex-col sm:flex-row gap-3 justify-center max-w-sm sm:max-w-none mx-auto">
+							{#if hasActiveFilters()}
+								<button 
+									onclick={clearAllFilters}
+									class="inline-flex items-center justify-center px-6 py-3 bg-white text-[#00BFB3] text-sm font-semibold rounded-lg border border-[#00BFB3] hover:bg-[#00BFB3] hover:text-white focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+									style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+								>
+									<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+									</svg>
+									Limpar Filtros
+								</button>
+							{/if}
+							<a
+								href="/"
+								class="inline-flex items-center justify-center px-6 py-3 bg-[#00BFB3] text-white text-sm font-semibold rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+							>
+								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 								</svg>
-							</div>
-							<div class="text-center">
-								<h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>
-								<p class="text-gray-600 mb-4">
-									{#if urlParams.searchQuery}
-										Não encontramos produtos para "{urlParams.searchQuery}"
-									{:else}
-										Tente ajustar os filtros ou fazer uma busca
-									{/if}
-								</p>
-								{#if hasActiveFilters()}
-									<button 
-										onclick={clearAllFilters}
-										class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium"
-									>
-										Limpar Filtros
-									</button>
-								{/if}
-							</div>
+								Explorar Produtos
+							</a>
 						</div>
 					</div>
 				{:else}
 					<!-- Container com transição suave -->
 					<div class="products-container">
 						{#if urlParams.viewMode === 'grid'}
-							<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 min-h-[600px]">
+							<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 min-h-[600px]">
 								{#each sortedProducts as product, index (product.id)}
 									<div class="product-wrapper">
 										<ProductCard {product} />
@@ -750,50 +760,52 @@
 					
 					<!-- Paginação -->
 					{#if totalPages > 1}
-						<nav class="mt-8 flex justify-center" aria-label="Paginação">
-							<div class="flex items-center gap-1">
-								<button 
-									onclick={() => updateURL({ pagina: urlParams.currentPage - 1 })}
-									disabled={urlParams.currentPage === 1}
-									class="px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-									aria-label="Página anterior"
-								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-									</svg>
-								</button>
-								
+						<div class="flex items-center justify-center space-x-1 sm:space-x-2 mt-6 sm:mt-8">
+							<button 
+								onclick={() => updateURL({ pagina: urlParams.currentPage - 1 })}
+								disabled={urlParams.currentPage === 1}
+								class="px-3 sm:px-4 py-2 text-sm font-semibold text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-gray-200 transition-all touch-manipulation"
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+							>
+								<span class="hidden sm:inline">Anterior</span>
+								<span class="sm:hidden">‹</span>
+							</button>
+							
+							<div class="flex space-x-1 sm:space-x-2 max-w-[200px] sm:max-w-none overflow-x-auto">
 								{#each pageNumbers as pageNum}
 									{#if typeof pageNum === 'number'}
 										<button 
 											onclick={() => updateURL({ pagina: pageNum })}
-											class="px-4 py-2 rounded-md {
-												pageNum === urlParams.currentPage
-													? 'bg-[#00BFB3] text-white'
-													: 'text-gray-700 hover:bg-gray-50'
-											}"
-											aria-label="Página {pageNum}"
-											aria-current={pageNum === urlParams.currentPage ? 'page' : undefined}
+											class="px-3 sm:px-4 py-2 text-sm font-semibold rounded-lg transition-all touch-manipulation flex-shrink-0"
+											class:bg-[#00BFB3]={pageNum === urlParams.currentPage}
+											class:text-white={pageNum === urlParams.currentPage}
+											class:bg-white={pageNum !== urlParams.currentPage}
+											class:text-gray-700={pageNum !== urlParams.currentPage}
+											class:border={pageNum !== urlParams.currentPage}
+											class:border-gray-300={pageNum !== urlParams.currentPage}
+											class:hover:bg-gray-50={pageNum !== urlParams.currentPage}
+											class:focus:ring-2={pageNum !== urlParams.currentPage}
+											class:focus:ring-gray-200={pageNum !== urlParams.currentPage}
+											style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 										>
 											{pageNum}
 										</button>
 									{:else}
-										<span class="px-3 py-2 text-gray-500">...</span>
+										<span class="px-2 text-gray-500 flex items-center" style="font-family: 'Lato', sans-serif;">...</span>
 									{/if}
 								{/each}
-								
-								<button 
-									onclick={() => updateURL({ pagina: urlParams.currentPage + 1 })}
-									disabled={urlParams.currentPage === totalPages}
-									class="px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-									aria-label="Próxima página"
-								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-									</svg>
-								</button>
 							</div>
-						</nav>
+							
+							<button 
+								onclick={() => updateURL({ pagina: urlParams.currentPage + 1 })}
+								disabled={urlParams.currentPage === totalPages}
+								class="px-3 sm:px-4 py-2 text-sm font-semibold text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-gray-200 transition-all touch-manipulation"
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+							>
+								<span class="hidden sm:inline">Próxima</span>
+								<span class="sm:hidden">›</span>
+							</button>
+						</div>
 					{/if}
 				{/if}
 				{/key}
@@ -946,60 +958,70 @@
 		will-change: transform, opacity;
 	}
 	
-	/* Animação de entrada suave - DESABILITADA para evitar piscadas
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: translateY(10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-	*/
-	
-	/* Aplicar animação aos produtos quando aparecem - DESABILITADO
+	/* Melhorar performance das transições */
 	.product-wrapper,
 	.product-list-item {
-		animation: fadeIn 0.3s ease-out forwards;
-	}
-	*/
-	
-	/* Delay escalonado para cada produto - DESABILITADO
-	.product-wrapper:nth-child(1),
-	.product-wrapper:nth-child(4),
-	.product-list-item:nth-child(2),
-	.product-list-item:nth-child(4) { animation-delay: 50ms; }
-	.product-wrapper:nth-child(3),
-	.product-wrapper:nth-child(5),
-	.product-list-item:nth-child(3),
-	.product-list-item:nth-child(5) { animation-delay: 100ms; }
-	.product-wrapper:nth-child(6),
-	.product-wrapper:nth-child(7),
-	.product-list-item:nth-child(6),
-	.product-list-item:nth-child(7) { animation-delay: 200ms; }
-	*/
-	
-	/* Estabilizar o layout do grid */
-	.grid {
-		align-content: start;
-	}
-	
-	/* Prevenir mudanças de layout durante transições */
-	.flex-1 {
-		min-width: 0;
-	}
-	
-	/* Suavizar transições de filtros - REMOVIDO
-	aside {
-		transition: width 0.3s ease-out, opacity 0.3s ease-out;
-	}
-	*/
-	
-	/* Melhorar performance das transições */
-	* {
 		-webkit-backface-visibility: hidden;
-		backface-visibility: hidden;
+	}
+	
+	/* Remove seta nativa do select */
+	.select-custom {
+		font-family: 'Lato', sans-serif;
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		appearance: none;
+		background-image: none !important;
+		background-repeat: no-repeat;
+		background-size: 0;
+	}
+	
+	/* Remove seta específica do Safari */
+	.select-custom::-webkit-inner-spin-button,
+	.select-custom::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	
+	/* Remove seta específica do Firefox */
+	.select-custom::-moz-focus-inner {
+		border: 0;
+	}
+
+	/* Touch improvements para mobile */
+	@media (max-width: 768px) {
+		.overflow-x-auto {
+			scrollbar-width: none;
+			-ms-overflow-style: none;
+		}
+		
+		.overflow-x-auto::-webkit-scrollbar {
+			display: none;
+		}
+		
+		/* Garante que não haja overflow horizontal */
+		.products-container {
+			max-width: 100%;
+			overflow-x: hidden;
+		}
+		
+		/* Ajusta padding para mobile */
+		.bg-white.rounded-lg.shadow-sm {
+			margin-left: 0;
+			margin-right: 0;
+		}
+	}
+
+	/* Accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		.product-wrapper,
+		.product-list-item {
+			animation: none;
+			transition: none;
+		}
+	}
+	
+	/* Garante espaçamento consistente */
+	.main-container {
+		box-sizing: border-box;
 	}
 </style>
