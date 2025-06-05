@@ -245,7 +245,44 @@ export const MODERN_ICONS = {
   ChevronDown: {
     viewBox: "0 0 24 24",
     path: `<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />`
-  }
+  },
+  
+  // ÍCONES FALTANTES ADICIONADOS
+  analytics: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3v18h18"></path>
+    <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+  </svg>`,
+  
+  filter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+  </svg>`,
+  
+  Calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+    <line x1="8" y1="6" x2="16" y2="6"></line>
+    <line x1="16" y1="14" x2="16" y2="18"></line>
+    <line x1="8" y1="14" x2="8" y2="18"></line>
+    <line x1="12" y1="14" x2="12" y2="18"></line>
+    <line x1="8" y1="10" x2="8" y2="10"></line>
+    <line x1="12" y1="10" x2="12" y2="10"></line>
+    <line x1="16" y1="10" x2="16" y2="10"></line>
+  </svg>`,
+  
+  Copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>`,
+  
+  Star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+  </svg>`,
+  
+  Delete: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+  </svg>`
 } as const;
 
 // Cores consistentes com o design

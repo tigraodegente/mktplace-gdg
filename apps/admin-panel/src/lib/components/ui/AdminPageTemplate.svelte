@@ -313,7 +313,7 @@
 			},
 			{
 				label: 'Excluir',
-				icon: 'delete',
+				icon: 'Delete',
 				onclick: () => deleteItem(row)
 			}
 		];
@@ -417,23 +417,28 @@
 />
 
 <div class="min-h-screen bg-gray-50">
-	<!-- Header padrão -->
+	<!-- Header responsivo -->
 	<div class="bg-white border-b">
-		<div class="max-w-[calc(100vw-100px)] mx-auto px-4 py-6">
-			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-bold text-gray-900">{title}</h1>
-				<Button icon="Plus" onclick={() => goto(newItemRoute)}>
-					Novo {entityName}
+		<div class="max-w-[calc(100vw-20px)] sm:max-w-[calc(100vw-100px)] mx-auto px-4 py-4 sm:py-6">
+			<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+				<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{title}</h1>
+				<Button 
+					icon="Plus" 
+					onclick={() => goto(newItemRoute)}
+					class="w-full sm:w-auto text-sm sm:text-base"
+				>
+					<span class="sm:hidden">Novo</span>
+					<span class="hidden sm:inline">Novo {entityName}</span>
 				</Button>
 			</div>
 		</div>
 	</div>
 	
-	<!-- Content padrão -->
-	<div class="max-w-[calc(100vw-100px)] mx-auto p-6">
+	<!-- Content responsivo -->
+	<div class="max-w-[calc(100vw-20px)] sm:max-w-[calc(100vw-100px)] mx-auto p-4 sm:p-6">
 		<!-- Estatísticas (opcional) -->
 		{#if statsConfig}
-			<div class="mb-6">
+			<div class="mb-4 sm:mb-6">
 				<StatsAccordion 
 					stats={stats} 
 					labels={{
@@ -448,7 +453,7 @@
 		{/if}
 		
 		<!-- Filtros dinâmicos baseados na configuração -->
-		<div class="mb-6">
+		<div class="mb-4 sm:mb-6">
 			<FiltersAccordion
 				categories={categoriesEndpoint ? categories : []}
 				brands={brandsEndpoint ? brands : []}
@@ -456,6 +461,7 @@
 				showBrandFilter={!!brandsEndpoint}
 				showPriceFilter={!!categoriesEndpoint || !!brandsEndpoint}
 				statusOptions={getStatusOptionsForPage()}
+				customFilters={customFilters || []}
 				bind:statusFilter
 				bind:categoryFilter
 				bind:brandFilter
@@ -464,71 +470,33 @@
 					page = 1;
 					loadData();
 				}}
+				onCustomFilterChange={(key, value) => {
+					console.log(`Filtro customizado ${key}:`, value);
+					page = 1;
+					loadData();
+				}}
 			/>
 		</div>
 		
-		<!-- Filtros customizados específicos da página -->
-		{#if customFilters && customFilters.length > 0}
-			<div class="bg-white rounded-lg border border-gray-200 mb-6 p-6">
-				<div class="flex items-center gap-3 mb-4">
-					<div class="p-2 bg-purple-100 rounded-lg">
-						<ModernIcon name="settings" size="md" color="#7C3AED" />
-					</div>
-					<h3 class="text-lg font-semibold text-gray-900">Filtros Específicos</h3>
-				</div>
-				<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-					{#each customFilters as filter}
-						<div class="space-y-2">
-							<label class="block text-sm font-medium text-gray-700">{filter.label}</label>
-							{#if filter.type === 'select'}
-								<select 
-									class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-									onchange={(e) => {
-										const value = e.target.value;
-										console.log(`Filtro ${filter.key}:`, value);
-										// Aqui você pode adicionar lógica para aplicar o filtro
-										page = 1;
-										loadData();
-									}}
-								>
-									{#each filter.options || [] as option}
-										<option value={option.value}>{option.label}</option>
-									{/each}
-								</select>
-							{:else if filter.type === 'input'}
-								<input 
-									type="text"
-									placeholder={filter.placeholder || `Filtrar por ${filter.label.toLowerCase()}`}
-									class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3]"
-									oninput={(e) => {
-										const value = e.target.value;
-										console.log(`Filtro ${filter.key}:`, value);
-									}}
-								/>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-		
 		<!-- Tabela -->
 		<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-			<div class="p-4">
+			<div class="p-3 sm:p-4">
 				<!-- Ações em lote -->
 				{#if selectedIds.length > 0}
 					<div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-						<div class="flex items-center justify-between">
+						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
 							<span class="text-sm text-blue-800">
 								{selectedIds.length} {entityName}(s) selecionado(s)
 							</span>
-							<div class="flex gap-2">
+							<div class="flex gap-2 w-full sm:w-auto">
 								<Button
 									size="sm"
 									variant="ghost"
 									onclick={deleteSelected}
+									class="flex-1 sm:flex-initial"
 								>
-									Excluir ({selectedIds.length})
+									<span class="sm:hidden">Excluir</span>
+									<span class="hidden sm:inline">Excluir ({selectedIds.length})</span>
 								</Button>
 							</div>
 						</div>
@@ -540,11 +508,12 @@
 					{data}
 					{loading}
 					selectable={true}
-					bind:selectedIds
+					selectedIds={selectedIds}
+					onSelectionChange={(ids: string[]) => selectedIds = ids}
 					{page}
 					{pageSize}
 					{totalItems}
-					onPageChange={(p) => page = p}
+					onPageChange={(p: number) => page = p}
 					{sortBy}
 					{sortOrder}
 					onSort={handleSort}

@@ -127,7 +127,7 @@
 										{#if column.sortable && sortBy === column.key}
 											<ModernIcon 
 												name={sortOrder === 'asc' ? 'ChevronUp' : 'ChevronDown'} 
-												size={12} 
+												size="xs" 
 											/>
 										{/if}
 									</div>
@@ -192,19 +192,16 @@
 									
 									{#if actions}
 										<td class="px-4 sm:px-6 py-4 text-right text-sm">
-											<div class="flex justify-end gap-1 sm:gap-2">
+											<div class="flex justify-end gap-1">
 												{#each actions(row) as action}
 													<Button
 														size="sm"
 														variant={action.variant || 'ghost'}
-														icon={action.icon}
 														onclick={action.onclick}
-														class="text-xs sm:text-sm"
+														class="!p-2 !min-w-8 !min-h-8"
+														title={action.label}
 													>
-														<span class="hidden sm:inline">{action.label}</span>
-														<span class="sm:hidden">
-															<ModernIcon name={action.icon} size={16} />
-														</span>
+														<ModernIcon name={action.icon} size="sm" />
 													</Button>
 												{/each}
 											</div>

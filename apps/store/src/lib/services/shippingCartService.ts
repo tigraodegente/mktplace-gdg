@@ -78,7 +78,7 @@ export class ShippingCartService {
             const shippingItems: ShippingItem[] = items.map(item => ({
                 product_id: item.product.id,
                 quantity: item.quantity,
-                weight: (item.product as any).weight || 0.3, // Default 300g
+                weight: (item.product as any).weight || 300, // CORRIGIDO: Default 300g (peso em gramas)
                 price: item.product.price,
                 category_id: (item.product as any).category_id,
                 height: (item.product as any).height,
@@ -150,15 +150,15 @@ export class ShippingCartService {
 
                 const totalWeight = sellerItems.reduce(
                     (sum, item) => {
-                        // 🚚 CÁLCULO COMPLETO: peso real + peso cubado
-                        const realWeight = ((item.product as any).weight || 0.3) * item.quantity;
+                        // 🚚 CÁLCULO CORRIGIDO: peso já em gramas
+                        const realWeight = ((item.product as any).weight || 300) * item.quantity; // Default 300g
                         
                         // Calcular volume e peso cubado
                         const height = (item.product as any).height || 10;
                         const width = (item.product as any).width || 10;
                         const length = (item.product as any).length || 15;
                         const volume = height * width * length * item.quantity;
-                        const cubicWeight = volume / 5000; // divisor rodoviário
+                        const cubicWeight = (volume / 5000) * 1000; // Peso cubado em gramas
                         
                         // Usar o maior entre peso real e peso cubado
                         const effectiveWeight = Math.max(realWeight, cubicWeight);

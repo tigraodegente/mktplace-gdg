@@ -21,7 +21,11 @@
 			{ value: 'all', label: 'Todos os Status' },
 			{ value: 'active', label: 'Ativos' },
 			{ value: 'inactive', label: 'Inativos' }
-		]
+		],
+		// 🎯 NOVOS: Filtros customizados específicos da página
+		customFilters = [],
+		customFilterValues = $bindable({}),
+		onCustomFilterChange = () => {}
 	} = $props();
 	
 	let isOpen = $state(defaultOpen);
@@ -149,6 +153,38 @@
 							</div>
 						</div>
 					{/if}
+					
+					<!-- 🎯 FILTROS CUSTOMIZADOS ESPECÍFICOS DA PÁGINA -->
+					{#each customFilters as filter}
+						<div class="space-y-2">
+							<label class="block text-sm font-medium text-gray-700">{filter.label}</label>
+							{#if filter.type === 'select'}
+								<select 
+									class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+									value={customFilterValues[filter.key] || 'all'}
+									onchange={(e) => {
+										customFilterValues[filter.key] = e.target.value;
+										onCustomFilterChange(filter.key, e.target.value);
+									}}
+								>
+									{#each filter.options || [] as option}
+										<option value={option.value}>{option.label}</option>
+									{/each}
+								</select>
+							{:else if filter.type === 'input'}
+								<input 
+									type="text"
+									placeholder={filter.placeholder || `Filtrar por ${filter.label.toLowerCase()}`}
+									class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+									value={customFilterValues[filter.key] || ''}
+									oninput={(e) => {
+										customFilterValues[filter.key] = e.target.value;
+										onCustomFilterChange(filter.key, e.target.value);
+									}}
+								/>
+							{/if}
+						</div>
+					{/each}
 				</div>
 			</div>
 		</div>

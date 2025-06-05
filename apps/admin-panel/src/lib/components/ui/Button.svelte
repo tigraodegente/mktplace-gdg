@@ -4,65 +4,85 @@
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	interface Props {
-		variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'link';
+		variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
 		size?: 'sm' | 'md' | 'lg';
-		type?: 'button' | 'submit' | 'reset';
 		disabled?: boolean;
 		loading?: boolean;
 		icon?: string;
 		iconPosition?: 'left' | 'right';
 		class?: string;
-		onclick?: (e: MouseEvent) => void;
-		[key: string]: any;
+		onclick?: () => void;
+		type?: 'button' | 'submit' | 'reset';
+		title?: string;
 	}
 	
-	let { 
+	let {
 		variant = 'primary',
 		size = 'md',
-		type = 'button',
 		disabled = false,
 		loading = false,
-		icon = '',
+		icon,
 		iconPosition = 'left',
 		class: className = '',
-		children,
-		...restProps
-	} = $props<Props>();
+		onclick,
+		type = 'button',
+		title,
+		children
+	}: Props = $props();
 	
-	// Usar variantes do tema centralizado
-	const variants = theme.buttons;
-	
-	const sizes = {
-		sm: "px-3 py-1.5 text-sm",
-		md: "px-4 py-2 text-base",
-		lg: "px-6 py-3 text-lg"
+	// Classes base para variantes
+	const variantClasses = {
+		primary: 'bg-[#00BFB3] text-white hover:bg-[#00A69C] focus:ring-[#00BFB3] border-transparent',
+		secondary: 'bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-500 border-gray-300',
+		ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500 border-transparent',
+		danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 border-transparent'
 	};
+	
+	// Classes para tamanhos
+	const sizeClasses = {
+		sm: 'px-3 py-1.5 text-sm',
+		md: 'px-4 py-2 text-sm',
+		lg: 'px-6 py-3 text-base'
+	};
+	
+	// Tamanhos de ícone baseados no tamanho do botão
+	const iconSizes = {
+		sm: 'sm',
+		md: 'sm', 
+		lg: 'md'
+	} as const;
+	
+	const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+	
+	const classes = cn(
+		baseClasses,
+		variantClasses[variant],
+		sizeClasses[size],
+		disabled && 'opacity-50 cursor-not-allowed',
+		className
+	);
 </script>
 
 <button
 	{type}
-	disabled={disabled || loading}
-	class={cn(
-		"inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200",
-		"focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-2",
-		"disabled:opacity-50 disabled:cursor-not-allowed",
-		variants[variant],
-		sizes[size],
-		className
-	)}
-	{...restProps}
+	{disabled}
+	{title}
+	class={classes}
+	onclick={onclick}
 >
 	{#if loading}
-		<div class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-	{:else if icon && iconPosition === 'left'}
-		<ModernIcon name={icon} size={16} />
-	{/if}
-	
-	{#if children}
-		{@render children()}
-	{/if}
-	
-	{#if icon && iconPosition === 'right' && !loading}
-		<ModernIcon name={icon} size={16} />
+		<div class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+	{:else}
+		{#if icon && iconPosition === 'left'}
+			<ModernIcon name={icon} size={iconSizes[size]} class={children ? 'mr-2' : ''} />
+		{/if}
+		
+		{#if children}
+			{@render children()}
+		{/if}
+		
+		{#if icon && iconPosition === 'right'}
+			<ModernIcon name={icon} size={iconSizes[size]} class={children ? 'ml-2' : ''} />
+		{/if}
 	{/if}
 </button> 

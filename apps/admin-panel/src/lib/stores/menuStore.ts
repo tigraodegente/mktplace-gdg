@@ -128,17 +128,23 @@ export const baseMenuItems: MenuItem[] = [
 	// Vendas e Entregas
 	{ label: 'Devoluções', href: '/devolucoes', icon: '↩️', roles: ['admin', 'vendor'], badgeKey: 'returns.pending', category: 'sales' },
 	{ label: 'Frete', href: '/frete', icon: '🚚', roles: ['admin'], category: 'sales' },
+	{ label: 'Modalidades de Frete', href: '/modalidades-frete', icon: '⚙️', roles: ['admin'], category: 'sales' },
+	{ label: 'Transportadoras', href: '/transportadoras', icon: '🚐', roles: ['admin'], category: 'sales' },
+	{ label: 'Zonas de Frete', href: '/zonas', icon: '🌍', roles: ['admin'], category: 'sales' },
+	{ label: 'Tarifas Base', href: '/tarifas', icon: '💰', roles: ['admin'], category: 'sales' },
+	{ label: 'Envios', href: '/envios', icon: '📤', roles: ['admin'], category: 'sales' },
+	{ label: 'Cotações', href: '/cotacoes', icon: '📄', roles: ['admin'], category: 'sales' },
 	
 	// Financeiro e Pagamento
-	{ label: 'Financeiro', href: '/financeiro', icon: '💰', roles: ['admin'], category: 'financial' },
-	{ label: 'Métodos de Pagamento', href: '/metodos-pagamento', icon: '💳', roles: ['admin'], category: 'financial' },
+	{ label: 'Financeiro', href: '/financeiro', icon: '💳', roles: ['admin'], category: 'financial' },
+	{ label: 'Métodos de Pagamento', href: '/metodos-pagamento', icon: '💵', roles: ['admin'], category: 'financial' },
 	
 	// Análises
 	{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin'], category: 'analytics' },
 	
 	// Sistema
 	{ label: 'Integrações', href: '/integracoes', icon: '🔗', roles: ['admin'], category: 'system' },
-	{ label: 'Páginas', href: '/paginas', icon: '📄', roles: ['admin'], badgeKey: 'pages.total', category: 'system' },
+	{ label: 'Páginas', href: '/paginas', icon: '📝', roles: ['admin'], badgeKey: 'pages.total', category: 'system' },
 	{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin'], category: 'system' }
 ];
 

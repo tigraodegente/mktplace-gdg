@@ -1,8 +1,0 @@
-# SPA fallback
-/*    /index.html   200
-
-# API routes (se houver)
-/api/*  /api/:splat  200
-
-# Legacy redirects (se necessário)
-# /old-page  /new-page  301 

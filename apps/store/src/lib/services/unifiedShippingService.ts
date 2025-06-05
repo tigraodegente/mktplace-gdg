@@ -299,9 +299,25 @@ export class UnifiedShippingService {
       if (modality.modality_pricing_type === 'per_item') {
         basePrice = 0;
         for (const item of items) {
-          const itemWeight = (item.weight || 0.3) * 1000 * item.quantity;
+          // CORRIGIDO: Converter peso de string/kg para gramas
+          let itemWeightGrams = 300; // Default 300g
+          
+          if (item.weight) {
+            // Se weight é string, converter
+            const weightValue = typeof item.weight === 'string' 
+              ? parseFloat(item.weight) 
+              : item.weight;
+            
+            // Se o peso parece estar em kg (valores menores que 100), converter para gramas
+            if (weightValue > 0) {
+              itemWeightGrams = weightValue < 100 
+                ? weightValue * 1000  // Se < 100, assumir que está em kg e converter para gramas
+                : weightValue;         // Se >= 100, já está em gramas
+            }
+          }
+          
           const itemPrice = this.calculatePriceByWeight(
-            itemWeight,
+            itemWeightGrams,
             modality.calculated_weight_rules || modality.weight_rules || []
           );
           if (itemPrice === null) return null;
@@ -395,9 +411,24 @@ export class UnifiedShippingService {
     let totalVolume = 0;
     
     for (const item of items) {
-      // Peso real em gramas
-      const itemWeight = (item.weight || 0.3) * 1000 * item.quantity;
-      totalRealWeight += itemWeight;
+      // CORRIGIDO: Converter peso de string/kg para gramas
+      let itemWeightGrams = 300; // Default 300g
+      
+      if (item.weight) {
+        // Se weight é string, converter
+        const weightValue = typeof item.weight === 'string' 
+          ? parseFloat(item.weight) 
+          : item.weight;
+        
+        // Se o peso parece estar em kg (valores menores que 100), converter para gramas
+        if (weightValue > 0) {
+          itemWeightGrams = weightValue < 100 
+            ? weightValue * 1000  // Se < 100, assumir que está em kg e converter para gramas
+            : weightValue;         // Se >= 100, já está em gramas
+        }
+      }
+      
+      totalRealWeight += itemWeightGrams * item.quantity;
       
       // Volume em cm³
       const height = item.height || 10;
@@ -407,13 +438,13 @@ export class UnifiedShippingService {
       totalVolume += volume;
     }
     
-    // Peso cubado (divisor rodoviário: 5000)
+    // Peso cubado (divisor rodoviário: 5000) - mantém em gramas
     const cubicWeight = (totalVolume / 5000) * 1000; // em gramas
     
     // Usar o maior entre peso real e peso cubado
     const effectiveWeight = Math.max(totalRealWeight, cubicWeight);
     
-    console.log(`📏 Peso real: ${(totalRealWeight/1000).toFixed(2)}kg, Cubado: ${(cubicWeight/1000).toFixed(2)}kg`);
+    console.log(`📏 Peso real: ${(totalRealWeight/1000).toFixed(2)}kg, Cubado: ${(cubicWeight/1000).toFixed(2)}kg, Efetivo: ${(effectiveWeight/1000).toFixed(2)}kg`);
     
     return effectiveWeight;
   }
@@ -538,23 +569,8 @@ export class UnifiedShippingService {
       }
     }
     
-    // 4. Verificar promoções globais de frete grátis
-    const promotions = await db.query`
-      SELECT * FROM shipping_promotions
-      WHERE is_active = true
-      AND start_date <= ${new Date().toISOString()}
-      AND end_date >= ${new Date().toISOString()}
-    `;
-    
-    for (const promo of promotions || []) {
-      if (promo.min_value && totalValue >= promo.min_value) {
-        return {
-          isFree: true,
-          reason: promo.description || 'Promoção de frete grátis'
-        };
-      }
-    }
-    
+    // 4. REMOVIDO: Verificação de shipping_promotions (tabela não existe)
+    // Retornar false se nenhuma condição for atendida
     return { isFree: false };
   }
   

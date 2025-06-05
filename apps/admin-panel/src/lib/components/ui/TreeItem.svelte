@@ -61,7 +61,7 @@
 				class="p-1 hover:bg-gray-200 rounded"
 				onclick={handleToggleExpand}
 			>
-				<ModernIcon name={isExpanded ? 'ChevronDown' : 'ChevronRight'} size={12} />
+				<ModernIcon name={isExpanded ? 'ChevronDown' : 'ChevronRight'} size="xs" />
 			</button>
 		{:else}
 			<div class="w-6"></div>

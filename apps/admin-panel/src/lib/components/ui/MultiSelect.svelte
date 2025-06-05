@@ -219,7 +219,7 @@
 				{/if}
 			{/if}
 		</span>
-		<ModernIcon name="ChevronDown" size={16} />
+		<ModernIcon name="ChevronDown" size="sm" />
 	</button>
 	
 	<!-- Dropdown -->

@@ -90,21 +90,22 @@ function filterShippingOptionsByProducts(
     
     return options.filter(option => {
         const modalityLower = option.modality_name.toLowerCase();
+        const modalityCode = option.modality_id.toLowerCase();
         
         // Mapear modalidades para campos de configuração
-        if (modalityLower.includes('pac') || modalityLower.includes('econômic')) {
+        if (modalityCode === 'pac' || modalityLower.includes('pac') || modalityLower.includes('econômic')) {
             return allProductsConfig.shipping_pac;
         }
         
-        if (modalityLower.includes('sedex') || modalityLower.includes('express') || modalityLower.includes('rápid')) {
+        if (modalityCode === 'sedex' || modalityLower.includes('sedex') || modalityLower.includes('express') || modalityLower.includes('rápid')) {
             return allProductsConfig.shipping_sedex;
         }
         
-        if (modalityLower.includes('transportadora') || modalityLower.includes('premium')) {
+        if (modalityCode === 'carrier' || modalityLower.includes('transportadora') || modalityLower.includes('premium')) {
             return allProductsConfig.shipping_carrier;
         }
         
-        if (modalityLower.includes('retirada') || modalityLower.includes('pickup') || modalityLower.includes('loja')) {
+        if (modalityCode === 'pickup' || modalityLower.includes('retirada') || modalityLower.includes('pickup') || modalityLower.includes('loja')) {
             return allProductsConfig.shipping_pickup;
         }
         
@@ -115,7 +116,7 @@ function filterShippingOptionsByProducts(
 
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
-        console.log('🚛 Shipping Calculate Advanced - Estratégia híbrida iniciada');
+        console.log('🚛 Shipping Calculate Advanced - Sistema integrado iniciado');
         
         const body: ShippingRequest = await request.json();
         const { postal_code, items, seller_id } = body;
@@ -137,133 +138,184 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             }, { status: 400 });
         }
 
-        // **NOVA FUNCIONALIDADE**: Buscar configurações de shipping dos produtos
+        // Buscar configurações de shipping dos produtos
         const productIds = items.map(item => item.product_id);
         const db = getDatabase(platform);
         const productsConfig = await getProductsShippingConfig(db, productIds);
         
         console.log('📦 Configurações de shipping dos produtos:', productsConfig);
 
-        // Tentar calcular frete avançado com timeout
+        // Tentar calcular frete com banco real
         try {
-            // Promise com timeout de 6 segundos
-            const queryPromise = (async () => {
-                // STEP 1: Buscar zona por CEP (query simplificada)
-                const zones = await db.query`
-                    SELECT z.id as zone_id, z.name as zone_name, z.uf, 
-                    c.name as carrier_name
+            // Função auxiliar para determinar UF do CEP
+            const getCEPState = (cep: string): string => {
+                const prefix = cep.substring(0, 2);
+                const cepToUF: { [key: string]: string } = {
+                    '01': 'SP', '02': 'SP', '03': 'SP', '04': 'SP', '05': 'SP', '06': 'SP', '07': 'SP', '08': 'SP', '09': 'SP', '10': 'SP',
+                    '11': 'SP', '12': 'SP', '13': 'SP', '14': 'SP', '15': 'SP', '16': 'SP', '17': 'SP', '18': 'SP', '19': 'SP',
+                    '20': 'RJ', '21': 'RJ', '22': 'RJ', '23': 'RJ', '24': 'RJ', '25': 'RJ', '26': 'RJ', '27': 'RJ', '28': 'RJ',
+                    '30': 'MG', '31': 'MG', '32': 'MG', '33': 'MG', '34': 'MG', '35': 'MG', '36': 'MG', '37': 'MG', '38': 'MG', '39': 'MG'
+                };
+                return cepToUF[prefix] || 'SP';
+            };
+
+            // STEP 1: Buscar zona por CEP (corrigida para schema atual)
+            const cepUF = getCEPState(cleanPostalCode);
+            const zones = await db.query`
+                SELECT DISTINCT
+                    z.id as zone_id, 
+                    z.name as zone_name, 
+                    z.states[1] as uf,
+                    'Frenet' as carrier_name
                 FROM shipping_zones z
-                JOIN shipping_carriers c ON z.carrier_id = c.id
-                    WHERE z.is_active = true AND c.is_active = true
-                    LIMIT 5
+                WHERE z.is_active = true 
+                AND z.name LIKE '%-%'
+                AND z.states @> ARRAY[${cepUF}]
+                LIMIT 5
             `;
 
-                let zone = null;
-                if (zones.length > 0) {
-                    // Usar primeira zona ativa (simplificado)
-                    zone = zones[0];
-                } else {
-                return {
-                    success: false,
-                    error: 'CEP não atendido',
-                    options: []
+            let zone = null;
+            if (zones.length > 0) {
+                zone = zones[0];
+            } else {
+                // Fallback: criar zona fictícia baseada no CEP
+                const cepRegion = cleanPostalCode.substring(0, 2);
+                let regionName = 'Sudeste';
+                let uf = 'SP';
+                
+                if (['01', '02', '03', '04', '05', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'].includes(cepRegion)) {
+                    regionName = 'São Paulo';
+                    uf = 'SP';
+                } else if (['20', '21', '22', '23', '24', '25', '26', '27', '28'].includes(cepRegion)) {
+                    regionName = 'Rio de Janeiro';
+                    uf = 'RJ';
+                }
+                
+                zone = {
+                    zone_id: cepRegion,
+                    zone_name: regionName,
+                    uf: uf,
+                    carrier_name: 'Frenet'
                 };
             }
 
-                // STEP 2: Calcular métricas de peso/volume
+            // STEP 2: Calcular métricas de peso/volume
             const totalWeight = calculateTotalWeight(items);
             const totalVolume = calculateTotalVolume(items);
             const cubicWeight = calculateCubicWeight(totalVolume);
             const effectiveWeight = calculateEffectiveWeight(items);
 
-                // STEP 3: Buscar opções de modalidades (query simplificada)
-                let modalitiesOptions = [];
-                try {
-                    modalitiesOptions = await db.query`
-                        SELECT id, name, description, delivery_days_min, delivery_days_max,
-                               pricing_type, min_price, max_price, price_multiplier
-                        FROM shipping_modalities
-                        WHERE is_active = true
-                        ORDER BY priority ASC, delivery_days_min ASC
-                        LIMIT 10
+            // STEP 3: ✨ BUSCAR MODALIDADES REAIS DO BANCO ✨
+            const modalitiesOptions = await db.query`
+                SELECT id, code, name, description, 
+                       delivery_days_min, delivery_days_max,
+                       pricing_type, min_price, max_price, 
+                       price_multiplier
+                FROM shipping_modalities
+                WHERE is_active = true
+                ORDER BY priority ASC, delivery_days_min ASC
+                LIMIT 10
             `;
-                } catch (e) {
-                    console.log('Erro ao buscar modalidades, usando fallback');
-                }
 
             const shippingOptions: AdvancedShippingOption[] = [];
 
-                // STEP 4: Processar opções (simplificado)
-                if (modalitiesOptions.length > 0) {
-                    for (const option of modalitiesOptions) {
-                        // Usar min_price como base_price, ou fallback se não existir
-                        const basePrice = calculateAdvancedPrice(effectiveWeight, option.min_price || option.max_price || 15.90);
-                        const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                        const isFreeShipping = totalValue >= 199; // Threshold simplificado
+            // STEP 4: Processar modalidades reais
+            if (modalitiesOptions.length > 0) {
+                const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const isFreeShipping = totalValue >= 199; // Threshold padrão
                 
-                const shippingOption: AdvancedShippingOption = {
-                    id: option.id,
-                            name: generateShippingName(option.name, option.delivery_days_min),
-                            description: option.description || '',
-                            price: isFreeShipping ? 0 : basePrice,
-                            delivery_days: option.delivery_days_min,
-                            modality_id: option.id,
-                            modality_name: option.name,
-                            pricing_type: option.pricing_type || 'per_shipment',
-                    carrier: zone.carrier_name,
-                    zone_name: zone.zone_name
-                };
+                console.log(`💰 Valor total: R$ ${totalValue}, Frete grátis: ${isFreeShipping}, Peso efetivo: ${effectiveWeight}kg`);
                 
-                shippingOptions.push(shippingOption);
-            }
-                } else {
-                    // Opções padrão se não encontrou no banco
-                    const defaultOptions = [
-                        {
-                            id: 'sedex',
-                            name: 'SEDEX',
-                            description: 'Entrega rápida',
-                            days: 2,
-                            price: 25.90
-                        },
-                        {
-                            id: 'pac',
-                            name: 'PAC',
-                            description: 'Entrega econômica',
-                            days: 5,
-                            price: 15.90
-                        }
-                    ];
-
-                    for (const option of defaultOptions) {
-                        const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                        const adjustedPrice = calculateAdvancedPrice(effectiveWeight, option.price);
-                        const isFreeShipping = totalValue >= 199;
+                for (const option of modalitiesOptions) {
+                    // Buscar preços reais do banco para esta zona
+                    let calculatedPrice = 0;
+                    
+                    try {
+                        const rateQuery = await db.query`
+                            SELECT base_price, price_per_kg, min_weight, max_weight
+                            FROM shipping_base_rates sbr
+                            JOIN shipping_carriers sc ON sbr.carrier_id = sc.id
+                            WHERE sbr.zone_id = ${zone.zone_id}
+                            AND sc.name = 'Frenet'
+                            AND sbr.is_active = true
+                            AND sbr.priority = ${option.priority || 2}
+                            LIMIT 1
+                        `;
                         
-                        shippingOptions.push({
-                            id: option.id,
-                            name: generateShippingName(option.name, option.days),
-                            description: option.description,
-                            price: isFreeShipping ? 0 : adjustedPrice,
-                            delivery_days: option.days,
-                            modality_id: option.id,
-                            modality_name: option.name,
-                            pricing_type: 'per_shipment',
-                            carrier: zone.carrier_name,
-                            zone_name: zone.zone_name
-                        });
+                        if (rateQuery.length > 0) {
+                            const rate = rateQuery[0];
+                            calculatedPrice = calculatePriceFromRate(effectiveWeight, rate, option.price_multiplier || 1.0);
+                        } else {
+                            // Fallback: usar preço mínimo da modalidade com peso
+                            const basePrice = parseFloat(option.min_price) || 15.90;
+                            calculatedPrice = calculateAdvancedPrice(effectiveWeight, basePrice);
+                        }
+                    } catch (rateError) {
+                        // Se falhar, usar preço base
+                        const basePrice = parseFloat(option.min_price) || 15.90;
+                        calculatedPrice = calculateAdvancedPrice(effectiveWeight, basePrice);
                     }
+                    
+                    // APLICAR FRETE GRÁTIS APENAS SE VALOR >= 199
+                    const finalPrice = isFreeShipping ? 0 : Math.max(calculatedPrice, 8.00); // Mín R$ 8
+            
+                    const shippingOption: AdvancedShippingOption = {
+                        id: option.id,
+                        name: generateShippingName(option.name, option.delivery_days_min),
+                        description: option.description || '',
+                        price: finalPrice,
+                        delivery_days: option.delivery_days_min,
+                        modality_id: option.code || option.id,
+                        modality_name: option.name,
+                        pricing_type: option.pricing_type || 'per_shipment',
+                        carrier: zone.carrier_name,
+                        zone_name: zone.zone_name
+                    };
+                    
+                    shippingOptions.push(shippingOption);
                 }
-
-                // **NOVA FUNCIONALIDADE**: Filtrar opções baseado nas configurações dos produtos
-                const filteredOptions = filterShippingOptionsByProducts(shippingOptions, productsConfig);
                 
-                console.log(`🎯 Opções antes do filtro: ${shippingOptions.length}, depois: ${filteredOptions.length}`);
+                console.log(`✅ Modalidades processadas: ${modalitiesOptions.length}, Preços calculados`);
+            } else {
+                console.log('⚠️ Nenhuma modalidade encontrada no banco, usando fallback');
+                
+                // Fallback: modalidades básicas
+                const defaultOptions = [
+                    { id: 'sedex', name: 'SEDEX', description: 'Entrega rápida', days: 2, price: 25.90 },
+                    { id: 'pac', name: 'PAC', description: 'Entrega econômica', days: 5, price: 15.90 }
+                ];
 
-                // Ordenar por preço
+                for (const option of defaultOptions) {
+                    const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    const adjustedPrice = calculateAdvancedPrice(effectiveWeight, option.price);
+                    const isFreeShipping = totalValue >= 199;
+                    
+                    shippingOptions.push({
+                        id: option.id,
+                        name: generateShippingName(option.name, option.days),
+                        description: option.description,
+                        price: isFreeShipping ? 0 : adjustedPrice,
+                        delivery_days: option.days,
+                        modality_id: option.id,
+                        modality_name: option.name,
+                        pricing_type: 'per_shipment',
+                        carrier: zone.carrier_name,
+                        zone_name: zone.zone_name
+                    });
+                }
+            }
+
+            // Filtrar opções baseado nas configurações dos produtos
+            const filteredOptions = filterShippingOptionsByProducts(shippingOptions, productsConfig);
+            
+            console.log(`🎯 Opções antes do filtro: ${shippingOptions.length}, depois: ${filteredOptions.length}`);
+
+            // Ordenar por preço
             filteredOptions.sort((a, b) => a.price - b.price);
 
-            return {
+            await db.close();
+
+            return json({
                 success: true,
                 options: filteredOptions,
                 zone_info: {
@@ -279,28 +331,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     effective_weight: effectiveWeight,
                     postal_code: cleanPostalCode,
                     items_count: items.length,
-                    products_shipping_config: productsConfig
+                    products_shipping_config: productsConfig,
+                    source: 'database_real'
                 }
-            };
-            })();
-            
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout')), 6000)
-            });
-            
-            const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-            
-            console.log(`✅ Frete avançado calculado: ${result.options?.length || 0} opções`);
-            
-            return json({
-                ...result,
-                source: 'database'
             });
             
         } catch (error) {
-            console.log(`⚠️ Erro shipping advanced: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
+            console.log(`⚠️ Erro shipping database: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
             
-            // FALLBACK: Cálculo avançado com dados mock
+            // FALLBACK: Cálculo com dados mock
             const totalWeight = calculateTotalWeight(items);
             const totalVolume = calculateTotalVolume(items);
             const cubicWeight = calculateCubicWeight(totalVolume);
@@ -328,7 +367,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     description: 'Entrega expressa com seguro',
                     price: isFreeShipping ? 0 : calculateAdvancedPrice(effectiveWeight, 35.90),
                     delivery_days: baseDeliveryDays - 1,
-                    modality_id: 'sedex-express',
+                    modality_id: 'express',
                     modality_name: 'SEDEX Express',
                     pricing_type: 'per_shipment',
                     carrier: 'Correios',
@@ -360,7 +399,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 }
             ];
             
-            // **NOVA FUNCIONALIDADE**: Filtrar opções fallback baseado nas configurações dos produtos
+            // Filtrar opções fallback baseado nas configurações dos produtos
             const filteredMockOptions = filterShippingOptionsByProducts(mockOptions, productsConfig);
             
             console.log(`🎯 Opções fallback antes do filtro: ${mockOptions.length}, depois: ${filteredMockOptions.length}`);
@@ -381,9 +420,9 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     effective_weight: effectiveWeight,
                     postal_code: cleanPostalCode,
                     items_count: items.length,
-                    products_shipping_config: productsConfig
-                },
-                source: 'fallback'
+                    products_shipping_config: productsConfig,
+                    source: 'fallback'
+                }
             });
         }
 
@@ -396,6 +435,30 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         }, { status: 500 });
     }
 };
+
+/**
+ * Calcular preço baseado nos dados reais da tabela shipping_base_rates
+ */
+function calculatePriceFromRate(effectiveWeightKg: number, rate: any, multiplier: number = 1.0): number {
+    const basePrice = parseFloat(rate.base_price) || 15.90;
+    const pricePerKg = parseFloat(rate.price_per_kg) || 0;
+    
+    let finalPrice = basePrice;
+    
+    // Se tem preço por kg e peso > 1kg
+    if (pricePerKg > 0 && effectiveWeightKg > 1) {
+        finalPrice = basePrice + ((effectiveWeightKg - 1) * pricePerKg);
+    }
+    
+    // Aplicar multiplicador da modalidade
+    finalPrice = finalPrice * multiplier;
+    
+    // Aplicar taxas mínimas
+    const gris = Math.max(finalPrice * 0.02, 1.50);
+    const adv = Math.max(finalPrice * 0.01, 0.50);
+    
+    return Math.round((finalPrice + gris + adv) * 100) / 100;
+}
 
 /**
  * Calcular preço avançado baseado no peso efetivo
@@ -427,13 +490,16 @@ function generateShippingName(modalityName: string, days: number): string {
 }
 
 /**
- * 🚚 FUNÇÕES DE CÁLCULO DE PESO/VOLUME AVANÇADO
+ * 🚚 FUNÇÕES DE CÁLCULO DE PESO/VOLUME AVANÇADO (CORRIGIDAS)
  */
 function calculateTotalWeight(items: ShippingItem[]): number {
-    return items.reduce((total, item) => {
-        const weight = item.weight || 0.3; // Default 300g
+    const totalWeightGrams = items.reduce((total, item) => {
+        const weight = item.weight || 300; // Default 300g se não informado
         return total + (weight * item.quantity);
     }, 0);
+    
+    // Converter gramas para kg
+    return totalWeightGrams / 1000;
 }
 
 function calculateTotalVolume(items: ShippingItem[]): number {
@@ -452,17 +518,17 @@ function calculateCubicWeight(volume: number, transportType: 'aereo' | 'rodoviar
 }
 
 function calculateEffectiveWeight(items: ShippingItem[]): number {
-    const realWeight = calculateTotalWeight(items);
+    const realWeightKg = calculateTotalWeight(items); // já em kg
     const totalVolume = calculateTotalVolume(items);
-    const cubicWeight = calculateCubicWeight(totalVolume);
+    const cubicWeightKg = calculateCubicWeight(totalVolume);
     
     // O peso efetivo é sempre o maior
-    const effectiveWeight = Math.max(realWeight, cubicWeight);
+    const effectiveWeight = Math.max(realWeightKg, cubicWeightKg);
     
-    console.log(`📦 Cálculo de peso avançado:`, {
-        realWeight: `${realWeight.toFixed(2)}kg`,
+    console.log(`📦 Cálculo de peso corrigido:`, {
+        realWeight: `${realWeightKg.toFixed(2)}kg`,
         totalVolume: `${totalVolume.toFixed(0)}cm³`,
-        cubicWeight: `${cubicWeight.toFixed(2)}kg`,
+        cubicWeight: `${cubicWeightKg.toFixed(2)}kg`,
         effectiveWeight: `${effectiveWeight.toFixed(2)}kg`
     });
     

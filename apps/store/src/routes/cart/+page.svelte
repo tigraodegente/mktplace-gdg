@@ -320,7 +320,7 @@
           quantity: item.quantity,
           sellerId: item.sellerId,
           sellerName: item.sellerName,
-          weight: (item.product as any).weight || 0.3,
+          weight: (item.product as any).weight || 300,
           price: item.product.price,
           category_id: (item.product as any).category_id,
           height: (item.product as any).height,
