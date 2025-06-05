@@ -45,53 +45,50 @@
 	<meta name="keywords" content="favoritos, wishlist, produtos salvos, grão de gente, marketplace" />
 </svelte:head>
 
-<!-- Header Padrão do Projeto -->
-<div class="bg-white shadow-sm border-b border-gray-200">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-		<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-			<div class="flex items-start gap-4">
-				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-					<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-					</svg>
+<!-- Conteúdo Principal -->
+<main class="py-6 min-h-screen">
+	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+		<!-- Header Padrão do Projeto -->
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6" style="font-family: 'Lato', sans-serif;">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+						</svg>
+					</div>
+					<div>
+						<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Meus Favoritos</h1>
+						<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
+							{#if $isWishlistEmpty}
+								Organize seus produtos preferidos em um só lugar
+							{:else}
+								{$wishlistStore.length} {$wishlistStore.length === 1 ? 'produto salvo' : 'produtos salvos'} na sua lista
+							{/if}
+						</p>
+					</div>
 				</div>
-				<div>
-					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Meus Favoritos</h1>
-					<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
-						{#if $isWishlistEmpty}
-							Organize seus produtos preferidos em um só lugar
-						{:else}
-							{$wishlistStore.length} {$wishlistStore.length === 1 ? 'produto salvo' : 'produtos salvos'} na sua lista
-						{/if}
+				
+				<a 
+					href="/" 
+					class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm sm:text-base px-4 py-2 sm:px-0 sm:py-0 bg-[#00BFB3]/5 sm:bg-transparent rounded-lg sm:rounded-none"
+					style="font-family: 'Lato', sans-serif;"
+				>
+					<span class="sm:hidden">Voltar</span>
+					<span class="hidden sm:inline">← Continuar Comprando</span>
+				</a>
+			</div>
+			
+			<!-- Descrição expandível -->
+			<div class="mt-6 pt-6 border-t border-gray-200">
+				<div class="text-center">
+					<p class="text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
+						Salve seus produtos preferidos e tenha acesso rápido sempre que precisar. 
+						Seus favoritos ficam salvos mesmo se você sair da loja!
 					</p>
 				</div>
 			</div>
-			
-			<a 
-				href="/" 
-				class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm sm:text-base px-4 py-2 sm:px-0 sm:py-0 bg-[#00BFB3]/5 sm:bg-transparent rounded-lg sm:rounded-none"
-				style="font-family: 'Lato', sans-serif;"
-			>
-				<span class="sm:hidden">Voltar</span>
-				<span class="hidden sm:inline">← Continuar Comprando</span>
-			</a>
 		</div>
-		
-		<!-- Descrição expandível -->
-		<div class="mt-6 pt-6 border-t border-gray-200">
-			<div class="text-center">
-				<p class="text-gray-600 text-base leading-relaxed mb-4" style="font-family: 'Lato', sans-serif;">
-					Salve seus produtos preferidos e tenha acesso rápido sempre que precisar. 
-					Seus favoritos ficam salvos mesmo se você sair da loja!
-				</p>
-			</div>
-		</div>
-	</div>
-</div>
-
-<!-- Conteúdo Principal -->
-<main class="py-4 sm:py-6 lg:py-8 min-h-screen">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		{#if !$isWishlistEmpty}
 			<!-- Action Bar -->
 			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
