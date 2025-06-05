@@ -325,7 +325,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
-	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 main-container">
+	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 main-container overflow-x-hidden">
 		<!-- Breadcrumb alinhado com a identidade visual -->
 		<nav class="mb-4" aria-label="Breadcrumb" style="font-family: 'Lato', sans-serif;">
 			<div class="flex items-center gap-2 text-sm">
@@ -401,9 +401,9 @@
 			</div>
 		</div>
 								
-		<div class="flex gap-4 lg:gap-6">
+		<div class="flex gap-4 lg:gap-6 overflow-hidden">
 			<!-- Filtros Desktop -->
-			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
+			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'} overflow-hidden" use:useStableUpdates>
 				<FilterSidebar
 					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
 						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
@@ -489,7 +489,7 @@
 			</aside>
 			
 			<!-- Produtos -->
-			<div class="flex-1">
+			<div class="flex-1 min-w-0 overflow-hidden">
 				<!-- Barra de controles com identidade visual padrão -->
 				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6" style="font-family: 'Lato', sans-serif;">
 					<!-- Layout compacto para mobile -->
@@ -517,7 +517,7 @@
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
 								</svg>
-								<span>Filtros</span>
+								<span class="hidden sm:inline">Filtros</span>
 								{#if hasActiveFilters()}
 									<span class="bg-white text-[#00BFB3] text-xs px-1.5 py-0.5 rounded-full font-semibold min-w-[18px] text-center">
 										{urlParams.selectedCategories.length + urlParams.selectedBrands.length + urlParams.selectedTags.length + (urlParams.hasDiscount ? 1 : 0) + (urlParams.hasFreeShipping ? 1 : 0) + Object.values(dynamicOptions).reduce((sum, values) => sum + values.length, 0)}
@@ -607,7 +607,7 @@
 									<select 
 										value={urlParams.sortBy}
 										onchange={(e) => updateURL({ ordenar: e.currentTarget.value })}
-										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer min-w-[140px] sm:min-w-[180px] select-custom"
+										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer min-w-[120px] sm:min-w-[160px] select-custom"
 									>
 										{#each sortOptions as option}
 											<option value={option.value}>{option.label}</option>
@@ -627,10 +627,12 @@
 				<!-- Grid/Lista de produtos -->
 				{#key totalPages}
 				{#if isLoading}
-					<div class="{urlParams.viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6' : 'space-y-4'}">
+					<div class="{urlParams.viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 w-full overflow-hidden' : 'space-y-4'}">
 						{#each Array(urlParams.itemsPerPage) as _}
 							{#if urlParams.viewMode === 'grid'}
-								<ProductCardSkeleton />
+								<div class="min-w-0">
+									<ProductCardSkeleton />
+								</div>
 							{:else}
 								<!-- Skeleton para lista -->
 								<div class="bg-white rounded-lg shadow-sm p-4 flex gap-4 animate-pulse">
@@ -697,9 +699,9 @@
 					<!-- Container com transição suave -->
 					<div class="products-container">
 						{#if urlParams.viewMode === 'grid'}
-							<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 min-h-[600px]">
+							<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 min-h-[600px] w-full overflow-hidden">
 								{#each sortedProducts as product, index (product.id)}
-									<div class="product-wrapper">
+									<div class="product-wrapper min-w-0">
 										<ProductCard {product} />
 									</div>
 								{/each}
@@ -998,17 +1000,38 @@
 			display: none;
 		}
 		
-		/* Garante que não haja overflow horizontal */
-		.products-container {
-			max-width: 100%;
+		/* Garante espaçamento consistente */
+		.main-container {
+			max-width: 100vw;
 			overflow-x: hidden;
 		}
 		
-		/* Ajusta padding para mobile */
+		/* Evita overflow na barra de controles */
 		.bg-white.rounded-lg.shadow-sm {
-			margin-left: 0;
-			margin-right: 0;
+			width: 100%;
+			box-sizing: border-box;
 		}
+	}
+
+	/* Garante que container principal respeite limites */
+	.main-container {
+		box-sizing: border-box;
+		width: 100%;
+		position: relative;
+	}
+	
+	/* Evita quebra de layout */
+	.flex {
+		min-width: 0;
+	}
+	
+	/* Garante alinhamento consistente */
+	.bg-white.rounded-lg.shadow-sm,
+	.products-container {
+		margin-left: 0;
+		margin-right: 0;
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	/* Accessibility */
