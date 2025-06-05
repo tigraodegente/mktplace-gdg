@@ -147,53 +147,50 @@
 	<meta name="keywords" content="devoluções, trocas, reembolso, garantia, atendimento, grão de gente, marketplace" />
 </svelte:head>
 
-<!-- Header Padrão do Projeto -->
-<div class="bg-white shadow-sm border-b border-gray-200">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-		<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-			<div class="flex items-start gap-4">
-				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-					<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
-					</svg>
+<!-- Conteúdo Principal -->
+<main class="py-6">
+	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+		<!-- Header Padrão do Projeto -->
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6" style="font-family: 'Lato', sans-serif;">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+						</svg>
+					</div>
+					<div>
+						<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Devoluções e Trocas</h1>
+						<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
+							{#if returns.length > 0}
+								{returns.length} {returns.length === 1 ? 'solicitação ativa' : 'solicitações ativas'} • Política de 7 dias
+							{:else}
+								Gerencie suas solicitações de devolução e troca com facilidade
+							{/if}
+						</p>
+					</div>
 				</div>
-				<div>
-					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Devoluções e Trocas</h1>
-					<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
-						{#if returns.length > 0}
-							{returns.length} {returns.length === 1 ? 'solicitação ativa' : 'solicitações ativas'} • Política de 7 dias
-						{:else}
-							Gerencie suas solicitações de devolução e troca com facilidade
-						{/if}
+				
+				<a 
+					href="/" 
+					class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm sm:text-base px-4 py-2 sm:px-0 sm:py-0 bg-[#00BFB3]/5 sm:bg-transparent rounded-lg sm:rounded-none"
+					style="font-family: 'Lato', sans-serif;"
+				>
+					<span class="sm:hidden">Voltar</span>
+					<span class="hidden sm:inline">← Continuar Comprando</span>
+				</a>
+			</div>
+			
+			<!-- Descrição expandível -->
+			<div class="mt-6 pt-6 border-t border-gray-200">
+				<div class="text-center">
+					<p class="text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
+						Processo simples e transparente: você tem até 7 dias para solicitar troca ou devolução. 
+						Primeira troca é grátis e reembolso em até 7 dias úteis.
 					</p>
 				</div>
 			</div>
-			
-			<a 
-				href="/" 
-				class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm sm:text-base px-4 py-2 sm:px-0 sm:py-0 bg-[#00BFB3]/5 sm:bg-transparent rounded-lg sm:rounded-none"
-				style="font-family: 'Lato', sans-serif;"
-			>
-				<span class="sm:hidden">Voltar</span>
-				<span class="hidden sm:inline">← Continuar Comprando</span>
-			</a>
 		</div>
-		
-		<!-- Descrição expandível -->
-		<div class="mt-6 pt-6 border-t border-gray-200">
-			<div class="text-center">
-				<p class="text-gray-600 text-base leading-relaxed mb-4" style="font-family: 'Lato', sans-serif;">
-					Processo simples e transparente: você tem até 7 dias para solicitar troca ou devolução. 
-					Primeira troca é grátis e reembolso em até 7 dias úteis.
-				</p>
-			</div>
-		</div>
-	</div>
-</div>
-
-<!-- Conteúdo Principal -->
-<main class="py-8">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
 		<!-- Cards Informativos -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
