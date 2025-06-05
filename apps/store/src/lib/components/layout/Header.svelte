@@ -123,123 +123,196 @@
 							
 							{#if userMenuOpen}
 								<div 
-									class="absolute top-full left-0 w-44 md:w-48 lg:w-52 xl:w-56 bg-white shadow-xl rounded-xl border border-gray-100 py-3 transition-all duration-300 ease-out z-50 backdrop-blur-sm"
-									style="box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);"
+									class="fixed sm:absolute top-auto bottom-4 sm:top-full sm:bottom-auto left-4 right-4 sm:left-auto sm:right-0 w-auto sm:w-52 md:w-56 lg:w-60 xl:w-64 bg-white shadow-xl rounded-xl border border-gray-100 py-2 sm:py-3 transition-all duration-300 ease-out z-50 backdrop-blur-sm max-h-[60vh] sm:max-h-[70vh] overflow-y-auto"
+									style="box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); scrollbar-width: thin; scrollbar-color: #00BFB3 #f1f1f1;"
 									role="menu"
 								>
 									<!-- Seção Principal da Conta -->
-									<div class="px-1">
+									<div class="px-1 sm:px-1">
 									<a 
 										href="/minha-conta"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 										role="menuitem"
 									>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 											</svg>
-											<span>Minha Conta</span>
+											<span class="truncate">Minha Conta</span>
 									</a>
 										
 									<a
 										href="/meus-pedidos"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 											role="menuitem"
 									>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
 										</svg>
-											<span>Meus Pedidos</span>
+											<span class="truncate">Meus Pedidos</span>
+									</a>
+
+									<a
+										href="/enderecos"
+											onclick={closeUserMenu}
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
+											role="menuitem"
+									>
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+										</svg>
+											<span class="truncate">Meus Endereços</span>
 									</a>
 									</div>
 									
 									<!-- Divisor -->
-									<div class="my-2 mx-4 border-t border-gray-100"></div>
+									<div class="my-2 mx-2 sm:mx-4 border-t border-gray-100"></div>
 									
 									<!-- Seção de Recursos -->
-									<div class="px-1">
+									<div class="px-1 sm:px-1">
 									<a
 										href="/listas-presentes?user_id={$user?.id}"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 											role="menuitem"
 									>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
 										</svg>
-											<span>Minhas Listas</span>
+											<span class="truncate">Minhas Listas</span>
 									</a>
 										
 									<a
 										href="/notificacoes"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 											role="menuitem"
 									>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 2a7 7 0 00-7 7v4.586l-.293.293A1 1 0 003 15h14a1 1 0 00.293-1.121L17 13.586V9a7 7 0 00-7-7zM8 20a2 2 0 104 0" />
 											</svg>
-											<span>Notificações</span>
+											<span class="truncate">Notificações</span>
 										</a>
+
+									<a
+										href="/promocoes"
+											onclick={closeUserMenu}
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
+											role="menuitem"
+									>
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+										</svg>
+											<span class="truncate">Promoções</span>
+									</a>
+
+									<a
+										href="/lancamentos-exclusivos"
+											onclick={closeUserMenu}
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
+											role="menuitem"
+									>
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+										</svg>
+											<span class="truncate">Lançamentos Exclusivos</span>
+									</a>
+
+									<a
+										href="/quartos-dos-famosos"
+											onclick={closeUserMenu}
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
+											role="menuitem"
+									>
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+										</svg>
+											<span class="truncate">Quartos dos Famosos</span>
+									</a>
+
+									<a
+										href="/blog"
+											onclick={closeUserMenu}
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
+											role="menuitem"
+									>
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+										</svg>
+											<span class="truncate">Blog & Novidades</span>
+									</a>
 									</div>
 									
 									<!-- Divisor -->
-									<div class="my-2 mx-4 border-t border-gray-100"></div>
+									<div class="my-2 mx-2 sm:mx-4 border-t border-gray-100"></div>
 									
 									<!-- Seção de Suporte -->
-									<div class="px-1">
+									<div class="px-1 sm:px-1">
 										<a
 											href="/chat"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 											role="menuitem"
 										>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
 										</svg>
-											<span>Chat & Suporte</span>
+											<span class="truncate">Chat</span>
+									</a>
+
+										<a
+											href="/atendimento"
+											onclick={closeUserMenu}
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
+											role="menuitem"
+										>
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+										</svg>
+											<span class="truncate">Atendimento</span>
 									</a>
 										
-									<a
+																		<a
 										href="/suporte"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 											role="menuitem"
 									>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
 										</svg>
-											<span>FAQ & Base de Conhecimento</span>
+											<span class="truncate">Suporte & FAQ</span>
 									</a>
-										
+
 									<a
 										href="/devolucoes"
 											onclick={closeUserMenu}
-											class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-gray-800 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 											role="menuitem"
 									>
-											<svg class="w-5 h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[#00BFB3] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
 										</svg>
-											<span>Devoluções & Trocas</span>
+											<span class="truncate">Devoluções & Trocas</span>
 									</a>
 									</div>
 									
 									<!-- Divisor para Sair -->
-									<div class="my-2 mx-4 border-t border-gray-200"></div>
+									<div class="my-2 mx-2 sm:mx-4 border-t border-gray-200"></div>
 									
 									<!-- Botão Sair -->
-									<div class="px-1">
+									<div class="px-1 sm:px-1">
 									<button 
 											onclick={() => { closeUserMenu(); onLogout(); }}
-											class="flex items-center gap-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 group mx-2"
+											class="flex items-center gap-2 sm:gap-3 w-full text-left px-3 sm:px-4 py-3 sm:py-3 text-sm sm:text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 group mx-1 sm:mx-2 min-h-[44px]"
 										role="menuitem"
 									>
-											<svg class="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="w-4 h-4 sm:w-5 sm:h-5 text-red-500 group-hover:text-red-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
 											</svg>
-											<span>Sair</span>
+											<span class="truncate">Sair</span>
 									</button>
 									</div>
 								</div>

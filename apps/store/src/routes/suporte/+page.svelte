@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	
 	// Estado
 	let activeTab = 'faq';
@@ -74,7 +75,21 @@
 	];
 	
 	onMount(() => {
+		// Verificar parâmetro da URL para definir aba ativa
+		const urlTab = $page.url.searchParams.get('tab');
+		if (urlTab && ['faq', 'tickets'].includes(urlTab)) {
+			activeTab = urlTab;
+		}
+		
 		loadTickets();
+	});
+
+	// Reagir a mudanças na URL
+	$effect(() => {
+		const urlTab = $page.url.searchParams.get('tab');
+		if (urlTab && ['faq', 'tickets'].includes(urlTab)) {
+			activeTab = urlTab;
+		}
 	});
 	
 	async function loadTickets() {
