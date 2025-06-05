@@ -115,6 +115,15 @@
 	// Estado dos grupos expansíveis - ajustado para incluir mais grupos
 	let expandedGroups = $state<Set<string>>(new Set(['categories', 'price', 'brands', 'benefits', 'dynamic_armazenamento', 'dynamic_memoria-ram', 'dynamic_cor', 'dynamic_processador', 'dynamic_tamanho']));
 	
+	// Estado para controlar "ver mais" nas categorias e marcas
+	let showMoreCategories = $state(false);
+	let showMoreBrands = $state(false);
+	const INITIAL_CATEGORIES_COUNT = 6;
+	const INITIAL_BRANDS_COUNT = 8;
+	
+	// Estado para controlar expansão de categorias pai
+	let expandedCategories = $state<Set<string>>(new Set());
+	
 	// Filtros selecionados - SIMPLIFICADO: usar diretamente as props ao invés de state interno
 	let selectedPrice = $state(priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 }));
 	
@@ -167,6 +176,15 @@
 			expandedGroups.add(groupId);
 		}
 		expandedGroups = new Set(expandedGroups);
+	}
+	
+	function toggleCategory(categoryId: string) {
+		if (expandedCategories.has(categoryId)) {
+			expandedCategories.delete(categoryId);
+		} else {
+			expandedCategories.add(categoryId);
+		}
+		expandedCategories = new Set(expandedCategories);
 	}
 	
 	function toggleFilter(type: 'category' | 'brand', filter: Filter) {
@@ -305,46 +323,63 @@
 	);
 </script>
 
-<aside class="bg-white rounded-lg shadow-sm p-4 {className} no-shift" use:preventFlicker>
-	<!-- Header -->
-	<div class="flex items-center justify-between mb-6">
-		<h2 class="text-xl font-bold text-gray-900">Filtros</h2>
-		<div class="flex items-center gap-2">
-		{#if activeFilterCount > 0}
-			<button
-				onclick={clearFilters}
-				class="text-sm font-medium text-[#00BFB3] hover:text-[#00A89D] transition-fast flex items-center gap-1 hover:gap-2"
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+<aside class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 {className} no-shift" use:preventFlicker style="font-family: 'Lato', sans-serif;">
+	<!-- Header compacto em uma linha -->
+	<div class="border-b border-gray-200 pb-4 mb-6">
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<svg class="h-5 w-5 text-[#00BFB3] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
 				</svg>
-				Limpar ({activeFilterCount})
-			</button>
-		{/if}
-			{#if showCloseButton && onClose}
-				<button 
-					onclick={onClose}
-					class="p-1 hover:bg-gray-50 rounded-lg transition-fast"
-					aria-label="Ocultar filtros"
-					title="Ocultar filtros"
-				>
-					<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
-			{/if}
+				<h2 class="text-lg font-semibold text-gray-900 whitespace-nowrap">Filtros</h2>
+				{#if activeFilterCount > 0}
+					<span class="text-sm text-gray-600 whitespace-nowrap">{activeFilterCount} {activeFilterCount === 1 ? 'ativo' : 'ativos'}</span>
+				{/if}
+			</div>
+			<div class="flex items-center gap-2">
+				{#if activeFilterCount > 0}
+					<button
+						onclick={clearFilters}
+						class="px-3 py-1.5 text-sm font-medium text-[#00BFB3] hover:text-white hover:bg-[#00BFB3] border border-[#00BFB3] rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+						Limpar
+					</button>
+				{/if}
+				{#if showCloseButton && onClose}
+					<button 
+						onclick={onClose}
+						class="p-2 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded-lg transition-colors flex-shrink-0"
+						aria-label="Ocultar filtros"
+						title="Ocultar filtros"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				{/if}
+			</div>
 		</div>
 	</div>
 	
 	{#if loading}
-		<!-- Loading State -->
-		<div class="space-y-4">
+		<!-- Loading State melhorado -->
+		<div class="space-y-6">
 			{#each Array(3) as _}
-				<div class="space-y-2">
-					<div class="h-5 bg-gray-200 rounded skeleton-loading w-24"></div>
-					<div class="space-y-2">
+				<div class="space-y-3">
+					<div class="flex items-center gap-2">
+						<div class="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+						<div class="h-5 bg-gray-200 rounded animate-pulse w-32"></div>
+					</div>
+					<div class="space-y-2 ml-6">
 						{#each Array(4) as _}
-							<div class="h-4 bg-gray-50 rounded skeleton-loading"></div>
+							<div class="flex items-center gap-2">
+								<div class="h-4 w-4 bg-gray-100 rounded animate-pulse"></div>
+								<div class="h-4 bg-gray-100 rounded animate-pulse flex-1"></div>
+								<div class="h-4 w-8 bg-gray-100 rounded-full animate-pulse"></div>
+							</div>
 						{/each}
 					</div>
 				</div>
@@ -357,12 +392,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('categories')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('categories')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Categorias</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-4H9m10 8H5m6 4H5" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Categorias</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('categories') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('categories') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -372,60 +412,98 @@
 					</button>
 					
 					{#if expandedGroups.has('categories')}
+						{@const mainCategories = categories.filter(c => !c.parent_id)}
+						{@const categoriesToShow = showMoreCategories ? mainCategories : mainCategories.slice(0, INITIAL_CATEGORIES_COUNT)}
+						{@const remainingCount = mainCategories.length - INITIAL_CATEGORIES_COUNT}
+						
 						<div class="mt-3 space-y-2">
-							{#each categories.filter(c => !c.parent_id) as category (category.id)}
+							{#each categoriesToShow as category (category.id)}
 								{@const hasSubcategories = category.subcategories && category.subcategories.length > 0}
 								{@const totalCount = category.count || 0}
 								
 								<div class="space-y-1">
 									<!-- Categoria Principal -->
-									<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {totalCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+									<div class="flex items-center hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors {totalCount === 0 ? 'opacity-50' : ''}">
 										<input
 											type="checkbox"
 											checked={localSelectedCategories.has(category.slug || category.id)}
 											onchange={() => toggleFilter('category', category)}
 											disabled={totalCount === 0}
-											class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
+											class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] disabled:opacity-50 transition-colors"
+											onclick={(e) => e.stopPropagation()}
 										/>
-										<span class="ml-3 text-sm font-medium text-gray-700 flex-1 {totalCount === 0 ? 'text-gray-400' : ''} transition-fast">{category.name}</span>
-										<span class="text-xs font-medium {totalCount === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({totalCount})</span>
-									</label>
+										<button
+											onclick={() => hasSubcategories ? toggleCategory(category.id) : toggleFilter('category', category)}
+											class="ml-3 text-sm font-medium text-gray-700 flex-1 pr-3 text-left {totalCount === 0 ? 'text-gray-400' : ''} {hasSubcategories ? 'cursor-pointer hover:text-[#00BFB3]' : 'cursor-pointer'}"
+										>
+											{category.name}
+										</button>
+										{#if hasSubcategories}
+											<button
+												onclick={() => toggleCategory(category.id)}
+												class="p-1 text-gray-400 hover:text-[#00BFB3] transition-colors"
+												aria-label="{expandedCategories.has(category.id) ? 'Ocultar' : 'Mostrar'} subcategorias"
+											>
+												<svg class="w-4 h-4 transition-transform {expandedCategories.has(category.id) ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+												</svg>
+											</button>
+										{/if}
+										<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex-shrink-0 {totalCount === 0 ? 'bg-gray-50 text-gray-400' : ''}">{totalCount}</span>
+									</div>
 									
-									<!-- Subcategorias sempre visíveis -->
-									{#if hasSubcategories && category.subcategories}
+									<!-- Subcategorias condicionais -->
+									{#if hasSubcategories && category.subcategories && expandedCategories.has(category.id)}
 										<div class="ml-6 space-y-1">
 											{#each category.subcategories as subcategory (subcategory.id)}
-												<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition text-sm {subcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
-									<input
-										type="checkbox"
+												<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-2 rounded-lg transition-colors text-sm {subcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+													<input
+														type="checkbox"
 														checked={localSelectedCategories.has(subcategory.slug || subcategory.id)}
 														onchange={() => toggleFilter('category', subcategory)}
 														disabled={subcategory.count === 0}
-														class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
+														class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] disabled:opacity-50 transition-colors"
 													/>
-													<span class="ml-3 text-sm text-gray-600 flex-1 {subcategory.count === 0 ? 'text-gray-400' : ''} transition-fast">
+													<span class="ml-3 text-sm text-gray-600 flex-1 pr-3 {subcategory.count === 0 ? 'text-gray-400' : ''}">
 														{subcategory.name}
 													</span>
-													<span class="text-xs {subcategory.count === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({subcategory.count})</span>
-								</label>
+													<span class="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full flex-shrink-0 {subcategory.count === 0 ? 'bg-gray-50 text-gray-400' : ''}">{subcategory.count}</span>
+												</label>
+											{/each}
+										</div>
+									{/if}
+								</div>
 							{/each}
-						</div>
-					{/if}
-				</div>
-							{/each}
+							
+							<!-- Botão Ver Mais/Menos -->
+							{#if remainingCount > 0}
+								<button
+									onclick={() => showMoreCategories = !showMoreCategories}
+									class="flex items-center gap-2 w-full p-2 text-left text-sm font-medium text-[#00BFB3] hover:text-[#00A89D] hover:bg-[#00BFB3]/5 rounded-lg transition-colors"
+								>
+									<svg class="w-4 h-4 transition-transform {showMoreCategories ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+									</svg>
+									{#if showMoreCategories}
+										Ver menos categorias
+									{:else}
+										Ver mais {remainingCount} categorias
+									{/if}
+								</button>
+							{/if}
 							
 							<!-- Subcategorias órfãs (sem categoria pai na lista) -->
 							{#each categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)) as orphanSubcategory (orphanSubcategory.id)}
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {orphanSubcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+								<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors {orphanSubcategory.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
 										checked={localSelectedCategories.has(orphanSubcategory.slug || orphanSubcategory.id)}
 										onchange={() => toggleFilter('category', orphanSubcategory)}
 										disabled={orphanSubcategory.count === 0}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
+										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] disabled:opacity-50 transition-colors"
 									/>
-									<span class="ml-3 text-sm text-gray-700 flex-1 {orphanSubcategory.count === 0 ? 'text-gray-400' : ''} transition-fast">{orphanSubcategory.name}</span>
-									<span class="text-xs {orphanSubcategory.count === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({orphanSubcategory.count})</span>
+									<span class="ml-3 text-sm font-medium text-gray-700 flex-1 pr-3 {orphanSubcategory.count === 0 ? 'text-gray-400' : ''}">{orphanSubcategory.name}</span>
+									<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex-shrink-0 {orphanSubcategory.count === 0 ? 'bg-gray-50 text-gray-400' : ''}">{orphanSubcategory.count}</span>
 								</label>
 							{/each}
 						</div>
@@ -438,12 +516,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('price')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('price')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Preço</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Preço</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('price') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('price') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -471,12 +554,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('brands')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('brands')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Marcas</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Marcas</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('brands') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('brands') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -486,22 +574,43 @@
 					</button>
 					
 					{#if expandedGroups.has('brands')}
+						{@const filteredBrands = brands.filter(b => !b.count || b.count > 0)}
+						{@const brandsToShow = showMoreBrands ? filteredBrands : filteredBrands.slice(0, INITIAL_BRANDS_COUNT)}
+						{@const remainingBrandsCount = filteredBrands.length - INITIAL_BRANDS_COUNT}
+						
 						<div class="mt-3 space-y-2">
-							{#each brands.filter(b => !b.count || b.count > 0) as brand (brand.id)}
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition {brand.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+							{#each brandsToShow as brand (brand.id)}
+								<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors {brand.count === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
 									<input
 										type="checkbox"
 										checked={localSelectedBrands.has(brand.slug || brand.id)}
 										onchange={() => toggleFilter('brand', brand)}
 										disabled={brand.count === 0}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:ring-offset-0 disabled:opacity-50 transition-fast"
+										class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] disabled:opacity-50 transition-colors"
 									/>
-									<span class="ml-3 text-sm text-gray-700 flex-1 {brand.count === 0 ? 'text-gray-400' : ''} transition-fast">{brand.name}</span>
+									<span class="ml-3 text-sm font-medium text-gray-700 flex-1 pr-3 {brand.count === 0 ? 'text-gray-400' : ''}">{brand.name}</span>
 									{#if brand.count !== undefined}
-										<span class="text-xs {brand.count === 0 ? 'text-gray-400' : 'text-gray-500'} transition-fast">({brand.count})</span>
+										<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex-shrink-0 {brand.count === 0 ? 'bg-gray-50 text-gray-400' : ''}">{brand.count}</span>
 									{/if}
 								</label>
 							{/each}
+							
+							<!-- Botão Ver Mais/Menos para Marcas -->
+							{#if remainingBrandsCount > 0}
+								<button
+									onclick={() => showMoreBrands = !showMoreBrands}
+									class="flex items-center gap-2 w-full p-2 text-left text-sm font-medium text-[#00BFB3] hover:text-[#00A89D] hover:bg-[#00BFB3]/5 rounded-lg transition-colors"
+								>
+									<svg class="w-4 h-4 transition-transform {showMoreBrands ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+									</svg>
+									{#if showMoreBrands}
+										Ver menos marcas
+									{:else}
+										Ver mais {remainingBrandsCount} marcas
+									{/if}
+								</button>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -511,12 +620,17 @@
 			<div class="border-b border-gray-200 pb-4">
 				<button
 					onclick={() => toggleGroup('benefits')}
-					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+					class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 					aria-expanded={expandedGroups.has('benefits')}
 				>
-					<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-fast">Ofertas e Benefícios</h3>
+					<div class="flex items-center gap-2">
+						<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+						</svg>
+						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Ofertas e Benefícios</h3>
+					</div>
 					<svg 
-						class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('benefits') ? 'rotate-180' : ''}"
+						class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('benefits') ? 'rotate-180' : ''}"
 						fill="none" 
 						stroke="currentColor" 
 						viewBox="0 0 24 24"
@@ -528,42 +642,44 @@
 				{#if expandedGroups.has('benefits')}
 					<div class="mt-3 space-y-3">
 						<!-- Em Promoção - Primeiro pois é gatilho de compra -->
-						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded filter-transition">
+						<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors">
 							<input
 								type="checkbox"
 								checked={hasDiscount}
 								onchange={(e) => handleBenefitChange('discount', e.currentTarget.checked)}
-								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
+								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-colors"
 							/>
-							<div class="ml-3 flex-1">
-								<span class="text-sm text-gray-700 flex items-center gap-2">
-									<span class="text-red-600 font-bold">%</span>
+							<div class="ml-3 flex-1 pr-3">
+								<span class="text-sm font-medium text-gray-700 flex items-center gap-2">
+									<span class="w-5 h-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold">%</span>
 									Em Promoção
 								</span>
 							</div>
 							{#if benefitsCounts.discount > 0}
-								<span class="text-xs text-gray-500">({benefitsCounts.discount})</span>
+								<span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full flex-shrink-0">{benefitsCounts.discount}</span>
 							{/if}
 						</label>
 						
 						<!-- Frete Grátis -->
-						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded filter-transition">
+						<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors">
 							<input
 								type="checkbox"
 								checked={hasFreeShipping}
 								onchange={(e) => handleBenefitChange('freeShipping', e.currentTarget.checked)}
-								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
+								class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-colors"
 							/>
-							<div class="ml-3 flex-1">
-								<span class="text-sm text-gray-700 flex items-center gap-2">
-									<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-									</svg>
+							<div class="ml-3 flex-1 pr-3">
+								<span class="text-sm font-medium text-gray-700 flex items-center gap-2">
+									<div class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+										<svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
 									Frete Grátis
 								</span>
 							</div>
 							{#if benefitsCounts.freeShipping > 0}
-								<span class="text-xs text-gray-500">({benefitsCounts.freeShipping})</span>
+								<span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full flex-shrink-0">{benefitsCounts.freeShipping}</span>
 							{/if}
 						</label>
 					</div>
@@ -578,12 +694,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('condition')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('condition')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Condição</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Condição</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('condition') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('condition') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -609,12 +730,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('delivery')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('delivery')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Tempo de Entrega</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Tempo de Entrega</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('delivery') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('delivery') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -640,12 +766,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup(`dynamic_${option.slug}`)}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has(`dynamic_${option.slug}`)}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">{option.name}</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">{option.name}</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has(`dynamic_${option.slug}`) ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has(`dynamic_${option.slug}`) ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -673,12 +804,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('sellers')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('sellers')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Vendedores</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Vendedores</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('sellers') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('sellers') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -704,12 +840,18 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('location')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('location')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Localização</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Localização</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('location') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('location') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -738,12 +880,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup('tags')}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has('tags')}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">Características</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">Características</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has('tags') ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has('tags') ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -766,20 +913,28 @@
 			
 			<!-- 12. DISPONIBILIDADE - Por último, é mais uma preferência -->
 			<div class="border-b border-gray-200 pb-4">
-				<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded filter-transition">
+				<div class="mb-3">
+					<div class="flex items-center gap-2">
+						<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+						</svg>
+						<h3 class="font-semibold text-gray-900">Disponibilidade</h3>
+					</div>
+				</div>
+				<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors">
 					<input
 						type="checkbox"
 						checked={showOutOfStock}
 						onchange={(e) => handleBenefitChange('outOfStock', e.currentTarget.checked)}
-						class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-[#00BFB3]"
+						class="w-4 h-4 text-[#00BFB3] border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-colors"
 					/>
-					<div class="ml-3 flex-1">
-						<span class="text-sm text-gray-700">
+					<div class="ml-3 flex-1 pr-3">
+						<span class="text-sm font-medium text-gray-700">
 							Incluir produtos indisponíveis
 						</span>
 					</div>
 					{#if benefitsCounts.outOfStock > 0}
-						<span class="text-xs text-gray-500">({benefitsCounts.outOfStock})</span>
+						<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex-shrink-0">{benefitsCounts.outOfStock}</span>
 					{/if}
 				</label>
 			</div>
@@ -789,12 +944,17 @@
 				<div class="border-b border-gray-200 pb-4">
 					<button
 						onclick={() => toggleGroup(group.id)}
-						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-fast group"
+						class="flex items-center justify-between w-full text-left py-2 hover:text-[#00BFB3] transition-colors group"
 						aria-expanded={expandedGroups.has(group.id)}
 					>
-						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3]">{group.label}</h3>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-4H9m10 8H5m6 4H5" />
+							</svg>
+							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">{group.label}</h3>
+						</div>
 						<svg 
-							class="w-5 h-5 text-gray-400 transition-base group-hover:text-[#00BFB3] {expandedGroups.has(group.id) ? 'rotate-180' : ''}"
+							class="w-5 h-5 text-gray-400 transition-transform group-hover:text-[#00BFB3] {expandedGroups.has(group.id) ? 'rotate-180' : ''}"
 							fill="none" 
 							stroke="currentColor" 
 							viewBox="0 0 24 24"
@@ -806,16 +966,16 @@
 					{#if expandedGroups.has(group.id)}
 						<div class="mt-3 space-y-2">
 							{#each group.filters as filter (filter.id)}
-								<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg filter-transition">
+								<label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-3 rounded-lg transition-colors">
 									<input
 										type={group.type || 'checkbox'}
 										name={group.id}
 										checked={filter.selected}
-										class="w-4 h-4 text-[#00BFB3] border-gray-300 {group.type === 'radio' ? '' : 'rounded'} focus:ring-[#00BFB3]"
+										class="w-4 h-4 text-[#00BFB3] border-gray-300 {group.type === 'radio' ? '' : 'rounded'} focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-colors"
 									/>
-									<span class="ml-3 text-sm text-gray-700 flex-1">{filter.name}</span>
+									<span class="ml-3 text-sm font-medium text-gray-700 flex-1 pr-3">{filter.name}</span>
 									{#if filter.count !== undefined}
-										<span class="text-xs text-gray-500">({filter.count})</span>
+										<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex-shrink-0">{filter.count}</span>
 									{/if}
 								</label>
 							{/each}

@@ -176,76 +176,60 @@
 <!-- Header Padrão do Projeto -->
 <div class="bg-white shadow-sm border-b border-gray-200">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-		<div class="flex items-center justify-between">
-			<div>
-				<h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Listas de Presentes</h1>
-				<p class="mt-1 text-gray-600" style="font-family: 'Lato', sans-serif;">Crie, compartilhe e contribua para momentos especiais</p>
+		<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+					<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+					</svg>
+				</div>
+				<div>
+					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Listas de Presentes</h1>
+					<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
+						Crie, compartilhe e contribua para momentos especiais
+					</p>
+				</div>
 			</div>
 			
 			<a 
 				href="/" 
-				class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors"
+				class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm sm:text-base px-4 py-2 sm:px-0 sm:py-0 bg-[#00BFB3]/5 sm:bg-transparent rounded-lg sm:rounded-none"
 				style="font-family: 'Lato', sans-serif;"
 			>
-				← Continuar Comprando
+				<span class="sm:hidden">Voltar</span>
+				<span class="hidden sm:inline">← Continuar Comprando</span>
 			</a>
 		</div>
 		
-		<!-- Descrição expandível aqui embaixo -->
+		<!-- Descrição expandível -->
 		<div class="mt-6 pt-6 border-t border-gray-200">
 			<div class="text-center">
 				<p class="text-gray-600 text-base leading-relaxed mb-4" style="font-family: 'Lato', sans-serif;">
 					Momentos especiais merecem presentes especiais! Crie sua lista personalizada para chá de bebê, 
 					casamento, aniversário ou qualquer ocasião única.
 				</p>
-				
-				<button
-					onclick={toggleMostrarMais}
-					class="inline-flex items-center gap-2 text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm"
-					style="font-family: 'Lato', sans-serif;"
-				>
-					<span>{mostrarMais ? 'Ler Menos' : 'Leia Mais'}</span>
-					<svg 
-						class="w-4 h-4 transition-transform {mostrarMais ? 'rotate-180' : ''}" 
-						fill="none" 
-						stroke="currentColor" 
-						viewBox="0 0 24 24"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				</button>
-				
-				{#if mostrarMais}
-					<div class="mt-4 text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
-						<p>
-							Nossa plataforma oferece templates personalizados para cada tipo de evento, 
-							permitindo que você crie listas organizadas e compartilhe facilmente com 
-							família e amigos. Cada lista pode incluir produtos do Grão de Gente.
-						</p>
-					</div>
-				{/if}
 			</div>
 		</div>
 	</div>
 </div>
 
 <!-- Conteúdo Principal -->
-<main class="py-8">
+<main class="py-4 sm:py-6 lg:py-8">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Sistema de Tabs -->
-		<div class="mb-8">
+		<div class="mb-6 sm:mb-8">
 			<!-- Tabs Navigation -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-				<nav class="flex space-x-8 overflow-x-auto">
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
+				<nav class="flex space-x-4 sm:space-x-8 overflow-x-auto">
 					{#each tabs as tab}
 						<button
 							onclick={() => changeTab(tab.id)}
-							class="flex items-center gap-3 py-3 px-1 border-b-2 font-medium text-base transition-colors whitespace-nowrap {
+							class="flex items-center gap-2 sm:gap-3 py-3 px-1 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap touch-manipulation {
 								activeTab === tab.id
 									? 'border-[#00BFB3] text-[#00BFB3]'
 									: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
 							}"
-							style="font-family: 'Lato', sans-serif;"
+							style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 						>
 							<!-- Ícones SVG ao invés de emojis -->
 							{#if tab.id === 'create'}
@@ -264,8 +248,8 @@
 							{/if}
 							
 							<div class="flex flex-col items-start">
-								<span>{tab.label}</span>
-								<span class="text-xs text-gray-400 hidden md:block">{tab.description}</span>
+								<span class="text-sm sm:text-base">{tab.label}</span>
+								<span class="text-xs text-gray-400 hidden lg:block">{tab.description}</span>
 							</div>
 						</button>
 					{/each}
@@ -276,201 +260,234 @@
 			<div class="min-h-[400px]">
 				<!-- Tab: Criar Lista -->
 				{#if activeTab === 'create'}
-					<div class="space-y-8">
-						<!-- CTA Principal - Versão mais sutil -->
-						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-							<div class="text-center border-l-4 border-[#00BFB3] pl-6 bg-[#00BFB3]/5 rounded-r-lg py-6">
-								<svg class="mx-auto h-12 w-12 text-[#00BFB3] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-								</svg>
-								<h2 class="text-xl font-semibold text-gray-900 mb-3" style="font-family: 'Lato', sans-serif;">
+					<div class="space-y-6 sm:space-y-8">
+						<!-- CTA Principal -->
+						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8">
+							<div class="text-center border-l-4 border-[#00BFB3] pl-4 sm:pl-6 bg-[#00BFB3]/5 rounded-r-lg py-4 sm:py-6">
+								<div class="w-12 h-12 sm:w-16 sm:h-16 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+									<svg class="h-6 w-6 sm:h-8 sm:w-8 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+									</svg>
+								</div>
+								
+								<h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-3 sm:mb-4" style="font-family: 'Lato', sans-serif;">
 									Crie sua Lista Personalizada
 								</h2>
-								<p class="text-gray-600 mb-6" style="font-family: 'Lato', sans-serif;">
+								
+								<p class="text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base leading-relaxed px-2" style="font-family: 'Lato', sans-serif;">
 									Escolha um template pronto ou comece do zero. Facilite a vida de quem quer te presentear!
-      </p>
-								<div class="flex flex-col sm:flex-row gap-3 justify-center">
-        <button 
-          onclick={() => goto('/listas-presentes/criar')}
-										class="inline-flex items-center px-4 py-2 bg-[#00BFB3] text-white text-sm font-medium rounded-md hover:bg-[#00A89D] transition-colors"
-										style="font-family: 'Lato', sans-serif;">
+								</p>
+								
+								<div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-sm sm:max-w-none mx-auto">
+									<button 
+										onclick={() => goto('/listas-presentes/criar')}
+										class="inline-flex items-center justify-center px-6 py-3 bg-[#00BFB3] text-white text-sm font-semibold rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+										style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+									>
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
 										</svg>
 										Criar Lista do Zero
-        </button>
-        <button 
+									</button>
+									<button 
 										onclick={() => document.getElementById('templates-section')?.scrollIntoView({ behavior: 'smooth' })}
-										class="inline-flex items-center px-4 py-2 bg-white text-[#00BFB3] text-sm font-medium rounded-md border border-[#00BFB3] hover:bg-[#00BFB3] hover:text-white transition-colors"
-										style="font-family: 'Lato', sans-serif;">
+										class="inline-flex items-center justify-center px-6 py-3 bg-white text-[#00BFB3] text-sm font-semibold rounded-lg border border-[#00BFB3] hover:bg-[#00BFB3] hover:text-white focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+										style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+									>
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
 										</svg>
 										Usar Template
-        </button>
-      </div>
-    </div>
+									</button>
+								</div>
+							</div>
 						</div>
 
-  <!-- Templates Section -->
-  {#if templates.length > 0}
-							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6" id="templates-section">
-								<div class="flex items-center gap-3 mb-6">
-									<svg class="h-6 w-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-									</svg>
-									<h3 class="text-lg font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">
+						<!-- Templates Section -->
+						{#if templates.length > 0}
+							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6" id="templates-section">
+								<div class="flex items-center gap-3 mb-4 sm:mb-6">
+									<div class="w-8 h-8 sm:w-10 sm:h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+										<svg class="h-4 w-4 sm:h-5 sm:w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+										</svg>
+									</div>
+									<h3 class="text-base sm:text-lg font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">
 										Templates Populares
 									</h3>
 								</div>
 								
-								<div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {#each templates as template}
+								<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+									{#each templates as template}
 										<div class="group">
 											<a 
 												href="/listas-presentes/criar?template={template.id}"
-												class="block relative overflow-hidden rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200"
+												class="block relative overflow-hidden rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 touch-manipulation"
+												style="-webkit-tap-highlight-color: transparent;"
 											>
 												<!-- Badge Template -->
-												<div class="absolute top-3 left-3 z-10">
+												<div class="absolute top-2 left-2 z-10">
 													<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#00BFB3] text-white" style="font-family: 'Lato', sans-serif;">
 														Template
 													</span>
-              </div>
-              
+												</div>
+												
 												<!-- Ícone -->
-												<div class="aspect-square bg-gray-50 flex items-center justify-center">
-													<svg class="w-8 h-8 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-													</svg>
-                </div>
-                
+												<div class="aspect-square bg-gradient-to-br from-[#00BFB3]/5 to-[#00BFB3]/10 flex items-center justify-center">
+													<div class="w-8 h-8 sm:w-10 sm:h-10 bg-[#00BFB3]/10 rounded-full flex items-center justify-center">
+														<svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+														</svg>
+													</div>
+												</div>
+												
 												<!-- Conteúdo -->
-												<div class="p-3">
-													<h4 class="text-sm font-medium text-gray-900 mb-1 group-hover:text-[#00BFB3] transition-colors line-clamp-2" style="font-family: 'Lato', sans-serif;">
+												<div class="p-3 sm:p-4">
+													<h4 class="text-sm sm:text-base font-medium text-gray-900 mb-2 group-hover:text-[#00BFB3] transition-colors line-clamp-2" style="font-family: 'Lato', sans-serif;">
 														{template.name}
 													</h4>
 													
 													<div class="flex items-center justify-between text-xs text-gray-500">
-														<span>{template.items_count || 0} itens</span>
-														<span>{template.usage_count || 0} usos</span>
-              </div>
+														<div class="flex items-center gap-1">
+															<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+															</svg>
+															<span>{template.items_count || 0} itens</span>
+														</div>
+														<div class="flex items-center gap-1">
+															<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+															</svg>
+															<span>{template.usage_count || 0} usos</span>
+														</div>
+													</div>
 												</div>
 											</a>
-            </div>
-          {/each}
-        </div>
-      </div>
+										</div>
+									{/each}
+								</div>
+							</div>
 						{/if}
 					</div>
   {/if}
 
 				<!-- Tab: Listas Públicas -->
 				{#if activeTab === 'public'}
-					<div class="space-y-6">
+					<div class="space-y-4 sm:space-y-6">
 						<!-- Filtros -->
-						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-							<div class="flex items-center gap-3 mb-4">
-								<svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-								</svg>
-								<h3 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">Filtros de Busca</h3>
+						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+							<div class="flex items-center gap-3 mb-4 sm:mb-6">
+								<div class="w-8 h-8 sm:w-10 sm:h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+									<svg class="h-4 w-4 sm:h-5 sm:w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+									</svg>
+								</div>
+								<h3 class="text-base sm:text-lg font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">
+									Filtros de Busca
+								</h3>
 							</div>
 							
-							<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-								<div>
-									<label for="search-lists" class="block text-sm font-medium text-gray-700 mb-2">
+							<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+								<div class="sm:col-span-2 lg:col-span-1">
+									<label for="search-lists" class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
 										Buscar listas:
 									</label>
 									<div class="relative">
-          <input
+										<input
 											id="search-lists"
-            type="text"
-            bind:value={searchTerm}
+											type="text"
+											bind:value={searchTerm}
 											placeholder="Nome, evento ou casal..."
-											class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent text-sm"
+											class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent text-sm touch-manipulation"
 											style="font-family: 'Lato', sans-serif;"
-            onkeydown={(e) => e.key === 'Enter' && handleSearch()}
-          />
-										<div class="absolute left-3 top-2.5">
+											onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+										/>
+										<div class="absolute left-3 top-3.5">
 											<svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 											</svg>
 										</div>
-          </div>
-        </div>
+									</div>
+								</div>
 
 								<div>
-									<label for="type-filter" class="block text-sm font-medium text-gray-700 mb-2">
+									<label for="type-filter" class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
 										Tipo de evento:
 									</label>
-        <select 
+									<select 
 										id="type-filter"
-          bind:value={selectedType}
-          onchange={handleTypeFilter}
-										class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent text-sm"
-										style="font-family: 'Lato', sans-serif;">
-          {#each eventTypes as type}
-            <option value={type.value}>{type.label}</option>
-          {/each}
-        </select>
+										bind:value={selectedType}
+										onchange={handleTypeFilter}
+										class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent text-sm touch-manipulation"
+										style="font-family: 'Lato', sans-serif;"
+									>
+										{#each eventTypes as type}
+											<option value={type.value}>{type.label}</option>
+										{/each}
+									</select>
 								</div>
 
 								<div class="flex items-end">
-          <button 
+									<button 
 										onclick={handleSearch}
-										class="w-full inline-flex items-center justify-center px-4 py-2 bg-[#00BFB3] text-white text-sm font-medium rounded-md hover:bg-[#00A89D] transition-colors"
-										style="font-family: 'Lato', sans-serif;">
+										class="w-full inline-flex items-center justify-center px-6 py-3 bg-[#00BFB3] text-white text-sm font-semibold rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+										style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+									>
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 										</svg>
-										Buscar
-          </button>
-        </div>
-      </div>
-    </div>
+										<span class="hidden sm:inline">Buscar</span>
+										<span class="sm:hidden">Filtrar</span>
+									</button>
+								</div>
+							</div>
+						</div>
 
 						<!-- Listas -->
-      {#if loading}
-							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-								<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#00BFB3]"></div>
-								<p class="mt-4 text-gray-600" style="font-family: 'Lato', sans-serif;">Carregando listas...</p>
-        </div>
-      {:else if lists.length === 0}
-							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-								<svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-								</svg>
-								<h3 class="text-lg font-medium text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">Nenhuma lista encontrada</h3>
-								<p class="text-gray-600 mb-6" style="font-family: 'Lato', sans-serif;">
+						{#if loading}
+							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+								<div class="w-8 h-8 sm:w-10 sm:h-10 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+									<div class="inline-block animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-[#00BFB3]"></div>
+								</div>
+								<p class="text-sm sm:text-base text-gray-600" style="font-family: 'Lato', sans-serif;">Carregando listas...</p>
+							</div>
+						{:else if lists.length === 0}
+							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+								<div class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+									<svg class="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+									</svg>
+								</div>
+								<h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3" style="font-family: 'Lato', sans-serif;">Nenhuma lista encontrada</h3>
+								<p class="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto leading-relaxed" style="font-family: 'Lato', sans-serif;">
 									{selectedType ? 'Nenhuma lista pública encontrada para este filtro.' : 'Seja o primeiro a criar uma lista pública!'}
 								</p>
 								
-								<div class="flex flex-col sm:flex-row gap-3 justify-center">
+								<div class="flex flex-col sm:flex-row gap-3 justify-center max-w-sm sm:max-w-none mx-auto">
 									{#if selectedType}
 										<button 
 											onclick={() => { selectedType = ''; handleSearch(); }}
-											class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-											style="font-family: 'Lato', sans-serif;"
+											class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-sm font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-gray-200 transition-all touch-manipulation"
+											style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 										>
 											Ver Todas as Listas
 										</button>
 									{/if}
 									
-          <button 
+									<button 
 										onclick={() => changeTab('create')}
-										class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#00BFB3] hover:bg-[#00A89D] transition-colors"
-										style="font-family: 'Lato', sans-serif;"
+										class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-[#00BFB3] hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+										style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 									>
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
 										</svg>
 										Criar Primeira Lista
-          </button>
+									</button>
 								</div>
-        </div>
-      {:else}
-							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+							</div>
+						{:else}
+							<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {#each lists as list}
 									<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
 										<a href="/listas-presentes/{list.share_token || list.id}" class="block">
@@ -547,51 +564,59 @@
 				<!-- Tab: Minhas Listas -->
 				{#if activeTab === 'my'}
 					<div class="space-y-6">
-						{#if !$isAuthenticated}
-							<!-- Not Authenticated -->
-							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-								<svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											{#if !$isAuthenticated}
+						<!-- Not Authenticated -->
+						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+							<div class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+								<svg class="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
 								</svg>
-								<h3 class="text-lg font-medium text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">Acesso Restrito</h3>
-								<p class="text-gray-600 mb-6" style="font-family: 'Lato', sans-serif;">
-									Faça login para ver suas listas de presentes.
-								</p>
-								<button 
-									onclick={() => goto('/login?redirect=/listas-presentes')}
-									class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#00BFB3] hover:bg-[#00A89D] transition-colors"
-									style="font-family: 'Lato', sans-serif;">
-									<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-									</svg>
-									Fazer Login
-								</button>
 							</div>
-						{:else if loading}
-							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-								<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#00BFB3]"></div>
-								<p class="mt-4 text-gray-600" style="font-family: 'Lato', sans-serif;">Carregando suas listas...</p>
+							<h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3" style="font-family: 'Lato', sans-serif;">Acesso Restrito</h3>
+							<p class="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto leading-relaxed" style="font-family: 'Lato', sans-serif;">
+								Faça login para ver suas listas de presentes.
+							</p>
+							<button 
+								onclick={() => goto('/login?redirect=/listas-presentes')}
+								class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-[#00BFB3] hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+							>
+								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+								</svg>
+								Fazer Login
+							</button>
+						</div>
+					{:else if loading}
+						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+							<div class="w-8 h-8 sm:w-10 sm:h-10 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+								<div class="inline-block animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-[#00BFB3]"></div>
 							</div>
-						{:else if myLists.length === 0}
-							<!-- Empty State -->
-							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-								<svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<p class="text-sm sm:text-base text-gray-600" style="font-family: 'Lato', sans-serif;">Carregando suas listas...</p>
+						</div>
+					{:else if myLists.length === 0}
+						<!-- Empty State -->
+						<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+							<div class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+								<svg class="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
 								</svg>
-								<h3 class="text-lg font-medium text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">Nenhuma lista criada</h3>
-								<p class="text-gray-600 mb-6" style="font-family: 'Lato', sans-serif;">
-									Você ainda não criou nenhuma lista de presentes.
-								</p>
-								<button 
-									onclick={() => changeTab('create')}
-									class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#00BFB3] hover:bg-[#00A89D] transition-colors"
-									style="font-family: 'Lato', sans-serif;">
-									<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-									</svg>
-									Criar Primeira Lista
-								</button>
 							</div>
+							<h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3" style="font-family: 'Lato', sans-serif;">Nenhuma lista criada</h3>
+							<p class="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto leading-relaxed" style="font-family: 'Lato', sans-serif;">
+								Você ainda não criou nenhuma lista de presentes.
+							</p>
+							<button 
+								onclick={() => changeTab('create')}
+								class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-[#00BFB3] hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
+								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+							>
+								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+								</svg>
+								Criar Primeira Lista
+							</button>
+						</div>
 						{:else}
 							<!-- Action Bar -->
 							<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -722,20 +747,108 @@
 
 <style>
 	/* Line clamp para títulos longos */
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
+	.line-clamp-2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
 		line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
 	
-	/* Motion preferences */
+	/* Melhorias responsivas mobile-first */
+	@media (max-width: 640px) {
+		/* Scrolling suave no mobile */
+		html {
+			scroll-behavior: smooth;
+		}
+		
+		/* Reduzir padding em elementos pequenos */
+		.responsive-padding {
+			padding: 0.75rem !important;
+		}
+		
+		/* Tabs com scrolling horizontal suave */
+		nav {
+			scrollbar-width: none;
+			-ms-overflow-style: none;
+		}
+		
+		nav::-webkit-scrollbar {
+			display: none;
+		}
+	}
+	
+	/* Tablets */
+	@media (min-width: 641px) and (max-width: 1024px) {
+		/* Ajustes específicos para tablets */
+		.tablet-padding {
+			padding: 1.5rem;
+		}
+	}
+	
+	/* Remove hover effects em dispositivos touch */
+	@media (hover: none) and (pointer: coarse) {
+		.bg-white:hover {
+			box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+		}
+	}
+	
+	/* Melhorias de acessibilidade */
 	@media (prefers-reduced-motion: reduce) {
 		* {
 			animation-duration: 0.01ms !important;
 			animation-iteration-count: 1 !important;
 			transition-duration: 0.01ms !important;
 		}
-  }
+	}
+	
+	@media (prefers-contrast: high) {
+		/* High contrast adjustments */
+		button {
+			background-color: #000 !important;
+			color: #fff !important;
+			border-color: #000 !important;
+		}
+	}
+	
+	/* Otimizações para dispositivos de baixa potência */
+	@media (prefers-reduced-data: reduce) {
+		.bg-gradient-to-br {
+			background: #f9fafb !important;
+		}
+		
+		.shadow-sm, .shadow-md {
+			box-shadow: none !important;
+			border: 1px solid #e5e7eb !important;
+		}
+	}
+	
+	/* Touch improvements */
+	@supports (-webkit-touch-callout: none) {
+		.touch-manipulation {
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			user-select: none;
+		}
+		
+		button, a {
+			-webkit-tap-highlight-color: transparent;
+		}
+	}
+	
+	/* Focus improvements para navegação por teclado */
+	button:focus, a:focus {
+		outline: 2px solid #00BFB3;
+		outline-offset: 2px;
+	}
+	
+	/* Performance improvements */
+	.transition-all {
+		will-change: transform, opacity;
+	}
+	
+	/* Preparação para dark mode futuro */
+	@media (prefers-color-scheme: dark) {
+		/* Será implementado futuramente */
+	}
 </style> 

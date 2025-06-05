@@ -326,56 +326,74 @@
 
 <div class="min-h-screen bg-gray-50">
 	<div class="w-full max-w-[1440px] mx-auto px-8 py-6">
-		<!-- Breadcrumb -->
-		<nav class="text-sm mb-6" aria-label="Breadcrumb">
-			<ol class="flex items-center space-x-2">
-				<li><a href="/" class="text-gray-500 hover:text-gray-700">Início</a></li>
-				<li class="text-gray-400">/</li>
-				<li class="text-gray-900">Busca</li>
-				{#if urlParams.searchQuery}
-					<li class="text-gray-400">/</li>
-					<li class="text-gray-900 truncate max-w-[200px]">{urlParams.searchQuery}</li>
-				{/if}
-			</ol>
+		<!-- Breadcrumb alinhado com a identidade visual -->
+		<nav class="mb-4" aria-label="Breadcrumb" style="font-family: 'Lato', sans-serif;">
+			<div class="flex items-center gap-2 text-sm">
+				<a 
+					href="/" 
+					class="flex items-center gap-1 text-gray-500 hover:text-[#00BFB3] transition-colors"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+					</svg>
+					Início
+				</a>
+				<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+				<span class="flex items-center gap-1 text-[#00BFB3] font-medium">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+					</svg>
+					Busca
+					{#if urlParams.searchQuery}
+						<span class="text-gray-400 font-normal">para</span>
+						<span class="bg-[#00BFB3]/10 text-[#00BFB3] px-2 py-1 rounded-full font-medium max-w-[200px] truncate">
+							"{urlParams.searchQuery}"
+						</span>
+					{/if}
+				</span>
+			</div>
 		</nav>
 		
-		<!-- Header com resultados -->
-		<div class="mb-6">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-			<h1 class="text-2xl font-bold text-gray-900">
-				{#if urlParams.searchQuery}
-					Resultados para "{urlParams.searchQuery}"
-				{:else if urlParams.selectedCategories.length}
-							{@const categoryNames = urlParams.selectedCategories.map(id => {
-								const cat = stableFacets?.categories.find(c => (c.slug || c.id) === id || c.id === id);
-								return cat?.name || id;
-							})}
-							{categoryNames.join(', ')}
-				{:else}
-					Todos os produtos
-				{/if}
-			</h1>
-			{#if searchResult && !isLoading}
-				<p class="text-gray-600 mt-1">
-					{searchResult.totalCount} {searchResult.totalCount === 1 ? 'produto encontrado' : 'produtos encontrados'}
-				</p>
-			{/if}
+		<!-- Header Padrão seguindo identidade das outras páginas -->
+		<div class="bg-white shadow-sm border-b border-gray-200">
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+				<div class="flex items-center gap-3">
+					<svg class="h-6 w-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+					</svg>
+					<div>
+						<h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">
+							{#if urlParams.searchQuery}
+								Resultados para "{urlParams.searchQuery}"
+							{:else if urlParams.selectedCategories.length}
+								{@const categoryNames = urlParams.selectedCategories.map(id => {
+									const cat = stableFacets?.categories.find(c => (c.slug || c.id) === id || c.id === id);
+									return cat?.name || id;
+								})}
+								{categoryNames.join(', ')}
+							{:else}
+								Busca de Produtos
+							{/if}
+						</h1>
+						<p class="mt-1 text-gray-600" style="font-family: 'Lato', sans-serif;">
+							{#if searchResult && !isLoading}
+								{searchResult.totalCount} {searchResult.totalCount === 1 ? 'produto encontrado' : 'produtos encontrados'}
+							{:else if isLoading}
+								Buscando produtos...
+							{:else}
+								Encontre os melhores produtos em nossa loja
+							{/if}
+						</p>
+					</div>
+				</div>
+			</div>
 		</div>
-		
-				{#if searchResult && !isLoading && searchResult.totalCount > 0}
-					<SaveSearchButton
-						searchQuery={urlParams.searchQuery}
-						filters={buildFilters(urlParams)}
-						resultCount={searchResult.totalCount}
-					/>
-						{/if}
-									</div>
-								</div>
 								
-		<div class="flex gap-6">
+		<div class="flex gap-6 mt-6">
 			<!-- Filtros Desktop -->
-			<aside class="w-64 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
+			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
 				<FilterSidebar
 					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
 						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
@@ -462,8 +480,8 @@
 			
 			<!-- Produtos -->
 			<div class="flex-1">
-				<!-- Barra de controles -->
-				<div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
+				<!-- Barra de controles com identidade visual padrão -->
+				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6" style="font-family: 'Lato', sans-serif;">
 					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<!-- Lado esquerdo - Filtros e View Mode -->
 						<div class="flex items-center gap-2 sm:gap-3">
@@ -496,72 +514,116 @@
 								{/if}
 							</button>
 							
-							<!-- View mode -->
-							<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
-								<button
-									onclick={() => updateURL({ visualizar: undefined })}
-									class="p-1.5 sm:p-2 {urlParams.viewMode === 'grid' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-colors"
-									aria-label="Visualização em grade"
-									title="Visualização em grade"
-								>
-									<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-									</svg>
-								</button>
-								<button
-									onclick={() => updateURL({ visualizar: 'lista' })}
-									class="p-1.5 sm:p-2 {urlParams.viewMode === 'list' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-colors"
-									aria-label="Visualização em lista"
-									title="Visualização em lista"
-								>
-									<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-									</svg>
-								</button>
+							<!-- View mode com melhor visual -->
+							<div class="flex items-center gap-1">
+								<span class="text-sm text-gray-600 font-medium mr-2 hidden lg:inline">Visualização:</span>
+								<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
+									<button
+										onclick={() => updateURL({ visualizar: undefined })}
+										class="p-2 {urlParams.viewMode === 'grid' ? 'bg-[#00BFB3] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#00BFB3]'} transition-all duration-200"
+										aria-label="Visualização em grade"
+										title="Visualização em grade"
+									>
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+										</svg>
+									</button>
+									<div class="w-px bg-gray-300"></div>
+									<button
+										onclick={() => updateURL({ visualizar: 'lista' })}
+										class="p-2 {urlParams.viewMode === 'list' ? 'bg-[#00BFB3] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#00BFB3]'} transition-all duration-200"
+										aria-label="Visualização em lista"
+										title="Visualização em lista"
+									>
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+										</svg>
+									</button>
+								</div>
 							</div>
 							
 							<!-- Contador de resultados - visível apenas em telas maiores -->
 							{#if searchResult}
-								<div class="hidden sm:block text-sm text-gray-600 px-2">
-									<span class="font-medium">{searchResult.totalCount}</span> produtos
+								<div class="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-600">
+									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+									</svg>
+									<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span>
+									<span>produto{searchResult.totalCount !== 1 ? 's' : ''}</span>
 								</div>
 							{/if}
 						</div>
 						
-						<!-- Lado direito - Dropdowns -->
+						<!-- Lado direito - Dropdowns com visual premium -->
 						<div class="flex items-center gap-2 sm:gap-3">
 							<!-- Items por página - oculto em mobile -->
-							<div class="hidden sm:block">
-							<select 
-								value={urlParams.itemsPerPage}
-								onchange={(e) => updateURL({ itens: e.currentTarget.value })}
-									class="select-sm"
-							>
-								<option value={20}>20 por página</option>
-								<option value={40}>40 por página</option>
-								<option value={60}>60 por página</option>
-								<option value={100}>100 por página</option>
-							</select>
+							<div class="hidden sm:flex items-center gap-2">
+								<div class="flex items-center gap-1.5 text-sm text-gray-600">
+									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+									</svg>
+									<span class="font-medium whitespace-nowrap">Exibir:</span>
+								</div>
+								<div class="relative">
+									<select 
+										value={urlParams.itemsPerPage}
+										onchange={(e) => updateURL({ itens: e.currentTarget.value })}
+										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer"
+										style="font-family: 'Lato', sans-serif; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;"
+									>
+										<option value={20}>20</option>
+										<option value={40}>40</option>
+										<option value={60}>60</option>
+										<option value={100}>100</option>
+									</select>
+									<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+										<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+										</svg>
+									</div>
+								</div>
 							</div>
 							
-							<!-- Ordenação -->
-							<select 
-								value={urlParams.sortBy}
-								onchange={(e) => updateURL({ ordenar: e.currentTarget.value })}
-								class="select-sm min-w-[180px]"
-							>
-								{#each sortOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
+							<!-- Ordenação com ícone e estilo premium -->
+							<div class="flex items-center gap-2">
+								<div class="flex items-center gap-1.5 text-sm text-gray-600">
+									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+									</svg>
+									<span class="font-medium whitespace-nowrap hidden sm:inline">Ordenar por:</span>
+								</div>
+								<div class="relative">
+									<select 
+										value={urlParams.sortBy}
+										onchange={(e) => updateURL({ ordenar: e.currentTarget.value })}
+										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer min-w-[160px] sm:min-w-[180px]"
+										style="font-family: 'Lato', sans-serif; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;"
+									>
+										{#each sortOptions as option}
+											<option value={option.value}>{option.label}</option>
+										{/each}
+									</select>
+									<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+										<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+										</svg>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 					
 					<!-- Contador mobile -->
 					{#if searchResult}
-						<div class="sm:hidden text-sm text-gray-600 mt-2">
-							<span class="font-medium">{searchResult.totalCount}</span> produtos encontrados
+						<div class="sm:hidden mt-3 pt-3 border-t border-gray-200" style="font-family: 'Lato', sans-serif;">
+							<div class="flex items-center gap-2 text-sm text-gray-600">
+								<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+								</svg>
+								<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span> 
+								<span>produto{searchResult.totalCount !== 1 ? 's' : ''} encontrado{searchResult.totalCount !== 1 ? 's' : ''}</span>
 							</div>
+						</div>
 					{/if}
 				</div>
 				
@@ -594,26 +656,32 @@
 						{/each}
 					</div>
 				{:else if !searchResult || sortedProducts.length === 0}
-					<div class="bg-white rounded-lg shadow-sm p-12 text-center">
-						<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-						<h3 class="text-lg font-medium text-gray-900 mb-2">Nenhum produto encontrado</h3>
-						<p class="text-gray-600 mb-4">
-							{#if urlParams.searchQuery}
-								Não encontramos produtos para "{urlParams.searchQuery}"
-							{:else}
-								Tente ajustar os filtros ou fazer uma busca
-							{/if}
-						</p>
-						{#if hasActiveFilters()}
-							<button 
-								onclick={clearAllFilters}
-								class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
-							>
-								Limpar filtros
-							</button>
-						{/if}
+					<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center" style="font-family: 'Lato', sans-serif;">
+						<div class="flex flex-col items-center gap-4">
+							<div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+								<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+								</svg>
+							</div>
+							<div class="text-center">
+								<h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>
+								<p class="text-gray-600 mb-4">
+									{#if urlParams.searchQuery}
+										Não encontramos produtos para "{urlParams.searchQuery}"
+									{:else}
+										Tente ajustar os filtros ou fazer uma busca
+									{/if}
+								</p>
+								{#if hasActiveFilters()}
+									<button 
+										onclick={clearAllFilters}
+										class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors font-medium"
+									>
+										Limpar Filtros
+									</button>
+								{/if}
+							</div>
+						</div>
 					</div>
 				{:else}
 					<!-- Container com transição suave -->
