@@ -357,7 +357,7 @@
 		</nav>
 		
 		<!-- Header Padrão seguindo identidade das outras páginas -->
-		<div class="bg-white shadow-sm border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6">
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6" style="font-family: 'Lato', sans-serif;">
 			<div class="flex items-start gap-4">
 				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
 					<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -393,7 +393,7 @@
 			<!-- Descrição expandível -->
 			<div class="mt-6 pt-6 border-t border-gray-200">
 				<div class="text-center">
-					<p class="text-gray-600 text-base leading-relaxed mb-4" style="font-family: 'Lato', sans-serif;">
+					<p class="text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
 						Use os filtros para refinar sua busca e encontre exatamente o que procura. 
 						Navegue por categorias, marcas e aproveite as melhores ofertas!
 					</p>
@@ -401,7 +401,7 @@
 			</div>
 		</div>
 								
-		<div class="flex gap-4 lg:gap-6 mt-6">
+		<div class="flex gap-4 lg:gap-6">
 			<!-- Filtros Desktop -->
 			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}" use:useStableUpdates>
 				<FilterSidebar
