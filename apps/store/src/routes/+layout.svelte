@@ -218,7 +218,7 @@
 
 <!-- Banner Promocional Desktop com Carrossel -->
 <div 
-	class="hidden lg:block bg-white h-[36px] mb-2 relative overflow-hidden"
+	class="hidden md:block bg-white h-[32px] md:h-[36px] mb-2 relative overflow-hidden"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -282,12 +282,12 @@
 	totalItems={totalItems} 
 	onOpenCart={openCart}
 	onLogout={handleLogout}
-	class="hidden lg:block"
+	class="hidden md:block"
 />
 
 <!-- Banner Promocional Mobile com Carrossel -->
 <div 
-	class="lg:hidden bg-white h-[32px] mb-2 relative overflow-hidden"
+	class="md:hidden bg-white h-[32px] mb-2 relative overflow-hidden"
 	role="region"
 	aria-label="Promoções"
 	aria-live="polite"
@@ -333,7 +333,7 @@
 	totalItems={totalItems} 
 	onOpenCart={openCart}
 	onOpenMenu={() => mobileMenuOpen = true}
-	class="lg:hidden"
+	class="md:hidden"
 />
 
 <!-- Mobile Menu -->
