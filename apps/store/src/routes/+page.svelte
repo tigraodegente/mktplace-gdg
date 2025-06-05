@@ -10,7 +10,6 @@
   import BenefitsSection from '$lib/components/layout/BenefitsSection.svelte';
   import FastDeliveryBanner from '$lib/components/layout/FastDeliveryBanner.svelte';
   import OfferCountdown from '$lib/components/layout/OfferCountdown.svelte';
-  import CategorySection from '$lib/components/category/CategorySection.svelte';
   import { invalidateAll } from '$app/navigation';
   
   // Services for dynamic content
@@ -21,7 +20,6 @@
   
   // Estados reativo baseado nos dados do servidor
   let featuredProducts = $state(data.featuredProducts || []);
-  let categories = $state(data.categories || []);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
   
@@ -165,9 +163,6 @@
 
   <!-- Seção de Benefícios -->
   <BenefitsSection />
-
-  <!-- Compre por Categoria -->
-  <CategorySection />
 
   <!-- Banner de Entrega Rápida -->
   <FastDeliveryBanner 
