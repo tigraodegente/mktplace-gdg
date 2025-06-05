@@ -181,9 +181,6 @@ importers:
       nanoid:
         specifier: ^5.1.5
         version: 5.1.5
-      openai:
-        specifier: ^5.0.2
-        version: 5.0.2(ws@8.18.2)
       postgres:
         specifier: ^3.4.5
         version: 3.4.7
