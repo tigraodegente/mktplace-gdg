@@ -175,14 +175,14 @@
 								class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-800 active:text-[#00BFB3] active:bg-[#00BFB3]/5 rounded-lg transition-all mx-2 mb-1 touch-manipulation"
 								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 							>
-								<span class="flex items-center gap-2">
+								<span class="flex items-center gap-2 pl-1">
 									<span>{category.name}</span>
 									{#if getTotalProductCount(category) > 0}
 										<span class="text-xs text-gray-500 font-normal">({getTotalProductCount(category)})</span>
 									{/if}
 								</span>
 								<svg 
-									class="w-4 h-4 text-gray-500 transition-transform {expandedCategories.has(category.id) ? 'rotate-180' : ''}"
+									class="w-4 h-4 text-[#00BFB3] transition-transform {expandedCategories.has(category.id) ? 'rotate-180' : ''}"
 									fill="none" 
 									stroke="currentColor" 
 									viewBox="0 0 24 24"
@@ -192,11 +192,11 @@
 							</button>
 							
 							{#if expandedCategories.has(category.id)}
-								<div class="mx-2 mb-2 bg-gray-50 rounded-lg">
-									{#each category.subcategories as subcategory (subcategory.id)}
+								<div class="mx-2 mb-2 bg-gray-50/50 rounded-lg border border-gray-100">
+									{#each category.subcategories as subcategory, index (subcategory.id)}
 										<a
 											href="/busca?categoria={subcategory.slug}"
-											class="block py-2 pl-8 pr-4 text-sm text-gray-600 hover:text-[#00BFB3] transition-colors first:rounded-t-lg last:rounded-b-lg touch-manipulation"
+											class="flex items-center justify-between py-2.5 pl-8 pr-4 text-sm text-gray-600 hover:text-[#00BFB3] hover:bg-[#00BFB3]/5 transition-colors first:rounded-t-lg last:rounded-b-lg touch-manipulation {index > 0 ? 'border-t border-gray-200/50' : ''}"
 											onclick={onClose}
 											style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 										>
@@ -217,7 +217,7 @@
 								onclick={onClose}
 								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
 							>
-								<span class="flex items-center gap-2">
+								<span class="flex items-center gap-2 pl-1">
 									<span>{category.name}</span>
 									{#if getTotalProductCount(category) > 0}
 										<span class="text-xs text-gray-500 font-normal">({getTotalProductCount(category)})</span>
