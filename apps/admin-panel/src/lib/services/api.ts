@@ -1,4 +1,5 @@
 import { toast } from '$lib/stores/toast';
+import { browser } from '$app/environment';
 
 interface ApiOptions extends RequestInit {
 	showError?: boolean;
@@ -8,6 +9,22 @@ interface ApiOptions extends RequestInit {
 
 class ApiService {
 	private baseURL = '/api';
+	
+	private getAuthHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
+		
+		// Adicionar token de autorização se existir
+		if (browser) {
+			const token = localStorage.getItem('access_token');
+			if (token) {
+				headers['Authorization'] = `Bearer ${token}`;
+			}
+		}
+		
+		return headers;
+	}
 	
 	private async request<T = any>(
 		endpoint: string, 
@@ -23,7 +40,7 @@ class ApiService {
 		try {
 			const response = await fetch(`${this.baseURL}${endpoint}`, {
 				headers: {
-					'Content-Type': 'application/json',
+					...this.getAuthHeaders(),
 					...fetchOptions.headers
 				},
 				...fetchOptions
@@ -32,7 +49,16 @@ class ApiService {
 			const data = await response.json();
 			
 			if (!response.ok) {
-				throw new Error(data.error || data.message || 'Erro na requisição');
+				// Se erro 401, token expirado - redirecionar para login
+				if (response.status === 401 && browser) {
+					localStorage.removeItem('access_token');
+					localStorage.removeItem('refresh_token');
+					localStorage.removeItem('user');
+					window.location.href = '/login';
+					throw new Error('Token expirado - redirecionando para login');
+				}
+				
+				throw new Error(data.error?.message || data.message || 'Erro na requisição');
 			}
 			
 			if (showSuccess && successMessage) {

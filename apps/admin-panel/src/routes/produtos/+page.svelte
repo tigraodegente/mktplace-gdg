@@ -4,10 +4,12 @@
 	import { slide } from 'svelte/transition';
 	import { api } from '$lib/services/api';
 	import { toast } from '$lib/stores/toast';
+	import { authStore } from '$lib/stores/auth';
 	import { DataTable, Input, Select, Button } from '$lib/components/ui';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
+	import BatchEnrichmentProgress from '$lib/components/produtos/BatchEnrichmentProgress.svelte';
 	import { useDebounce } from '$lib/hooks/useDebounce';
 	import type { Product, PaginatedResponse } from '$lib/types';
 	
@@ -18,6 +20,10 @@
 	let statusFilter = $state('all');
 	let categoryFilter = $state('all');
 	let selectedIds = $state<string[]>([]);
+	
+	// Estados para enriquecimento em lote
+	let showBatchEnrichmentModal = $state(false);
+	let enrichingBatch = $state(false);
 	
 	// Estados do dialog de confirmação
 	let showConfirmDialog = $state(false);
@@ -65,6 +71,30 @@
 	let priceRange = $state({ min: '', max: '' });
 	let brandFilter = $state('all');
 	let selectedCategories = $state<string[]>([]);
+	
+	// Estados de inicialização
+	let hasLoadedInitialData = $state(false);
+	
+	// Verificar autenticação simples
+	function checkAuthAndLoad() {
+		if (typeof window === 'undefined') return;
+		
+		const token = localStorage.getItem('access_token');
+		const userStr = localStorage.getItem('user');
+		
+		if (token && userStr) {
+			// Usuário autenticado, carregar dados
+			if (!hasLoadedInitialData) {
+				hasLoadedInitialData = true;
+				loadProducts();
+				loadStats();
+				loadFilters();
+			}
+		} else {
+			// Não autenticado, redirecionar
+			goto('/login');
+		}
+	}
 	
 	// Colunas da tabela
 	const columns = [
@@ -153,6 +183,49 @@
 		}
 	];
 	
+	// Buscar estatísticas corretas
+	async function loadStats() {
+		try {
+			// Buscar total de produtos
+			const totalResponse = await api.get<any>(`/products?page=1&limit=1`);
+			const total = totalResponse.meta?.total || 0;
+			
+			// Buscar produtos ativos (is_active=true e quantity>0)
+			const activeResponse = await api.get<any>(`/products?page=1&limit=1&status=active`);
+			const active = activeResponse.meta?.total || 0;
+			
+			// Buscar produtos pendentes (status=draft)
+			const pendingResponse = await api.get<any>(`/products?page=1&limit=1&status=draft`);
+			const pending = pendingResponse.meta?.total || 0;
+			
+			// Buscar produtos sem estoque (quantity=0)
+			const outOfStockResponse = await api.get<any>(`/products?page=1&limit=1&status=out_of_stock`);
+			const lowStock = outOfStockResponse.meta?.total || 0;
+			
+			stats = {
+				total,
+				active,
+				pending,
+				lowStock
+			};
+			
+			console.log('📊 Estatísticas carregadas:', {
+				total: `${total} produtos`,
+				active: `${active} ativos`,
+				pending: `${pending} pendentes`,
+				lowStock: `${lowStock} sem estoque`
+			});
+		} catch (error) {
+			console.error('Erro ao carregar estatísticas:', error);
+			stats = {
+				total: 0,
+				active: 0,
+				pending: 0,
+				lowStock: 0
+			};
+		}
+	}
+	
 	// Buscar produtos
 	async function loadProducts() {
 		loading = true;
@@ -170,14 +243,13 @@
 			const response = await api.get<any>(`/products?${params}`);
 			
 			if (response.success) {
-				// Suportar ambas as estruturas: products e items
-				products = response.data.products || response.data.items || [];
-				totalItems = response.data.pagination?.total || 0;
+				// A API retorna os produtos diretamente em .data como array
+				products = response.data || [];
 				
-				// Carregar stats se disponível
-				if (response.data.stats) {
-					stats = response.data.stats;
-				}
+				// O total está em .meta.total
+				totalItems = response.meta?.total || 0;
+				
+				console.log('✅ Produtos carregados:', products.length, 'de', totalItems);
 			}
 		} catch (error) {
 			console.error('Erro ao carregar produtos:', error);
@@ -292,72 +364,56 @@
 	async function enrichSelectedProducts() {
 		if (selectedIds.length === 0) return;
 		
-		confirmDialogConfig = {
-			title: 'Enriquecer Produtos com IA',
-			message: `Deseja enriquecer ${selectedIds.length} produto(s) com IA? Isso pode levar alguns minutos e consumir créditos da API.`,
-			variant: 'info',
-			onConfirm: async () => {
-				try {
-					// Mostrar progresso
-					toast.info(`Iniciando enriquecimento de ${selectedIds.length} produtos...`);
-					
-					let successCount = 0;
-					let errorCount = 0;
-					
-					// Processar produtos em lotes pequenos para não sobrecarregar
-					const batchSize = 3;
-					for (let i = 0; i < selectedIds.length; i += batchSize) {
-						const batch = selectedIds.slice(i, i + batchSize);
-						
-						// Processar lote em paralelo
-						const promises = batch.map(async (productId) => {
-							try {
-								const response = await fetch(`/api/products/${productId}/enrich`, {
-									method: 'POST',
-									headers: { 'Content-Type': 'application/json' },
-									body: JSON.stringify({ action: 'enrich_all' })
-								});
-								
-								if (response.ok) {
-									successCount++;
-									return { success: true, productId };
-								} else {
-									errorCount++;
-									return { success: false, productId };
-								}
-							} catch (error) {
-								errorCount++;
-								return { success: false, productId, error };
-							}
-						});
-						
-						await Promise.all(promises);
-						
-						// Pequena pausa entre lotes
-						if (i + batchSize < selectedIds.length) {
-							await new Promise(resolve => setTimeout(resolve, 2000));
-						}
-					}
-					
-					// Mostrar resultado
-					if (successCount > 0) {
-						toast.success(`✅ ${successCount} produto(s) enriquecido(s) com sucesso!`);
-					}
-					if (errorCount > 0) {
-						toast.error(`❌ ${errorCount} produto(s) falharam no enriquecimento`);
-					}
-					
-					// Recarregar lista
-					selectedIds = [];
-					loadProducts();
-					
-				} catch (error) {
-					console.error('Erro no enriquecimento em lote:', error);
-					toast.error('Erro ao enriquecer produtos');
-				}
+		// Buscar os dados dos produtos selecionados
+		const selectedProducts: Product[] = [];
+		for (const id of selectedIds) {
+			const product = products.find(p => p.id === id);
+			if (product) {
+				selectedProducts.push(product);
 			}
-		};
-		showConfirmDialog = true;
+		}
+		
+		if (selectedProducts.length === 0) {
+			toast.error('Nenhum produto válido selecionado');
+			return;
+		}
+		
+		// Abrir modal de progresso
+		enrichingBatch = true;
+		showBatchEnrichmentModal = true;
+	}
+	
+	// Callbacks do modal de enriquecimento em lote
+	function handleBatchEnrichmentComplete(result: any) {
+		console.log('🎉 Enriquecimento em lote concluído:', result);
+		
+		// Fechar modal
+		showBatchEnrichmentModal = false;
+		enrichingBatch = false;
+		
+		// Limpar seleção
+		selectedIds = [];
+		
+		// Recarregar produtos
+		loadProducts();
+		
+		// Mostrar resultado
+		if (result.success) {
+			toast.success(`✅ ${result.successCount || 0} produto(s) enriquecido(s) com sucesso!`);
+			if (result.errorCount > 0) {
+				toast.warning(`⚠️ ${result.errorCount} produto(s) falharam no enriquecimento`);
+			}
+		} else {
+			toast.error('Erro no enriquecimento em lote');
+		}
+	}
+	
+	function handleBatchEnrichmentCancel() {
+		console.log('🛑 Enriquecimento em lote cancelado');
+		showBatchEnrichmentModal = false;
+		enrichingBatch = false;
+		selectedIds = [];
+		toast.info('Enriquecimento cancelado');
 	}
 	
 	// Buscar categorias e marcas
@@ -386,14 +442,20 @@
 				} else {
 					categories = [];
 				}
+				
+				console.log('✅ Categorias carregadas:', categories.length);
 			} else {
 				categories = [];
 			}
 			
 			// Buscar marcas
 			const brandResponse = await api.get('/brands');
-			if (brandResponse.success) {
-				brands = brandResponse.data || [];
+			if (brandResponse.success && brandResponse.data) {
+				// A API retorna { brands: [...], pagination: {...} }
+				brands = brandResponse.data.brands || [];
+				console.log('✅ Marcas carregadas:', brands.length);
+			} else {
+				brands = [];
 			}
 		} catch (error) {
 			console.error('Erro ao carregar filtros:', error);
@@ -433,9 +495,9 @@
 	}
 	
 	// Lifecycle
-	onMount(() => {
-		loadProducts();
-		loadFilters();
+	onMount(async () => {
+		// Verificar se já está autenticado
+		checkAuthAndLoad();
 	});
 </script>
 
@@ -450,6 +512,15 @@
 	onConfirm={confirmDialogConfig.onConfirm}
 	onCancel={() => showConfirmDialog = false}
 />
+
+<!-- Modal de Enriquecimento em Lote -->
+{#if showBatchEnrichmentModal}
+	<BatchEnrichmentProgress 
+		selectedProducts={selectedIds.map(id => products.find(p => p.id === id)).filter(Boolean)}
+		onComplete={handleBatchEnrichmentComplete}
+		onCancel={handleBatchEnrichmentCancel}
+	/>
+{/if}
 
 <div class="min-h-screen bg-gray-50">
 	<!-- Header -->
@@ -543,7 +614,7 @@
 							<div class="bg-red-50 rounded-lg p-4 border border-red-100">
 								<div class="flex items-center justify-between">
 									<div>
-										<p class="text-sm font-medium text-gray-600">Estoque Baixo</p>
+										<p class="text-sm font-medium text-gray-600">Sem Estoque</p>
 										<p class="text-2xl font-bold text-gray-900 mt-1">{stats.lowStock}</p>
 									</div>
 									<div class="p-3 bg-red-100 rounded-lg">

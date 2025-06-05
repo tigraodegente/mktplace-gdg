@@ -1,41 +1,71 @@
 <script lang="ts">
-	// Props do componente
-	export let type: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'date' | 'datetime-local' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'file' = 'text';
-	export let label: string = '';
-	export let value: any = '';
-	export let placeholder: string = '';
-	export let required: boolean = false;
-	export let disabled: boolean = false;
-	export let readonly: boolean = false;
-	export let maxlength: number | undefined = undefined;
-	export let min: number | string | undefined = undefined;
-	export let max: number | string | undefined = undefined;
-	export let step: number | string | undefined = undefined;
-	export let rows: number = 3;
-	export let options: Array<{value: any, label: string}> = [];
-	export let multiple: boolean = false;
-	export let accept: string = '';
-	export let helpText: string = '';
-	export let error: string = '';
-	export let icon: string = '';
-	export let suffix: string = '';
-	export let prefix: string = '';
-	export let loading: boolean = false;
-	export let characterCount: boolean = false;
-	export let containerClass: string = '';
-	export let inputClass: string = '';
-	export let labelClass: string = '';
+	// Props do componente usando $props() para Svelte 5
+	interface Props {
+		type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'date' | 'datetime-local' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'file';
+		label?: string;
+		value?: any;
+		placeholder?: string;
+		required?: boolean;
+		disabled?: boolean;
+		readonly?: boolean;
+		maxlength?: number;
+		min?: number | string;
+		max?: number | string;
+		step?: number | string;
+		rows?: number;
+		options?: Array<{value: any, label: string}>;
+		multiple?: boolean;
+		accept?: string;
+		helpText?: string;
+		error?: string;
+		icon?: string;
+		suffix?: string;
+		prefix?: string;
+		loading?: boolean;
+		characterCount?: boolean;
+		containerClass?: string;
+		inputClass?: string;
+		labelClass?: string;
+	}
+
+	let {
+		type = 'text',
+		label = '',
+		value = $bindable(),
+		placeholder = '',
+		required = false,
+		disabled = false,
+		readonly = false,
+		maxlength = undefined,
+		min = undefined,
+		max = undefined,
+		step = undefined,
+		rows = 3,
+		options = [],
+		multiple = false,
+		accept = '',
+		helpText = '',
+		error = '',
+		icon = '',
+		suffix = '',
+		prefix = '',
+		loading = false,
+		characterCount = false,
+		containerClass = '',
+		inputClass = '',
+		labelClass = ''
+	}: Props = $props();
 
 	// Estados internos
-	let focused = false;
-	let currentLength = 0;
+	let focused = $state(false);
+	let currentLength = $state(0);
 
 	// Watchers
-	$: {
+	$effect(() => {
 		if (typeof value === 'string') {
 			currentLength = value.length;
 		}
-	}
+	});
 
 	// Funções
 	function handleInput(event: Event) {
@@ -63,8 +93,8 @@
 		focused = false;
 	}
 
-	// Classes condicionais
-	$: baseInputClass = `
+	// Classes condicionais usando $derived
+	const baseInputClass = $derived(`
 		w-full px-4 py-3 border rounded-xl transition-all duration-200 placeholder-slate-500
 		${focused || value ? 'border-[#00BFB3] ring-2 ring-[#00BFB3]/20' : 'border-slate-300'}
 		${error ? 'border-red-500 ring-2 ring-red-500/20' : ''}
@@ -74,31 +104,31 @@
 		${suffix ? 'pr-12' : ''}
 		${icon ? 'pl-12' : ''}
 		${inputClass}
-	`.trim().replace(/\s+/g, ' ');
+	`.trim().replace(/\s+/g, ' '));
 
-	$: textareaClass = `
+	const textareaClass = $derived(`
 		w-full px-4 py-3 border rounded-xl transition-all duration-200 placeholder-slate-500 resize-none
 		${focused || value ? 'border-[#00BFB3] ring-2 ring-[#00BFB3]/20' : 'border-slate-300'}
 		${error ? 'border-red-500 ring-2 ring-red-500/20' : ''}
 		${disabled ? 'bg-slate-100 cursor-not-allowed opacity-75' : 'bg-white hover:border-[#00BFB3]/50'}
 		${readonly ? 'bg-slate-50' : ''}
 		${inputClass}
-	`.trim().replace(/\s+/g, ' ');
+	`.trim().replace(/\s+/g, ' '));
 
-	$: selectClass = `
+	const selectClass = $derived(`
 		w-full px-4 py-3 border rounded-xl transition-all duration-200 bg-white
 		${focused ? 'border-[#00BFB3] ring-2 ring-[#00BFB3]/20' : 'border-slate-300'}
 		${error ? 'border-red-500 ring-2 ring-red-500/20' : ''}
 		${disabled ? 'bg-slate-100 cursor-not-allowed opacity-75' : 'hover:border-[#00BFB3]/50'}
 		${inputClass}
-	`.trim().replace(/\s+/g, ' ');
+	`.trim().replace(/\s+/g, ' '));
 
-	$: checkboxClass = `
+	const checkboxClass = $derived(`
 		w-5 h-5 rounded border-slate-300 text-[#00BFB3] transition-colors
 		focus:ring-2 focus:ring-[#00BFB3]/20 focus:border-[#00BFB3]
 		${disabled ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'}
 		${inputClass}
-	`.trim().replace(/\s+/g, ' ');
+	`.trim().replace(/\s+/g, ' '));
 </script>
 
 <div class="space-y-2 {containerClass}">

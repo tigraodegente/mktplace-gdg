@@ -1,6 +1,46 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
+import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
+import type { ApiResponse } from '@mktplace/shared-types';
+
+// Tipos locais simples para produtos
+interface SimpleProduct {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string;
+  price: number;
+  originalPrice?: number;
+  cost?: number;
+  stock: number;
+  category: string;
+  brand: string;
+  vendor: string;
+  image: string;
+  status: string;
+  rating?: number;
+  reviews: number;
+  sales: number;
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SimplePaginatedResponse {
+  success: boolean;
+  data: SimpleProduct[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    timestamp: string;
+    source: string;
+  };
+}
 
 // Função para converter nomes de países para códigos ISO
 function getCountryCode(countryName: string | null): string | null {
@@ -43,32 +83,36 @@ function getCountryCode(countryName: string | null): string | null {
   return countryMap[normalized] || (countryName.length === 2 ? countryName.toUpperCase() : 'BR');
 }
 
-// GET - Listar produtos
-export const GET: RequestHandler = async ({ url, platform, locals }) => {
+// GET - Listar produtos (COM AUTENTICAÇÃO ADMIN)
+export const GET: RequestHandler = withAdminAuth(async ({ request, data, platform }) => {
   try {
+    const user = authUtils.getUser({ data });
+    console.log(`🔐 Admin ${user?.name} (${user?.id}) acessando produtos`);
+    
+    const url = new URL(request.url);
     const db = getDatabase(platform);
     
     // Parâmetros
-    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
-    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
     const search = url.searchParams.get('search') || '';
     const status = url.searchParams.get('status') || 'all';
-    const category = url.searchParams.get('category') || 'all';
     const sortBy = url.searchParams.get('sortBy') || 'created_at';
     const sortOrder = url.searchParams.get('sortOrder') || 'desc';
-    const vendorId = locals.user?.role === 'vendor' ? locals.user.seller_id : url.searchParams.get('vendor_id');
+    
+    console.log(`📊 Listando produtos - page: ${page}, limit: ${limit}, search: "${search}"`);
     
     // Validar campos de ordenação
-    const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at', 'category_id', 'brand_id'];
+    const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at'];
     const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
     const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
     
-    // Construir query
+    // Construir query com filtros
     const conditions: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
     
-    // Sempre excluir produtos arquivados, exceto se explicitamente solicitado
+    // Sempre excluir produtos arquivados
     if (status !== 'archived') {
       conditions.push(`p.status != 'archived'`);
     }
@@ -82,12 +126,9 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     if (status !== 'all') {
       const statusMap: Record<string, string> = {
         'active': 'p.is_active = true AND p.quantity > 0',
-        'inactive': 'p.is_active = false AND p.status != \'archived\'',
-        'pending': 'p.status = \'pending\'',
+        'inactive': 'p.is_active = false',
         'draft': 'p.status = \'draft\'',
-        'low_stock': 'p.quantity < 10 AND p.quantity > 0',
-        'out_of_stock': 'p.quantity = 0',
-        'archived': 'p.status = \'archived\''
+        'out_of_stock': 'p.quantity = 0'
       };
       
       if (statusMap[status]) {
@@ -95,314 +136,164 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       }
     }
     
-    if (category !== 'all') {
-      conditions.push(`c.slug = $${paramIndex}`);
-      params.push(category);
-      paramIndex++;
-    }
-    
-    if (vendorId) {
-      conditions.push(`p.seller_id = $${paramIndex}`);
-      params.push(vendorId);
-      paramIndex++;
-    }
-    
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
     
-    // Query principal
+    // Query com contagem
     const query = `
-      WITH product_stats AS (
-        SELECT 
-          p.id,
-          p.name,
-          p.slug,
-          p.sku,
-          p.price,
-          p.original_price,
-          p.cost,
-          p.quantity as stock,
-          p.brand_id,
-          p.seller_id,
-          p.description,
-          p.is_active,
-          p.featured,
-          p.status,
-          p.rating_average,
-          p.rating_count,
-          p.sales_count,
-          p.created_at,
-          p.updated_at,
-          -- Categoria primária
-          pc_primary.category_id,
-          c.name as category_name,
-          c.slug as category_slug,
-          b.name as brand_name,
-          s.company_name as vendor_name,
-          COUNT(*) OVER() as total_count,
-          (
-            SELECT url 
-            FROM product_images pi 
-            WHERE pi.product_id = p.id 
-            ORDER BY pi.position ASC 
-            LIMIT 1
-          ) as image
-        FROM products p
-        LEFT JOIN product_categories pc_primary ON pc_primary.product_id = p.id AND pc_primary.is_primary = true
-        LEFT JOIN categories c ON c.id = pc_primary.category_id
-        LEFT JOIN brands b ON b.id = p.brand_id
-        LEFT JOIN sellers s ON s.id = p.seller_id
-        ${whereClause}
-        ORDER BY p.${safeSortBy} ${safeSortOrder}
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-      )
-      SELECT * FROM product_stats
+      SELECT 
+        p.id,
+        p.name,
+        p.slug,
+        p.sku,
+        p.price,
+        p.original_price,
+        p.cost,
+        p.quantity as stock,
+        p.brand_id,
+        p.seller_id,
+        p.description,
+        p.is_active,
+        p.featured,
+        p.status,
+        p.rating_average,
+        p.rating_count,
+        p.sales_count,
+        p.created_at,
+        p.updated_at,
+        COUNT(*) OVER() as total_count
+      FROM products p
+      ${whereClause}
+      ORDER BY p.${safeSortBy} ${safeSortOrder}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     
     params.push(limit, offset);
     
-    // Executar query com parâmetros como array
+    // Executar query
     const products = await db.query(query, params);
     const totalCount = products[0]?.total_count || 0;
     
-    // Buscar estatísticas gerais
-    const statsQuery = `
-      SELECT 
-        COUNT(*) FILTER (WHERE p.is_active = true AND p.quantity > 0 AND p.status != 'archived') as active,
-        COUNT(*) FILTER (WHERE p.is_active = false AND p.status != 'archived') as inactive, 
-        COUNT(*) FILTER (WHERE p.status = 'pending') as pending,
-        COUNT(*) FILTER (WHERE p.quantity < 10 AND p.quantity > 0 AND p.status != 'archived') as low_stock,
-        COUNT(*) FILTER (WHERE p.status != 'archived') as total
-      FROM products p
-      ${vendorId ? `WHERE p.seller_id = $1` : ''}
-    `;
-    
-    // Executar query de stats com ou sem parâmetros
-    const statsResult = vendorId 
-      ? await db.query(statsQuery, [vendorId])
-      : await db.query(statsQuery);
-    
-    const stats = statsResult[0];
-    
     await db.close();
     
-    return json({
+    const response: SimplePaginatedResponse = {
       success: true,
-      data: {
-        products: products.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          sku: p.sku,
-          price: Number(p.price),
-          originalPrice: p.original_price ? Number(p.original_price) : undefined,
-          cost: p.cost ? Number(p.cost) : undefined,
-          stock: p.stock || 0,
-          category: p.category_name || 'Sem categoria',
-          categorySlug: p.category_slug,
-          brand: p.brand_name,
-          vendor: p.vendor_name || 'Loja',
-          image: p.image || `/api/placeholder/200/200?text=${encodeURIComponent(p.name)}`,
-          status: p.is_active ? (p.stock > 0 ? 'active' : 'out_of_stock') : (p.status || 'inactive'),
-          rating: p.rating_average ? Number(p.rating_average) : undefined,
-          reviews: p.rating_count || 0,
-          sales: p.sales_count || 0,
-          featured: p.featured || false,
-          createdAt: p.created_at,
-          updatedAt: p.updated_at
-        })),
-        pagination: {
-          page,
-          limit,
-          total: parseInt(totalCount),
-          totalPages: Math.ceil(totalCount / limit)
-        },
-        stats: {
-          total: stats.total || 0,
-          active: stats.active || 0,
-          pending: stats.pending || 0,
-          lowStock: stats.low_stock || 0
-        }
+      data: products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        sku: p.sku,
+        price: Number(p.price),
+        originalPrice: p.original_price ? Number(p.original_price) : undefined,
+        cost: p.cost ? Number(p.cost) : undefined,
+        stock: p.stock || 0,
+        category: 'Sem categoria',
+        brand: 'Marca',
+        vendor: 'Loja',
+        image: `/api/placeholder/200/200?text=${encodeURIComponent(p.name)}`,
+        status: p.is_active ? (p.stock > 0 ? 'active' : 'out_of_stock') : (p.status || 'inactive'),
+        rating: p.rating_average ? Number(p.rating_average) : undefined,
+        reviews: p.rating_count || 0,
+        sales: p.sales_count || 0,
+        featured: p.featured || false,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at
+      })),
+      meta: {
+        page,
+        limit,
+        total: parseInt(totalCount),
+        totalPages: Math.ceil(totalCount / limit),
+        hasNext: offset + limit < totalCount,
+        hasPrev: page > 1,
+        timestamp: new Date().toISOString(),
+        source: 'admin-panel'
       }
-    });
+    };
+    
+    console.log(`✅ Retornando ${products.length} produtos (total: ${totalCount})`);
+    return json(response);
     
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('❌ Erro ao listar produtos:', error);
+    
     return json({
       success: false,
-      error: 'Erro ao buscar produtos'
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Erro interno do servidor'
+      }
     }, { status: 500 });
   }
-};
+});
 
-// POST - Criar produto
-export const POST: RequestHandler = async ({ request, platform }) => {
+// POST - Criar produto (COM AUTENTICAÇÃO ADMIN)
+export const POST: RequestHandler = withAdminAuth(async ({ request, data, platform }) => {
   try {
-    const db = getDatabase(platform);
-    const data = await request.json();
+    const user = authUtils.getUser({ data });
+    const body = await request.json();
     
-    console.log('Dados recebidos para criar produto:', data);
+    console.log(`🔐 Admin ${user?.name} (${user?.id}) criando produto: ${body.name}`);
+    
+    const db = getDatabase(platform);
     
     // Validar campos obrigatórios
-    if (!data.name || !data.sku || !data.price) {
+    if (!body.name || !body.sku || !body.price) {
       await db.close();
-      return json({ 
-        success: false, 
-        error: 'Campos obrigatórios: name, sku, price',
-        message: 'Campos obrigatórios: name, sku, price' 
+      return json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Campos obrigatórios: name, sku, price'
+        }
       }, { status: 400 });
     }
     
-    // NOVO: Verificar se existe produto arquivado com mesmo SKU ou slug
-    const archivedProduct = await db.query`
-      SELECT id, sku, slug, status 
-      FROM products 
-      WHERE (sku = ${data.sku} OR slug = ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')})
-      AND status = 'archived'
-      LIMIT 1
-    `;
-    
-    if (archivedProduct.length > 0) {
-      console.log(`🔄 Produto arquivado encontrado com SKU/slug duplicado: ${archivedProduct[0].id}`);
-      
-      // Adicionar timestamp ao SKU e slug do produto arquivado para liberar o original
-      const timestamp = Date.now();
-      await db.query`
-        UPDATE products 
-        SET 
-          sku = sku || '_archived_' || ${timestamp}::text,
-          slug = slug || '-archived-' || ${timestamp}::text,
-          updated_at = NOW()
-        WHERE id = ${archivedProduct[0].id}::uuid
-      `;
-      
-      console.log(`✅ SKU e slug do produto arquivado foram modificados para liberar: ${data.sku}`);
-    }
-    
-    // Criar produto (sem category_id)
-    const result = await db.query`
+    // Criar produto
+    const result = await db.query(`
       INSERT INTO products (
-        name, slug, sku, barcode, model,
-        description, short_description,
-        price, original_price, cost, currency,
-        quantity, stock_location, track_inventory, allow_backorder,
-        brand_id, seller_id,
-        status, is_active, featured, condition,
-        weight, height, width, length,
-        has_free_shipping, delivery_days,
-        seller_state, seller_city,
-        meta_title, meta_description, meta_keywords,
-        tags, videos,
-        low_stock_alert, ncm_code, gtin, origin,
-        care_instructions, manual_link, internal_notes,
-        allow_reviews, age_restricted, is_customizable,
-        attributes, specifications, manufacturing_country, tax_class,
-        requires_shipping, is_digital
+        name, slug, sku, price, description, quantity, is_active, status
       ) VALUES (
-        ${data.name},
-        ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
-        ${data.sku},
-        ${data.barcode || null},
-        ${data.model || null},
-        ${data.description || ''},
-        ${data.short_description || null},
-        ${data.price},
-        ${data.original_price || null},
-        ${data.cost || 0},
-        ${data.currency || 'BRL'},
-        ${data.quantity || 0},
-        ${data.stock_location || null},
-        ${data.track_inventory !== false},
-        ${data.allow_backorder || false},
-        ${data.brand_id || null},
-        ${data.seller_id || null},
-        ${data.status || 'draft'},
-        ${data.is_active || false},
-        ${data.featured || false},
-        ${data.condition || 'new'},
-        ${data.weight || null},
-        ${data.height || null},
-        ${data.width || null},
-        ${data.length || null},
-        ${data.has_free_shipping || false},
-        ${data.delivery_days_min || data.delivery_days_max || null},
-        ${data.seller_state || null},
-        ${data.seller_city || null},
-        ${data.meta_title || null},
-        ${data.meta_description || null},
-        ${data.meta_keywords || []},
-        ${data.tags || []},
-        ${data.videos || []},
-        ${data.low_stock_alert || null},
-        ${data.ncm_code || null},
-        ${data.gtin || null},
-        ${data.origin || '0'},
-        ${data.care_instructions || null},
-        ${data.manual_link || null},
-        ${data.internal_notes || null},
-        ${data.allow_reviews !== false},
-        ${data.age_restricted || false},
-        ${data.is_customizable || false},
-        ${JSON.stringify(data.attributes || {})},
-        ${JSON.stringify(data.specifications || {})},
-        ${getCountryCode(data.manufacturing_country)},
-        ${data.tax_class || 'standard'},
-        ${data.requires_shipping !== false},
-        ${data.is_digital || false}
-      ) RETURNING *
-    `;
+        $1, $2, $3, $4, $5, $6, $7, $8
+      ) 
+      RETURNING *
+    `, [
+      body.name,
+      body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      body.sku,
+      body.price,
+      body.description || '',
+      body.quantity || 0,
+      body.is_active || false,
+      body.status || 'draft'
+    ]);
     
     const newProduct = result[0];
-    console.log('Produto criado:', newProduct);
-    
-    // Adicionar categorias usando a nova tabela N:N
-    if (data.category_ids && Array.isArray(data.category_ids) && data.category_ids.length > 0) {
-      // Primeira categoria é a primária por padrão
-      const primaryCategoryId = data.primary_category_id || data.category_ids[0];
-      
-      for (let i = 0; i < data.category_ids.length; i++) {
-        const categoryId = data.category_ids[i];
-        const isPrimary = categoryId === primaryCategoryId;
-        
-        await db.query`
-          INSERT INTO product_categories (product_id, category_id, is_primary)
-          VALUES (${newProduct.id}, ${categoryId}, ${isPrimary})
-        `;
-      }
-    } else if (data.category_id) {
-      // Compatibilidade com código antigo (categoria única)
-      await db.query`
-        INSERT INTO product_categories (product_id, category_id, is_primary)
-        VALUES (${newProduct.id}, ${data.category_id}, true)
-      `;
-    }
-    
-    // Adicionar imagens se fornecidas
-    if (data.images && Array.isArray(data.images) && data.images.length > 0) {
-      for (let i = 0; i < data.images.length; i++) {
-        await db.query`
-          INSERT INTO product_images (product_id, url, position)
-          VALUES (${newProduct.id}, ${data.images[i]}, ${i})
-        `;
-      }
-    }
+    console.log(`✅ Produto criado com sucesso: ${newProduct.id}`);
     
     await db.close();
     
     return json({
       success: true,
-      data: newProduct
-    });
+      data: newProduct,
+      meta: {
+        timestamp: new Date().toISOString(),
+        source: 'admin-panel',
+        created_by: user?.id
+      }
+    }, { status: 201 });
     
   } catch (error) {
-    console.error('Erro ao criar produto:', error);
-    return json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Erro ao criar produto',
-      message: error instanceof Error ? error.message : 'Erro ao criar produto'
+    console.error('❌ Erro ao criar produto:', error);
+    return json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Erro interno do servidor'
+      }
     }, { status: 500 });
   }
-};
+});
 
 // PUT - Atualizar produto
 export const PUT: RequestHandler = async ({ request, platform }) => {

@@ -3,7 +3,11 @@
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import { toast } from '$lib/stores/toast';
 	
-	let { formData = $bindable() } = $props();
+	interface Props {
+		formData: any;
+	}
+	
+	let { formData = $bindable() }: Props = $props();
 	
 	// Estados para seleções
 	let categories = $state<Array<{id: string, name: string, parent_id?: string | null}>>([]);

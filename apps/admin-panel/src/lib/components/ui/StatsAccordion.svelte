@@ -12,9 +12,26 @@
 	interface Props {
 		stats: StatsData;
 		defaultOpen?: boolean;
+		labels?: {
+			title?: string;
+			total?: string;
+			active?: string;
+			pending?: string;
+			lowStock?: string;
+		};
 	}
 	
-	let { stats, defaultOpen = true }: Props = $props();
+	let { 
+		stats, 
+		defaultOpen = true,
+		labels = {
+			title: 'Estatísticas',
+			total: 'Total',
+			active: 'Ativos', 
+			pending: 'Pendentes',
+			lowStock: 'Outros'
+		}
+	}: Props = $props();
 	
 	let isOpen = $state(defaultOpen);
 	
@@ -48,7 +65,7 @@
 			<div class="p-2 bg-[#00BFB3]/10 rounded-lg">
 				<ModernIcon name="analytics" size="md" color="#00BFB3" />
 			</div>
-			<h3 class="text-lg font-semibold text-gray-900">Estatísticas de Produtos</h3>
+			<h3 class="text-lg font-semibold text-gray-900">{labels.title}</h3>
 		</div>
 		
 		<svg 
@@ -73,7 +90,7 @@
 					<div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-gray-600">Total de Produtos</p>
+								<p class="text-sm font-medium text-gray-600">{labels.total}</p>
 								<p class="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
 							</div>
 							<div class="p-3 bg-[#00BFB3]/10 rounded-lg">
@@ -86,7 +103,7 @@
 					<div class="bg-green-50 rounded-lg p-4 border border-green-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-gray-600">Produtos Ativos</p>
+								<p class="text-sm font-medium text-gray-600">{labels.active}</p>
 								<p class="text-2xl font-bold text-gray-900 mt-1">{stats.active}</p>
 							</div>
 							<div class="p-3 bg-green-100 rounded-lg">
@@ -99,7 +116,7 @@
 					<div class="bg-amber-50 rounded-lg p-4 border border-amber-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-gray-600">Pendentes</p>
+								<p class="text-sm font-medium text-gray-600">{labels.pending}</p>
 								<p class="text-2xl font-bold text-gray-900 mt-1">{stats.pending}</p>
 							</div>
 							<div class="p-3 bg-amber-100 rounded-lg">
@@ -112,7 +129,7 @@
 					<div class="bg-red-50 rounded-lg p-4 border border-red-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-gray-600">Estoque Baixo</p>
+								<p class="text-sm font-medium text-gray-600">{labels.lowStock}</p>
 								<p class="text-2xl font-bold text-gray-900 mt-1">{stats.lowStock}</p>
 							</div>
 							<div class="p-3 bg-red-100 rounded-lg">

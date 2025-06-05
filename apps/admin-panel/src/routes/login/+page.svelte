@@ -3,28 +3,17 @@
 	import { onMount } from 'svelte';
 	import { fly, fade, scale } from 'svelte/transition';
 	import { cubicOut, backOut } from 'svelte/easing';
+	import { authStore } from '$lib/stores/auth';
 	
 	// Estado
-	let email = $state('');
-	let password = $state('');
+	let email = $state('admin@mktplace.com');
+	let password = $state('admin123456');
 	let role = $state<'admin' | 'vendor'>('admin');
 	let isLoading = $state(false);
 	let error = $state('');
 	let showPassword = $state(false);
 	let rememberMe = $state(false);
 	let isAnimating = $state(true);
-	
-	// Credenciais de demo
-	const demoCredentials = {
-		admin: {
-			email: 'admin@marketplace.com',
-			password: 'admin123'
-		},
-		vendor: {
-			email: 'vendor@marketplace.com',
-			password: 'vendor123'
-		}
-	};
 	
 	// Features do sistema
 	const features = [
@@ -34,7 +23,14 @@
 		{ icon: '🔒', title: '100% Seguro', desc: 'Seus dados protegidos sempre' }
 	];
 	
-	onMount(() => {
+	onMount(async () => {
+		// Verificar se usuário já está logado
+		const isAuthenticated = await authStore.checkAuth();
+		if (isAuthenticated) {
+			goto('/');
+			return;
+		}
+		
 		// Animação inicial
 		setTimeout(() => {
 			isAnimating = false;
@@ -65,14 +61,30 @@
 		
 		isLoading = true;
 		
-		// Simular login
-		setTimeout(async () => {
-			// Verificar credenciais de demo
-			const validCredentials = 
-				(role === 'admin' && email === demoCredentials.admin.email && password === demoCredentials.admin.password) ||
-				(role === 'vendor' && email === demoCredentials.vendor.email && password === demoCredentials.vendor.password);
+		try {
+			// Chamar API real de login
+			const response = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					email: email.toLowerCase(),
+					password: password,
+					remember_me: rememberMe
+				})
+			});
 			
-			if (validCredentials) {
+			const result = await response.json();
+			
+			if (result.success && result.data) {
+				// Usar authStore para fazer login
+				authStore.login(
+					result.data.user,
+					result.data.access_token,
+					result.data.refresh_token
+				);
+				
 				// Salvar email se marcado
 				if (rememberMe) {
 					localStorage.setItem('rememberedEmail', email);
@@ -80,19 +92,42 @@
 					localStorage.removeItem('rememberedEmail');
 				}
 				
-				// Redirecionar com parâmetro de role
-				await goto(`/?user=${role}`);
+				console.log('✅ Login realizado com sucesso!', result.data.user);
+				
+				// Redirecionar para dashboard
+				await goto('/');
 			} else {
-				error = 'Email ou senha incorretos';
-				isLoading = false;
+				// Tratar erro da API
+				if (result.error) {
+					switch (result.error.code) {
+						case 'INVALID_CREDENTIALS':
+							error = 'Email ou senha incorretos';
+							break;
+						case 'ACCESS_DENIED':
+							error = 'Acesso negado ao painel administrativo';
+							break;
+						case 'VALIDATION_ERROR':
+							error = result.error.message || 'Dados inválidos';
+							break;
+						default:
+							error = result.error.message || 'Erro ao fazer login';
+					}
+				} else {
+					error = 'Erro inesperado ao fazer login';
+				}
 			}
-		}, 1500);
+		} catch (err) {
+			console.error('Erro na requisição de login:', err);
+			error = 'Erro de conexão. Tente novamente.';
+		} finally {
+			isLoading = false;
+		}
 	}
 	
 	function fillDemoCredentials() {
-		const creds = demoCredentials[role];
-		email = creds.email;
-		password = creds.password;
+		// Usar credenciais reais do sistema
+		email = 'admin@mktplace.com';
+		password = 'admin123456';
 	}
 	
 	function switchRole(newRole: 'admin' | 'vendor') {

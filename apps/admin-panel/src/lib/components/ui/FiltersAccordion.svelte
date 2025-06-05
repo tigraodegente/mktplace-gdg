@@ -12,20 +12,19 @@
 		brandFilter = $bindable('all'),
 		priceRange = $bindable({ min: '', max: '' }),
 		onFiltersChange = () => {},
-		defaultOpen = true
+		defaultOpen = true,
+		// Props para controlar quais filtros mostrar
+		showCategoryFilter = true,
+		showBrandFilter = true,
+		showPriceFilter = true,
+		statusOptions = [
+			{ value: 'all', label: 'Todos os Status' },
+			{ value: 'active', label: 'Ativos' },
+			{ value: 'inactive', label: 'Inativos' }
+		]
 	} = $props();
 	
 	let isOpen = $state(defaultOpen);
-	
-	// Status options
-	const statusOptions = [
-		{ value: 'all', label: 'Todos os Status' },
-		{ value: 'active', label: 'Ativos' },
-		{ value: 'inactive', label: 'Inativos' },
-		{ value: 'draft', label: 'Rascunho' },
-		{ value: 'low_stock', label: 'Estoque Baixo' },
-		{ value: 'out_of_stock', label: 'Sem Estoque' }
-	];
 	
 	// Persistir estado no localStorage
 	$effect(() => {
@@ -99,51 +98,57 @@
 					</div>
 					
 					<!-- Categoria com MultiSelect Enhanced -->
-					<div class="space-y-2 relative">
-						<label class="block text-sm font-medium text-gray-700">Categoria</label>
-						<EnhancedMultiSelect
-							items={categories}
-							selected={categoryFilter === 'all' ? [] : [categoryFilter]}
-							onSelectionChange={(selected) => {
-								categoryFilter = selected.length > 0 ? selected[0] : 'all';
-							}}
-							placeholder="Todas as categorias"
-							allowMultiple={false}
-							searchable={true}
-							portalMode={true}
-						/>
-					</div>
-					
-					<!-- Marca -->
-					<div class="space-y-2">
-						<label class="block text-sm font-medium text-gray-700">Marca</label>
-						<Select
-							bind:value={brandFilter}
-							options={[
-								{ value: 'all', label: 'Todas as Marcas' },
-								...brands.map(b => ({ value: b.id, label: b.name }))
-							]}
-						/>
-					</div>
-					
-					<!-- Faixa de Preço -->
-					<div class="space-y-2">
-						<label class="block text-sm font-medium text-gray-700">Preço</label>
-						<div class="flex gap-2">
-							<Input
-								type="number"
-								placeholder="Min"
-								bind:value={priceRange.min}
-								class="w-1/2"
-							/>
-							<Input
-								type="number"
-								placeholder="Max"
-								bind:value={priceRange.max}
-								class="w-1/2"
+					{#if showCategoryFilter}
+						<div class="space-y-2 relative">
+							<label class="block text-sm font-medium text-gray-700">Categoria</label>
+							<EnhancedMultiSelect
+								items={categories}
+								selected={categoryFilter === 'all' ? [] : [categoryFilter]}
+								onSelectionChange={(selected) => {
+									categoryFilter = selected.length > 0 ? selected[0] : 'all';
+								}}
+								placeholder="Todas as categorias"
+								allowMultiple={false}
+								searchable={true}
+								portalMode={true}
 							/>
 						</div>
-					</div>
+					{/if}
+					
+					<!-- Marca -->
+					{#if showBrandFilter}
+						<div class="space-y-2">
+							<label class="block text-sm font-medium text-gray-700">Marca</label>
+							<Select
+								bind:value={brandFilter}
+								options={[
+									{ value: 'all', label: 'Todas as Marcas' },
+									...brands.map(b => ({ value: b.id, label: b.name }))
+								]}
+							/>
+						</div>
+					{/if}
+					
+					<!-- Faixa de Preço -->
+					{#if showPriceFilter}
+						<div class="space-y-2">
+							<label class="block text-sm font-medium text-gray-700">Preço</label>
+							<div class="flex gap-2">
+								<Input
+									type="number"
+									placeholder="Min"
+									bind:value={priceRange.min}
+									class="w-1/2"
+								/>
+								<Input
+									type="number"
+									placeholder="Max"
+									bind:value={priceRange.max}
+									class="w-1/2"
+								/>
+							</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>

@@ -25,7 +25,7 @@
 		isOpen?: boolean;
 	}
 	
-	let { user = null, isOpen = false }: Props = $props();
+	let { user = null, isOpen = $bindable(false) }: Props = $props();
 
 	// Estados locais
 	let expandedSections = $state<Set<string>>(new Set(['principal']));
@@ -107,7 +107,7 @@
 	<!-- Menu Panel -->
 	<div 
 		class="fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-white/95 backdrop-blur-xl border-r border-white/20 shadow-2xl flex flex-col z-50"
-		transition:fly={{ x: -400, duration: 400, easing: cubicOut }}
+		transition:fly={{ x: -288, duration: 400, easing: cubicOut }}
 	>
 		<!-- Header -->
 		<div class="flex items-center justify-between p-4 lg:p-6 border-b border-gray-200/50 bg-gradient-to-r from-[#00BFB3]/10 to-transparent">

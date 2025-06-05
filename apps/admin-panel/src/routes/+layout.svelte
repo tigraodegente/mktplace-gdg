@@ -112,6 +112,33 @@
 		isUserMenuOpen = !isUserMenuOpen;
 	}
 	
+	// Debug para o menu
+	$effect(() => {
+		console.log('🔧 Debug Menu:', { showSideMenu, isMobile });
+	});
+	
+	// Força atualização do layout quando o menu muda
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			// Pequeno delay para garantir que o DOM foi atualizado
+			setTimeout(() => {
+				const mainElement = document.querySelector('main');
+				if (mainElement) {
+					console.log('🔄 Atualizando layout:', { showSideMenu, isMobile });
+					// Força a atualização forçando uma re-renderização
+					mainElement.style.transition = 'all 0.3s ease';
+					if (showSideMenu && !isMobile) {
+						mainElement.style.marginLeft = '288px';
+						mainElement.style.width = 'calc(100% - 288px)';
+					} else {
+						mainElement.style.marginLeft = '0px';
+						mainElement.style.width = '100%';
+					}
+				}
+			}, 50);
+		}
+	});
+	
 	async function handleLogout() {
 		user = null;
 		await goto('/login');
@@ -237,7 +264,10 @@
 		</header>
 		
 		<!-- Main Content (Tela Expandida) -->
-		<main class="pt-16 transition-all duration-300" style="margin-left: {showSideMenu && !isMobile ? '288px' : '0'}; max-width: {showSideMenu && !isMobile ? 'calc(100% - 288px)' : '100%'};">
+		<main 
+			class="pt-16 transition-all duration-300"
+			style="margin-left: {showSideMenu && !isMobile ? '288px' : '0px'}; width: {showSideMenu && !isMobile ? 'calc(100% - 288px)' : '100%'};"
+		>
 			<div class="p-2 lg:p-4 animate-fade-in">
 				{#if isLoading}
 					<div class="flex items-center justify-center min-h-[60vh]">

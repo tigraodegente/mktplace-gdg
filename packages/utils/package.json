@@ -8,6 +8,34 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./auth/auth-service": {
+      "types": "./dist/auth/auth-service.d.ts",
+      "import": "./dist/auth/auth-service.js"
+    },
+    "./auth/middleware": {
+      "types": "./dist/auth/middleware.d.ts",
+      "import": "./dist/auth/middleware.js"
+    },
+    "./auth/database": {
+      "types": "./dist/auth/database.d.ts",
+      "import": "./dist/auth/database.js"
+    },
+    "./formatters": {
+      "types": "./dist/formatters.d.ts",
+      "import": "./dist/formatters.js"
+    },
+    "./validators": {
+      "types": "./dist/validators.d.ts",
+      "import": "./dist/validators.js"
+    },
+    "./helpers": {
+      "types": "./dist/helpers.d.ts",
+      "import": "./dist/helpers.js"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js"
     }
   },
   "files": [
