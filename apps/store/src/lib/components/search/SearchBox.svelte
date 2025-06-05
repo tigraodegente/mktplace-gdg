@@ -169,6 +169,7 @@
 			onfocus={handleFocus}
 			onkeydown={handleKeyDown}
 			class="w-full h-[42px] pl-6 pr-12 bg-white border border-gray-300 rounded-[8.42px] text-gray-600 placeholder-gray-400 text-base focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all"
+			style="font-family: 'Lato', sans-serif;"
 			autocomplete="off"
 			aria-label="Buscar produtos"
 			aria-controls="search-dropdown"
@@ -303,10 +304,11 @@
 					{#if searchHistory.length > 0}
 						<div class="p-4 border-b border-gray-100">
 							<div class="flex items-center justify-between mb-3">
-								<h3 class="text-sm font-semibold text-gray-700">Buscas recentes</h3>
+								<h3 class="text-sm font-semibold text-gray-700" style="font-family: 'Lato', sans-serif;">Buscas recentes</h3>
 								<button 
 									onclick={clearSearchHistory}
 									class="text-xs text-gray-500 hover:text-gray-700"
+									style="font-family: 'Lato', sans-serif;"
 								>
 									Limpar
 								</button>
@@ -321,7 +323,7 @@
 										<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
 										</svg>
-										<span class="text-sm text-gray-700">{historyItem}</span>
+										<span class="text-sm text-gray-700" style="font-family: 'Lato', sans-serif;">{historyItem}</span>
 									</button>
 								{/each}
 							</div>
@@ -330,14 +332,18 @@
 					
 					<!-- Sugestões populares -->
 					<div class="p-4">
-						<h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-							<span class="text-base">🔥</span> Mais procurados
+						<h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style="font-family: 'Lato', sans-serif;">
+							<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+							Mais procurados
 						</h3>
 						<div class="flex flex-wrap gap-2">
 							{#each popularSearches.slice(0, 8) as popular}
 								<button
 									onclick={() => performSearch(popular)}
 									class="px-3 py-1.5 bg-gray-50 hover:bg-[#00BFB3] hover:text-white rounded-full text-sm transition-colors"
+									style="font-family: 'Lato', sans-serif;"
 								>
 									{popular}
 								</button>
