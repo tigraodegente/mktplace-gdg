@@ -143,134 +143,210 @@
 
 <svelte:head>
 	<title>Devoluções e Trocas - Grão de Gente Marketplace</title>
-	<meta name="description" content="Gerencie suas devoluções e trocas" />
+	<meta name="description" content="Gerencie suas devoluções e trocas de produtos de forma simples e rápida" />
+	<meta name="keywords" content="devoluções, trocas, reembolso, garantia, atendimento, grão de gente, marketplace" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
-	<div class="max-w-6xl mx-auto px-4 py-8">
-		<!-- Header -->
-		<div class="mb-8">
-			<h1 class="text-3xl font-bold text-gray-900 mb-2">Devoluções e Trocas</h1>
-			<p class="text-gray-600">
-				Gerencie suas solicitações de devolução e troca de produtos
-			</p>
+<!-- Conteúdo Principal -->
+<main class="py-6">
+	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+		<!-- Header Padrão do Projeto -->
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6" style="font-family: 'Lato', sans-serif;">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+						</svg>
+					</div>
+					<div>
+						<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">Devoluções e Trocas</h1>
+						<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
+							{#if returns.length > 0}
+								{returns.length} {returns.length === 1 ? 'solicitação ativa' : 'solicitações ativas'} • Política de 7 dias
+							{:else}
+								Gerencie suas solicitações de devolução e troca com facilidade
+							{/if}
+						</p>
+					</div>
+				</div>
+				
+				<a 
+					href="/" 
+					class="text-[#00BFB3] hover:text-[#00A89D] font-medium transition-colors text-sm sm:text-base px-4 py-2 sm:px-0 sm:py-0 bg-[#00BFB3]/5 sm:bg-transparent rounded-lg sm:rounded-none"
+					style="font-family: 'Lato', sans-serif;"
+				>
+					<span class="sm:hidden">Voltar</span>
+					<span class="hidden sm:inline">← Continuar Comprando</span>
+				</a>
+			</div>
+			
+			<!-- Descrição expandível -->
+			<div class="mt-6 pt-6 border-t border-gray-200">
+				<div class="text-center">
+					<p class="text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
+						Processo simples e transparente: você tem até 7 dias para solicitar troca ou devolução. 
+						Primeira troca é grátis e reembolso em até 7 dias úteis.
+					</p>
+				</div>
+			</div>
 		</div>
 
-		<!-- Info Cards -->
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-			<div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-				<div class="flex items-center gap-4">
-					<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-						<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+		<!-- Cards Informativos -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+			<!-- Prazo -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
 						</svg>
 					</div>
 					<div>
-						<h3 class="font-semibold text-gray-900">7 Dias</h3>
-						<p class="text-sm text-gray-600">Prazo para solicitar</p>
+						<h3 class="text-lg font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">7 Dias</h3>
+						<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">Prazo para solicitar troca ou devolução</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-				<div class="flex items-center gap-4">
-					<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-						<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+			<!-- Primeira Troca Grátis -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
 						</svg>
 					</div>
 					<div>
-						<h3 class="font-semibold text-gray-900">Grátis</h3>
-						<p class="text-sm text-gray-600">Primeira troca gratuita</p>
+						<h3 class="text-lg font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">Grátis</h3>
+						<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">Primeira troca sem custo adicional</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-				<div class="flex items-center gap-4">
-					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+			<!-- Processamento Rápido -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
 						<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
 						</svg>
 					</div>
 					<div>
-						<h3 class="font-semibold text-gray-900">Rápido</h3>
-						<p class="text-sm text-gray-600">Até 7 dias úteis</p>
+						<h3 class="text-lg font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">Rápido</h3>
+						<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">Processamento em até 7 dias úteis</p>
 					</div>
 				</div>
 			</div>
 		</div>
 
-		<!-- Actions -->
-		<div class="flex justify-between items-center mb-6">
-			<h2 class="text-xl font-semibold text-gray-900">Minhas Solicitações</h2>
-			<button
-				onclick={() => showNewReturnModal = true}
-				class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
-			>
-				Nova Solicitação
-			</button>
+		<!-- Action Bar -->
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+				<div class="flex items-center gap-3">
+					<div class="w-10 h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+						<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+						</svg>
+					</div>
+					<div>
+						<h2 class="text-lg sm:text-xl font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">Minhas Solicitações</h2>
+						<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+							{#if returns.length > 0}
+								{returns.length} {returns.length === 1 ? 'solicitação encontrada' : 'solicitações encontradas'}
+							{:else}
+								Nenhuma solicitação criada ainda
+							{/if}
+						</p>
+					</div>
+				</div>
+				
+				<button
+					onclick={() => showNewReturnModal = true}
+					class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 focus:outline-none transition-all font-medium"
+					style="font-family: 'Lato', sans-serif;"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+					</svg>
+					<span class="sm:hidden">Nova Solicitação</span>
+					<span class="hidden sm:inline">Nova Solicitação</span>
+				</button>
+			</div>
 		</div>
 
 		<!-- Lista de Devoluções -->
-		<div class="bg-white rounded-lg shadow-sm">
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200">
 			{#if loading}
-				<div class="p-8 text-center">
-					<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00BFB3] mx-auto mb-4"></div>
-					<p class="text-gray-600">Carregando solicitações...</p>
+				<div class="p-12 text-center">
+					<div class="animate-spin rounded-full h-12 w-12 border-2 border-gray-200 border-t-[#00BFB3] mx-auto mb-6"></div>
+					<h3 class="text-lg font-semibold text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">Carregando solicitações</h3>
+					<p class="text-gray-600" style="font-family: 'Lato', sans-serif;">Aguarde enquanto buscamos suas solicitações...</p>
 				</div>
 			{:else if returns.length === 0}
-				<div class="p-12 text-center">
-					<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
-					</svg>
-					<h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhuma solicitação</h3>
-					<p class="text-gray-600 mb-4">Você ainda não fez nenhuma solicitação de devolução ou troca.</p>
+				<div class="p-16 text-center">
+					<div class="w-20 h-20 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+						<svg class="w-10 h-10 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+						</svg>
+					</div>
+					<h3 class="text-2xl font-bold text-gray-900 mb-3" style="font-family: 'Lato', sans-serif;">Nenhuma solicitação encontrada</h3>
+					<p class="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed" style="font-family: 'Lato', sans-serif;">
+						Você ainda não fez nenhuma solicitação de devolução ou troca. 
+						Nossa política permite até 7 dias para solicitar.
+					</p>
 					<button
 						onclick={() => showNewReturnModal = true}
-						class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D]"
+						class="inline-flex items-center gap-2 px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 focus:outline-none transition-all font-semibold"
+						style="font-family: 'Lato', sans-serif;"
 					>
-						Primeira Solicitação
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+						</svg>
+						Criar Primeira Solicitação
 					</button>
 				</div>
 			{:else}
 				<div class="divide-y divide-gray-200">
 					{#each returns as returnItem}
-						<div class="p-6">
-							<div class="flex items-start justify-between">
+						<div class="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
+							<div class="flex flex-col lg:flex-row lg:items-start gap-6">
 								<div class="flex-1">
-									<div class="flex items-center gap-3 mb-3">
-										<span class="font-mono text-sm bg-gray-50 px-2 py-1 rounded">
-											{returnItem.return_number}
+									<div class="flex flex-wrap items-center gap-2 mb-4">
+										<span class="font-mono text-xs sm:text-sm bg-[#00BFB3]/10 text-[#00BFB3] px-3 py-1 rounded-full font-medium">
+											#{returnItem.return_number}
 										</span>
-										<span class="px-2 py-1 text-xs font-medium rounded-full {getStatusColor(returnItem.status)}">
+										<span class="px-3 py-1 text-xs font-medium rounded-full {getStatusColor(returnItem.status)}">
 											{getStatusLabel(returnItem.status)}
 										</span>
-										<span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+										<span class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full font-medium">
 											{getTypeLabel(returnItem.type)}
 										</span>
 									</div>
 									
-									<h3 class="font-semibold text-gray-900 mb-1">
+									<h3 class="text-lg font-semibold text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">
 										Pedido: {returnItem.order_id}
 									</h3>
-									<p class="text-sm text-gray-600 mb-2">
-										Motivo: {returnItem.reason}
+									<p class="text-sm text-gray-600 mb-4" style="font-family: 'Lato', sans-serif;">
+										<span class="font-medium">Motivo:</span> {returnItem.reason}
 									</p>
 									
 									<!-- Itens -->
-									<div class="space-y-2">
+									<div class="space-y-3">
 										{#each returnItem.items as item}
-											<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+											<div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
 												<img 
 													src={item.image} 
 													alt={item.product_name}
-													class="w-12 h-12 object-cover rounded"
+													class="w-14 h-14 object-cover rounded-lg"
 												/>
 												<div class="flex-1">
-													<p class="font-medium text-gray-900">{item.product_name}</p>
-													<p class="text-sm text-gray-600">
-														Qtd: {item.quantity} • {formatCurrency(item.unit_price)}
+													<p class="font-medium text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">
+														{item.product_name}
+													</p>
+													<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+														<span class="font-medium">Qtd:</span> {item.quantity} • 
+														<span class="font-medium">{formatCurrency(item.unit_price)}</span>
 													</p>
 												</div>
 											</div>
@@ -278,44 +354,77 @@
 									</div>
 								</div>
 								
-								<div class="text-right ml-6">
-									<p class="text-sm text-gray-500 mb-1">
-										{formatDate(returnItem.created_at)}
-									</p>
-									<p class="font-semibold text-gray-900 mb-2">
-										{formatCurrency(returnItem.total_amount)}
-									</p>
-									{#if returnItem.refund_amount > 0}
-										<p class="text-sm text-green-600">
-											Reembolso: {formatCurrency(returnItem.refund_amount)}
-										</p>
-									{/if}
-									<button 
-										onclick={() => selectedReturn = returnItem}
-										class="mt-2 text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium"
-									>
-										Ver detalhes
-									</button>
+								<div class="lg:text-right lg:flex-shrink-0">
+									<div class="bg-gray-50 rounded-lg p-4 lg:min-w-[160px]">
+										<div class="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-0">
+											<div class="lg:mb-3">
+												<p class="text-xs text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">
+													Criado em
+												</p>
+												<p class="text-sm font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
+													{formatDate(returnItem.created_at)}
+												</p>
+											</div>
+											
+											<div class="lg:mb-3">
+												<p class="text-xs text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">
+													Valor Total
+												</p>
+												<p class="text-lg font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">
+													{formatCurrency(returnItem.total_amount)}
+												</p>
+											</div>
+											
+											{#if returnItem.refund_amount > 0}
+												<div class="col-span-2 lg:col-span-1 lg:mb-3">
+													<p class="text-xs text-green-600 mb-1" style="font-family: 'Lato', sans-serif;">
+														Reembolso
+													</p>
+													<p class="text-sm font-semibold text-green-600" style="font-family: 'Lato', sans-serif;">
+														{formatCurrency(returnItem.refund_amount)}
+													</p>
+												</div>
+											{/if}
+										</div>
+										
+										<button 
+											onclick={() => selectedReturn = returnItem}
+											class="w-full inline-flex items-center justify-center gap-1 px-4 py-3 mt-4 text-sm text-[#00BFB3] hover:text-[#00A89D] hover:bg-[#00BFB3]/5 rounded-lg transition-all font-medium border border-[#00BFB3]/20"
+											style="font-family: 'Lato', sans-serif;"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+											</svg>
+											Ver Detalhes
+										</button>
+									</div>
 								</div>
 							</div>
 						</div>
 					{/each}
 				</div>
 			{/if}
-		</div>
 	</div>
-</div>
+</main>
 
 <!-- Modal Nova Solicitação -->
 {#if showNewReturnModal}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
 		<div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-			<div class="p-6">
+			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-6">
-					<h2 class="text-xl font-semibold text-gray-900">Nova Solicitação</h2>
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+							<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+							</svg>
+						</div>
+						<h2 class="text-xl font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">Nova Solicitação</h2>
+					</div>
 					<button
 						onclick={() => showNewReturnModal = false}
-						class="text-gray-400 hover:text-gray-600"
+						class="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
 					>
 						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -323,23 +432,29 @@
 					</button>
 				</div>
 
-				<form onsubmit={(e) => { e.preventDefault(); createReturn(); }} class="space-y-4">
+				<form onsubmit={(e) => { e.preventDefault(); createReturn(); }} class="space-y-6">
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Número do Pedido</label>
+						<label class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
+							Número do Pedido
+						</label>
 						<input
 							type="text"
 							bind:value={returnForm.order_id}
-							placeholder="MP123456789"
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+							placeholder="Ex: MP123456789"
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3]/20 focus:border-[#00BFB3] transition-colors"
+							style="font-family: 'Lato', sans-serif;"
 							required
 						/>
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Solicitação</label>
+						<label class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
+							Tipo de Solicitação
+						</label>
 						<select
 							bind:value={returnForm.type}
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3]/20 focus:border-[#00BFB3] transition-colors"
+							style="font-family: 'Lato', sans-serif;"
 						>
 							<option value="return">Devolução (reembolso)</option>
 							<option value="exchange">Troca (outro produto)</option>
@@ -347,10 +462,13 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+						<label class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
+							Motivo da Solicitação
+						</label>
 						<select
 							bind:value={returnForm.reason_id}
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3]/20 focus:border-[#00BFB3] transition-colors"
+							style="font-family: 'Lato', sans-serif;"
 							required
 						>
 							<option value="">Selecione um motivo</option>
@@ -361,45 +479,65 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">
+						<label class="block text-sm font-medium text-gray-700 mb-2" style="font-family: 'Lato', sans-serif;">
 							Observações Adicionais (opcional)
 						</label>
 						<textarea
 							bind:value={returnForm.custom_reason}
-							placeholder="Descreva detalhes adicionais sobre o problema..."
+							placeholder="Descreva detalhes adicionais sobre o problema, condições do produto, etc..."
 							rows="4"
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#00BFB3] focus:border-[#00BFB3]"
+							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3]/20 focus:border-[#00BFB3] transition-colors resize-none"
+							style="font-family: 'Lato', sans-serif;"
 						></textarea>
 					</div>
 
-					<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-						<div class="flex items-start gap-3">
-							<svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-							</svg>
+					<div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-5">
+						<div class="flex items-start gap-4">
+							<div class="w-8 h-8 bg-[#00BFB3]/10 rounded-full flex items-center justify-center flex-shrink-0">
+								<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+							</div>
 							<div>
-								<h4 class="font-medium text-yellow-800">Informações Importantes</h4>
-								<ul class="mt-2 text-sm text-yellow-700 space-y-1">
-									<li>• Prazo de 7 dias corridos após o recebimento</li>
-									<li>• Produto deve estar em perfeitas condições</li>
-									<li>• Embalagem original e etiquetas preservadas</li>
-									<li>• Para alguns motivos, fotos podem ser necessárias</li>
+								<h4 class="font-semibold text-gray-900 mb-3" style="font-family: 'Lato', sans-serif;">Informações Importantes</h4>
+								<ul class="text-sm text-gray-700 space-y-2" style="font-family: 'Lato', sans-serif;">
+									<li class="flex items-start gap-2">
+										<span class="w-1.5 h-1.5 bg-[#00BFB3] rounded-full mt-2 flex-shrink-0"></span>
+										Prazo de 7 dias corridos após o recebimento do produto
+									</li>
+									<li class="flex items-start gap-2">
+										<span class="w-1.5 h-1.5 bg-[#00BFB3] rounded-full mt-2 flex-shrink-0"></span>
+										Produto deve estar em perfeitas condições de uso
+									</li>
+									<li class="flex items-start gap-2">
+										<span class="w-1.5 h-1.5 bg-[#00BFB3] rounded-full mt-2 flex-shrink-0"></span>
+										Embalagem original e etiquetas preservadas
+									</li>
+									<li class="flex items-start gap-2">
+										<span class="w-1.5 h-1.5 bg-[#00BFB3] rounded-full mt-2 flex-shrink-0"></span>
+										Para alguns motivos, fotos podem ser solicitadas
+									</li>
 								</ul>
 							</div>
 						</div>
 					</div>
 
-					<div class="flex gap-3 pt-4">
+					<div class="flex gap-4 pt-6">
 						<button
 							type="submit"
-							class="flex-1 px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
+							class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 focus:outline-none transition-all font-semibold"
+							style="font-family: 'Lato', sans-serif;"
 						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+							</svg>
 							Criar Solicitação
 						</button>
 						<button
 							type="button"
 							onclick={() => showNewReturnModal = false}
-							class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+							class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-200 focus:outline-none transition-all font-medium"
+							style="font-family: 'Lato', sans-serif;"
 						>
 							Cancelar
 						</button>
@@ -412,16 +550,23 @@
 
 <!-- Modal Detalhes da Devolução -->
 {#if selectedReturn}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
 		<div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-			<div class="p-6">
+			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-6">
-					<h2 class="text-xl font-semibold text-gray-900">
-						Detalhes da Solicitação {selectedReturn.return_number}
-					</h2>
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+							<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+							</svg>
+						</div>
+						<h2 class="text-xl font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">
+							Solicitação #{selectedReturn.return_number}
+						</h2>
+					</div>
 					<button
 						onclick={() => selectedReturn = null}
-						class="text-gray-400 hover:text-gray-600"
+						class="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
 					>
 						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -429,84 +574,304 @@
 					</button>
 				</div>
 
-				<div class="space-y-6">
+				<div class="space-y-8">
 					<!-- Status -->
 					<div>
-						<h3 class="font-medium text-gray-900 mb-2">Status Atual</h3>
-						<span class="px-3 py-2 text-sm font-medium rounded-full {getStatusColor(selectedReturn.status)}">
-							{getStatusLabel(selectedReturn.status)}
-						</span>
+						<h3 class="text-lg font-semibold text-gray-900 mb-3" style="font-family: 'Lato', sans-serif;">Status Atual</h3>
+						<div class="flex items-center gap-3">
+							<span class="px-4 py-2 text-sm font-semibold rounded-full {getStatusColor(selectedReturn.status)}">
+								{getStatusLabel(selectedReturn.status)}
+							</span>
+							<div class="flex-1 h-px bg-gray-200"></div>
+						</div>
 					</div>
 
 					<!-- Informações Gerais -->
 					<div>
-						<h3 class="font-medium text-gray-900 mb-2">Informações</h3>
-						<div class="bg-gray-50 rounded-lg p-4 space-y-2">
-							<div class="flex justify-between">
-								<span class="text-gray-600">Tipo:</span>
-								<span class="font-medium">{getTypeLabel(selectedReturn.type)}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-gray-600">Pedido:</span>
-								<span class="font-medium">{selectedReturn.order_id}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-gray-600">Data:</span>
-								<span class="font-medium">{formatDate(selectedReturn.created_at)}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-gray-600">Valor Total:</span>
-								<span class="font-medium">{formatCurrency(selectedReturn.total_amount)}</span>
-							</div>
-							{#if selectedReturn.refund_amount > 0}
-								<div class="flex justify-between">
-									<span class="text-gray-600">Reembolso:</span>
-									<span class="font-medium text-green-600">{formatCurrency(selectedReturn.refund_amount)}</span>
+						<h3 class="text-lg font-semibold text-gray-900 mb-4" style="font-family: 'Lato', sans-serif;">Informações Gerais</h3>
+						<div class="bg-gray-50 rounded-lg p-6">
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<p class="text-sm text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">Tipo</p>
+									<p class="font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">{getTypeLabel(selectedReturn.type)}</p>
 								</div>
-							{/if}
+								<div>
+									<p class="text-sm text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">Pedido</p>
+									<p class="font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">{selectedReturn.order_id}</p>
+								</div>
+								<div>
+									<p class="text-sm text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">Data da Solicitação</p>
+									<p class="font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">{formatDate(selectedReturn.created_at)}</p>
+								</div>
+								<div>
+									<p class="text-sm text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">Valor Total</p>
+									<p class="font-semibold text-gray-900" style="font-family: 'Lato', sans-serif;">{formatCurrency(selectedReturn.total_amount)}</p>
+								</div>
+								{#if selectedReturn.refund_amount > 0}
+									<div class="col-span-2 pt-2 border-t border-gray-200">
+										<p class="text-sm text-gray-500 mb-1" style="font-family: 'Lato', sans-serif;">Valor do Reembolso</p>
+										<p class="text-lg font-bold text-green-600" style="font-family: 'Lato', sans-serif;">{formatCurrency(selectedReturn.refund_amount)}</p>
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 
 					<!-- Motivo -->
 					<div>
-						<h3 class="font-medium text-gray-900 mb-2">Motivo</h3>
-						<p class="text-gray-700">{selectedReturn.reason}</p>
+						<h3 class="text-lg font-semibold text-gray-900 mb-3" style="font-family: 'Lato', sans-serif;">Motivo da Solicitação</h3>
+						<div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-4">
+							<p class="text-gray-700 leading-relaxed" style="font-family: 'Lato', sans-serif;">{selectedReturn.reason}</p>
+						</div>
 					</div>
 
 					<!-- Próximos Passos -->
 					<div>
-						<h3 class="font-medium text-gray-900 mb-2">Próximos Passos</h3>
-						<div class="space-y-2">
+						<h3 class="text-lg font-semibold text-gray-900 mb-4" style="font-family: 'Lato', sans-serif;">Próximos Passos</h3>
+						<div class="bg-gray-50 rounded-lg p-5">
 							{#if selectedReturn.status === 'requested'}
-								<p class="text-sm text-gray-600">
-									⏳ Aguardando análise da nossa equipe (até 24h)
-								</p>
+								<div class="flex items-start gap-4">
+									<div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+										<svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+									</div>
+									<div>
+										<h4 class="font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">Aguardando Análise</h4>
+										<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+											Nossa equipe analisará sua solicitação em até 24 horas
+										</p>
+									</div>
+								</div>
 							{:else if selectedReturn.status === 'approved'}
-								<p class="text-sm text-gray-600">
-									📦 Envie o produto com o código de postagem que será fornecido
-								</p>
+								<div class="flex items-start gap-4">
+									<div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+										<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+										</svg>
+									</div>
+									<div>
+										<h4 class="font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">Solicitação Aprovada</h4>
+										<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+											Envie o produto com o código de postagem que será fornecido
+										</p>
+									</div>
+								</div>
 							{:else if selectedReturn.status === 'received'}
-								<p class="text-sm text-gray-600">
-									🔍 Produto recebido e em análise (até 3 dias úteis)
-								</p>
+								<div class="flex items-start gap-4">
+									<div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+										<svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+										</svg>
+									</div>
+									<div>
+										<h4 class="font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">Produto Recebido</h4>
+										<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+											Produto recebido e em análise (até 3 dias úteis)
+										</p>
+									</div>
+								</div>
 							{:else if selectedReturn.status === 'processed'}
-								<p class="text-sm text-gray-600">
-									💰 Reembolso será processado em até 5 dias úteis
-								</p>
+								<div class="flex items-start gap-4">
+									<div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+										<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+										</svg>
+									</div>
+									<div>
+										<h4 class="font-semibold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">Processando Reembolso</h4>
+										<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+											Reembolso será processado em até 5 dias úteis
+										</p>
+									</div>
+								</div>
 							{/if}
 						</div>
 					</div>
 				</div>
 
-				<div class="mt-6 pt-6 border-t">
+				<div class="mt-8 pt-6 border-t border-gray-200">
 					<button
 						onclick={() => selectedReturn = null}
-						class="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+						class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-200 focus:outline-none transition-all font-medium"
+						style="font-family: 'Lato', sans-serif;"
 					>
-						Fechar
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+						Fechar Detalhes
 					</button>
 				</div>
 			</div>
 		</div>
 	</div>
-{/if} 
+{/if}
+
+<style>
+/* CSS Mobile-First e Responsive Design */
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap');
+
+/* Base Mobile Styles */
+:global(body) {
+	font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch Improvements */
+@media (max-width: 768px) {
+	:global(*) {
+		-webkit-tap-highlight-color: transparent;
+	}
+	
+	:global(button),
+	:global(a),
+	:global(input),
+	:global(select),
+	:global(textarea) {
+		min-height: 44px;
+		touch-action: manipulation;
+	}
+}
+
+/* Tablet Optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+	:global(.tablet-padding) {
+		padding: 1.5rem;
+	}
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+	:global(*) {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+@media (prefers-contrast: high) {
+	:global(.text-gray-600) {
+		color: #374151 !important;
+	}
+	
+	:global(.border-gray-200) {
+		border-color: #6b7280 !important;
+	}
+}
+
+/* Focus States for Keyboard Navigation */
+:global(button:focus),
+:global(a:focus),
+:global(input:focus),
+:global(select:focus),
+:global(textarea:focus) {
+	outline: 2px solid #00BFB3 !important;
+	outline-offset: 2px !important;
+}
+
+/* Dark Mode Preparation */
+@media (prefers-color-scheme: dark) {
+	:global(.auto-dark) {
+		background-color: #1f2937;
+		color: #f9fafb;
+	}
+}
+
+/* Performance Optimizations */
+:global(.page-container) {
+	contain: layout;
+	will-change: transform;
+}
+
+:global(.smooth-scroll) {
+	scroll-behavior: smooth;
+}
+
+/* Layout Container */
+:global(.layout-container) {
+	width: 100%;
+	max-width: 1280px;
+	margin: 0 auto;
+	padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+	:global(.layout-container) {
+		padding: 0 1.5rem;
+	}
+}
+
+@media (min-width: 1024px) {
+	:global(.layout-container) {
+		padding: 0 2rem;
+	}
+}
+
+/* Loading Animation Improvements */
+:global(.loading-spinner) {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+/* Modal Improvements */
+:global(.modal-backdrop) {
+	backdrop-filter: blur(4px);
+}
+
+/* Button States */
+:global(.btn-primary) {
+	background-color: #00BFB3;
+	transition: all 0.2s ease;
+}
+
+:global(.btn-primary:hover) {
+	background-color: #00A89D;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(0, 191, 179, 0.25);
+}
+
+:global(.btn-primary:active) {
+	transform: translateY(0);
+}
+
+/* Card Enhancements */
+:global(.card-hover) {
+	transition: all 0.3s ease;
+}
+
+:global(.card-hover:hover) {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Text Selection */
+:global(::selection) {
+	background-color: rgba(0, 191, 179, 0.2);
+	color: inherit;
+}
+
+/* Scrollbar Customization */
+:global(::-webkit-scrollbar) {
+	width: 8px;
+	height: 8px;
+}
+
+:global(::-webkit-scrollbar-track) {
+	background: #f1f5f9;
+	border-radius: 4px;
+}
+
+:global(::-webkit-scrollbar-thumb) {
+	background: #cbd5e1;
+	border-radius: 4px;
+}
+
+:global(::-webkit-scrollbar-thumb:hover) {
+	background: #94a3b8;
+}
+</style>

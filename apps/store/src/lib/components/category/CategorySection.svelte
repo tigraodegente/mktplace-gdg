@@ -65,6 +65,7 @@
 	let isLoading = $state(true);
 	let isMobile = $state(false);
 	let isTablet = $state(false);
+	let isTransitioning = $state(false);
 	let sliderPosition = $state(0);
 	let currentItemIndex = $state(0);
 	let carouselOffset = $state(0);
@@ -214,7 +215,10 @@
 	}
 	
 	function navigateItem(direction: number): void {
-		if (!hasMultipleItems) return;
+		if (!hasMultipleItems || isTransitioning) return;
+		
+		// Bloquear novos cliques temporariamente
+		isTransitioning = true;
 		
 		const totalItems = currentItems.length;
 		let newIndex = currentItemIndex + direction;
@@ -227,6 +231,11 @@
 		
 		currentItemIndex = newIndex;
 		updateSliderPosition();
+		
+		// Liberar após 300ms (igual ao banner)
+		setTimeout(() => {
+			isTransitioning = false;
+		}, 300);
 	}
 	
 	function handleKeyDown(event: KeyboardEvent): void {
@@ -484,6 +493,7 @@
 					class="category__nav-button category__nav-button--prev"
 					onclick={() => navigateItem(-1)}
 					aria-label="Produto anterior"
+					disabled={isTransitioning}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none" aria-hidden="true">
 						<circle cx="17.5" cy="17.5" r="16.333" stroke="currentColor" stroke-width="1.7864"/>
@@ -495,6 +505,7 @@
 					class="category__nav-button category__nav-button--next"
 					onclick={() => navigateItem(1)}
 					aria-label="Próximo produto"
+					disabled={isTransitioning}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none" aria-hidden="true">
 						<circle cx="17.5" cy="17.5" r="16.333" stroke="currentColor" stroke-width="1.7864"/>
@@ -1033,7 +1044,7 @@
 		padding: 0;
 		cursor: pointer;
 		transition: opacity 0.2s ease;
-		color: var(--color-secondary);
+		color: var(--color-primary);
 		outline: none;
 		border-radius: 50%;
 	}

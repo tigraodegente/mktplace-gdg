@@ -148,7 +148,7 @@
 
 {#if isVisible}
 	<div 
-		class="absolute top-full right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+		class="absolute top-full right-0 mt-3 w-96 bg-white rounded-lg shadow-sm border border-gray-200 z-50 overflow-hidden"
 		transition:scale={{ duration: 300, start: 0.92, easing: elasticOut }}
 		role="dialog"
 		tabindex="-1"
@@ -156,82 +156,74 @@
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
-		<!-- Header sem gradiente -->
-		<div class="bg-[#00BFB3] p-4 text-white relative overflow-hidden">
-			<!-- Padrão de fundo sutil -->
-			<div class="absolute inset-0 opacity-10">
-				<svg class="w-full h-full" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-					<defs>
-						<pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-							<path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" stroke-width="0.5"/>
-						</pattern>
-					</defs>
-					<rect width="100" height="100" fill="url(#grid)" />
+		{#if itemCount === 0}
+			<!-- Estado vazio seguindo padrão das outras páginas -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+				<svg class="mx-auto h-16 w-16 text-gray-400 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
 				</svg>
-			</div>
-			
-			<div class="flex items-center justify-between relative">
-				<div class="flex items-center gap-3">
-					<div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-						<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-						</svg>
-					</div>
-					<div>
-						<h3 class="text-lg font-bold">Meu Carrinho</h3>
-						<p class="text-white/80 text-sm">
-							{itemCount} {itemCount === 1 ? 'item' : 'itens'}
-							{#if $sellerGroups.length > 1}
-								• {$sellerGroups.length} vendedores
-							{/if}
-						</p>
-					</div>
-				</div>
+				<h2 class="text-xl font-medium text-gray-900 mb-2" style="font-family: 'Lato', sans-serif;">
+					Carrinho vazio
+				</h2>
+				<p class="text-gray-600 mb-8 max-w-md mx-auto" style="font-family: 'Lato', sans-serif;">
+					Que tal adicionar alguns produtos incríveis ao seu carrinho?
+				</p>
 				
 				<button 
 					onclick={onClose}
-					class="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 group"
-					aria-label="Fechar prévia"
+					class="inline-flex items-center px-6 py-2 bg-[#00BFB3] text-white text-sm font-medium rounded-md hover:bg-[#00A89D] transition-colors"
+					style="font-family: 'Lato', sans-serif;"
 				>
-					<svg class="w-5 h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 					</svg>
-				</button>
-			</div>
-		</div>
-		
-		{#if itemCount === 0}
-			<!-- Empty State sem degradês -->
-			<div class="p-8 text-center">
-				<div class="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center relative">
-					<svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-					</svg>
-					<div class="absolute -top-1 -right-1 w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
-						<span class="text-orange-500 text-xs">✨</span>
-					</div>
-				</div>
-				<h4 class="text-lg font-semibold text-gray-900 mb-2">Carrinho vazio</h4>
-				<p class="text-sm text-gray-500 mb-6 max-w-xs mx-auto">
-					Que tal adicionar alguns produtos incríveis ao seu carrinho?
-				</p>
-				<button 
-					onclick={onClose}
-					class="px-6 py-3 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transform hover:scale-105 transition-all duration-200 font-medium"
-				>
-					Continuar comprando
+					Continuar Comprando
 				</button>
 			</div>
 		{:else}
+			<!-- Header Padrão seguindo identidade das outras páginas -->
+			<div class="bg-white shadow-sm border-b border-gray-200">
+				<div class="px-6 py-4">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<svg class="h-6 w-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5-6m0 0h15M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+							</svg>
+							<div>
+								<h2 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
+									Meu Carrinho
+								</h2>
+								<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
+									{itemCount} {itemCount === 1 ? 'item adicionado' : 'itens adicionados'}
+									{#if $sellerGroups.length > 1}
+										• {$sellerGroups.length} vendedores
+									{/if}
+								</p>
+							</div>
+						</div>
+						
+						<button 
+							onclick={onClose}
+							class="p-2 hover:bg-gray-100 rounded-md transition-colors"
+							aria-label="Fechar carrinho"
+						>
+							<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+				</div>
+			</div>
+
 			<!-- Barra de Progresso Frete Grátis -->
 			{@const freeShippingProgress = getFreeShippingProgress()}
 			{#if !freeShippingProgress.hasFreeship}
-				<div class="p-4 bg-blue-50 border-b border-gray-100">
+				<div class="bg-blue-50 border-b border-gray-200 p-4">
 					<div class="flex items-center gap-2 mb-2">
 						<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 						</svg>
-						<span class="text-sm font-medium text-gray-700">
+						<span class="text-sm font-medium text-gray-700" style="font-family: 'Lato', sans-serif;">
 							Faltam apenas <span class="text-green-600 font-bold">{formatCurrency(freeShippingProgress.remaining)}</span> para frete grátis!
 						</span>
 					</div>
@@ -243,182 +235,221 @@
 					</div>
 				</div>
 			{:else}
-				<div class="p-3 bg-green-50 border-b border-green-100">
-					<div class="flex items-center gap-2">
-						<div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-							<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+				<div class="bg-green-50 border-b border-green-200 p-4">
+					<div class="flex items-center gap-3">
+						<div class="flex items-center gap-2">
+							<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+								<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+								</svg>
+							</div>
+							<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 							</svg>
 						</div>
-						<span class="text-sm font-medium text-green-700">
-							🎉 Você ganhou frete grátis!
-						</span>
+						<div class="flex-1">
+							<p class="text-sm font-semibold text-green-700" style="font-family: 'Lato', sans-serif;">
+								Parabéns! Você ganhou frete grátis
+							</p>
+							<p class="text-xs text-green-600" style="font-family: 'Lato', sans-serif;">
+								Economia garantida na sua compra
+							</p>
+						</div>
 					</div>
 				</div>
 			{/if}
 			
-			<!-- Items List Aprimorado -->
-			<div class="max-h-80 overflow-y-auto">
-				{#each displayItems as item (getItemKey(item))}
-					{@const itemKey = getItemKey(item)}
-					<div 
-						class="flex items-center gap-3 p-4 hover:bg-gray-50 transition-all duration-200 border-b border-gray-50 last:border-b-0 relative group"
-						class:opacity-50={removingItemId === itemKey}
-						transition:slide={{ duration: 300 }}
-					>
-						<!-- Product Image com hover effect -->
-						<button 
-							class="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer relative group block"
-							onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
+			<!-- Lista de Produtos seguindo padrão das outras páginas -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+				<div class="px-6 py-4 border-b border-gray-200">
+					<div class="flex items-center gap-3">
+						<svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+						</svg>
+						<h3 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
+							Produtos no Carrinho
+						</h3>
+					</div>
+				</div>
+				
+				<div class="max-h-80 overflow-y-auto">
+					{#each displayItems as item (getItemKey(item))}
+						{@const itemKey = getItemKey(item)}
+						<div 
+							class="flex items-center gap-4 p-4 hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 last:border-b-0 relative group"
+							class:opacity-50={removingItemId === itemKey}
+							transition:slide={{ duration: 300 }}
 						>
-							<img 
-								src={(item.product.images && item.product.images[0]) || '/api/placeholder/64/64'} 
-								alt={item.product.name}
-								class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-								loading="lazy"
-							/>
-							<div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 rounded-xl"></div>
-						</button>
-						
-						<!-- Product Info -->
-						<div class="flex-1 min-w-0">
+							<!-- Product Image -->
 							<button 
-								class="text-sm font-semibold text-gray-900 truncate cursor-pointer hover:text-[#00BFB3] transition-colors w-full text-left"
+								class="w-16 h-16 bg-gray-50 rounded-md overflow-hidden flex-shrink-0 cursor-pointer relative group block"
 								onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
 							>
-								{item.product.name}
+								<img 
+									src={(item.product.images && item.product.images[0]) || '/api/placeholder/64/64'} 
+									alt={item.product.name}
+									class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+									loading="lazy"
+								/>
 							</button>
-							<div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
-								{#if item.selectedColor}
-									<span class="px-2 py-0.5 bg-gray-50 rounded-full">
-										{item.selectedColor}
-									</span>
-								{/if}
-								{#if item.selectedSize}
-									<span class="px-2 py-0.5 bg-gray-50 rounded-full">
-										{item.selectedSize}
-									</span>
+							
+							<!-- Product Info -->
+							<div class="flex-1 min-w-0">
+								<button 
+									class="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-[#00BFB3] transition-colors w-full text-left"
+									onclick={() => handleItemClick((item.product as any).slug || item.product.id)}
+									style="font-family: 'Lato', sans-serif;"
+								>
+									{item.product.name}
+								</button>
+								<div class="flex items-center gap-2 mt-1 text-xs text-gray-500" style="font-family: 'Lato', sans-serif;">
+									{#if item.selectedColor}
+										<span class="px-2 py-0.5 bg-gray-50 rounded-full">
+											{item.selectedColor}
+										</span>
+									{/if}
+									{#if item.selectedSize}
+										<span class="px-2 py-0.5 bg-gray-50 rounded-full">
+											{item.selectedSize}
+										</span>
+									{/if}
+								</div>
+								
+								<!-- Quantidade com controles -->
+								{#if showQuickActions}
+									<div class="flex items-center gap-2 mt-2">
+										<div class="flex items-center border border-gray-200 rounded-md overflow-hidden">
+											<button
+												onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity - 1, { color: item.selectedColor, size: item.selectedSize })}
+												class="p-1 hover:bg-gray-50 transition-colors disabled:opacity-50"
+												disabled={item.quantity <= 1}
+												aria-label="Diminuir quantidade"
+											>
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+												</svg>
+											</button>
+											<span class="px-3 py-1 text-sm font-medium min-w-[2rem] text-center" style="font-family: 'Lato', sans-serif;">
+												{item.quantity}
+											</span>
+											<button
+												onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity + 1, { color: item.selectedColor, size: item.selectedSize })}
+												class="p-1 hover:bg-gray-50 transition-colors"
+												aria-label="Aumentar quantidade"
+											>
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+												</svg>
+											</button>
+										</div>
+									</div>
+								{:else}
+									<p class="text-xs text-gray-500 mt-1" style="font-family: 'Lato', sans-serif;">Qtd: {item.quantity}</p>
 								{/if}
 							</div>
 							
-							<!-- Quantidade com controles -->
-							{#if showQuickActions}
-								<div class="flex items-center gap-2 mt-2">
-									<div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-										<button
-											onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity - 1, { color: item.selectedColor, size: item.selectedSize })}
-											class="p-1 hover:bg-gray-50 transition-colors disabled:opacity-50"
-											disabled={item.quantity <= 1}
-											aria-label="Diminuir quantidade"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-											</svg>
-										</button>
-										<span class="px-3 py-1 text-sm font-medium min-w-[2rem] text-center">
-											{item.quantity}
-										</span>
-										<button
-											onclick={() => handleQuantityChange(item.product.id, item.sellerId, item.quantity + 1, { color: item.selectedColor, size: item.selectedSize })}
-											class="p-1 hover:bg-gray-50 transition-colors"
-											aria-label="Aumentar quantidade"
-										>
-											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-											</svg>
-										</button>
-									</div>
-								</div>
-							{:else}
-								<p class="text-xs text-gray-500 mt-1">Qtd: {item.quantity}</p>
-							{/if}
+							<!-- Price e Remove -->
+							<div class="text-right">
+								<p class="text-sm font-bold text-gray-900 mb-1" style="font-family: 'Lato', sans-serif;">
+									{formatCurrency(item.product.price * item.quantity)}
+								</p>
+								
+								{#if showQuickActions}
+									<button
+										onclick={() => handleRemoveItem(item.product.id, item.sellerId, { color: item.selectedColor, size: item.selectedSize })}
+										class="mt-1 p-1 text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+										title="Remover item"
+										aria-label="Remover item do carrinho"
+									>
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+										</svg>
+									</button>
+								{/if}
+							</div>
 						</div>
-						
-						<!-- Price e Remove -->
-						<div class="text-right">
-							<p class="text-sm font-bold text-gray-900 mb-1">
-								{formatCurrency(item.product.price * item.quantity)}
-							</p>
-							
-							{#if showQuickActions}
-								<button
-									onclick={() => handleRemoveItem(item.product.id, item.sellerId, { color: item.selectedColor, size: item.selectedSize })}
-									class="mt-1 p-1 text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-									title="Remover item"
-									aria-label="Remover item do carrinho"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-									</svg>
-								</button>
-							{/if}
+					{/each}
+					
+					{#if remainingCount > 0}
+						<div class="px-4 py-3 bg-gray-50 border-t border-gray-100">
+							<button 
+								onclick={handleViewCart}
+								class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center gap-2 transition-colors"
+								style="font-family: 'Lato', sans-serif;"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+								</svg>
+								Ver mais {remainingCount} {remainingCount === 1 ? 'item' : 'itens'}
+							</button>
 						</div>
-					</div>
-				{/each}
-				
-				{#if remainingCount > 0}
-					<div class="px-4 py-3 bg-gray-50 border-t border-gray-100">
-						<button 
-							onclick={handleViewCart}
-							class="text-sm text-[#00BFB3] hover:text-[#00A89D] font-medium flex items-center gap-2 transition-colors"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-							</svg>
-							Ver mais {remainingCount} {remainingCount === 1 ? 'item' : 'itens'}
-						</button>
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
 			
-			<!-- Footer com totais aprimorados -->
-			<div class="p-4 bg-gray-50 border-t border-gray-200">
+			<!-- Footer com totais seguindo padrão das outras páginas -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+				<div class="flex items-center gap-3 mb-4">
+					<svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+					</svg>
+					<h3 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
+						Resumo do Pedido
+					</h3>
+				</div>
+				
 				<!-- Resumo de totais -->
-				<div class="space-y-2 mb-4">
-					<div class="flex justify-between text-sm">
+				<div class="space-y-2 mb-6">
+					<div class="flex justify-between text-sm" style="font-family: 'Lato', sans-serif;">
 						<span class="text-gray-600">Subtotal:</span>
 						<span class="font-medium">{formatCurrency($cartTotals.cartSubtotal)}</span>
 					</div>
 					
 					{#if totalSavings > 0}
-						<div class="flex justify-between text-sm text-green-600">
+						<div class="flex justify-between text-sm text-green-600" style="font-family: 'Lato', sans-serif;">
 							<span>Economia:</span>
 							<span class="font-semibold">-{formatCurrency(totalSavings)}</span>
 						</div>
 					{/if}
 					
 					{#if hasShipping}
-						<div class="flex justify-between text-sm">
+						<div class="flex justify-between text-sm" style="font-family: 'Lato', sans-serif;">
 							<span class="text-gray-600">Frete:</span>
 							<span class="font-medium">{formatCurrency($cartTotals.totalShipping)}</span>
 						</div>
 					{/if}
 					
-					<div class="flex justify-between text-lg font-bold border-t pt-2">
+					<div class="flex justify-between text-lg font-bold border-t pt-2" style="font-family: 'Lato', sans-serif;">
 						<span>Total:</span>
 						<span class="text-[#00BFB3]">{formatCurrency($cartTotals.cartTotal)}</span>
 					</div>
 					
-					<p class="text-xs text-gray-500 text-center">
+					<p class="text-xs text-gray-500 text-center" style="font-family: 'Lato', sans-serif;">
 						ou até 12x de {formatCurrency($cartTotals.cartTotal / 12)}
 					</p>
 				</div>
 				
-				<!-- Actions aprimoradas -->
-				<div class="space-y-3">
+				<!-- Actions seguindo padrão das outras páginas -->
+				<div class="flex flex-col gap-3">
 					<button 
 						onclick={handleCheckout}
-						class="w-full bg-[#00BFB3] text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-[#00A89D] transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+						class="inline-flex items-center justify-center px-6 py-3 bg-[#00BFB3] text-white text-sm font-medium rounded-md hover:bg-[#00A89D] transition-colors"
+						style="font-family: 'Lato', sans-serif;"
 					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
 						</svg>
 						Finalizar Compra
 					</button>
 					<button 
 						onclick={handleViewCart}
-						class="w-full border-2 border-gray-300 text-gray-700 py-2.5 px-4 rounded-xl text-sm font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+						class="inline-flex items-center justify-center px-6 py-2 bg-white text-[#00BFB3] text-sm font-medium rounded-md border border-[#00BFB3] hover:bg-[#00BFB3] hover:text-white transition-colors"
+						style="font-family: 'Lato', sans-serif;"
 					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+						</svg>
 						Ver Carrinho Completo
 					</button>
 				</div>
@@ -428,7 +459,7 @@
 {/if}
 
 <style>
-	/* Scrollbar customizada mais elegante */
+	/* Scrollbar customizada seguindo padrão das outras páginas */
 	:global(.max-h-80::-webkit-scrollbar) {
 		width: 6px;
 	}
@@ -438,26 +469,36 @@
 	}
 	
 	:global(.max-h-80::-webkit-scrollbar-thumb) {
-		background: linear-gradient(to bottom, #d1d5db, #9ca3af);
+		background: #D1D5DB;
 		border-radius: 3px;
 	}
 	
 	:global(.max-h-80::-webkit-scrollbar-thumb:hover) {
-		background: linear-gradient(to bottom, #9ca3af, #6b7280);
+		background: #9CA3AF;
 	}
 	
-	/* Animação para success state - removido seletor não usado */
-	@keyframes bounce-in {
-		0% {
-			transform: scale(0.3);
+	/* Animação suave para os items */
+	.group {
+		animation: fadeIn 0.3s ease-in-out;
+	}
+	
+	@keyframes fadeIn {
+		from {
 			opacity: 0;
+			transform: translateY(10px);
 		}
-		50% {
-			transform: scale(1.1);
-		}
-		100% {
-			transform: scale(1);
+		to {
 			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	/* Motion preferences */
+	@media (prefers-reduced-motion: reduce) {
+		* {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
 		}
 	}
 </style> 
