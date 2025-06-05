@@ -61,6 +61,7 @@
     "@mktplace/shared-types": "workspace:*",
     "bcryptjs": "^2.4.3",
     "nanoid": "^5.1.5",
+    "openai": "^5.0.2",
     "postgres": "^3.4.5"
   }
 }
