@@ -36,8 +36,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     // Query principal
     const query = `
       SELECT 
-        id, title, slug, content, excerpt, meta_title, meta_description,
-        is_published, featured_image, template, created_at, updated_at,
+        id, title, slug, content, meta_title, meta_description,
+        is_published, created_at, updated_at, is_featured, menu_order,
         COUNT(*) OVER() as total_count
       FROM pages
       ${whereClause}
@@ -69,14 +69,16 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           title: p.title,
           slug: p.slug,
           content: p.content,
-          excerpt: p.excerpt,
+          excerpt: null, // Não existe na tabela
           metaTitle: p.meta_title,
           metaDescription: p.meta_description,
           isPublished: p.is_published,
-          featuredImage: p.featured_image,
-          template: p.template,
+          featuredImage: null, // Não existe na tabela
+          template: 'default', // Não existe na tabela
           createdAt: p.created_at,
-          updatedAt: p.updated_at
+          updatedAt: p.updated_at,
+          isFeatured: p.is_featured,
+          menuOrder: p.menu_order
         })),
         pagination: {
           page,
@@ -131,13 +133,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     // Inserir página
     const [page] = await db.query`
       INSERT INTO pages (
-        title, slug, content, excerpt, meta_title, meta_description,
-        is_published, featured_image, template
+        title, slug, content, meta_title, meta_description,
+        is_published, is_featured, menu_order
       ) VALUES (
         ${data.title}, ${data.slug}, ${data.content || ''},
-        ${data.excerpt || null}, ${data.metaTitle || data.title},
-        ${data.metaDescription || null}, ${data.isPublished !== false},
-        ${data.featuredImage || null}, ${data.template || 'default'}
+        ${data.metaTitle || data.title}, ${data.metaDescription || null},
+        ${data.isPublished !== false}, ${data.isFeatured || false}, ${data.menuOrder || 0}
       ) RETURNING id
     `;
     
@@ -194,12 +195,11 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
         title = ${data.title},
         slug = ${data.slug},
         content = ${data.content || ''},
-        excerpt = ${data.excerpt || null},
         meta_title = ${data.metaTitle || data.title},
         meta_description = ${data.metaDescription || null},
         is_published = ${data.isPublished !== false},
-        featured_image = ${data.featuredImage || null},
-        template = ${data.template || 'default'},
+        is_featured = ${data.isFeatured || false},
+        menu_order = ${data.menuOrder || 0},
         updated_at = NOW()
       WHERE id = ${data.id}
     `;
