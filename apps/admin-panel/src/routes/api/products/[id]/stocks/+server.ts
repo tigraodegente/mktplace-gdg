@@ -87,14 +87,13 @@ export async function POST({ params, request, platform }) {
 			const existing = await db.query(existingQuery, [productId, warehouse_id]);
 
 			let result;
-			const available_quantity = quantity - reserved_quantity;
 
 			if (existing.length > 0) {
-				// Atualizar estoque existente
+				// Atualizar estoque existente (available_quantity é calculada automaticamente)
 				const updateQuery = `
 					UPDATE product_stocks 
-					SET quantity = $3, reserved_quantity = $4, available_quantity = $5,
-					    location = $6, low_stock_alert = $7, notes = $8, 
+					SET quantity = $3, reserved_quantity = $4,
+					    location = $5, low_stock_alert = $6, notes = $7, 
 					    updated_at = NOW()
 					WHERE product_id = $1 AND warehouse_id = $2
 					RETURNING *
@@ -102,22 +101,22 @@ export async function POST({ params, request, platform }) {
 				
 				result = await db.query(updateQuery, [
 					productId, warehouse_id, quantity, reserved_quantity, 
-					available_quantity, location, low_stock_alert, notes
+					location, low_stock_alert, notes
 				]);
 			} else {
-				// Criar novo registro de estoque
+				// Criar novo registro de estoque (available_quantity é calculada automaticamente)
 				const insertQuery = `
 					INSERT INTO product_stocks (
 						product_id, warehouse_id, quantity, reserved_quantity, 
-						available_quantity, location, low_stock_alert, notes
+						location, low_stock_alert, notes
 					)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+					VALUES ($1, $2, $3, $4, $5, $6, $7)
 					RETURNING *
 				`;
 				
 				result = await db.query(insertQuery, [
 					productId, warehouse_id, quantity, reserved_quantity,
-					available_quantity, location, low_stock_alert, notes
+					location, low_stock_alert, notes
 				]);
 			}
 			
@@ -157,12 +156,10 @@ export async function PUT({ params, request, platform }) {
 		}
 
 		return await withDatabase(platform, async (db) => {
-			const available_quantity = quantity - (reserved_quantity || 0);
-			
 			const updateQuery = `
 				UPDATE product_stocks 
-				SET quantity = $3, reserved_quantity = $4, available_quantity = $5,
-				    location = $6, low_stock_alert = $7, notes = $8, 
+				SET quantity = $3, reserved_quantity = $4,
+				    location = $5, low_stock_alert = $6, notes = $7, 
 				    updated_at = NOW()
 				WHERE product_id = $1 AND warehouse_id = $2
 				RETURNING *
@@ -170,7 +167,7 @@ export async function PUT({ params, request, platform }) {
 			
 			const result = await db.query(updateQuery, [
 				productId, warehouse_id, quantity, reserved_quantity || 0,
-				available_quantity, location, low_stock_alert, notes
+				location, low_stock_alert, notes
 			]);
 			
 			if (!result[0]) {

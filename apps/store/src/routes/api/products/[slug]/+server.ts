@@ -7,7 +7,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
   try {
     const { slug } = params;
     
-    console.log(`🛍️ Product [${slug}] - Buscando produto com variações e atributos`);
+    console.log(`\n🛍️ ===== INÍCIO API PRODUTO [${slug}] =====`);
+    console.log(`📋 Slug recebido: "${slug}"`);
+    console.log(`🕐 Timestamp: ${new Date().toISOString()}`);
     
     // Tentar buscar dados reais do banco com timeout
     try {
@@ -19,20 +21,28 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         const products = await db.query`
           SELECT 
             p.id, p.name, p.slug, p.description, p.price, p.original_price,
-            p.category_id, p.brand_id, p.seller_id, p.quantity, p.rating_average,
+            p.brand_id, p.seller_id, p.quantity, p.rating_average,
             p.rating_count, p.sales_count, p.tags, p.sku, p.weight, p.model,
             p.condition, p.has_free_shipping, p.delivery_days, p.featured,
-            p.is_active, p.created_at, p.updated_at, p.attributes
+            p.is_active, p.is_variant, p.created_at, p.updated_at, p.attributes, p.specifications
           FROM products p
           WHERE p.slug = ${slug} AND p.is_active = true
           LIMIT 1
         `;
         
+        console.log(`🔍 Query produto executada. Resultados: ${products.length}`);
+        
         if (products.length === 0) {
+          console.log(`❌ Produto não encontrado para slug: ${slug}`);
           return null;
         }
         
         const product = products[0];
+        console.log(`✅ Produto encontrado:`);
+        console.log(`   ID: ${product.id}`);
+        console.log(`   SKU: ${product.sku}`);
+        console.log(`   Nome: ${product.name}`);
+        console.log(`   É variação: ${product.is_variant}`);
         
         // STEP 2: Query separada para imagens (evitar array_agg complexo)
         let images: string[] = [];
@@ -44,27 +54,218 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             LIMIT 10
           `;
           images = imageRows.map((row: any) => row.url);
+          console.log(`🖼️  Imagens encontradas: ${images.length}`);
         } catch (e) {
-          console.log('⚠️ Erro imagens, usando placeholder');
+          console.log('⚠️ Erro imagens, usando placeholder:', e);
         }
         
         // STEP 3: Buscar variações do produto
+        console.log(`\n🔄 ===== INÍCIO PROCESSAMENTO VARIAÇÕES =====`);
         let variations: any[] = [];
+        let mainProductData = product;
+        
         try {
-          const variantRows = await db.query`
-            SELECT 
-              pv.sku,
-              pv.price,
-              pv.original_price,
-              pv.quantity as stock,
-              pv.is_active,
-              pv.created_at
-            FROM product_variants pv
-            WHERE pv.product_id = ${product.id} AND pv.is_active = true
-            ORDER BY pv.created_at ASC
-          `;
+          // Se este produto é uma variação, precisamos buscar o produto principal e suas variações
+          if (product.is_variant) {
+            console.log(`🔄 Produto ${product.sku} é uma variação, buscando produto principal...`);
+            
+            // Buscar o produto principal
+            const mainProductQuery = await db.query`
+              SELECT p.id, p.name, p.slug, p.price, p.quantity, p.sku
+              FROM products p
+              INNER JOIN product_variants pv ON p.id = pv.product_id
+              WHERE pv.sku = ${product.sku}
+              LIMIT 1
+            `;
+            
+            console.log(`📊 Query produto principal executada. Resultados: ${mainProductQuery.length}`);
+            
+            if (mainProductQuery.length > 0) {
+              const mainProduct = mainProductQuery[0];
+              console.log(`✅ Produto principal encontrado:`);
+              console.log(`   Principal ID: ${mainProduct.id}`);
+              console.log(`   Principal SKU: ${mainProduct.sku}`);
+              console.log(`   Principal Nome: ${mainProduct.name}`);
+              
+              // Buscar todas as variações do produto principal
+              console.log(`🔍 Buscando variações do produto principal ${mainProduct.id}...`);
+              const variantRows = await db.query`
+                SELECT 
+                  pv.sku,
+                  pv.price,
+                  pv.original_price,
+                  pv.quantity as stock,
+                  pv.is_active,
+                  pv.created_at,
+                  p2.name as variant_name
+                FROM product_variants pv
+                INNER JOIN products p2 ON pv.sku = p2.sku
+                WHERE pv.product_id = ${mainProduct.id} AND pv.is_active = true
+                ORDER BY pv.created_at ASC
+              `;
+              
+              console.log(`📊 Query variações executada. Resultados: ${variantRows.length}`);
+              variantRows.forEach((v, idx) => {
+                console.log(`   Variação ${idx + 1}: SKU ${v.sku} - ${v.variant_name} - R$ ${v.price}`);
+              });
+              
+              // Incluir o produto principal também como uma opção
+              console.log(`🏗️  Montando lista completa (principal + variações)...`);
+              const allVariations = [
+                {
+                  sku: mainProduct.sku,
+                  name: mainProduct.name,
+                  price: mainProduct.price,
+                  stock: mainProduct.quantity,
+                  is_main: true
+                },
+                ...variantRows.map((v: any) => ({
+                  sku: v.sku,
+                  name: v.variant_name,
+                  price: v.price,
+                  stock: v.stock,
+                  is_main: false
+                }))
+              ];
+              
+              console.log(`✅ Lista completa montada: ${allVariations.length} opções (1 principal + ${variantRows.length} variações)`);
+              allVariations.forEach((v, idx) => {
+                console.log(`   Opção ${idx + 1}: SKU ${v.sku} - ${v.name} - Principal: ${v.is_main}`);
+              });
+              
+              // Buscar cores para todas as variações (incluindo principal)
+              const allSkus = allVariations.map(v => v.sku);
+              console.log(`🎨 Buscando cores para SKUs: [${allSkus.join(', ')}]`);
+              const colorQuery = await db.query`
+                SELECT 
+                  p.sku,
+                  pov.value as color
+                FROM products p
+                LEFT JOIN product_variants pv ON pv.sku = p.sku
+                LEFT JOIN variant_option_values vov ON pv.id = vov.variant_id
+                LEFT JOIN product_option_values pov ON vov.option_value_id = pov.id
+                LEFT JOIN product_options po ON pov.option_id = po.id
+                WHERE p.sku = ANY(${allSkus}) AND po.name = 'Cor'
+              `;
+              
+              console.log(`📊 Query cores executada. Resultados: ${colorQuery.length}`);
+              const colorMap = new Map();
+              colorQuery.forEach((row: any) => {
+                if (row.color) {
+                  console.log(`   Cor encontrada: SKU ${row.sku} = ${row.color}`);
+                  colorMap.set(row.sku, row.color);
+                }
+              });
+              
+              console.log(`🏗️  Montando estrutura final das variações...`);
+              variations = allVariations.map((variant: any) => ({
+                sku: variant.sku,
+                name: variant.name,
+                price: Number(variant.price),
+                stock: variant.stock || 0,
+                color: colorMap.get(variant.sku) || 'Padrão',
+                is_main: variant.is_main,
+                is_current: variant.sku === product.sku,
+                images: images
+              }));
+              
+              console.log(`✅ Estrutura final criada: ${variations.length} variações`);
+              variations.forEach((v, idx) => {
+                const current = v.is_current ? ' 👈 ATUAL' : '';
+                const main = v.is_main ? ' (Principal)' : '';
+                console.log(`   Final ${idx + 1}: SKU ${v.sku} - ${v.color} - R$ ${v.price}${main}${current}`);
+              });
+              
+            }
+          } else {
+            // Produto principal - buscar suas variações normalmente
+            console.log(`📦 Produto ${product.sku} é principal, buscando variações...`);
+            
+            const variantRows = await db.query`
+              SELECT 
+                pv.sku,
+                pv.price,
+                pv.original_price,
+                pv.quantity as stock,
+                pv.is_active,
+                pv.created_at,
+                p2.name as variant_name
+              FROM product_variants pv
+              INNER JOIN products p2 ON pv.sku = p2.sku
+              WHERE pv.product_id = ${product.id} AND pv.is_active = true
+              ORDER BY pv.created_at ASC
+            `;
+            
+            if (variantRows.length > 0) {
+              // Incluir o produto principal também como uma opção (mesma lógica da variação)
+              console.log(`🏗️  Montando lista completa (principal + variações)...`);
+              const allVariations = [
+                {
+                  sku: product.sku,
+                  name: product.name,
+                  price: product.price,
+                  stock: product.quantity,
+                  is_main: true
+                },
+                ...variantRows.map((v: any) => ({
+                  sku: v.sku,
+                  name: v.variant_name,
+                  price: v.price,
+                  stock: v.stock,
+                  is_main: false
+                }))
+              ];
+              
+              console.log(`✅ Lista completa montada: ${allVariations.length} opções (1 principal + ${variantRows.length} variações)`);
+              
+              // Buscar cores para todas as variações (incluindo principal)
+              const allSkus = allVariations.map(v => v.sku);
+              console.log(`🎨 Buscando cores para SKUs: [${allSkus.join(', ')}]`);
+              const colorQuery = await db.query`
+                SELECT 
+                  p.sku,
+                  pov.value as color
+                FROM products p
+                LEFT JOIN product_variants pv ON pv.sku = p.sku
+                LEFT JOIN variant_option_values vov ON pv.id = vov.variant_id
+                LEFT JOIN product_option_values pov ON vov.option_value_id = pov.id
+                LEFT JOIN product_options po ON pov.option_id = po.id
+                WHERE p.sku = ANY(${allSkus}) AND po.name = 'Cor'
+              `;
+              
+              console.log(`📊 Query cores executada. Resultados: ${colorQuery.length}`);
+              const colorMap = new Map();
+              colorQuery.forEach((row: any) => {
+                if (row.color) {
+                  console.log(`   Cor encontrada: SKU ${row.sku} = ${row.color}`);
+                  colorMap.set(row.sku, row.color);
+                }
+              });
+              
+              console.log(`🏗️  Montando estrutura final das variações...`);
+              variations = allVariations.map((variant: any) => ({
+                sku: variant.sku,
+                name: variant.name,
+                price: Number(variant.price),
+                stock: variant.stock || 0,
+                color: colorMap.get(variant.sku) || 'Padrão',
+                is_main: variant.is_main,
+                is_current: variant.sku === product.sku,
+                images: images
+              }));
+              
+              console.log(`✅ Estrutura final criada: ${variations.length} variações`);
+              variations.forEach((v, idx) => {
+                const current = v.is_current ? ' 👈 ATUAL' : '';
+                const main = v.is_main ? ' (Principal)' : '';
+                console.log(`   Final ${idx + 1}: SKU ${v.sku} - ${v.color} - R$ ${v.price}${main}${current}`);
+              });
+              
+              console.log(`✅ Encontradas ${variations.length} variações para produto principal`);
+            }
+          }
           
-          // STEP 4: Buscar atributos/opções para cada variação
+          // STEP 4: Buscar atributos/opções (mantido para compatibilidade)
           const productOptions = await db.query`
             SELECT 
               po.name as option_name,
@@ -72,67 +273,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
               po.id as option_id
             FROM product_options po
             INNER JOIN product_option_values pov ON pov.option_id = po.id
-            WHERE po.product_id = ${product.id}
             ORDER BY po.name, pov.value
           `;
           
-          // Se há variações, mapear com atributos
-          if (variantRows.length > 0) {
-            variations = variantRows.map((variant: any, index: number) => {
-              // Extrair atributos do SKU (formato: SKU-Atributo)
-              const skuParts = variant.sku.split('-');
-              const attributeFromSku = skuParts.length > 1 ? skuParts[1] : '';
-              
-              // Se temos opções na tabela product_options, usar elas
-              if (productOptions.length > 0) {
-                const optionsMap = new Map();
-                productOptions.forEach((opt: any) => {
-                  const optionName = opt.option_name.toLowerCase();
-                  if (!optionsMap.has(optionName)) {
-                    optionsMap.set(optionName, []);
-                  }
-                  optionsMap.get(optionName).push(opt.option_value);
-                });
-                
-                const colors = optionsMap.get('cor') || optionsMap.get('color') || [];
-                const sizes = optionsMap.get('tamanho') || optionsMap.get('size') || [];
-                const styles = optionsMap.get('estilo') || optionsMap.get('style') || [];
-                
-                return {
-                  sku: variant.sku,
-                  price: Number(variant.price),
-                  original_price: variant.original_price ? Number(variant.original_price) : undefined,
-                  stock: variant.stock || 0,
-                  color: colors[index] || (colors.includes(attributeFromSku) ? attributeFromSku : colors[0]) || undefined,
-                  size: sizes[index] || (sizes.includes(attributeFromSku) ? attributeFromSku : sizes[0]) || undefined,
-                  style: styles[index] || (styles.includes(attributeFromSku) ? attributeFromSku : styles[0]) || undefined,
-                  images: images
-                };
-              } else {
-                // Se não há opções formais, usar o SKU para determinar tipo/estilo
-                // Para kit berço: Luxo, Econômica, Unicórnio são tipos de kit
-                const variantType = attributeFromSku;
-                
-                // Mapear tipos comuns
-                const isColor = /^(preto|branco|vermelho|azul|verde|amarelo|rosa|roxo|laranja|marrom|cinza|bege|navy|turquesa)$/i.test(variantType);
-                const isSize = /^(pp|p|m|g|gg|pequeno|medio|grande|unico)$/i.test(variantType);
-                
-                return {
-                  sku: variant.sku,
-                  price: Number(variant.price),
-                  original_price: variant.original_price ? Number(variant.original_price) : undefined,
-                  stock: variant.stock || 0,
-                  // Mapear inteligentemente baseado no nome do atributo
-                  color: isColor ? variantType : undefined,
-                  size: isSize ? variantType : undefined,
-                  style: !isColor && !isSize ? variantType : undefined, // Se não é cor nem tamanho, é estilo/tipo
-                  images: images
-                };
-              }
-            });
-          }
+          // Nota: Variações já foram processadas acima na nova lógica
           
-          console.log(`✅ Encontradas ${variations.length} variações para ${product.name}`);
+          console.log(`\n🔄 ===== FIM PROCESSAMENTO VARIAÇÕES =====`);
+          console.log(`📊 Total de variações processadas: ${variations.length}`);
         } catch (e) {
           console.log('⚠️ Erro ao buscar variações:', e);
         }
@@ -141,10 +288,20 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         let category_name = '', brand_name = '', seller_name = '';
         
         try {
-          if (product.category_id) {
-            const cats = await db.query`SELECT name FROM categories WHERE id = ${product.category_id} LIMIT 1`;
-            category_name = cats[0]?.name || '';
+          // Buscar categoria da tabela de relacionamento product_categories
+            const categoryRelation = await db.query`
+              SELECT c.name, c.id
+              FROM product_categories pc
+              INNER JOIN categories c ON c.id = pc.category_id
+              WHERE pc.product_id = ${product.id} AND pc.is_primary = true
+              LIMIT 1
+            `;
+            if (categoryRelation[0]) {
+              category_name = categoryRelation[0].name;
+            // Definir category_id para compatibilidade
+              product.category_id = categoryRelation[0].id;
           }
+          
           if (product.brand_id) {
             const brands = await db.query`SELECT name FROM brands WHERE id = ${product.brand_id} LIMIT 1`;
             brand_name = brands[0]?.name || '';
@@ -183,9 +340,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         }, { status: 404 });
       }
       
-      console.log(`✅ Banco OK: Produto ${result.product.name} carregado com ${result.variations.length} variações`);
+      console.log(`\n✅ ===== RESULTADO BANCO =====`);
+      console.log(`📦 Produto: ${result.product.name}`);
+      console.log(`🖼️  Imagens: ${result.images.length}`);
+      console.log(`🔄 Variações antes da formatação: ${result.variations.length}`);
       
       // Formatar resposta com dados reais
+      console.log(`\n🏗️  ===== FORMATANDO PRODUTO =====`);
       const formattedProduct = formatProduct(
         result.product, 
         result.images, 
@@ -195,6 +356,15 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         result.seller_name
       );
       
+      console.log(`✅ Produto formatado:`);
+      console.log(`   Nome: ${formattedProduct.name}`);
+      console.log(`   SKU: ${formattedProduct.sku}`);
+      console.log(`   Variações na resposta: ${formattedProduct.variations ? formattedProduct.variations.length : 'undefined'}`);
+      if (formattedProduct.variations) {
+        console.log(`   Variações detalhes:`, formattedProduct.variations.map(v => `${v.sku}:${v.color}`));
+      }
+      
+      console.log(`\n🛍️ ===== RETORNANDO RESPOSTA =====`);
       return json({
         success: true,
         data: formattedProduct,
@@ -233,7 +403,38 @@ export const GET: RequestHandler = async ({ params, platform }) => {
  * Formatar produto com dados reais do banco incluindo variações
  */
 function formatProduct(product: any, images: string[], variations: any[], category_name: string, brand_name: string, seller_name: string) {
-  return {
+  console.log(`\n🔧 ===== INÍCIO formatProduct =====`);
+  console.log(`📥 Parâmetros recebidos:`);
+  console.log(`   Produto SKU: ${product.sku}`);
+  console.log(`   Imagens: ${images.length}`);
+  console.log(`   Variações: ${variations.length}`);
+  console.log(`   Categoria: ${category_name}`);
+  
+  // Processar attributes e specifications
+  let attributes = {};
+  let specifications = {};
+  
+  try {
+    if (product.attributes) {
+      attributes = typeof product.attributes === 'string' ? JSON.parse(product.attributes) : product.attributes;
+    }
+  } catch (e) {
+    console.warn('Erro ao parsear attributes:', e);
+    attributes = {};
+  }
+  
+  try {
+    if (product.specifications) {
+      specifications = typeof product.specifications === 'string' ? JSON.parse(product.specifications) : product.specifications;
+    }
+  } catch (e) {
+    console.warn('Erro ao parsear specifications:', e);
+    specifications = {};
+  }
+
+
+  
+  const result = {
     id: product.id,
     name: product.name,
     slug: product.slug,
@@ -270,7 +471,19 @@ function formatProduct(product: any, images: string[], variations: any[], catego
     delivery_days: product.delivery_days || 7,
     // NOVO: Incluir variações no formato esperado pelo frontend
     variations: variations.length > 0 ? variations : undefined,
-    // NOVO: Incluir atributos estruturados
-    attributes: product.attributes ? (typeof product.attributes === 'string' ? JSON.parse(product.attributes) : product.attributes) : undefined
+    // NOVO: Incluir atributos e especificações estruturados
+    attributes: attributes,
+    specifications: specifications
   };
+  
+  console.log(`\n🔧 ===== FIM formatProduct =====`);
+  console.log(`📤 Retornando produto com:`);
+  console.log(`   Nome: ${result.name}`);
+  console.log(`   SKU: ${result.sku}`);
+  console.log(`   Variações no resultado: ${result.variations?.length ?? 'undefined'}`);
+  if (result.variations?.length) {
+    console.log(`   Lista variações:`, result.variations?.map((v: any) => `${v.sku}:${v.color}`));
+  }
+  
+  return result;
 } 

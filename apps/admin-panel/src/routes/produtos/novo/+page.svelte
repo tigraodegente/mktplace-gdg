@@ -3,6 +3,8 @@
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import BasicTab from '$lib/components/produtos/BasicTab.svelte';
 	import AttributesSection from '$lib/components/produtos/AttributesSection.svelte';
+	import VariantsTab from '$lib/components/produtos/VariantsTab.svelte';
+	import InventoryTab from '$lib/components/produtos/InventoryTab.svelte';
 	import MediaTab from '$lib/components/produtos/MediaTab.svelte';
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
 	import SeoTab from '$lib/components/produtos/SeoTab.svelte';
@@ -58,6 +60,11 @@
 		attributes: {},
 		specifications: {},
 		
+		// Variações
+		has_variants: false,
+		product_options: [],
+		product_variants: [],
+		
 		// Frete
 		has_free_shipping: false,
 		delivery_days_min: 3,
@@ -100,13 +107,15 @@
 		download_files: []
 	});
 	
-	// Tabs disponíveis (ADICIONEI A ABA DE ATRIBUTOS)
+	// Tabs disponíveis - EXATAMENTE IGUAIS à página de edição
 	const tabs = [
 		{ id: 'basic', label: 'Informações Básicas', icon: 'Package' },
 		{ id: 'attributes', label: 'Atributos e Especificações', icon: 'Settings' },
-		{ id: 'media', label: 'Imagens', icon: 'image' },
-		{ id: 'shipping', label: 'Frete e Entrega', icon: 'truck' },
-		{ id: 'seo', label: 'SEO', icon: 'search' },
+		{ id: 'variants', label: 'Variações', icon: 'Layers' },
+		{ id: 'inventory', label: 'Estoque', icon: 'BarChart3' },
+		{ id: 'media', label: 'Imagens', icon: 'Image' },
+		{ id: 'shipping', label: 'Frete e Entrega', icon: 'Package' },
+		{ id: 'seo', label: 'SEO', icon: 'Search' },
 		{ id: 'advanced', label: 'Avançado', icon: 'Settings' }
 	];
 	
@@ -237,41 +246,43 @@
 			}
 			
 			// ===== APLICAR CATEGORIA E MARCA =====
-			// Categoria
+			// Categoria - Verificar diferentes estruturas possíveis
 			if (enrichedData.category_suggestion?.primary_category_id) {
-				console.log('🎯 +page: Aplicando categoria do enriquecimento completo:', enrichedData.category_suggestion);
-				
+				console.log('🎯 +page: Aplicando categoria (estrutura category_suggestion):', enrichedData.category_suggestion);
 				formData.category_id = enrichedData.category_suggestion.primary_category_id;
 				
-				// Aplicar múltiplas categorias se existirem
 				if (enrichedData.category_suggestion.related_categories) {
 					const relatedIds = enrichedData.category_suggestion.related_categories.map((c: any) => c.category_id);
 					formData._selected_categories = [enrichedData.category_suggestion.primary_category_id, ...relatedIds];
 					formData._related_categories = enrichedData.category_suggestion.related_categories;
-					
-					console.log('✅ +page: Categorias aplicadas:', {
-						principal: enrichedData.category_suggestion.primary_category_id,
-						relacionadas: relatedIds,
-						total: formData._selected_categories
-					});
 				} else {
 					formData._selected_categories = [enrichedData.category_suggestion.primary_category_id];
 				}
+				console.log('✅ +page: Categoria aplicada:', formData.category_id);
+			} else if (enrichedData.category_id) {
+				console.log('🎯 +page: Aplicando categoria (categoria direta):', enrichedData.category_id);
+				formData.category_id = enrichedData.category_id;
+				console.log('✅ +page: Categoria aplicada:', formData.category_id);
 			} else {
 				console.log('❌ +page: Nenhuma categoria encontrada no enriquecimento completo');
+				console.log('🔍 +page: Estrutura completa dos dados:', JSON.stringify(enrichedData, null, 2));
 			}
 			
-			// Marca
+			// Marca - Verificar diferentes estruturas possíveis
 			if (enrichedData.brand_suggestion?.brand_id) {
-				console.log('🎯 +page: Aplicando marca do enriquecimento completo:', enrichedData.brand_suggestion);
+				console.log('🎯 +page: Aplicando marca (estrutura brand_suggestion):', enrichedData.brand_suggestion);
 				formData.brand_id = enrichedData.brand_suggestion.brand_id;
 				console.log('✅ +page: Marca aplicada:', enrichedData.brand_suggestion.brand_id);
+			} else if (enrichedData.brand_id) {
+				console.log('🎯 +page: Aplicando marca (marca direta):', enrichedData.brand_id);
+				formData.brand_id = enrichedData.brand_id;
+				console.log('✅ +page: Marca aplicada:', enrichedData.brand_id);
 			} else if (enrichedData.brand_suggestion?.brand_name) {
 				console.log('⚠️ +page: Marca detectada mas não cadastrada:', enrichedData.brand_suggestion.brand_name);
-				// Marca detectada mas não cadastrada no sistema
-				formData.brand = enrichedData.brand_suggestion.brand_name;
+				formData._suggested_brand = enrichedData.brand_suggestion.brand_name;
 			} else {
 				console.log('❌ +page: Nenhuma marca encontrada no enriquecimento completo');
+				console.log('🔍 +page: Estrutura completa dos dados:', JSON.stringify(enrichedData, null, 2));
 			}
 			
 			console.log('🎉 Todos os dados aplicados com sucesso!');
@@ -342,7 +353,7 @@
 						onclick={() => goto('/produtos')}
 						class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
 					>
-						<ModernIcon name="ChevronLeft" size={20} />
+						<ModernIcon name="ChevronLeft" size="md" />
 					</button>
 					<div>
 						<h1 class="text-2xl font-bold text-gray-900">
@@ -366,7 +377,7 @@
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 							<span>Enriquecendo...</span>
 						{:else}
-							<ModernIcon name="robot" size={16} />
+							<ModernIcon name="robot" size="sm" />
 							<span>Enriquecer com IA</span>
 						{/if}
 					</button>
@@ -387,7 +398,7 @@
 						{#if saving}
 							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 						{:else}
-							<ModernIcon name="Plus" size={16} />
+							<ModernIcon name="Plus" size="sm" />
 						{/if}
 						Criar Produto
 					</button>
@@ -410,7 +421,7 @@
 								: 'border-transparent text-gray-600 hover:text-gray-900'
 						}"
 					>
-						<ModernIcon name={tab.icon} size={16} />
+						<ModernIcon name={tab.icon} size="sm" />
 						{tab.label}
 					</button>
 				{/each}
@@ -424,6 +435,10 @@
 			<BasicTab bind:formData />
 		{:else if activeTab === 'attributes'}
 			<AttributesSection bind:formData />
+		{:else if activeTab === 'variants'}
+			<VariantsTab bind:formData />
+		{:else if activeTab === 'inventory'}
+			<InventoryTab bind:formData />
 		{:else if activeTab === 'media'}
 			<MediaTab bind:formData productId="" />
 		{:else if activeTab === 'shipping'}

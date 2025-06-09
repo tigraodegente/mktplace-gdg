@@ -164,23 +164,39 @@
 			></textarea>
 		{:else if type === 'select'}
 			<!-- Select -->
-			<select
-				{required}
-				{disabled}
-				{multiple}
-				bind:value
-				on:change={handleInput}
-				on:focus={handleFocus}
-				on:blur={handleBlur}
-				class={selectClass}
-			>
-				{#if !multiple && placeholder}
-					<option value="" disabled>{placeholder}</option>
-				{/if}
-				{#each options as option}
-					<option value={option.value}>{option.label}</option>
-				{/each}
-			</select>
+			{#if multiple}
+				<select
+					{required}
+					{disabled}
+					multiple
+					bind:value
+					on:change={handleInput}
+					on:focus={handleFocus}
+					on:blur={handleBlur}
+					class={selectClass}
+				>
+					{#each options as option}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
+			{:else}
+				<select
+					{required}
+					{disabled}
+					bind:value
+					on:change={handleInput}
+					on:focus={handleFocus}
+					on:blur={handleBlur}
+					class={selectClass}
+				>
+					{#if placeholder}
+						<option value="" disabled>{placeholder}</option>
+					{/if}
+					{#each options as option}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
+			{/if}
 		{:else if type === 'checkbox'}
 			<!-- Checkbox -->
 			<label class="flex items-center gap-3 cursor-pointer">

@@ -167,7 +167,7 @@ export class ModernShippingAdapter {
           return {
             custom_price_multiplier: config.markup_percentage || 0,
             markup_percentage: config.markup_percentage || 0,
-            free_shipping_threshold: config.free_shipping_threshold || 199,
+            free_shipping_threshold: config.free_shipping_threshold || 999999,
             free_shipping_products: config.free_shipping_products || [],
             free_shipping_categories: config.free_shipping_categories || [],
             max_weight_kg: config.max_weight_kg || 30,
@@ -176,11 +176,33 @@ export class ModernShippingAdapter {
         }
       }
       
-      // Fallback para valores padrão
+      // Buscar configuração global (seller_id = NULL)
+      const globalConfig = await db.queryOne`
+        SELECT *
+        FROM seller_shipping_configs
+        WHERE seller_id IS NULL
+        AND is_active = true
+        ORDER BY priority ASC
+        LIMIT 1
+      `;
+      
+      if (globalConfig) {
+        return {
+          custom_price_multiplier: globalConfig.markup_percentage || 0,
+          markup_percentage: globalConfig.markup_percentage || 0,
+          free_shipping_threshold: globalConfig.free_shipping_threshold || 999999,
+          free_shipping_products: globalConfig.free_shipping_products || [],
+          free_shipping_categories: globalConfig.free_shipping_categories || [],
+          max_weight_kg: globalConfig.max_weight_kg || 30,
+          max_dimensions: globalConfig.max_dimensions
+        };
+      }
+      
+      // Fallback final - sem frete grátis
       return {
         custom_price_multiplier: 0,
         markup_percentage: 0,
-        free_shipping_threshold: 199,
+        free_shipping_threshold: 999999,
         free_shipping_products: [],
         free_shipping_categories: [],
         max_weight_kg: 30,
@@ -192,7 +214,7 @@ export class ModernShippingAdapter {
       return {
         custom_price_multiplier: 0,
         markup_percentage: 0,
-        free_shipping_threshold: 199,
+        free_shipping_threshold: 999999,
         free_shipping_products: [],
         free_shipping_categories: [],
         max_weight_kg: 30,

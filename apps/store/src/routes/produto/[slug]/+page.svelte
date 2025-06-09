@@ -20,6 +20,9 @@
     image?: string;
     category_id: string;
     category_name?: string;
+    category_slug?: string;
+    brand_id?: string;
+    brand_name?: string;
     seller_id: string;
     seller_name?: string;
     stock: number;
@@ -38,6 +41,10 @@
     delivery_days?: number;
     questions_count?: number;
     variations?: ProductVariation[];
+    specifications?: Record<string, string | string[]>;
+    attributes?: Record<string, string | string[]>;
+    condition?: string;
+    tags?: string[];
   }
   
   // Props dos dados do servidor
@@ -52,6 +59,9 @@
     original_price?: number;
     stock: number;
     sku: string;
+    name?: string;
+    is_main?: boolean;
+    is_current?: boolean;
     images?: string[];
   }
   
@@ -79,58 +89,136 @@
   // Lazy loading para imagens
   let imageObserver: IntersectionObserver | null = null;
   
-  // Variações disponíveis (será preenchido com dados do produto)
-  let availableColors = $state<string[]>([]);
-  let availableSizes = $state<string[]>([]);
-  let availableStyles = $state<string[]>([]);
-  let currentVariation = $state<ProductVariation | null>(null);
+  // Debounced shipping calculation
+  let shippingTimeout: number | null = null;
+  
+  // Variações disponíveis (derivadas do produto) - SIMPLIFICADAS
+  let availableColors = $derived(product?.variations ? getUniqueColors(product.variations) : []);
+  let availableSizes = $derived(product?.variations ? getUniqueSizes(product.variations) : []);
+  let availableStyles = $derived(product?.variations ? getUniqueStyles(product.variations) : []);
+  
+  let currentVariation = $derived(findCurrentVariation());
   
   // Simular pessoas vendo o produto
   let viewingCount = $state(Math.floor(Math.random() * 20) + 5);
   
-  // Função para obter cores únicas das variações
+  // Função para obter cores únicas das variações (apenas ativas e com estoque) - OTIMIZADA
   function getUniqueColors(variations: ProductVariation[]): string[] {
-    const colors = variations
-      .filter((v: ProductVariation) => v.color)
-      .map((v: ProductVariation) => v.color!)
-      .filter((color, index, self) => self.indexOf(color) === index);
-    return colors;
+    const colorSet = new Set<string>();
+    
+    for (const v of variations) {
+      if (v.color && v.stock > 0) {
+        colorSet.add(v.color);
+      }
+    }
+    
+    return Array.from(colorSet);
   }
   
-  // Função para obter tamanhos únicos das variações
+  // Função para obter tamanhos únicos das variações (apenas com estoque) - OTIMIZADA
   function getUniqueSizes(variations: ProductVariation[]): string[] {
-    const sizes = variations
-      .filter((v: ProductVariation) => v.size)
-      .map((v: ProductVariation) => v.size!)
-      .filter((size, index, self) => self.indexOf(size) === index);
-    return sizes;
+    const sizeSet = new Set<string>();
+    
+    for (const v of variations) {
+      if (v.size && v.stock > 0) {
+        sizeSet.add(v.size);
+      }
+    }
+    
+    return Array.from(sizeSet);
   }
   
-  // Função para obter estilos únicos das variações
+  // Função para obter estilos únicos das variações (apenas com estoque) - OTIMIZADA
   function getUniqueStyles(variations: ProductVariation[]): string[] {
-    const styles = variations
-      .filter((v: ProductVariation) => v.style)
-      .map((v: ProductVariation) => v.style!)
-      .filter((style, index, self) => self.indexOf(style) === index);
-    return styles;
+    const styleSet = new Set<string>();
+    
+    for (const v of variations) {
+      if (v.style && v.stock > 0) {
+        styleSet.add(v.style);
+      }
+    }
+    
+    return Array.from(styleSet);
   }
   
-  // Função para encontrar variação atual baseada nas seleções
+  // Função para encontrar variação atual baseada nas seleções - OTIMIZADA
   function findCurrentVariation(): ProductVariation | null {
     if (!product?.variations || product.variations.length === 0) return null;
     
-    return product.variations.find((v: ProductVariation) => {
+    // Se não há seleções, retornar a primeira disponível ou null
+    if (!selectedColor && !selectedSize && !selectedStyle) {
+      return product.variations.find(v => v.stock > 0) || null;
+    }
+    
+    // Buscar combinação exata
+    for (const v of product.variations) {
       const colorMatch = !selectedColor || v.color === selectedColor;
       const sizeMatch = !selectedSize || v.size === selectedSize;
       const styleMatch = !selectedStyle || v.style === selectedStyle;
-      return colorMatch && sizeMatch && styleMatch;
-    }) || null;
+      
+      if (colorMatch && sizeMatch && styleMatch && v.stock > 0) {
+        return v;
+      }
+    }
+    
+    return null;
   }
   
-  // Atualizar variação atual quando seleções mudam
-  $effect(() => {
-    currentVariation = findCurrentVariation();
-  });
+  // Função otimizada para calcular frete com debounce
+  function debouncedCalculateShipping() {
+    if (shippingTimeout) {
+      clearTimeout(shippingTimeout);
+    }
+    
+    shippingTimeout = window.setTimeout(() => {
+      calculateShipping();
+    }, 800); // 800ms de delay
+  }
+  
+  // Preload de imagens críticas
+  function preloadCriticalImages() {
+    if (!product?.images || product.images.length === 0) return;
+    
+    // Preload primeira imagem com alta prioridade
+    const firstImg = new Image();
+    firstImg.fetchPriority = 'high';
+    firstImg.src = product.images[0];
+    
+    // Preload segunda imagem com prioridade média
+    if (product.images[1]) {
+      const secondImg = new Image();
+      secondImg.fetchPriority = 'auto';
+      secondImg.src = product.images[1];
+    }
+  }
+  
+  // Função otimizada para trocar de cor
+  function selectColorOptimized(color: string) {
+    if (!product?.variations) return;
+    
+    // Encontrar a variação com a cor selecionada e que tenha estoque
+    const targetVariation = product.variations.find(v => 
+      v.color === color && v.stock > 0
+    );
+    
+    if (!targetVariation) return;
+    
+    // Prefetch da página da variação
+    const slug = generateSlug(targetVariation.name || product.name, targetVariation.sku);
+    
+    // Preload da nova página
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = `/produto/${slug}`;
+    document.head.appendChild(link);
+    
+    // Navegação otimizada
+    setTimeout(() => {
+      if (browser) {
+        window.location.href = `/produto/${slug}`;
+      }
+    }, 100);
+  }
   
   // Função para obter preço atual (da variação ou do produto)
   function getCurrentPrice(): number {
@@ -178,44 +266,60 @@
   
   // Função para carregar variações da URL
   function loadVariationsFromURL() {
+    if (!product?.variations) return;
+    
     const urlParams = $page.url.searchParams;
     
     const colorParam = urlParams.get('cor');
-    if (colorParam) {
+    if (colorParam && availableColors.length > 0) {
       const color = availableColors.find(c => c.toLowerCase() === colorParam.toLowerCase());
       if (color) selectedColor = color;
     }
     
     const sizeParam = urlParams.get('tamanho');
-    if (sizeParam) {
+    if (sizeParam && availableSizes.length > 0) {
       const size = availableSizes.find(s => s.toLowerCase() === sizeParam.toLowerCase());
       if (size) selectedSize = size;
     }
     
     const styleParam = urlParams.get('estilo');
-    if (styleParam) {
+    if (styleParam && availableStyles.length > 0) {
       const style = availableStyles.find(s => s.toLowerCase() === styleParam.toLowerCase());
       if (style) selectedStyle = style;
     }
   }
   
-  // Função para selecionar cor
+  // Função para gerar slug a partir do nome
+  function generateSlug(name: string, sku: string): string {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
+      .trim()
+      .replace(/\s+/g, '-') // Substitui espaços por hífens
+      .replace(/-+/g, '-') // Remove hífens duplicados
+      + '-' + sku;
+  }
+
+  // Função para selecionar cor (navega para o produto da cor)
   function selectColor(color: string) {
-    selectedColor = color;
-    validationError = ''; // Limpar erro ao selecionar
-    updateURLWithVariations();
+    if (!product?.variations) return;
     
-    // Se o produto tem imagens específicas por cor, mudar a imagem
-    // Por exemplo, se tiver um mapeamento de cor -> índice de imagem
-    const colorImageMap: Record<string, number> = {
-      'Preto': 0,
-      'Branco': 1,
-      'Azul': 2,
-      'Vermelho': 3
-    };
+    // Encontrar a variação com a cor selecionada e que tenha estoque
+    const targetVariation = product.variations.find(v => 
+      v.color === color && v.stock > 0
+    );
     
-    if (product && product.images && colorImageMap[color] !== undefined && product.images[colorImageMap[color]]) {
-      selectedImage = colorImageMap[color];
+    if (!targetVariation) return;
+    
+    // Gerar slug da variação selecionada
+    const slug = generateSlug(targetVariation.name || product.name, targetVariation.sku);
+    const targetUrl = `/produto/${slug}`;
+    
+    // Forçar navegação completa - recarrega a página para garantir
+    if (browser) {
+      window.location.href = targetUrl;
     }
   }
   
@@ -234,7 +338,10 @@
   }
   
   onMount(() => {
-    // Configurar lazy loading de imagens
+    // Preload crítico de imagens
+    preloadCriticalImages();
+    
+    // Configurar lazy loading de imagens otimizado
     if (browser && 'IntersectionObserver' in window) {
       imageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -248,49 +355,96 @@
           }
         });
       }, {
-        rootMargin: '50px'
+        rootMargin: '100px', // Aumentado para carregamento antecipado
+        threshold: 0.1
       });
       
-      // Observar todas as imagens com data-src
+      // Observar todas as imagens com data-src após um pequeno delay
+      setTimeout(() => {
       document.querySelectorAll('img[data-src]').forEach(img => {
         imageObserver?.observe(img);
       });
+      }, 100);
     }
     
-    // Atualizar contador de visualizações a cada 30 segundos
+    // Atualizar contador de visualizações com variação mais realista
     const interval = setInterval(() => {
-      viewingCount = Math.floor(Math.random() * 20) + 5;
-    }, 30000);
-    
-    // Extrair cores, tamanhos e estilos únicos das variações reais do produto
-    if (product?.variations && product.variations.length > 0) {
-      availableColors = getUniqueColors(product.variations);
-      availableSizes = getUniqueSizes(product.variations);
-      availableStyles = getUniqueStyles(product.variations);
-    }
+      const variation = Math.random() > 0.5 ? 1 : -1;
+      viewingCount = Math.max(3, Math.min(25, viewingCount + variation));
+    }, 15000); // Mais frequente para dinamismo
     
     // Carregar variações da URL
     loadVariationsFromURL();
     checkFavorite();
     
+    // Prefetch de produtos relacionados
+    if (product) {
+      fetchRelatedProducts(product);
+    }
+    
+    // Performance monitoring
+    if (browser && window.performance) {
+      const navigationTiming = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+      if (navigationTiming) {
+        console.log(`⚡ Página carregada em ${navigationTiming.loadEventEnd - navigationTiming.loadEventStart}ms`);
+      }
+    }
+    
     return () => {
       clearInterval(interval);
       imageObserver?.disconnect();
+      if (shippingTimeout) clearTimeout(shippingTimeout);
     };
   });
   
   // Função removida - setupMockVariations não é mais necessária
   // As variações agora vêm diretamente do banco de dados
   
-  async function fetchRelatedProducts(categoryId: string) {
+  // Verificar e buscar produtos relacionados usando categoria primária ou slug
+  async function fetchRelatedProducts(product: Product) {
     try {
-      const response = await fetch(`/api/products?category=${categoryId}&limit=4`);
+      // Usar categoria primária se disponível, senão usar category_name ou category_slug
+      let categoryParam = '';
+      
+      if (product.category_id) {
+        categoryParam = `category=${product.category_id}`;
+      } else if (product.category_slug) {
+        categoryParam = `categoria=${product.category_slug}`;
+      } else if (product.category_name) {
+        // Fallback: usar nome da categoria como slug
+        const categorySlug = product.category_name.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s-]/g, '')
+          .trim()
+          .replace(/\s+/g, '-');
+        categoryParam = `categoria=${categorySlug}`;
+      } else {
+        // Se não há categoria, buscar produtos similares por marca ou tags
+        if (product.brand_name || product.brand) {
+          categoryParam = `marca=${encodeURIComponent(product.brand_name || product.brand || '')}`;
+        } else if (product.tags?.length) {
+          categoryParam = `tag=${encodeURIComponent(product.tags[0])}`;
+        } else {
+          // Último recurso: produtos em destaque
+          categoryParam = 'ordenar=mais-vendidos';
+        }
+      }
+      
+      const response = await fetch(`/api/products?${categoryParam}&limit=8`);
       const data = await response.json();
-      if (data.success) {
-        relatedProducts = data.data.products.filter((p: Product) => p.slug !== $page.params.slug);
+      
+      if (data.success && data.data?.products) {
+        // Filtrar produtos diferentes do atual
+        relatedProducts = data.data.products
+          .filter((p: Product) => p.slug !== $page.params.slug)
+          .slice(0, 4); // Limitar a 4 produtos
+        
+        console.log('🔗 Produtos relacionados carregados:', relatedProducts.length);
       }
     } catch (err) {
-      console.error('Erro ao buscar produtos relacionados:', err);
+      console.error('❌ Erro ao buscar produtos relacionados:', err);
+      // Não bloquear a página se falhar
     }
   }
   
@@ -436,6 +590,14 @@
     });
   }
   
+  // Função para verificar se uma cor está disponível (tem estoque)
+  function isColorAvailable(color: string): boolean {
+    if (!product?.variations) return false;
+    
+    const variation = product.variations.find(v => v.color === color);
+    return variation ? variation.stock > 0 : false;
+  }
+  
   // Função para verificar se uma cor está disponível para o tamanho selecionado
   function isColorAvailableForSize(color: string): boolean {
     return isCombinationAvailable(color, selectedSize || undefined, selectedStyle || undefined);
@@ -572,11 +734,21 @@
             <img 
               src={product.images?.[selectedImage] || '/placeholder.jpg'} 
               alt={product.name}
-              class="w-full h-full object-contain cursor-zoom-in"
+              fetchpriority="high"
+              loading="eager"
+              decoding="sync"
+              class="w-full h-full object-contain cursor-zoom-in transition-opacity duration-300"
               onclick={() => showZoomModal = true}
+              onload={() => {
+                // Preload próxima imagem
+                if (product.images && selectedImage < product.images.length - 1) {
+                  const nextImg = new Image();
+                  nextImg.src = product.images[selectedImage + 1];
+                }
+              }}
             />
             {#if product.discount_percentage}
-              <span class="absolute top-4 left-4 bg-[#00BFB3] text-white px-3 py-1 rounded-full text-sm font-semibold">
+              <span class="absolute top-4 left-4 bg-[#00BFB3] text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
                 -{product.discount_percentage}%
               </span>
             {/if}
@@ -592,22 +764,27 @@
             </button>
           </div>
           
-          <!-- Miniaturas com Lazy Loading -->
+          <!-- Miniaturas com Lazy Loading Otimizado -->
           {#if product.images && product.images.length > 1}
             <div class="grid grid-cols-4 gap-2">
               {#each product.images as image, index}
                 <button
                   onclick={() => selectedImage = index}
-                  class="relative aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all
-                         {selectedImage === index ? 'border-[#00BFB3]' : 'border-gray-200 hover:border-gray-300'}"
+                  class="relative aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all duration-200
+                         {selectedImage === index ? 'border-[#00BFB3] ring-2 ring-[#00BFB3]/20' : 'border-gray-200 hover:border-gray-300'}"
                 >
                   <img 
-                    src={index < 2 ? image : '/placeholder.jpg'} 
-                    data-src={index >= 2 ? image : undefined}
+                    src={index < 3 ? image : '/placeholder.jpg'} 
+                    data-src={index >= 3 ? image : undefined}
                     alt={`${product.name} - Imagem ${index + 1}`} 
-                    class="w-full h-full object-contain" 
-                    loading="lazy"
+                    class="w-full h-full object-contain transition-opacity duration-200" 
+                    loading={index < 3 ? 'eager' : 'lazy'}
+                    fetchpriority={index < 2 ? 'high' : 'auto'}
+                    decoding="async"
                   />
+                  {#if selectedImage === index}
+                    <div class="absolute inset-0 bg-[#00BFB3]/10 pointer-events-none"></div>
+                  {/if}
                 </button>
               {/each}
             </div>
@@ -714,14 +891,19 @@
                 type="text"
                 placeholder="00000-000"
                 value={shippingZip}
-                oninput={(e) => shippingZip = formatZipCode(e.currentTarget.value)}
+                oninput={(e) => {
+                  shippingZip = formatZipCode(e.currentTarget.value);
+                  if (shippingZip.length === 9) {
+                    debouncedCalculateShipping();
+                  }
+                }}
                 maxlength="9"
                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
               />
               <button
                 onclick={calculateShipping}
                 disabled={calculatingShipping || shippingZip.length < 8}
-                class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] disabled:bg-gray-300 disabled:cursor-not-allowed"
+                class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {calculatingShipping ? 'Calculando...' : 'Calcular'}
               </button>
@@ -749,17 +931,21 @@
               </label>
               <div class="flex gap-2 flex-wrap {validationError.includes('cor') ? 'animate-pulse' : ''}">
                 {#each availableColors as color}
-                  {@const isAvailable = isColorAvailableForSize(color)}
+                  {@const isAvailable = isColorAvailable(color)}
+                  {@const isCurrentColor = product?.variations?.find(v => v.color === color && v.is_current)}
                   <button
-                    onclick={() => isAvailable && selectColor(color)}
+                    onclick={() => isAvailable && selectColorOptimized(color)}
                     disabled={!isAvailable}
                     class="px-4 py-2 border-2 rounded-lg transition-all
-                           {selectedColor === color ? 'border-[#00BFB3] bg-[#00BFB3]/10' : 
+                           {isCurrentColor ? 'border-[#00BFB3] bg-[#00BFB3]/10 ring-2 ring-[#00BFB3]/20' : 
                            validationError.includes('cor') ? 'border-red-300 hover:border-red-400' : 
                            'border-gray-200 hover:border-gray-300'}
-                           {!isAvailable ? 'opacity-50 cursor-not-allowed line-through' : ''}"
+                           {!isAvailable ? 'opacity-50 cursor-not-allowed line-through' : 'hover:border-[#00BFB3]/50'}"
                   >
                     {color}
+                    {#if isCurrentColor}
+                      <span class="ml-1 text-xs text-[#00BFB3]">•</span>
+                    {/if}
                   </button>
                 {/each}
               </div>
@@ -1038,13 +1224,50 @@
             </div>
           {:else if activeTab === 'specs'}
             <div class="space-y-4">
+              <!-- Especificações do banco -->
+              {#if product.specifications && Object.keys(product.specifications).length > 0}
+                <div>
+                  <h4 class="font-semibold text-gray-900 mb-4">Especificações Técnicas</h4>
+                  <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {#each Object.entries(product.specifications) as [key, value]}
+                      <div class="flex justify-between text-sm border-b border-gray-100 pb-2">
+                        <dt class="text-gray-600 font-medium">{key}</dt>
+                        <dd class="font-medium text-gray-900">{value}</dd>
+                      </div>
+                    {/each}
+                  </dl>
+                </div>
+              {/if}
+              
+              <!-- Atributos do banco -->
+              {#if product.attributes && Object.keys(product.attributes).length > 0}
+                <div>
+                  <h4 class="font-semibold text-gray-900 mb-4">Atributos do Produto</h4>
+                  <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {#each Object.entries(product.attributes) as [key, value]}
+                      <div class="flex justify-between text-sm border-b border-gray-100 pb-2">
+                        <dt class="text-gray-600 font-medium">{key}</dt>
+                        <dd class="font-medium text-gray-900">
+                          {#if Array.isArray(value)}
+                            {value.join(', ')}
+                          {:else}
+                            {value}
+                          {/if}
+                        </dd>
+                      </div>
+                    {/each}
+                  </dl>
+                </div>
+              {/if}
+              
+              <!-- Informações básicas (sempre exibir) -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <h4 class="font-semibold text-gray-900 mb-2">Informações Gerais</h4>
                   <dl class="space-y-2">
                     <div class="flex justify-between text-sm">
                       <dt class="text-gray-600">Marca</dt>
-                      <dd class="font-medium">{product.brand || 'Não informado'}</dd>
+                      <dd class="font-medium">{product.brand_name || product.brand || 'Não informado'}</dd>
                     </div>
                     <div class="flex justify-between text-sm">
                       <dt class="text-gray-600">Modelo</dt>
@@ -1054,22 +1277,50 @@
                       <dt class="text-gray-600">SKU</dt>
                       <dd class="font-medium">{product.sku || product.id}</dd>
                     </div>
+                    <div class="flex justify-between text-sm">
+                      <dt class="text-gray-600">Categoria</dt>
+                      <dd class="font-medium">{product.category_name || 'Não informado'}</dd>
+                    </div>
                   </dl>
                 </div>
                 <div>
-                  <h4 class="font-semibold text-gray-900 mb-2">Dimensões</h4>
+                  <h4 class="font-semibold text-gray-900 mb-2">Dimensões e Peso</h4>
                   <dl class="space-y-2">
                     <div class="flex justify-between text-sm">
                       <dt class="text-gray-600">Peso</dt>
                       <dd class="font-medium">{product.weight || 0.5} kg</dd>
                     </div>
+                    {#if product.specifications?.['Dimensões do produto'] || product.specifications?.['Dimensões'] || product.specifications?.['Tamanho']}
                     <div class="flex justify-between text-sm">
                       <dt class="text-gray-600">Dimensões</dt>
-                      <dd class="font-medium">20 x 15 x 10 cm</dd>
+                        <dd class="font-medium">{product.specifications['Dimensões do produto'] || product.specifications['Dimensões'] || product.specifications['Tamanho']}</dd>
+                      </div>
+                    {/if}
+                    <div class="flex justify-between text-sm">
+                      <dt class="text-gray-600">Condição</dt>
+                      <dd class="font-medium">
+                        {#if product.condition === 'new'}
+                          Novo
+                        {:else if product.condition === 'used'}
+                          Usado
+                        {:else if product.condition === 'refurbished'}
+                          Recondicionado
+                        {:else}
+                          {product.condition || 'Novo'}
+                        {/if}
+                      </dd>
                     </div>
                   </dl>
                 </div>
               </div>
+              
+              <!-- Mensagem quando não há especificações -->
+              {#if (!product.specifications || Object.keys(product.specifications).length === 0) && (!product.attributes || Object.keys(product.attributes).length === 0)}
+                <div class="text-center py-8 text-gray-500">
+                  <p>Especificações técnicas não disponíveis</p>
+                  <p class="text-sm">Entre em contato conosco para mais detalhes sobre este produto</p>
+                </div>
+              {/if}
             </div>
           {:else if activeTab === 'shipping'}
             <div class="space-y-4">

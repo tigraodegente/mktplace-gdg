@@ -81,16 +81,12 @@ export function slideOptimized(
  * Prevenir piscadas durante transições
  */
 export function preventFlicker(node: HTMLElement) {
-  // Adicionar classes para prevenir flicker
-  node.classList.add('no-shift');
-  
-  // Forçar GPU acceleration
-  node.style.transform = 'translateZ(0)';
+  // Força reflow para evitar flash of unstyled content
+  node.offsetHeight;
   
   return {
     destroy() {
-      node.classList.remove('no-shift');
-      node.style.transform = '';
+      // Cleanup se necessário
     }
   };
 }
@@ -193,6 +189,63 @@ export function useStableUpdates(node: HTMLElement) {
     },
     destroy() {
       updateQueue = [];
+    }
+  };
+}
+
+/**
+ * Transição suave para aparecer/desaparecer com fade
+ */
+export function smoothFade(node: HTMLElement, { 
+	delay = 0, 
+	duration = 200,
+	easing = (t: number) => t 
+} = {}) {
+	return {
+		delay,
+		duration,
+		css: (t: number) => {
+			const opacity = easing(t);
+			return `opacity: ${opacity}`;
+		}
+	};
+}
+
+/**
+ * Transição de slide otimizada para performance
+ */
+export function optimizedSlide(node: HTMLElement, {
+	delay = 0,
+	duration = 300,
+	easing = (t: number) => t
+} = {}) {
+	const style = getComputedStyle(node);
+	const opacity = +style.opacity;
+	const height = parseFloat(style.height);
+	const paddingTop = parseFloat(style.paddingTop);
+	const paddingBottom = parseFloat(style.paddingBottom);
+	const marginTop = parseFloat(style.marginTop);
+	const marginBottom = parseFloat(style.marginBottom);
+	const borderTopWidth = parseFloat(style.borderTopWidth);
+	const borderBottomWidth = parseFloat(style.borderBottomWidth);
+
+	return {
+		delay,
+		duration,
+		easing,
+		css: (t: number) => {
+			const easedT = easing(t);
+			return `
+				overflow: hidden;
+				opacity: ${easedT * opacity};
+				height: ${easedT * height}px;
+				padding-top: ${easedT * paddingTop}px;
+				padding-bottom: ${easedT * paddingBottom}px;
+				margin-top: ${easedT * marginTop}px;
+				margin-bottom: ${easedT * marginBottom}px;
+				border-top-width: ${easedT * borderTopWidth}px;
+				border-bottom-width: ${easedT * borderBottomWidth}px;
+			`;
     }
   };
 } 

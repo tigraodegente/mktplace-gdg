@@ -18,34 +18,7 @@
   
   const dispatch = createEventDispatcher();
   
-  // Cores predefinidas para valores comuns
-  const colorMap: Record<string, string> = {
-    'preto': '#000000',
-    'branco': '#FFFFFF',
-    'vermelho': '#FF0000',
-    'azul': '#0000FF',
-    'verde': '#00FF00',
-    'amarelo': '#FFFF00',
-    'rosa': '#FFC0CB',
-    'roxo': '#800080',
-    'laranja': '#FFA500',
-    'marrom': '#A52A2A',
-    'cinza': '#808080',
-    'prata': '#C0C0C0',
-    'dourado': '#FFD700',
-    'bege': '#F5F5DC',
-    'navy': '#000080',
-    'turquesa': '#40E0D0'
-  };
-  
-  function isColorOption() {
-    return optionSlug === 'cor' || optionName.toLowerCase().includes('cor') || optionName.toLowerCase().includes('color');
-  }
-  
-  function getColorCode(colorName: string): string | null {
-    const normalized = colorName.toLowerCase().trim();
-    return colorMap[normalized] || null;
-  }
+
   
   function toggleValue(value: string) {
     const newValues = selectedValues.includes(value)
@@ -93,7 +66,6 @@
   <div class="space-y-2 max-h-60 overflow-y-auto">
     {#each filteredFacets as facet}
       {@const isSelected = selectedValues.includes(facet.value)}
-      {@const colorCode = isColorOption() ? getColorCode(facet.value) : null}
       
       <label class="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
         <input
@@ -104,14 +76,6 @@
         />
         
         <span class="ml-2 flex-1 flex items-center gap-2">
-          {#if colorCode}
-            <span 
-              class="w-4 h-4 rounded-full border border-gray-300"
-              style="background-color: {colorCode}"
-              title={facet.value}
-            ></span>
-          {/if}
-          
           <span class="text-sm text-gray-700">
             {facet.value}
           </span>

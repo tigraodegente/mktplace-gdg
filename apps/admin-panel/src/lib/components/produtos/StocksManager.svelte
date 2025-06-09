@@ -97,6 +97,11 @@
 	$effect(() => {
 		if (isValidUUID(productId)) {
 			loadData();
+		} else {
+			// Para produtos novos ou sem ID válido, definir loading como false
+			loading = false;
+			stocks = [];
+			warehouses = [];
 		}
 	});
 </script>
@@ -136,6 +141,14 @@
 		<div class="flex items-center justify-center py-8">
 			<div class="w-6 h-6 border-2 border-[#00BFB3] border-t-transparent rounded-full animate-spin"></div>
 			<span class="ml-2 text-gray-600">Carregando estoques...</span>
+		</div>
+	{:else if !isValidUUID(productId)}
+		<div class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+			<div class="text-4xl text-gray-300 mb-4">
+				<ModernIcon name="Package" size="2xl" color="muted" />
+			</div>
+			<p class="text-gray-500">💡 Salve o produto primeiro</p>
+			<p class="text-xs text-gray-500 mt-1">O gerenciamento de estoques estará disponível após salvar o produto</p>
 		</div>
 	{/if}
 	

@@ -18,6 +18,12 @@ binding = "CACHE_KV"
 id = "780e9e83f99b45f4a6ac7a44f6ee8f4b"
 preview_id = "f7678a2cec1d438a9bb518f1c820d114"
 
+# R2 Storage para imagens (OPCIONAL - descomente se quiser usar)
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "gdg-marketplace-images"
+# preview_bucket_name = "gdg-marketplace-images-preview"
+
 # TCP direto - sem Hyperdrive (incompatível com PostgreSQL externo)
 
 # D1 Database (se você quiser usar no futuro)

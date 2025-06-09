@@ -30,11 +30,11 @@
 		},
 		info: {
 			icon: 'ℹ️',
-			bgColor: 'bg-blue-50',
-			borderColor: 'border-blue-200',
-			iconColor: 'text-blue-600',
-			titleColor: 'text-blue-800',
-			messageColor: 'text-blue-700'
+			bgColor: 'bg-[#00BFB3]/10',
+			borderColor: 'border-[#00BFB3]/20',
+			iconColor: 'text-[#00BFB3]',
+			titleColor: 'text-[#00BFB3]',
+			messageColor: 'text-gray-700'
 		}
 	};
 </script>

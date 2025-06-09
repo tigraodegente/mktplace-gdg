@@ -13,7 +13,7 @@
 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
   {#each categories as category}
     <a 
-      href="/categorias/{category.slug}" 
+      href="/busca?categoria={category.slug}" 
       class="group block p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
     >
       {#if category.imageUrl}

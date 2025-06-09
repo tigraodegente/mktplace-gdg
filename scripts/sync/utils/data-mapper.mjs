@@ -281,13 +281,68 @@ export class DataMapper {
     return parseFloat(weight) || null
   }
 
+  /**
+   * Converter URLs do OVH para AWS (com fallback inteligente)
+   * ESTRATÉGIA CORRIGIDA: Testar diferentes padrões AWS já que as fotos foram migradas
+   */
+  convertOvhToAwsUrl(url) {
+    if (!url || typeof url !== 'string') return url
+    
+    // Se já é AWS, manter
+    if (url.includes('gdg-images.s3.sa-east-1.amazonaws.com')) {
+      return url
+    }
+    
+    // Converter URLs OVH para AWS (fotos foram migradas para AWS)
+    if (url.includes('grao-cdn.s3.bhs.perf.cloud.ovh.net')) {
+      const ovhPattern = /https?:\/\/grao-cdn\.s3\.bhs\.perf\.cloud\.ovh\.net\/fotos\/(\d+)\/(.*)/i
+      const match = url.match(ovhPattern)
+      
+      if (match) {
+        const [, productId, fileName] = match
+        
+        // ESTRATÉGIA 1: Tentar AWS com nome original completo
+        return `https://gdg-images.s3.sa-east-1.amazonaws.com/fotos/${productId}/${fileName}`
+        
+        // ALTERNATIVAS para testar se a primeira não funcionar:
+        // return `https://gdg-images.s3.sa-east-1.amazonaws.com/${productId}/${fileName}`
+        // return `https://gdg-images.s3.sa-east-1.amazonaws.com/fotos/${productId}/${this.cleanFileName(fileName)}`
+      }
+    }
+    
+    // Se não for OVH nem AWS, manter como está
+    return url
+  }
+  
+  /**
+   * Limpar nome do arquivo para padrão AWS simples
+   */
+  cleanFileName(fileName) {
+    // Remover números de sufixo específicos do OVH e normalizar
+    // Exemplo: "kit-berco-azul-classico-352417.jpg" -> "kit-berco-azul-classico-1.jpg"
+    const baseName = fileName.replace(/-\d{6}(\.\w+)$/, '$1') // Remove sufixo numérico
+    const extension = baseName.split('.').pop()
+    const nameWithoutExt = baseName.replace(/\.\w+$/, '')
+    
+    // Normalizar caracteres especiais
+    const cleanName = nameWithoutExt
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[çÇ]/g, 'c')
+      .replace(/[^a-z0-9-]/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+    
+    return `${cleanName}-1.${extension}`
+  }
+
   mapProductImages(product) {
     const images = []
     
     // Primeiro, adicionar imagem principal se existir
     if (product.urlImagePrimary) {
       images.push({
-        url: product.urlImagePrimary,
+        url: this.convertOvhToAwsUrl(product.urlImagePrimary),
         alt: product.productname || product.name || 'Imagem do produto',
         is_primary: true
       })
@@ -296,10 +351,10 @@ export class DataMapper {
     // Depois, adicionar outras imagens de files.photos
     if (product.files?.photos && Array.isArray(product.files.photos)) {
       for (const photo of product.files.photos) {
-        const url = photo.url || photo.src || (typeof photo === 'string' ? photo : null)
-        if (url && url !== product.urlImagePrimary) {
+        const originalUrl = photo.url || photo.src || (typeof photo === 'string' ? photo : null)
+        if (originalUrl && originalUrl !== product.urlImagePrimary) {
           images.push({
-            url: url,
+            url: this.convertOvhToAwsUrl(originalUrl),
             alt: photo.name || product.productname || product.name || 'Imagem do produto',
             is_primary: false
           })
@@ -319,13 +374,13 @@ export class DataMapper {
     for (const img of imageSources) {
       if (typeof img === 'string') {
         images.push({
-          url: img,
+          url: this.convertOvhToAwsUrl(img),
           alt: product.name || 'Imagem do produto',
           is_primary: images.length === 0
         })
       } else if (img && img.url) {
         images.push({
-          url: img.url || img.src,
+          url: this.convertOvhToAwsUrl(img.url || img.src),
           alt: img.alt || img.title || product.name || 'Imagem do produto',
           is_primary: img.isPrimary || img.isMain || images.length === 0
         })

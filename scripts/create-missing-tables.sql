@@ -100,6 +100,70 @@ CREATE TABLE IF NOT EXISTS product_stocks (
     UNIQUE(product_id, warehouse_id)
 );
 
+-- 7. Tabela de Movimentações de Estoque
+CREATE TABLE IF NOT EXISTS stock_movements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL,
+    movement_type VARCHAR(50) NOT NULL CHECK (movement_type IN ('purchase', 'sale', 'adjustment', 'transfer', 'return', 'loss', 'found')),
+    quantity_before INTEGER NOT NULL,
+    quantity_change INTEGER NOT NULL, -- Pode ser negativo
+    quantity_after INTEGER NOT NULL,
+    unit_cost DECIMAL(10,2),
+    total_cost DECIMAL(10,2) GENERATED ALWAYS AS (ABS(quantity_change) * COALESCE(unit_cost, 0)) STORED,
+    reference_type VARCHAR(50), -- 'order', 'purchase', 'manual', etc
+    reference_id UUID, -- ID do pedido, compra, etc
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Tabela de Alertas de Estoque
+CREATE TABLE IF NOT EXISTS stock_alerts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
+    alert_type VARCHAR(50) NOT NULL CHECK (alert_type IN ('low_stock', 'out_of_stock', 'overstock')),
+    threshold_value INTEGER,
+    current_value INTEGER,
+    is_active BOOLEAN DEFAULT true,
+    last_sent_at TIMESTAMPTZ,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(product_id, warehouse_id, alert_type)
+);
+
+-- 9. Tabela de Configurações de Notificação
+CREATE TABLE IF NOT EXISTS notification_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notification_type VARCHAR(50) NOT NULL,
+    channel VARCHAR(20) NOT NULL CHECK (channel IN ('email', 'push', 'sms')),
+    is_enabled BOOLEAN DEFAULT true,
+    settings JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, notification_type, channel)
+);
+
+-- 10. Tabela de Previsões de Reposição
+CREATE TABLE IF NOT EXISTS stock_forecasts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
+    current_stock INTEGER NOT NULL,
+    daily_sales_avg DECIMAL(10,2) DEFAULT 0,
+    lead_time_days INTEGER DEFAULT 7,
+    safety_stock INTEGER DEFAULT 0,
+    reorder_point INTEGER GENERATED ALWAYS AS (CEIL(daily_sales_avg * lead_time_days) + safety_stock) STORED,
+    suggested_order_quantity INTEGER,
+    next_stockout_date DATE,
+    confidence_level DECIMAL(5,2) DEFAULT 0.8,
+    last_calculated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(product_id, warehouse_id)
+);
+
 -- ============================================================================
 -- ÍNDICES PARA PERFORMANCE
 -- ============================================================================
@@ -135,6 +199,22 @@ CREATE INDEX IF NOT EXISTS idx_product_stocks_product_id ON product_stocks(produ
 CREATE INDEX IF NOT EXISTS idx_product_stocks_warehouse_id ON product_stocks(warehouse_id);
 CREATE INDEX IF NOT EXISTS idx_product_stocks_quantity ON product_stocks(quantity);
 CREATE INDEX IF NOT EXISTS idx_product_stocks_available ON product_stocks(available_quantity);
+
+-- Índices para stock movements
+CREATE INDEX IF NOT EXISTS idx_stock_movements_product_id ON stock_movements(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_warehouse_id ON stock_movements(warehouse_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_type ON stock_movements(movement_type);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_created_at ON stock_movements(created_at);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_reference ON stock_movements(reference_type, reference_id);
+
+-- Índices para stock alerts
+CREATE INDEX IF NOT EXISTS idx_stock_alerts_product_id ON stock_alerts(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_alerts_active ON stock_alerts(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_stock_alerts_type ON stock_alerts(alert_type);
+
+-- Índices para notification settings
+CREATE INDEX IF NOT EXISTS idx_notification_settings_user_id ON notification_settings(user_id);
+CREATE INDEX IF NOT EXISTS idx_stock_forecasts_product_id ON stock_forecasts(product_id);
 
 -- ============================================================================
 -- TRIGGERS PARA ATUALIZAÇÃO AUTOMÁTICA
@@ -187,6 +267,83 @@ CREATE TRIGGER update_product_stocks_last_updated
     BEFORE UPDATE ON product_stocks
     FOR EACH ROW
     EXECUTE FUNCTION update_product_stocks_last_updated();
+
+-- Trigger para atualizar stock_forecasts automaticamente
+CREATE OR REPLACE FUNCTION update_stock_forecast()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Atualizar previsão quando houver movimentação de estoque
+    INSERT INTO stock_forecasts (product_id, warehouse_id, current_stock)
+    VALUES (NEW.product_id, NEW.warehouse_id, NEW.quantity_after)
+    ON CONFLICT (product_id, warehouse_id) 
+    DO UPDATE SET 
+        current_stock = NEW.quantity_after,
+        last_calculated_at = NOW();
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_stock_forecast ON stock_movements;
+CREATE TRIGGER trigger_update_stock_forecast
+    AFTER INSERT ON stock_movements
+    FOR EACH ROW
+    EXECUTE FUNCTION update_stock_forecast();
+
+-- Trigger para criar alertas automáticos
+CREATE OR REPLACE FUNCTION check_stock_alerts()
+RETURNS TRIGGER AS $$
+DECLARE
+    low_stock_threshold INTEGER;
+BEGIN
+    -- Buscar o threshold do produto
+    SELECT COALESCE(ps.low_stock_alert, p.stock_quantity * 0.1) 
+    INTO low_stock_threshold
+    FROM products p 
+    LEFT JOIN product_stocks ps ON ps.product_id = p.id AND ps.warehouse_id = NEW.warehouse_id
+    WHERE p.id = NEW.product_id;
+    
+    -- Criar alerta de estoque baixo
+    IF NEW.quantity_after <= low_stock_threshold AND NEW.quantity_after > 0 THEN
+        INSERT INTO stock_alerts (product_id, warehouse_id, alert_type, threshold_value, current_value)
+        VALUES (NEW.product_id, NEW.warehouse_id, 'low_stock', low_stock_threshold, NEW.quantity_after)
+        ON CONFLICT (product_id, warehouse_id, alert_type) 
+        DO UPDATE SET 
+            current_value = NEW.quantity_after,
+            is_active = true,
+            resolved_at = NULL;
+    END IF;
+    
+    -- Criar alerta de sem estoque
+    IF NEW.quantity_after <= 0 THEN
+        INSERT INTO stock_alerts (product_id, warehouse_id, alert_type, threshold_value, current_value)
+        VALUES (NEW.product_id, NEW.warehouse_id, 'out_of_stock', 0, NEW.quantity_after)
+        ON CONFLICT (product_id, warehouse_id, alert_type) 
+        DO UPDATE SET 
+            current_value = NEW.quantity_after,
+            is_active = true,
+            resolved_at = NULL;
+    END IF;
+    
+    -- Resolver alertas se estoque voltou ao normal
+    IF NEW.quantity_after > low_stock_threshold THEN
+        UPDATE stock_alerts 
+        SET is_active = false, resolved_at = NOW()
+        WHERE product_id = NEW.product_id 
+        AND warehouse_id = NEW.warehouse_id 
+        AND alert_type IN ('low_stock', 'out_of_stock')
+        AND is_active = true;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_check_stock_alerts ON stock_movements;
+CREATE TRIGGER trigger_check_stock_alerts
+    AFTER INSERT ON stock_movements
+    FOR EACH ROW
+    EXECUTE FUNCTION check_stock_alerts();
 
 -- ============================================================================
 -- DADOS INICIAIS

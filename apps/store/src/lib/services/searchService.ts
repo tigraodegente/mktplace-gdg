@@ -10,9 +10,20 @@ interface Product {
   discount?: number;
   images: string[];
   image?: string;
-  category_id: string;
-  category_name?: string;
+  // Informações de categoria - agora vêm da API via product_categories
+  category_id?: string; // Categoria primária (primeira encontrada)
+  category_name?: string; // Nome da categoria primária
+  category_slug?: string; // Slug da categoria primária
+  categories?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    is_primary?: boolean;
+  }>; // Todas as categorias (futuro)
   brand?: string;
+  brand_id?: string;
+  brand_name?: string;
+  brand_slug?: string;
   seller_id?: string;
   seller_name?: string;
   is_active: boolean;
@@ -223,33 +234,65 @@ class SearchService {
       params.set('itens', limit.toString());
       
       // Fazer chamada para API
-      const response = await fetch(`/api/products?${params.toString()}`);
+      const apiUrl = `/api/products?${params.toString()}`;
+      console.log('🌐 SEARCHSERVICE - URL COMPLETA:', apiUrl);
+      console.log('🌐 SEARCHSERVICE - FAZENDO FETCH...');
       
-      console.log('🌐 URL da API:', `/api/products?${params.toString()}`);
-      console.log('📡 Status da resposta:', response.status);
+      const response = await fetch(apiUrl);
       
-      if (!response.ok) {
-        throw new Error('Erro ao buscar produtos');
+      console.log('📡 SEARCHSERVICE - RESPOSTA RECEBIDA:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      const data = await response.json();
+      console.log('📦 SEARCHSERVICE - JSON PARSEADO:', {
+        success: data.success,
+        has_data: !!data.data,
+        data_keys: data.data ? Object.keys(data.data) : null,
+        error: data.error,
+        full_response: data
+      });
+      
+      if (!data.success) {
+        console.error('❌ API retornou erro:', data.error);
+        throw new Error(data.error?.message || 'Erro na API');
       }
       
-      const result = await response.json();
-      
-      console.log('📦 Resposta da API:', result);
-      console.log('✅ Success:', result.success);
-      
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Erro desconhecido');
-      }
-      
-      const searchResult = {
-        products: result.data.products,
-        totalCount: result.data.pagination?.total || 0,
-        page: page,
-        limit: limit,
-        facets: result.data.facets
+      console.log('🔧 SEARCHSERVICE - FACETS RECEBIDOS:', {
+        facets_categories: data.data?.facets?.categories?.length || 0,
+        facets_brands: data.data?.facets?.brands?.length || 0,
+        facets_conditions: data.data?.facets?.conditions?.length || 0,
+        facets_sellers: data.data?.facets?.sellers?.length || 0,
+        facets_tags: data.data?.facets?.tags?.length || 0,
+        facets_deliveryOptions: data.data?.facets?.deliveryOptions?.length || 0,
+        facets_dynamicOptions: data.data?.facets?.dynamicOptions?.length || 0,
+        all_facets_keys: Object.keys(data.data?.facets || {}),
+        first_5_brands: data.data?.facets?.brands?.slice(0, 5)
+      });
+
+      // Processar resultado
+      const searchResult: SearchResult = {
+        products: data.data.products || [],
+        totalCount: data.data.pagination?.total || 0,
+        page: data.data.pagination?.page || 1,
+        limit: data.data.pagination?.limit || 20,
+        facets: data.data.facets || {}  // ✅ CORRIGIDO: acessar data.data.facets corretamente
       };
       
       console.log('🎯 SearchResult formatado:', searchResult);
+      console.log('🔧 SEARCHSERVICE - FACETS NO RESULTADO FINAL:', {
+        result_facets_categories: searchResult.facets?.categories?.length || 0,
+        result_facets_brands: searchResult.facets?.brands?.length || 0,
+        result_facets_conditions: searchResult.facets?.conditions?.length || 0,
+        result_facets_sellers: searchResult.facets?.sellers?.length || 0,
+        result_facets_tags: searchResult.facets?.tags?.length || 0,
+        result_facets_deliveryOptions: searchResult.facets?.deliveryOptions?.length || 0,
+        result_facets_dynamicOptions: searchResult.facets?.dynamicOptions?.length || 0,
+        first_brand_in_result: searchResult.facets?.brands?.[0]
+      });
       
       // Adicionar ao cache
       this.searchCache.set(cacheKey, searchResult);

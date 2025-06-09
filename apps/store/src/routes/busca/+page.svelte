@@ -1,32 +1,50 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import ProductCard from '$lib/components/product/ProductCard.svelte';
 	import ProductCardSkeleton from '$lib/components/ui/ProductCardSkeleton.svelte';
 	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
 	import SaveSearchButton from '$lib/components/search/SaveSearchButton.svelte';
-	import { searchService, type SearchFilters, type SearchResult } from '$lib/services/searchService';
-	import { useStableUpdates } from '$lib/utils/transitions';
-	
-	// Estados principais
-	let searchResult = $state<SearchResult | null>(null);
+
+	// Props do servidor
+	let { data } = $props();
+
+	// ✅ CARREGAMENTO DIRETO DOS DADOS DO SERVIDOR 
+	let products = $state<any[]>(data?.serverData?.products || []);
+	let totalCount = $state(data?.serverData?.totalCount || 0);
 	let isLoading = $state(false);
+	
+	// ✅ CARREGAMENTO DIRETO DOS FACETS DO SERVIDOR
+	let facets = $state<any>(data?.serverData?.facets || {
+		categories: [],
+		brands: [],
+		tags: [],
+		priceRange: { min: 0, max: 10000 },
+		ratings: [],
+		conditions: [],
+		deliveryOptions: [],
+		sellers: [],
+		benefits: { discount: 0, freeShipping: 0, outOfStock: 0 },
+		dynamicOptions: []
+	});
+
+	// ✅ OTIMIZAÇÕES DE PERFORMANCE SIMPLIFICADAS
+	let searchCache = new Map<string, any>();
+	let lastCacheCleanup = Date.now();
+	const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+	
+	// Estados para optimistic updates
+	let optimisticProducts = $state<any[]>([]);
+	let optimisticTotalCount = $state(0);
+	let optimisticFilters = $state<any>({});
+	let hasOptimisticUpdates = $state(false);
+
+	// Controles de interface
 	let showDesktopFilters = $state(true);
 	let showMobileFilters = $state(false);
 	
-	// Estado derivado dos produtos ordenados
-	let sortedProducts = $state<any[]>([]);
-	
-	// Preservar facets durante carregamento
-	let stableFacets = $state<SearchResult['facets'] | null>(null);
-	
-	// Inputs temporários para preço
-	let tempPriceMin = $state<string>('');
-	let tempPriceMax = $state<string>('');
-	
-	// Variável para rastrear última URL processada
-	let lastProcessedUrl = $state<string | null>(null);
+	// ✅ CONTROLE DE NAVEGAÇÃO - DECLARAR ANTES DO USO
+	let isInternalNavigation = $state(false);
 	
 	// Opções de ordenação
 	const sortOptions = [
@@ -35,38 +53,39 @@
 		{ value: 'maior-preco', label: 'Maior preço' },
 		{ value: 'mais-vendidos', label: 'Mais vendidos' },
 		{ value: 'melhor-avaliados', label: 'Melhor avaliados' },
-		{ value: 'lancamentos', label: 'Lançamentos' },
-		{ value: 'maior-desconto', label: 'Maior desconto' }
+		{ value: 'lancamentos', label: 'Lançamentos' }
 	];
 	
-	// Função para extrair todos os parâmetros da URL
+	// ✅ FUNÇÃO UTILITÁRIA: Extrair parâmetros completos da URL
 	function getUrlParams() {
-		const params = $page.url.searchParams;
+		const params = new URLSearchParams($page.url.searchParams);
+		
 		return {
-			searchQuery: params.get('q') || '',
-			selectedCategories: params.get('categoria')?.split(',').filter(Boolean) || [],
-			selectedBrands: params.get('marca')?.split(',').filter(Boolean) || [],
-			selectedTags: params.get('tag')?.split(',').filter(Boolean) || [],
-			priceMin: params.get('preco_min') ? Number(params.get('preco_min')) : undefined,
-			priceMax: params.get('preco_max') ? Number(params.get('preco_max')) : undefined,
-			hasDiscount: params.get('promocao') === 'true',
-			hasFreeShipping: params.get('frete_gratis') === 'true',
-			inStock: params.get('disponivel') !== 'false',
-			minRating: params.get('avaliacao') ? Number(params.get('avaliacao')) : undefined,
-			condition: params.get('condicao') as 'new' | 'used' | 'refurbished' | '' || '',
-			deliveryTime: params.get('entrega') || '',
-			selectedSellers: params.get('vendedor')?.split(',').filter(Boolean) || [],
-			selectedState: params.get('estado') || '',
-			selectedCity: params.get('cidade') || '',
-			sortBy: params.get('ordenar') || 'relevancia',
-			currentPage: Number(params.get('pagina')) || 1,
-			itemsPerPage: Number(params.get('itens')) || 20,
-			viewMode: params.get('visualizar') === 'lista' ? 'list' as const : 'grid' as const
+			q: params.get('q') || '',
+			categoria: params.get('categoria')?.split(',').filter(Boolean) || [],
+			marca: params.get('marca')?.split(',').filter(Boolean) || [],
+			preco_min: params.get('preco_min') || '',
+			preco_max: params.get('preco_max') || '',
+			promocao: params.get('promocao') === 'true',
+			disponivel: params.get('disponivel') !== 'false',
+			frete_gratis: params.get('frete_gratis') === 'true',
+			condicao: params.get('condicao')?.split(',').filter(Boolean) || [],
+			avaliacao: params.get('avaliacao') || '',
+			vendedor: params.get('vendedor')?.split(',').filter(Boolean) || [],
+			localizacao: params.get('localizacao') || '',
+			beneficio: params.get('beneficio')?.split(',').filter(Boolean) || [],
+			tema: params.get('tema')?.split(',').filter(Boolean) || [],
+			tempo_entrega: params.get('tempo_entrega') || '',
+			estado: params.get('estado') || '',
+			cidade: params.get('cidade') || '',
+			ordenar: params.get('ordenar') || 'relevancia',
+			pagina: Math.max(1, Number(params.get('pagina')) || 1),
+			itens: Math.min(100, Math.max(1, Number(params.get('itens')) || 20))
 		};
 	}
-	
-	// Função para obter opções dinâmicas
-	function getDynamicOptions() {
+
+	// ✅ FUNÇÃO UTILITÁRIA: Extrair opções dinâmicas
+	function extractDynamicOptions() {
 		const options: Record<string, string[]> = {};
 		for (const [key, value] of $page.url.searchParams.entries()) {
 			if (key.startsWith('opcao_')) {
@@ -77,82 +96,40 @@
 		return options;
 	}
 	
-	// Construir filtros para a busca
-	function buildFilters(params: ReturnType<typeof getUrlParams>): SearchFilters {
-		return {
-			categories: params.selectedCategories,
-			brands: params.selectedBrands,
-			tags: params.selectedTags,
-			priceMin: params.priceMin,
-			priceMax: params.priceMax,
-			hasDiscount: params.hasDiscount,
-			hasFreeShipping: params.hasFreeShipping,
-			inStock: params.inStock,
-			rating: params.minRating,
-			condition: params.condition as 'new' | 'used' | 'refurbished' | undefined,
-			sellers: params.selectedSellers,
-			deliveryTime: params.deliveryTime,
-			location: params.selectedState || params.selectedCity ? {
-				state: params.selectedState,
-				city: params.selectedCity
-			} : undefined,
-			dynamicOptions: getDynamicOptions()
-		};
-	}
-	
-	// Função principal de busca
-	async function performSearch() {
-		const currentParams = $page.url.searchParams.toString();
+	// ✅ FUNÇÃO SIMPLES: Atualizar URL - COM MARCAÇÃO INTERNA
+	function updateURL(params: Record<string, any>) {
+		console.log('🌐 updateURL chamada com:', params);
+		isInternalNavigation = true; // ⚠️ MARCAR como navegação interna
 		
-		// Atualizar lastProcessedUrl aqui para evitar loops
-		lastProcessedUrl = currentParams;
-		isLoading = true;
+		const urlParams = new URLSearchParams($page.url.searchParams);
+		console.log('🌐 URL atual:', $page.url.search);
 		
-		try {
-			const params = getUrlParams();
-			const filters = buildFilters(params);
-			
-			const result = await searchService.search(
-				params.searchQuery, 
-				filters, 
-				params.currentPage, 
-				params.itemsPerPage
-			);
-			
-			searchResult = result;
-			
-			// Atualizar facets estáveis
-			if (result?.facets) {
-				stableFacets = result.facets;
-			}
-			
-			// Ordenar produtos
-			if (result?.products) {
-				sortedProducts = sortProducts(result.products, params.sortBy);
+		Object.entries(params).forEach(([key, value]) => {
+			if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+				console.log(`🌐 Removendo parâmetro: ${key}`);
+				urlParams.delete(key);
+			} else if (Array.isArray(value)) {
+				console.log(`🌐 Definindo array: ${key} = ${value.join(',')}`);
+				urlParams.set(key, value.join(','));
 			} else {
-				sortedProducts = [];
+				console.log(`🌐 Definindo valor: ${key} = ${String(value)}`);
+				urlParams.set(key, String(value));
 			}
-			
-			// Adicionar ao histórico
-			if (params.currentPage === 1 && params.searchQuery) {
-				searchService.addToHistory(params.searchQuery, result.totalCount);
-			}
-			
-			// Atualizar inputs de preço
-			if (!tempPriceMin && params.priceMin) tempPriceMin = String(params.priceMin);
-			if (!tempPriceMax && params.priceMax) tempPriceMax = String(params.priceMax);
-		} catch (error) {
-			console.error('❌ Erro na busca:', error);
-			searchResult = null;
-			sortedProducts = [];
-		} finally {
-			isLoading = false;
+		});
+
+		// Resetar para página 1 quando mudar filtros (exceto se for mudança de página)
+		if (!params.hasOwnProperty('pagina')) {
+			urlParams.set('pagina', '1');
 		}
+
+		const newUrl = `?${urlParams.toString()}`;
+		console.log('🌐 Nova URL (interna):', newUrl);
+		goto(newUrl, { replaceState: true });
 	}
-	
-	// Função para ordenar produtos
-	function sortProducts(products: SearchResult['products'], sortBy: string): SearchResult['products'] {
-		const sorted = [...products];
+
+	// ✅ FUNÇÃO SIMPLES: Ordenar produtos
+	function sortProducts(productsToSort: any[], sortBy: string): any[] {
+		const sorted = [...productsToSort];
 		
 		switch (sortBy) {
 			case 'menor-preco':
@@ -163,8 +140,6 @@
 				return sorted.sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0));
 			case 'melhor-avaliados':
 				return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-			case 'maior-desconto':
-				return sorted.sort((a, b) => (b.discount || 0) - (a.discount || 0));
 			case 'lancamentos':
 				return sorted.sort((a, b) => 
 					new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -174,49 +149,137 @@
 		}
 	}
 	
-	// Atualizar URL com novos parâmetros
-	function updateURL(updates: Record<string, string | string[] | number | boolean | undefined>) {
-		const newParams = new URLSearchParams($page.url.searchParams);
+	// 🚀 FUNÇÃO OTIMIZADA: Executar busca com cache e performance
+	async function executeSearch(forceRefresh = false, overrideParams?: any) {
+		// Limpar cache antigo periodicamente
+		cleanupCache();
 		
-		Object.entries(updates).forEach(([key, value]) => {
-			if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
-				newParams.delete(key);
-			} else if (Array.isArray(value)) {
-				newParams.set(key, value.join(','));
-			} else {
-				newParams.set(key, String(value));
-			}
+		// Usar parâmetros passados ou ler da URL
+		const urlParams = overrideParams || getUrlParams();
+		const cacheKey = generateCacheKey(urlParams);
+		
+		console.log('🔍 executeSearch - INICIANDO:', {
+			forceRefresh,
+			overrideParams: !!overrideParams,
+			urlParams,
+			cacheKey,
+			cacheSize: searchCache.size,
+			hasCache: searchCache.has(cacheKey)
 		});
 		
-		// Resetar para página 1 quando mudar filtros
-		if (!updates.hasOwnProperty('pagina')) {
-			newParams.set('pagina', '1');
+		// Verificar cache primeiro (só se não for um refresh forçado)
+		if (!forceRefresh && searchCache.has(cacheKey)) {
+			const cachedResult = searchCache.get(cacheKey);
+			console.log('⚡ USANDO RESULTADO DO CACHE:', {
+				cacheKey,
+				cachedProducts: cachedResult.products.length,
+				cachedTotal: cachedResult.totalCount
+			});
+			
+			products = cachedResult.products;
+			totalCount = cachedResult.totalCount;
+			facets = cachedResult.facets;
+			resetOptimisticUpdates();
+			return;
 		}
-		
-		const newUrl = `?${newParams.toString()}`;
-		console.log('🔄 Atualizando URL:', newUrl);
-		
-		goto(newUrl, { 
-			replaceState: true, 
-			keepFocus: true,
-			noScroll: true
-		});
+
+		isLoading = true;
+		console.log('🔍 EXECUTANDO BUSCA COMPLETA...', { forceRefresh, cacheKey });
+
+		try {
+			const queryParams = new URLSearchParams();
+			
+			// Parâmetros básicos
+			if (urlParams.q) queryParams.set('q', urlParams.q);
+			if (urlParams.categoria?.length) queryParams.set('categoria', urlParams.categoria.join(','));
+			if (urlParams.marca?.length) queryParams.set('marca', urlParams.marca.join(','));
+			if (urlParams.preco_min) queryParams.set('preco_min', urlParams.preco_min);
+			if (urlParams.preco_max) queryParams.set('preco_max', urlParams.preco_max);
+			
+			// Novos filtros
+			if (urlParams.promocao) queryParams.set('promocao', 'true');
+			if (urlParams.frete_gratis) queryParams.set('frete_gratis', 'true');
+			if (!urlParams.disponivel) queryParams.set('disponivel', 'false');
+			if (urlParams.avaliacao) queryParams.set('avaliacao', String(urlParams.avaliacao));
+			if (urlParams.condicao.length) queryParams.set('condicao', urlParams.condicao.join(','));
+			if (urlParams.vendedor?.length) queryParams.set('vendedor', urlParams.vendedor.join(','));
+			if (urlParams.beneficio?.length) queryParams.set('beneficio', urlParams.beneficio.join(','));
+			if (urlParams.tema?.length) queryParams.set('tema', urlParams.tema.join(','));
+			
+			// Meta
+			if (urlParams.ordenar) queryParams.set('ordenar', urlParams.ordenar);
+			if (urlParams.pagina) queryParams.set('pagina', String(urlParams.pagina));
+
+			// Filtros dinâmicos
+			const dynamicOptions = extractDynamicOptions();
+			Object.entries(dynamicOptions).forEach(([key, values]) => {
+				if (values.length > 0) {
+					queryParams.set(`opcao_${key}`, values.join(','));
+				}
+			});
+
+			const response = await fetch(`/api/products?${queryParams.toString()}`);
+			const result = await response.json();
+
+			if (result.success) {
+				console.log('✅ BUSCA CONCLUÍDA:', {
+					products: result.data?.products?.length || 0,
+					totalCount: result.data?.pagination?.total || 0,
+					cached: false
+				});
+
+				const searchResult = {
+					products: sortProducts(result.data?.products || [], urlParams.ordenar),
+					totalCount: result.data?.pagination?.total || 0,
+					facets: {
+						categories: result.data.facets?.categories || [],
+						brands: result.data.facets?.brands || [],
+						tags: result.data.facets?.tags || [],
+						priceRange: result.data.facets?.priceRange || { min: 0, max: 10000 },
+						ratings: result.data.facets?.ratings || [],
+						conditions: result.data.facets?.conditions || [],
+						deliveryOptions: result.data.facets?.deliveryOptions || [],
+						sellers: result.data.facets?.sellers || [],
+						benefits: result.data.facets?.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 },
+						dynamicOptions: result.data.facets?.dynamicOptions || []
+					}
+				};
+
+				// Atualizar estados
+				products = searchResult.products;
+				totalCount = searchResult.totalCount;
+				facets = searchResult.facets;
+				
+				// Salvar no cache
+				searchCache.set(cacheKey, searchResult);
+				console.log('💾 Resultado salvo no cache:', cacheKey);
+				
+				// Resetar optimistic updates
+				resetOptimisticUpdates();
+			} else {
+				console.error('❌ BUSCA FALHOU:', result);
+				products = [];
+				totalCount = 0;
+				resetOptimisticUpdates();
+			}
+		} catch (error) {
+			console.error('❌ ERRO NA BUSCA:', error);
+			products = [];
+			totalCount = 0;
+			resetOptimisticUpdates();
+		} finally {
+			isLoading = false;
+		}
 	}
-	
-	// Função para aplicar filtro de preço
-	function applyPriceFilter() {
-		const min = tempPriceMin ? Number(tempPriceMin) : undefined;
-		const max = tempPriceMax ? Number(tempPriceMax) : undefined;
-		updateURL({ preco_min: min, preco_max: max });
-	}
-	
-	// Limpar todos os filtros
+
+	// ✅ FUNÇÃO REMOVIDA: debouncedSearch não é mais necessária
+
+	// ✅ FUNÇÃO SIMPLES: Limpar filtros
 	function clearAllFilters() {
-		const dynamicOptions = getDynamicOptions();
-		updateURL({
+		const dynamicOptions = extractDynamicOptions();
+		const clearParams = {
 			categoria: undefined,
 			marca: undefined,
-			tag: undefined,
 			preco_min: undefined,
 			preco_max: undefined,
 			promocao: undefined,
@@ -224,111 +287,367 @@
 			disponivel: undefined,
 			avaliacao: undefined,
 			condicao: undefined,
-			entrega: undefined,
 			vendedor: undefined,
+			beneficio: undefined,
+			tema: undefined,
+			tempo_entrega: undefined,
 			estado: undefined,
 			cidade: undefined,
 			...Object.keys(dynamicOptions).reduce((acc, key) => ({
 				...acc,
 				[`opcao_${key}`]: undefined
-			}), {})
-		});
-		tempPriceMin = '';
-		tempPriceMax = '';
+			}), {}),
+			pagina: 1
+		};
+		updateURL(clearParams);
 	}
-	
-	// Verificar se há filtros ativos
+
+	// ✅ FUNÇÃO SIMPLES: Verificar filtros ativos
 	function hasActiveFilters(): boolean {
 		const params = getUrlParams();
-		const dynamicOptions = getDynamicOptions();
+		const dynamicOptions = extractDynamicOptions();
 		
 		return !!(
-			params.selectedCategories.length ||
-			params.selectedBrands.length ||
-			params.selectedTags.length ||
-			params.priceMin !== undefined ||
-			params.priceMax !== undefined ||
-			params.hasDiscount ||
-			params.hasFreeShipping ||
-			!params.inStock ||
-			params.minRating ||
-			params.condition ||
-			params.deliveryTime ||
-			params.selectedSellers.length ||
-			params.selectedState ||
-			params.selectedCity ||
+			params.categoria.length ||
+			params.marca.length ||
+			params.preco_min ||
+			params.preco_max ||
+			params.promocao ||
+			params.frete_gratis ||
+			!params.disponivel ||
+			params.avaliacao ||
+			params.condicao.length ||
+			params.vendedor.length ||
+			params.beneficio.length ||
+			params.tema.length ||
 			Object.keys(dynamicOptions).length
 		);
 	}
 	
-	// Observar mudanças na URL e executar busca
-	$effect(() => {
-		// Observar mudanças específicas nos parâmetros relevantes
-		const currentParams = $page.url.searchParams.toString();
+	// ✅ HANDLERS SIMPLIFICADOS - SEM CONFLITOS
+	function handleFilterChange(event: CustomEvent) {
+		const { categories, brands, priceRange } = event.detail;
+		const updateParams = {
+			categoria: categories?.length ? categories : undefined,
+			marca: brands?.length ? brands : undefined,
+			preco_min: priceRange?.min ? String(priceRange.min) : undefined,
+			preco_max: priceRange?.max ? String(priceRange.max) : undefined
+		};
 		
-		// Só evitar busca duplicada se já foi processada (e não é a primeira vez)
-		if (lastProcessedUrl !== null && currentParams === lastProcessedUrl) {
-			return;
-		}
-		
-		// Executar busca
-		performSearch();
-	});
-	
-	// Busca inicial no mount - apenas força primeira execução
-	onMount(() => {
-		// Se não tem parâmetros na URL, força primeira busca
-		if (!$page.url.searchParams.toString()) {
-			performSearch();
-		}
-	});
-	
-	// Valores computados para o template - usar untrack para evitar loops
-	let urlParams = $derived.by(() => {
-		$page.url.searchParams; // Observar mudanças
-		return getUrlParams();
-	});
-	
-	let dynamicOptions = $derived.by(() => {
-		$page.url.searchParams; // Observar mudanças
-		return getDynamicOptions();
-	});
-	
-	let totalPages = $derived(searchResult ? Math.ceil(searchResult.totalCount / urlParams.itemsPerPage) : 0);
-	let pageNumbers = $derived(getPageNumbers(urlParams.currentPage, totalPages));
-	
-	function getPageNumbers(current: number, total: number): (number | string)[] {
-		if (total <= 7) {
-			return Array.from({ length: total }, (_, i) => i + 1);
-		}
-		
-		const pages: (number | string)[] = [1];
-		
-		if (current > 3) pages.push('...');
-		
-		for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
-			pages.push(i);
-		}
-		
-		if (current < total - 2) pages.push('...');
-		if (total > 1) pages.push(total);
-		
-		return pages;
+		console.log('🎯 handleFilterChange:', updateParams);
+		updateURL(updateParams);
+		// ⚠️ REMOVIDO debouncedSearch - deixar o effect() da URL cuidar disso
 	}
+
+	function handleRatingChange(event: CustomEvent) {
+		const updateParams = { avaliacao: event.detail.rating || undefined };
+		updateURL(updateParams);
+	}
+
+	function handleConditionChange(event: CustomEvent) {
+		const updateParams = { condicao: event.detail.conditions?.length ? event.detail.conditions : undefined };
+		updateURL(updateParams);
+	}
+
+	function handleDeliveryChange(event: CustomEvent) {
+		const updateParams = { tempo_entrega: event.detail.deliveryTime || undefined };
+		updateURL(updateParams);
+	}
+
+	function handleSellerChange(event: CustomEvent) {
+		const updateParams = { vendedor: event.detail.sellers?.length ? event.detail.sellers : undefined };
+		updateURL(updateParams);
+	}
+
+	function handleLocationChange(event: CustomEvent) {
+		const updateParams = { 
+			estado: event.detail.state || undefined,
+			cidade: event.detail.city || undefined
+		};
+		updateURL(updateParams);
+	}
+
+	function handleBenefitChange(event: CustomEvent) {
+		const { benefit, value } = event.detail;
+		const updateParams = { 
+			[benefit === 'discount' ? 'promocao' : 
+			  benefit === 'freeShipping' ? 'frete_gratis' :
+			  'disponivel']: benefit === 'outOfStock' ? !value : value || undefined
+		};
+		updateURL(updateParams);
+	}
+
+	function handleTagChange(event: CustomEvent) {
+		const updateParams = { tema: event.detail.tags?.length ? event.detail.tags : undefined };
+		updateURL(updateParams);
+	}
+
+	function handleDynamicOptionChange(event: CustomEvent) {
+		const { optionSlug, values } = event.detail;
+		const updateParams = { [`opcao_${optionSlug}`]: values?.length ? values : undefined };
+		updateURL(updateParams);
+	}
+
+	function handleClearAll() {
+		console.log('🧹 Limpando todos os filtros');
+		clearAllFilters();
+	}
+
+	// ✅ HANDLER: Mudança de ordenação simplificada
+	function handleSortChange(newSort: string) {
+		console.log('🔄 Mudando ordenação para:', newSort);
+		const updateParams = { ordenar: newSort };
+		updateURL(updateParams);
+	}
+
+	// 🚀 FUNÇÃO: Limpar cache antigo
+	function cleanupCache() {
+		const now = Date.now();
+		if (now - lastCacheCleanup > CACHE_DURATION) {
+			searchCache.clear();
+			lastCacheCleanup = now;
+		}
+	}
+
+	// 🚀 FUNÇÃO: Gerar chave do cache
+	function generateCacheKey(params: Record<string, any>): string {
+		// Criar uma chave consistente baseada nos parâmetros
+		const sortedEntries = Object.entries(params)
+			.filter(([key, value]) => {
+				// Filtros mais específicos para evitar valores vazios
+				if (value === undefined || value === null) return false;
+				if (value === '') return false;
+				if (Array.isArray(value) && value.length === 0) return false;
+				if (typeof value === 'boolean' && value === false && key !== 'disponivel') return false;
+				return true;
+			})
+			.sort(([a], [b]) => a.localeCompare(b));
+		
+		const cacheKey = JSON.stringify(sortedEntries);
+		return cacheKey;
+	}
+
+	// 🚀 FUNÇÃO: Aplicar optimistic updates
+	function applyOptimisticUpdates(newFilters: Record<string, any>) {
+		// Atualizar filtros imediatamente para visual instantâneo
+		optimisticFilters = { ...optimisticFilters, ...newFilters };
+		hasOptimisticUpdates = true;
+		
+		// Simular ordenação local se possível (sem filtros muito específicos)
+		if (products.length > 0 && !newFilters.categoria && !newFilters.marca) {
+			const currentSort = newFilters.ordenar || getUrlParams().ordenar;
+			optimisticProducts = sortProducts([...products], currentSort);
+		}
+	}
+
+	// 🚀 FUNÇÃO: Resetar optimistic updates
+	function resetOptimisticUpdates() {
+		hasOptimisticUpdates = false;
+		optimisticFilters = {};
+		optimisticProducts = [];
+		optimisticTotalCount = 0;
+	}
+
+	// ✅ REMOVIDO: onMount não é mais necessário pois dados são carregados diretamente do servidor
+
+	// ✅ REAÇÃO CONTROLADA: Executar busca quando URL muda
+	let lastSearchParams = $state('');
+	
+	$effect(() => {
+		const currentSearchParams = $page.url.search;
+		
+		// ⚠️ EXECUTAR BUSCA para qualquer mudança de URL (interna ou externa)
+		if (currentSearchParams !== lastSearchParams && lastSearchParams !== '') {
+			console.log('🌐 URL mudou, executando busca:', {
+				current: currentSearchParams,
+				last: lastSearchParams,
+				internal: isInternalNavigation
+			});
+			
+			// Busca com delay mínimo para evitar conflitos
+			setTimeout(() => {
+				executeSearch(true);
+			}, isInternalNavigation ? 50 : 0); // Delay menor para mudanças internas
+		}
+		
+		// Sempre atualizar o último estado
+		lastSearchParams = currentSearchParams;
+		
+		// Reset flag após processamento
+		if (isInternalNavigation) {
+			setTimeout(() => {
+				isInternalNavigation = false;
+			}, 150);
+		}
+	});
+
+	// ✅ PREPARAR DADOS PARA FILTERSIDEBAR
+	function prepareFilterSidebarData() {
+		const params = getUrlParams();
+		const dynamicOptions = extractDynamicOptions();
+
+			// ✅ CORRIGIDO: Processar categorias COM FALLBACK para categoria selecionada
+	let categoriesWithSelection = (facets.categories || []).map((cat: any) => {
+		const isSelected = params.categoria.includes(cat.slug || cat.id);
+		return {
+			...cat,
+			selected: isSelected
+		};
+	});
+
+		// ✅ MARKETPLACE PATTERN: Se há categoria ativa mas facets.categories está vazio,
+		// manter dados da categoria selecionada para UI (header, filtros ativos, etc.)
+		if (params.categoria.length > 0 && categoriesWithSelection.length === 0) {
+			// Buscar dados da categoria selecionada do cache ou dados iniciais
+			for (const categorySlug of params.categoria) {
+				// Tentar encontrar a categoria nos dados iniciais do servidor
+				let categoryData = data?.serverData?.facets?.categories?.find((c: any) => 
+					(c.slug || c.id) === categorySlug
+				);
+				
+				// OU criar dados mínimos para categoria selecionada
+				if (!categoryData) {
+					// Mapeamento correto de nomes de categorias
+					const categoryNames: Record<string, string> = {
+						'alimentacao-e-higiene': 'Alimentação e Higiene',
+						'almofadas': 'Almofadas',
+						'decoracao': 'Decoração',
+						'quarto-de-bebe': 'Quarto de Bebê',
+						'enxoval': 'Enxoval',
+						'maternidade': 'Maternidade'
+					};
+					
+					categoryData = {
+						id: categorySlug,
+						slug: categorySlug,
+						name: categoryNames[categorySlug] || categorySlug.split('-').map(word => 
+							word.charAt(0).toUpperCase() + word.slice(1)
+						).join(' '),
+						count: totalCount || 0 // Usar total real de produtos encontrados
+					};
+				}
+				
+				categoriesWithSelection.push({
+					...categoryData,
+					selected: true
+				});
+			}
+		}
+
+		// Processar marcas
+		const brandsWithSelection = (facets.brands || []).map((brand: any) => {
+			const isSelected = params.marca.includes(brand.slug || brand.id);
+			return {
+				...brand,
+				selected: isSelected
+			};
+		});
+
+		// Processar tags
+		const tagsWithSelection = (facets.tags || []).map((tag: any) => {
+			const isSelected = params.tema.includes(tag.slug || tag.id);
+			return {
+				...tag,
+				selected: isSelected
+			};
+		});
+
+		const result = {
+			// Categorias com seleção
+			categories: categoriesWithSelection,
+			
+			// Marcas com seleção
+			brands: brandsWithSelection,
+			
+			// Tags com seleção
+			tags: tagsWithSelection,
+			
+			// Range de preços
+			priceRange: {
+				min: facets.priceRange?.min || 0,
+				max: facets.priceRange?.max || 10000,
+				current: {
+					min: Number(params.preco_min) || facets.priceRange?.min || 0,
+					max: Number(params.preco_max) || facets.priceRange?.max || 10000
+				}
+			},
+			
+			// ✅ NOVOS FILTROS IMPLEMENTADOS
+			
+			// Rating/Avaliação com contadores reais
+			ratingCounts: (facets.ratings || []).reduce((acc: any, rating: any) => {
+				acc[rating.value] = rating.count;
+				return acc;
+			}, {}),
+			currentRating: Number(params.avaliacao) || 0,
+			
+			// Condições do produto (Novo/Usado/Recondicionado)
+			conditions: facets.conditions || [],
+			selectedConditions: params.condicao || [],
+			
+			// Tempo de entrega
+			deliveryOptions: facets.deliveryOptions || [],
+			selectedDeliveryTime: params.tempo_entrega || '',
+			
+			// Vendedores
+			sellers: facets.sellers || [],
+			selectedSellers: params.vendedor || [],
+			
+			// Benefícios (Promoção, Frete Grátis, Indisponíveis)
+			hasDiscount: params.promocao || false,
+			hasFreeShipping: params.frete_gratis || false,
+			showOutOfStock: !params.disponivel,
+			benefitsCounts: facets.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 },
+			
+			// Tags temáticas
+			selectedTags: params.tema || [],
+			
+			// Filtros dinâmicos (Cor, Tamanho, Material, etc.)
+			dynamicOptions: facets.dynamicOptions || [],
+			selectedDynamicOptions: dynamicOptions,
+			
+			// Estados e cidades (por enquanto vazios - podem ser implementados depois)
+			states: [],
+			cities: [],
+			selectedLocation: { state: params.estado, city: params.cidade },
+			userLocation: undefined
+		};
+		
+		return result;
+	}
+
+	// 🚀 VALORES DERIVADOS OTIMIZADOS - Com suporte a optimistic updates
+	let currentParams = $derived(getUrlParams());
+	let totalPages = $derived(Math.ceil((hasOptimisticUpdates && optimisticTotalCount > 0 ? optimisticTotalCount : totalCount) / 20));
+	let sidebarData = $derived(prepareFilterSidebarData());
+	
+	// 🚀 PRODUTOS EXIBIDOS - Optimistic primeiro, depois real
+	let displayProducts = $derived(
+		hasOptimisticUpdates && optimisticProducts.length > 0 
+			? optimisticProducts 
+			: products
+	);
+	
+	// 🚀 TOTAL EXIBIDO - Optimistic primeiro, depois real  
+	let displayTotalCount = $derived(
+		hasOptimisticUpdates && optimisticTotalCount > 0 
+			? optimisticTotalCount 
+			: totalCount
+	);
 </script>
 
 <svelte:head>
-	<title>{urlParams.searchQuery ? `${urlParams.searchQuery} - Busca | Marketplace GDG` : 'Todos os Produtos | Marketplace GDG'}</title>
-	<meta name="description" content={urlParams.searchQuery ? `Resultados para "${urlParams.searchQuery}"` : 'Encontre os melhores produtos no Marketplace GDG'} />
+	<title>{currentParams.q ? `${currentParams.q} - Busca | Marketplace GDG` : 'Busca | Marketplace GDG'}</title>
+	<meta name="description" content={currentParams.q ? `Resultados para "${currentParams.q}"` : 'Encontre os melhores produtos no Marketplace GDG'} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href={$page.url.href} />
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
-	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 main-container overflow-x-hidden">
-		<!-- Breadcrumb alinhado com a identidade visual -->
-		<nav class="mb-4" aria-label="Breadcrumb" style="font-family: 'Lato', sans-serif;">
-			<div class="flex items-center gap-2 text-sm">
+	<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+		<!-- Breadcrumb -->
+		<nav class="mb-4" aria-label="Breadcrumb">
+			<div class="flex items-center gap-2 text-sm" style="font-family: 'Lato', sans-serif;">
 				<a 
 					href="/" 
 					class="flex items-center gap-1 text-gray-500 hover:text-[#00BFB3] transition-colors"
@@ -346,18 +665,18 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 					</svg>
 					Busca
-					{#if urlParams.searchQuery}
+					{#if currentParams.q}
 						<span class="text-gray-400 font-normal">para</span>
 						<span class="bg-[#00BFB3]/10 text-[#00BFB3] px-2 py-1 rounded-full font-medium max-w-[200px] truncate">
-							"{urlParams.searchQuery}"
+							"{currentParams.q}"
 						</span>
 					{/if}
 				</span>
 			</div>
 		</nav>
 		
-		<!-- Header Padrão seguindo identidade das outras páginas -->
-		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6" style="font-family: 'Lato', sans-serif;">
+		<!-- Header -->
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
 			<div class="flex items-start gap-4">
 				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center flex-shrink-0">
 					<svg class="w-6 h-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -366,11 +685,11 @@
 				</div>
 				<div>
 					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Lato', sans-serif;">
-						{#if urlParams.searchQuery}
-							Resultados para "{urlParams.searchQuery}"
-						{:else if urlParams.selectedCategories.length}
-							{@const categoryNames = urlParams.selectedCategories.map(id => {
-								const cat = stableFacets?.categories.find(c => (c.slug || c.id) === id || c.id === id);
+						{#if currentParams.q}
+							Resultados para "{currentParams.q}"
+						{:else if currentParams.categoria.length}
+							{@const categoryNames = currentParams.categoria.map(id => {
+								const cat = facets.categories.find((c: any) => (c.slug || c.id) === id || c.id === id);
 								return cat?.name || id;
 							})}
 							{categoryNames.join(', ')}
@@ -379,18 +698,18 @@
 						{/if}
 					</h1>
 					<p class="mt-1 text-gray-600 text-sm sm:text-base" style="font-family: 'Lato', sans-serif;">
-						{#if searchResult && !isLoading}
-							{searchResult.totalCount} {searchResult.totalCount === 1 ? 'produto encontrado' : 'produtos encontrados'}
-						{:else if isLoading}
-							Buscando produtos...
+						{#if !isLoading}
+							{displayTotalCount} {displayTotalCount === 1 ? 'produto encontrado' : 'produtos encontrados'}
+							{#if hasOptimisticUpdates}
+								<span class="text-[#00BFB3] text-xs">⚡</span>
+							{/if}
 						{:else}
-							Encontre os melhores produtos em nossa loja
+							Buscando produtos...
 						{/if}
 					</p>
 				</div>
 			</div>
 			
-			<!-- Descrição expandível -->
 			<div class="mt-6 pt-6 border-t border-gray-200">
 				<div class="text-center">
 					<p class="text-gray-600 text-base leading-relaxed" style="font-family: 'Lato', sans-serif;">
@@ -401,650 +720,286 @@
 			</div>
 		</div>
 								
-		<div class="flex gap-4 lg:gap-6 overflow-hidden">
+		<div class="flex gap-4 lg:gap-6">
 			<!-- Filtros Desktop -->
-			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'} overflow-hidden" use:useStableUpdates>
+			<aside class="w-80 flex-shrink-0 hidden lg:block {showDesktopFilters ? '' : 'lg:hidden'}">
 				<FilterSidebar
-					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
-						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
-						return {
-							...c,
-							selected: isSelected
-						};
-					}) || []}
-					brands={(stableFacets || searchResult?.facets)?.brands?.map(b => ({
-						...b,
-						selected: urlParams.selectedBrands.includes(b.slug || b.id)
-					})) || []}
-					priceRange={searchResult && searchResult.products.length > 0 ? {
-						min: 0,
-						max: Math.max(...searchResult.products.map(p => p.price), 10000),
-						current: { 
-							min: urlParams.priceMin !== undefined ? urlParams.priceMin : 0, 
-							max: urlParams.priceMax !== undefined ? urlParams.priceMax : Math.max(...searchResult.products.map(p => p.price), 10000)
-						}
-					} : undefined}
-					ratingCounts={(stableFacets || searchResult?.facets)?.ratings?.reduce<Record<number, number>>((acc, r) => ({ ...acc, [r.value]: r.count }), {}) || {}}
-					currentRating={urlParams.minRating}
-					conditions={(stableFacets || searchResult?.facets)?.conditions || [
-						{ value: 'new', label: 'Novo', count: 0 },
-						{ value: 'used', label: 'Usado', count: 0 },
-						{ value: 'refurbished', label: 'Recondicionado', count: 0 }
-					]}
-					selectedConditions={urlParams.condition ? [urlParams.condition] : []}
-					deliveryOptions={(stableFacets || searchResult?.facets)?.deliveryOptions || [
-						{ value: '24h', label: 'Entrega em 24h', count: 0 },
-						{ value: '48h', label: 'Até 2 dias', count: 0 },
-						{ value: '3days', label: 'Até 3 dias úteis', count: 0 },
-						{ value: '7days', label: 'Até 7 dias úteis', count: 0 },
-						{ value: '15days', label: 'Até 15 dias', count: 0 }
-					]}
-					selectedDeliveryTime={urlParams.deliveryTime}
-					sellers={(stableFacets || searchResult?.facets)?.sellers || []}
-					selectedSellers={urlParams.selectedSellers}
-					states={(stableFacets || searchResult?.facets)?.locations?.states || []}
-					cities={(stableFacets || searchResult?.facets)?.locations?.cities || []}
-					selectedLocation={{ state: urlParams.selectedState, city: urlParams.selectedCity }}
-					hasDiscount={urlParams.hasDiscount}
-					hasFreeShipping={urlParams.hasFreeShipping}
-					showOutOfStock={!urlParams.inStock}
-					benefitsCounts={(stableFacets || searchResult?.facets)?.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 }}
-					tags={(stableFacets || searchResult?.facets)?.tags || []}
-					selectedTags={urlParams.selectedTags}
-					dynamicOptions={(stableFacets || searchResult?.facets)?.dynamicOptions || []}
-					selectedDynamicOptions={dynamicOptions}
-					loading={isLoading}
-					showCloseButton={true}
-					onClose={() => showDesktopFilters = false}
-					on:filterChange={(e) => {
-						updateURL({
-							categoria: e.detail.categories,
-							marca: e.detail.brands,
-							preco_min: e.detail.priceRange?.min,
-							preco_max: e.detail.priceRange?.max
-						});
-					}}
-					on:ratingChange={(e) => updateURL({ avaliacao: e.detail.rating })}
-					on:conditionChange={(e) => updateURL({ condicao: e.detail.conditions[0] })}
-					on:deliveryChange={(e) => updateURL({ entrega: e.detail.deliveryTime })}
-					on:sellerChange={(e) => updateURL({ vendedor: e.detail.sellers })}
-					on:locationChange={(e) => updateURL({ estado: e.detail.state, cidade: e.detail.city })}
-					on:tagChange={(e) => updateURL({ tag: e.detail.tags })}
-					on:dynamicOptionChange={(e) => updateURL({ [`opcao_${e.detail.optionSlug}`]: e.detail.values })}
-					on:benefitChange={(e) => {
-						switch (e.detail.benefit) {
-							case 'discount':
-								updateURL({ promocao: e.detail.value || undefined });
-								break;
-							case 'freeShipping':
-								updateURL({ frete_gratis: e.detail.value || undefined });
-								break;
-							case 'outOfStock':
-								updateURL({ disponivel: !e.detail.value || undefined });
-								break;
-						}
-					}}
-					on:clearAll={clearAllFilters}
+					{...sidebarData}
+					showCloseButton={false}
+					on:filterChange={handleFilterChange}
+					on:ratingChange={handleRatingChange}
+					on:conditionChange={handleConditionChange}
+					on:deliveryChange={handleDeliveryChange}
+					on:sellerChange={handleSellerChange}
+					on:locationChange={handleLocationChange}
+					on:benefitChange={handleBenefitChange}
+					on:tagChange={handleTagChange}
+					on:dynamicOptionChange={handleDynamicOptionChange}
+					on:clearAll={handleClearAll}
 				/>
 			</aside>
 			
-			<!-- Produtos -->
-			<div class="flex-1 min-w-0 overflow-hidden">
-				<!-- Barra de controles com identidade visual padrão -->
-				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6" style="font-family: 'Lato', sans-serif;">
-					<!-- Layout compacto para mobile -->
-					<div class="flex items-center justify-between gap-2 sm:gap-3">
-						<!-- Lado esquerdo - Filtros e View Mode -->
-						<div class="flex items-center gap-2">
-							<!-- Toggle filtros desktop -->
-							{#if !showDesktopFilters}
+			<!-- Conteúdo Principal -->
+			<main class="flex-1 min-w-0">
+				<!-- Barra de Ações -->
+				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+					<div class="flex flex-col lg:flex-row lg:items-center gap-4">
+						<!-- Botão Filtros Mobile -->
 								<button 
-									onclick={() => showDesktopFilters = true}
-									class="hidden lg:flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+							onclick={() => showMobileFilters = !showMobileFilters}
+							class="lg:hidden flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 								>
 									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
 									</svg>
-									<span class="hidden xl:inline">Mostrar Filtros</span>
-								</button>
-							{/if}
-							
-							<!-- Filtros mobile -->
-							<button 
-								onclick={() => showMobileFilters = true}
-								class="lg:hidden flex items-center gap-1.5 px-3 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors text-sm"
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-								</svg>
-								<span class="hidden sm:inline">Filtros</span>
+							Filtros
 								{#if hasActiveFilters()}
-									<span class="bg-white text-[#00BFB3] text-xs px-1.5 py-0.5 rounded-full font-semibold min-w-[18px] text-center">
-										{urlParams.selectedCategories.length + urlParams.selectedBrands.length + urlParams.selectedTags.length + (urlParams.hasDiscount ? 1 : 0) + (urlParams.hasFreeShipping ? 1 : 0) + Object.values(dynamicOptions).reduce((sum, values) => sum + values.length, 0)}
-									</span>
+								<span class="bg-[#00BFB3] text-white text-xs px-2 py-1 rounded-full">●</span>
 								{/if}
 							</button>
 							
-							<!-- View mode compacto -->
-							<div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
+						<!-- Botão Toggle Filtros Desktop -->
 								<button
-									onclick={() => updateURL({ visualizar: undefined })}
-									class="p-2 {urlParams.viewMode === 'grid' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-all"
-									aria-label="Grade"
-									title="Visualização em grade"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+							onclick={() => showDesktopFilters = !showDesktopFilters}
+							class="hidden lg:flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
 									</svg>
+							{showDesktopFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
 								</button>
-								<div class="w-px bg-gray-300"></div>
-								<button
-									onclick={() => updateURL({ visualizar: 'lista' })}
-									class="p-2 {urlParams.viewMode === 'list' ? 'bg-[#00BFB3] text-white' : 'text-gray-600 hover:bg-gray-50'} transition-all"
-									aria-label="Lista"
-									title="Visualização em lista"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-									</svg>
-								</button>
-							</div>
-							
-							<!-- Contador compacto mobile -->
-							{#if searchResult}
-								<div class="lg:hidden flex items-center gap-1 px-2 py-1 bg-gray-50 rounded text-xs text-gray-600">
-									<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span>
-								</div>
-							{/if}
-						</div>
-						
-						<!-- Lado direito - Ordenação -->
-						<div class="flex items-center gap-2">
-							<!-- Items por página - desktop -->
-							<div class="hidden sm:flex items-center gap-2">
-								<div class="flex items-center gap-1.5 text-sm text-gray-600">
-									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-									</svg>
-									<span class="font-medium whitespace-nowrap">Exibir:</span>
-								</div>
-								<div class="relative">
+
+						<div class="flex-1"></div>
+
+						<!-- Ordenação -->
+						<div class="flex items-center gap-3">
+							<label for="sort-select" class="text-sm font-medium text-gray-700 whitespace-nowrap">Ordenar por:</label>
 									<select 
-										value={urlParams.itemsPerPage}
-										onchange={(e) => updateURL({ itens: e.currentTarget.value })}
-										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer select-custom"
-									>
-										<option value={20}>20</option>
-										<option value={40}>40</option>
-										<option value={60}>60</option>
-										<option value={100}>100</option>
+								id="sort-select"
+								value={currentParams.ordenar}
+								onchange={(e) => {
+									const target = e.target as HTMLSelectElement;
+									handleSortChange(target.value);
+								}}
+								class="border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] min-w-[180px]"
+							>
+								{#each sortOptions as option}
+									<option value={option.value}>{option.label}</option>
+								{/each}
 									</select>
-									<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-										<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-										</svg>
+							{#if hasOptimisticUpdates}
+								<span class="text-[#00BFB3] text-xs animate-pulse">⚡</span>
+							{/if}
 									</div>
-								</div>
+
+						<!-- Botão Salvar Busca -->
+						{#if currentParams.q}
+							<SaveSearchButton 
+								searchQuery={currentParams.q} 
+								resultCount={displayTotalCount}
+							/>
+						{/if}
 							</div>
 							
-							<!-- Contador desktop -->
-							{#if searchResult}
-								<div class="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-600">
-									<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+					<!-- Filtros Ativos -->
+					{#if hasActiveFilters()}
+						<div class="mt-4 pt-4 border-t border-gray-200">
+							<div class="flex flex-wrap items-center gap-2">
+								<span class="text-sm font-medium text-gray-700">Filtros ativos:</span>
+								
+								{#each currentParams.categoria as categoryId}
+									{@const category = facets.categories.find((c: any) => (c.slug || c.id) === categoryId)}
+									{#if category}
+										<span class="inline-flex items-center gap-1 bg-[#00BFB3]/10 text-[#00BFB3] px-3 py-1 rounded-full text-sm">
+											{category.name}
+											<button onclick={() => updateURL({ categoria: currentParams.categoria.filter(id => id !== categoryId) })} aria-label="Remover categoria {category.name}">
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 									</svg>
-									<span class="font-medium text-[#00BFB3]">{searchResult.totalCount.toLocaleString('pt-BR')}</span>
-									<span>produto{searchResult.totalCount !== 1 ? 's' : ''}</span>
-								</div>
+											</button>
+										</span>
 							{/if}
-							
-							<!-- Ordenação compacta -->
-							<div class="flex items-center gap-1 sm:gap-2">
-								<svg class="w-4 h-4 text-[#00BFB3] hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+								{/each}
+
+								{#each currentParams.marca as brandId}
+									{@const brand = facets.brands.find((b: any) => (b.slug || b.id) === brandId)}
+									{#if brand}
+										<span class="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+											{brand.name}
+											<button onclick={() => updateURL({ marca: currentParams.marca.filter(id => id !== brandId) })} aria-label="Remover marca {brand.name}">
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 								</svg>
-								<div class="relative">
-									<select 
-										value={urlParams.sortBy}
-										onchange={(e) => updateURL({ ordenar: e.currentTarget.value })}
-										class="pl-3 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3] transition-all hover:border-[#00BFB3]/50 cursor-pointer min-w-[120px] sm:min-w-[160px] select-custom"
-									>
-										{#each sortOptions as option}
-											<option value={option.value}>{option.label}</option>
+											</button>
+										</span>
+									{/if}
 										{/each}
-									</select>
-									<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-										<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+
+								{#if currentParams.preco_min || currentParams.preco_max}
+									<span class="inline-flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+										{#if currentParams.preco_min && currentParams.preco_max}
+											R$ {currentParams.preco_min} - R$ {currentParams.preco_max}
+										{:else if currentParams.preco_min}
+											A partir de R$ {currentParams.preco_min}
+										{:else}
+											Até R$ {currentParams.preco_max}
+										{/if}
+										<button onclick={() => updateURL({ preco_min: undefined, preco_max: undefined })} aria-label="Remover filtro de preço">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 										</svg>
+										</button>
+									</span>
+								{/if}
+
+								<!-- Botão de limpar removido - existe no FilterSidebar -->
 									</div>
 								</div>
+					{/if}
 							</div>
+
+				<!-- Filtros Mobile Modal -->
+				{#if showMobileFilters}
+					<div class="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onclick={() => showMobileFilters = false}>
+						<div class="bg-white w-full max-w-sm h-full overflow-y-auto" onclick={(e) => e.stopPropagation()}>
+							<div class="p-4 border-b border-gray-200 flex items-center justify-between">
+								<h3 class="text-lg font-semibold">Filtros</h3>
+								<button onclick={() => showMobileFilters = false}>
+									<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
 						</div>
+							<div class="p-4">
+								<FilterSidebar
+									{...sidebarData}
+									showCloseButton={false}
+									class="border-0 shadow-none p-0"
+									on:filterChange={handleFilterChange}
+									on:ratingChange={handleRatingChange}
+									on:conditionChange={handleConditionChange}
+									on:deliveryChange={handleDeliveryChange}
+									on:sellerChange={handleSellerChange}
+									on:locationChange={handleLocationChange}
+									on:benefitChange={handleBenefitChange}
+									on:tagChange={handleTagChange}
+									on:dynamicOptionChange={handleDynamicOptionChange}
+									on:clearAll={() => {
+										handleClearAll();
+										showMobileFilters = false;
+									}}
+								/>
 					</div>
 				</div>
+					</div>
+				{/if}
 				
-				<!-- Grid/Lista de produtos -->
-				{#key totalPages}
+				<!-- Grid de Produtos -->
+				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
 				{#if isLoading}
-					<div class="{urlParams.viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 w-full overflow-hidden' : 'space-y-4'}">
-						{#each Array(urlParams.itemsPerPage) as _}
-							{#if urlParams.viewMode === 'grid'}
-								<div class="min-w-0">
+						<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+							{#each Array(12) as _}
 									<ProductCardSkeleton />
+							{/each}
 								</div>
-							{:else}
-								<!-- Skeleton para lista -->
-								<div class="bg-white rounded-lg shadow-sm p-4 flex gap-4 animate-pulse">
-									<div class="w-24 h-24 bg-gray-200 rounded"></div>
-									<div class="flex-1 space-y-3">
-										<div class="h-4 bg-gray-200 rounded w-3/4"></div>
-										<div class="h-3 bg-gray-200 rounded w-full"></div>
-										<div class="h-3 bg-gray-200 rounded w-2/3"></div>
-										<div class="flex items-center gap-4">
-											<div class="h-5 bg-gray-200 rounded w-20"></div>
-											<div class="h-6 bg-gray-200 rounded w-24"></div>
-						</div>
-									</div>
-									<div class="flex flex-col gap-2">
-										<div class="w-32 h-10 bg-gray-200 rounded-lg"></div>
-										<div class="w-10 h-10 bg-gray-200 rounded-lg"></div>
-									</div>
-								</div>
-							{/if}
+					{:else if displayProducts.length > 0}
+						<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+							{#each displayProducts as product}
+								<ProductCard {product} />
 						{/each}
 					</div>
-				{:else if !searchResult || sortedProducts.length === 0}
-					<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center" style="font-family: 'Lato', sans-serif;">
-						<div class="w-16 h-16 sm:w-20 sm:h-20 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-							<svg class="w-8 h-8 sm:w-10 sm:h-10 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+					{:else}
+						<div class="text-center py-12">
+							<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 							</svg>
-						</div>
-						<h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3" style="font-family: 'Lato', sans-serif;">Nenhum produto encontrado</h3>
-						<p class="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto leading-relaxed" style="font-family: 'Lato', sans-serif;">
-							{#if urlParams.searchQuery}
-								Não encontramos produtos para "{urlParams.searchQuery}". Tente ajustar os filtros ou use outros termos de busca.
+							<h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>
+							<p class="text-gray-600 mb-4">
+								{#if currentParams.q}
+									Não encontramos produtos para "{currentParams.q}".
 							{:else}
-								Tente ajustar os filtros ou fazer uma busca para encontrar produtos.
+									Não encontramos produtos com os filtros selecionados.
 							{/if}
 						</p>
-						
-						<div class="flex flex-col sm:flex-row gap-3 justify-center max-w-sm sm:max-w-none mx-auto">
-							{#if hasActiveFilters()}
-								<button 
-									onclick={clearAllFilters}
-									class="inline-flex items-center justify-center px-6 py-3 bg-white text-[#00BFB3] text-sm font-semibold rounded-lg border border-[#00BFB3] hover:bg-[#00BFB3] hover:text-white focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
-									style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
-								>
-									<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-									</svg>
-									Limpar Filtros
-								</button>
-							{/if}
-							<a
-								href="/"
-								class="inline-flex items-center justify-center px-6 py-3 bg-[#00BFB3] text-white text-sm font-semibold rounded-lg hover:bg-[#00A89D] focus:ring-2 focus:ring-[#00BFB3]/20 transition-all touch-manipulation"
-								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
-							>
-								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-								</svg>
-								Explorar Produtos
-							</a>
+							<!-- Botão de limpar removido - use o FilterSidebar -->
 						</div>
-					</div>
-				{:else}
-					<!-- Container com transição suave -->
-					<div class="products-container">
-						{#if urlParams.viewMode === 'grid'}
-							<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 min-h-[600px] w-full overflow-hidden">
-								{#each sortedProducts as product, index (product.id)}
-									<div class="product-wrapper min-w-0">
-										<ProductCard {product} />
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<!-- Lista view -->
-							<div class="space-y-4 min-h-[600px]">
-								{#each sortedProducts as product (product.id)}
-									<div class="product-list-item">
-										<div class="bg-white rounded-lg shadow-sm p-4 flex gap-4 hover:shadow-md transition-shadow">
-											<img 
-												src={product.images?.[0] || '/api/placeholder/120/120'} 
-												alt={product.name}
-												class="w-24 h-24 object-cover rounded"
-											/>
-											<div class="flex-1">
-												<h3 class="font-medium text-gray-900 mb-1">
-													<a href="/produto/{product.slug}" class="hover:text-[#00BFB3]">
-														{product.name}
-													</a>
-												</h3>
-												<p class="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
-												<div class="flex items-center gap-4">
-													{#if product.original_price}
-														<span class="text-sm text-gray-500 line-through">
-															R$ {product.original_price.toFixed(2)}
-														</span>
-													{/if}
-													<span class="text-lg font-bold text-[#00BFB3]">
-														R$ {product.price.toFixed(2)}
-													</span>
-													{#if product.discount}
-														<span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
-															-{product.discount}%
-														</span>
-													{/if}
-												</div>
-											</div>
-											<div class="flex flex-col gap-2">
-												<a 
-													href="/produto/{product.slug}" 
-													class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors text-center"
-												>
-													Ver produto
-												</a>
-												<button class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" aria-label="Adicionar aos favoritos">
-													<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-													</svg>
+					{/if}
+				</div>
+
+				<!-- Paginação -->
+				{#if totalPages > 1 && !isLoading}
+					<div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+						<nav class="flex items-center justify-between">
+							<div class="flex-1 flex justify-between sm:hidden">
+								<button 
+									onclick={() => updateURL({ pagina: Math.max(1, currentParams.pagina - 1) })}
+									disabled={currentParams.pagina === 1}
+									class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+								>
+									Anterior
+								</button>
+								<button
+									onclick={() => updateURL({ pagina: Math.min(totalPages, currentParams.pagina + 1) })}
+									disabled={currentParams.pagina === totalPages}
+									class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+								>
+									Próxima
 												</button>
 											</div>
-										</div>
-									</div>
-								{/each}
-							</div>
+							<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+								<div>
+									<p class="text-sm text-gray-700">
+										Mostrando 
+										<span class="font-medium">{((currentParams.pagina - 1) * 20) + 1}</span>
+										até 
+										<span class="font-medium">{Math.min(currentParams.pagina * 20, displayTotalCount)}</span>
+										de 
+										<span class="font-medium">{displayTotalCount}</span>
+										resultados
+										{#if hasOptimisticUpdates}
+											<span class="text-[#00BFB3] text-xs">⚡</span>
 						{/if}
+									</p>
 					</div>
-					
-					<!-- Paginação -->
-					{#if totalPages > 1}
-						<div class="flex items-center justify-center space-x-1 sm:space-x-2 mt-6 sm:mt-8">
+								<div>
+									<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
 							<button 
-								onclick={() => updateURL({ pagina: urlParams.currentPage - 1 })}
-								disabled={urlParams.currentPage === 1}
-								class="px-3 sm:px-4 py-2 text-sm font-semibold text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-gray-200 transition-all touch-manipulation"
-								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
-							>
-								<span class="hidden sm:inline">Anterior</span>
-								<span class="sm:hidden">‹</span>
+											onclick={() => updateURL({ pagina: Math.max(1, currentParams.pagina - 1) })}
+											disabled={currentParams.pagina === 1}
+											class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+									>
+											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+											</svg>
 							</button>
 							
-							<div class="flex space-x-1 sm:space-x-2 max-w-[200px] sm:max-w-none overflow-x-auto">
-								{#each pageNumbers as pageNum}
-									{#if typeof pageNum === 'number'}
+									{#each Array.from({length: Math.min(totalPages, 5)}, (_, i) => i + Math.max(1, currentParams.pagina - 2)) as pageNum}
+										{#if pageNum <= totalPages}
 										<button 
 											onclick={() => updateURL({ pagina: pageNum })}
-											class="px-3 sm:px-4 py-2 text-sm font-semibold rounded-lg transition-all touch-manipulation flex-shrink-0"
-											class:bg-[#00BFB3]={pageNum === urlParams.currentPage}
-											class:text-white={pageNum === urlParams.currentPage}
-											class:bg-white={pageNum !== urlParams.currentPage}
-											class:text-gray-700={pageNum !== urlParams.currentPage}
-											class:border={pageNum !== urlParams.currentPage}
-											class:border-gray-300={pageNum !== urlParams.currentPage}
-											class:hover:bg-gray-50={pageNum !== urlParams.currentPage}
-											class:focus:ring-2={pageNum !== urlParams.currentPage}
-											class:focus:ring-gray-200={pageNum !== urlParams.currentPage}
-											style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
+												class="relative inline-flex items-center px-4 py-2 border {pageNum === currentParams.pagina ? 'bg-[#00BFB3] border-[#00BFB3] text-white' : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'} text-sm font-medium"
 										>
 											{pageNum}
 										</button>
-									{:else}
-										<span class="px-2 text-gray-500 flex items-center" style="font-family: 'Lato', sans-serif;">...</span>
 									{/if}
 								{/each}
-							</div>
 							
 							<button 
-								onclick={() => updateURL({ pagina: urlParams.currentPage + 1 })}
-								disabled={urlParams.currentPage === totalPages}
-								class="px-3 sm:px-4 py-2 text-sm font-semibold text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-gray-200 transition-all touch-manipulation"
-								style="font-family: 'Lato', sans-serif; -webkit-tap-highlight-color: transparent;"
-							>
-								<span class="hidden sm:inline">Próxima</span>
-								<span class="sm:hidden">›</span>
+											onclick={() => updateURL({ pagina: Math.min(totalPages, currentParams.pagina + 1) })}
+											disabled={currentParams.pagina === totalPages}
+											class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+									>
+											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+											</svg>
 							</button>
+									</nav>
 						</div>
-					{/if}
-				{/if}
-				{/key}
 			</div>
+						</nav>
 		</div>
+				{/if}
+			</main>
 	</div>
 </div>
-
-<!-- Modal de Filtros Mobile -->
-{#if showMobileFilters}
-	<div class="fixed inset-0 z-50 lg:hidden">
-		<button 
-			class="absolute inset-0 bg-black bg-opacity-50" 
-			onclick={() => showMobileFilters = false}
-			aria-label="Fechar filtros"
-			type="button"
-		></button>
-		<div class="absolute right-0 top-0 h-full w-full max-w-sm bg-white overflow-hidden flex flex-col">
-			<!-- Header -->
-			<div class="p-4 border-b flex items-center justify-between bg-white">
-				<h2 class="text-lg font-semibold">Filtros</h2>
-				<button 
-					onclick={() => showMobileFilters = false}
-					class="p-2 hover:bg-gray-50 rounded-lg"
-					aria-label="Fechar painel de filtros"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
 			</div>
-			
-			<!-- Conteúdo dos filtros -->
-			<div class="flex-1 overflow-y-auto">
-				<FilterSidebar
-					categories={(stableFacets || searchResult?.facets)?.categories.map(c => {
-						const isSelected = urlParams.selectedCategories.includes(c.slug || c.id);
-						return {
-							...c,
-							selected: isSelected
-						};
-					}) || []}
-					brands={(stableFacets || searchResult?.facets)?.brands?.map(b => ({
-						...b,
-						selected: urlParams.selectedBrands.includes(b.slug || b.id)
-					})) || []}
-					priceRange={searchResult && searchResult.products.length > 0 ? {
-						min: 0,
-						max: Math.max(...searchResult.products.map(p => p.price), 10000),
-						current: { 
-							min: urlParams.priceMin !== undefined ? urlParams.priceMin : 0, 
-							max: urlParams.priceMax !== undefined ? urlParams.priceMax : Math.max(...searchResult.products.map(p => p.price), 10000)
-						}
-					} : undefined}
-					ratingCounts={(stableFacets || searchResult?.facets)?.ratings?.reduce<Record<number, number>>((acc, r) => ({ ...acc, [r.value]: r.count }), {}) || {}}
-					currentRating={urlParams.minRating}
-					conditions={(stableFacets || searchResult?.facets)?.conditions || [
-						{ value: 'new', label: 'Novo', count: 0 },
-						{ value: 'used', label: 'Usado', count: 0 },
-						{ value: 'refurbished', label: 'Recondicionado', count: 0 }
-					]}
-					selectedConditions={urlParams.condition ? [urlParams.condition] : []}
-					deliveryOptions={(stableFacets || searchResult?.facets)?.deliveryOptions || [
-						{ value: '24h', label: 'Entrega em 24h', count: 0 },
-						{ value: '48h', label: 'Até 2 dias', count: 0 },
-						{ value: '3days', label: 'Até 3 dias úteis', count: 0 },
-						{ value: '7days', label: 'Até 7 dias úteis', count: 0 },
-						{ value: '15days', label: 'Até 15 dias', count: 0 }
-					]}
-					selectedDeliveryTime={urlParams.deliveryTime}
-					sellers={(stableFacets || searchResult?.facets)?.sellers || []}
-					selectedSellers={urlParams.selectedSellers}
-					states={(stableFacets || searchResult?.facets)?.locations?.states || []}
-					cities={(stableFacets || searchResult?.facets)?.locations?.cities || []}
-					selectedLocation={{ state: urlParams.selectedState, city: urlParams.selectedCity }}
-					hasDiscount={urlParams.hasDiscount}
-					hasFreeShipping={urlParams.hasFreeShipping}
-					showOutOfStock={!urlParams.inStock}
-					benefitsCounts={(stableFacets || searchResult?.facets)?.benefits || { discount: 0, freeShipping: 0, outOfStock: 0 }}
-					tags={(stableFacets || searchResult?.facets)?.tags || []}
-					selectedTags={urlParams.selectedTags}
-					dynamicOptions={(stableFacets || searchResult?.facets)?.dynamicOptions || []}
-					selectedDynamicOptions={dynamicOptions}
-					loading={isLoading}
-					class="bg-transparent shadow-none p-0"
-					on:filterChange={(e) => {
-						updateURL({
-							categoria: e.detail.categories,
-							marca: e.detail.brands,
-							preco_min: e.detail.priceRange?.min,
-							preco_max: e.detail.priceRange?.max
-						});
-					}}
-					on:ratingChange={(e) => updateURL({ avaliacao: e.detail.rating })}
-					on:conditionChange={(e) => updateURL({ condicao: e.detail.conditions[0] })}
-					on:deliveryChange={(e) => updateURL({ entrega: e.detail.deliveryTime })}
-					on:sellerChange={(e) => updateURL({ vendedor: e.detail.sellers })}
-					on:locationChange={(e) => updateURL({ estado: e.detail.state, cidade: e.detail.city })}
-					on:tagChange={(e) => updateURL({ tag: e.detail.tags })}
-					on:dynamicOptionChange={(e) => updateURL({ [`opcao_${e.detail.optionSlug}`]: e.detail.values })}
-					on:benefitChange={(e) => {
-						switch (e.detail.benefit) {
-							case 'discount':
-								updateURL({ promocao: e.detail.value || undefined });
-								break;
-							case 'freeShipping':
-								updateURL({ frete_gratis: e.detail.value || undefined });
-								break;
-							case 'outOfStock':
-								updateURL({ disponivel: !e.detail.value || undefined });
-								break;
-						}
-					}}
-					on:clearAll={clearAllFilters}
-				/>
-			</div>
-			
-			<!-- Footer com ações -->
-			<div class="p-4 border-t flex gap-2 bg-white">
-				<button 
-					onclick={clearAllFilters}
-					class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-				>
-					Limpar
-				</button>
-				<button 
-					onclick={() => showMobileFilters = false}
-					class="flex-1 px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D]"
-				>
-					Ver {searchResult?.totalCount || 0} produtos
-				</button>
-			</div>
-		</div>
-	</div>
-{/if} 
-
-<style>
-	/* Transições suaves para o container de produtos */
-	.products-container {
-		position: relative;
-		min-height: 600px;
-	}
-	
-	/* Previne pulos durante o carregamento */
-	.product-wrapper {
-		will-change: transform, opacity;
-	}
-	
-	.product-list-item {
-		will-change: transform, opacity;
-	}
-	
-	/* Melhorar performance das transições */
-	.product-wrapper,
-	.product-list-item {
-		-webkit-backface-visibility: hidden;
-	}
-	
-	/* Remove seta nativa do select */
-	.select-custom {
-		font-family: 'Lato', sans-serif;
-		-webkit-appearance: none;
-		-moz-appearance: none;
-		appearance: none;
-		background-image: none !important;
-		background-repeat: no-repeat;
-		background-size: 0;
-	}
-	
-	/* Remove seta específica do Safari */
-	.select-custom::-webkit-inner-spin-button,
-	.select-custom::-webkit-outer-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	
-	/* Remove seta específica do Firefox */
-	.select-custom::-moz-focus-inner {
-		border: 0;
-	}
-
-	/* Touch improvements para mobile */
-	@media (max-width: 768px) {
-		.overflow-x-auto {
-			scrollbar-width: none;
-			-ms-overflow-style: none;
-		}
-		
-		.overflow-x-auto::-webkit-scrollbar {
-			display: none;
-		}
-		
-		/* Garante espaçamento consistente */
-		.main-container {
-			max-width: 100vw;
-			overflow-x: hidden;
-		}
-		
-		/* Evita overflow na barra de controles */
-		.bg-white.rounded-lg.shadow-sm {
-			width: 100%;
-			box-sizing: border-box;
-		}
-	}
-
-	/* Garante que container principal respeite limites */
-	.main-container {
-		box-sizing: border-box;
-		width: 100%;
-		position: relative;
-	}
-	
-	/* Evita quebra de layout */
-	.flex {
-		min-width: 0;
-	}
-	
-	/* Garante alinhamento consistente */
-	.bg-white.rounded-lg.shadow-sm,
-	.products-container {
-		margin-left: 0;
-		margin-right: 0;
-		width: 100%;
-		box-sizing: border-box;
-	}
-
-	/* Accessibility */
-	@media (prefers-reduced-motion: reduce) {
-		.product-wrapper,
-		.product-list-item {
-			animation: none;
-			transition: none;
-		}
-	}
-	
-	/* Garante espaçamento consistente */
-	.main-container {
-		box-sizing: border-box;
-	}
-</style>

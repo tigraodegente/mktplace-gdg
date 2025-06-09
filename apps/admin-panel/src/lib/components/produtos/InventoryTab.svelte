@@ -39,7 +39,7 @@
 	}
 
 	let volumetricWeight = $derived(calculateVolumetricWeight());
-	let stockStatus = $derived(getStockStatus(formData.stock_quantity || 0, formData.low_stock_threshold || 5));
+	let stockStatus = $derived(getStockStatus(formData.quantity || 0, formData.minimum_stock || 5));
 </script>
 
 <div class="space-y-8">
@@ -64,7 +64,7 @@
 					type="number"
 					min="0"
 					step="1"
-					bind:value={formData.stock_quantity}
+					bind:value={formData.quantity}
 					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors text-lg font-semibold"
 					placeholder="0"
 					required
@@ -81,7 +81,7 @@
 					type="number"
 					min="0"
 					step="1"
-					bind:value={formData.low_stock_threshold}
+					bind:value={formData.minimum_stock}
 					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
 					placeholder="5"
 				/>
@@ -95,7 +95,7 @@
 				</label>
 				<div class="p-4 rounded-lg border-2 {getStockStatusColor(stockStatus)}">
 					<div class="text-center">
-						<div class="text-2xl font-bold mb-1">{formData.stock_quantity || 0}</div>
+						<div class="text-2xl font-bold mb-1">{formData.quantity || 0}</div>
 						<div class="text-sm font-medium">{getStockStatusText(stockStatus)}</div>
 					</div>
 				</div>
@@ -254,7 +254,7 @@
 				<div class="text-center">
 					<p class="text-sm text-gray-600 mb-1">Disponível</p>
 					<p class="text-2xl font-bold text-[#00BFB3]">
-						{(formData.stock_quantity || 0) - (formData.reserved_quantity || 0)}
+						{(formData.quantity || 0) - (formData.reserved_quantity || 0)}
 					</p>
 					<p class="text-xs text-gray-500">Para novos pedidos</p>
 				</div>
@@ -277,7 +277,7 @@
 
 	<!-- ALERTAS E NOTIFICAÇÕES -->
 	<div class="space-y-4">
-		{#if formData.stock_quantity <= 0}
+		{#if formData.quantity <= 0}
 			<div class="bg-red-50 border border-red-200 rounded-lg p-4">
 				<div class="flex items-center gap-2 text-red-800">
 					⚠️
@@ -287,7 +287,7 @@
 					</div>
 				</div>
 			</div>
-		{:else if formData.stock_quantity <= (formData.low_stock_threshold || 5)}
+		{:else if formData.quantity <= (formData.minimum_stock || 5)}
 			<div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
 				<div class="flex items-center gap-2 text-amber-800">
 					⚠️

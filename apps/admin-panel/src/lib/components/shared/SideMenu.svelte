@@ -33,7 +33,13 @@
 
 	// Filtrar itens do menu baseado no role do usuário
 	const filteredMenuItems = $derived(
-		user ? baseMenuItems.filter(item => item.roles.includes(user.role)) : []
+		user ? baseMenuItems.filter(item => {
+			// super_admin tem acesso a tudo que admin tem
+			if (user.role === 'super_admin') {
+				return item.roles.includes('admin');
+			}
+			return item.roles.includes(user.role as 'admin' | 'vendor' | 'super_admin');
+		}) : []
 	);
 
 	// Menu items com badges dinâmicos

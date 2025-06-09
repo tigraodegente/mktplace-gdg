@@ -3,47 +3,17 @@
 // Tipos centralizados para todo o sistema
 // ========================================
 
-// Auth & Users - Sistema completo
+// Auth & Users
 export * from './auth';
 
-// API Responses & Common Types
+// API Responses  
 export * from './api';
 
-// Legacy types - remover gradualmente
-// Manter apenas types específicos não duplicados
+// Page Builder
+export * from './page-builder';
+
+// Legacy types
 export type { CartItem, CartSummary } from './cart';
-export type { IntegrationConfig } from './integrations';
-
-// Auth types (sistema unificado)
-export type { 
-  AuthUser, 
-  UserRole, 
-  UserStatus,
-  Permission,
-  PermissionCategory,
-  SystemPermission,
-  AuthLoginRequest, 
-  AuthLoginResponse,
-  TwoFactorRequest,
-  PasswordResetRequest,
-  PasswordResetConfirm,
-  UserCreateRequest,
-  UserUpdateRequest,
-  UserListFilters,
-  UserListResponse,
-  PermissionCheckRequest,
-  PermissionCheckResponse,
-  BulkUserAction,
-  AuthSession, 
-  AuthContext,
-  VendorData,
-  AdminData,
-  CustomerData,
-  RoleConfig,
-  StatusConfig
-} from './auth/index';
-
-export { USER_ROLES, USER_STATUSES } from './auth/index';
 
 // Tipos de resposta da API
 export interface ApiResponse<T = any> {
@@ -73,4 +43,6 @@ export interface PaginationParams {
 export interface FilterParams {
   search?: string;
   [key: string]: any;
-} 
+}
+
+export * from './page-builder'; 

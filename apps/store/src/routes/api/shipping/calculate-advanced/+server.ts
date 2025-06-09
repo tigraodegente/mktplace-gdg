@@ -222,9 +222,30 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             // STEP 4: Processar modalidades reais
             if (modalitiesOptions.length > 0) {
                 const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                const isFreeShipping = totalValue >= 199; // Threshold padrão
                 
-                console.log(`💰 Valor total: R$ ${totalValue}, Frete grátis: ${isFreeShipping}, Peso efetivo: ${effectiveWeight}kg`);
+                // Buscar threshold do banco ou usar fallback alto
+                let freeShippingThreshold = 999999; // Sem frete grátis por padrão
+                try {
+                    const configQuery = await db.query`
+                        SELECT free_shipping_threshold 
+                        FROM seller_shipping_configs 
+                        WHERE (seller_id = ${seller_id} OR seller_id IS NULL)
+                        AND carrier_id = 'frenet-carrier'
+                        AND is_active = true
+                        ORDER BY seller_id DESC NULLS LAST, priority ASC
+                        LIMIT 1
+                    `;
+                    
+                    if (configQuery.length > 0 && configQuery[0].free_shipping_threshold) {
+                        freeShippingThreshold = parseFloat(configQuery[0].free_shipping_threshold);
+                    }
+                } catch (error) {
+                    console.warn('Erro ao buscar threshold do banco:', error);
+                }
+                
+                const isFreeShipping = totalValue >= freeShippingThreshold;
+                
+                console.log(`💰 Valor total: R$ ${totalValue}, Threshold: R$ ${freeShippingThreshold}, Frete grátis: ${isFreeShipping}, Peso efetivo: ${effectiveWeight}kg`);
                 
                 for (const option of modalitiesOptions) {
                     // Buscar preços reais do banco para esta zona
@@ -256,7 +277,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                         calculatedPrice = calculateAdvancedPrice(effectiveWeight, basePrice);
                     }
                     
-                    // APLICAR FRETE GRÁTIS APENAS SE VALOR >= 199
+                    // APLICAR FRETE GRÁTIS BASEADO NO BANCO
                     const finalPrice = isFreeShipping ? 0 : Math.max(calculatedPrice, 8.00); // Mín R$ 8
             
                     const shippingOption: AdvancedShippingOption = {
@@ -285,10 +306,30 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                     { id: 'pac', name: 'PAC', description: 'Entrega econômica', days: 5, price: 15.90 }
                 ];
 
+                // Buscar threshold do banco para fallback também
+                let freeShippingThreshold = 999999;
+                try {
+                    const configQuery = await db.query`
+                        SELECT free_shipping_threshold 
+                        FROM seller_shipping_configs 
+                        WHERE (seller_id = ${seller_id} OR seller_id IS NULL)
+                        AND carrier_id = 'frenet-carrier'
+                        AND is_active = true
+                        ORDER BY seller_id DESC NULLS LAST, priority ASC
+                        LIMIT 1
+                    `;
+                    
+                    if (configQuery.length > 0 && configQuery[0].free_shipping_threshold) {
+                        freeShippingThreshold = parseFloat(configQuery[0].free_shipping_threshold);
+                    }
+                } catch (error) {
+                    console.warn('Erro ao buscar threshold do banco:', error);
+                }
+
                 for (const option of defaultOptions) {
                     const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                     const adjustedPrice = calculateAdvancedPrice(effectiveWeight, option.price);
-                    const isFreeShipping = totalValue >= 199;
+                    const isFreeShipping = totalValue >= freeShippingThreshold;
                     
                     shippingOptions.push({
                         id: option.id,

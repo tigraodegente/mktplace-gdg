@@ -110,27 +110,64 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         });
       });
       
-      // Adicionar categorias
-      result.categorySuggestions.forEach((category: any) => {
-        suggestions.push({
-          type: 'category',
-          id: category.id,
-          text: category.name,
-          slug: category.slug,
-          count: Math.floor(Math.random() * 50) + 10 // Estimativa
-        });
-      });
+      // Adicionar categorias com contadores reais
+      for (const category of result.categorySuggestions) {
+        try {
+          const countResult = await db.query`
+            SELECT COUNT(DISTINCT p.id) as count
+            FROM product_categories pc
+            JOIN products p ON p.id = pc.product_id
+            JOIN categories cat ON cat.id = pc.category_id
+            WHERE (cat.id = ${category.id} OR cat.parent_id = ${category.id})
+            AND p.is_active = true
+          `;
+          const realCount = parseInt(countResult[0]?.count || '0');
+          
+          suggestions.push({
+            type: 'category',
+            id: category.id,
+            text: category.name,
+            slug: category.slug,
+            count: realCount
+          });
+        } catch (e) {
+          suggestions.push({
+            type: 'category',
+            id: category.id,
+            text: category.name,
+            slug: category.slug,
+            count: 0
+          });
+        }
+      }
       
-      // Adicionar marcas
-      result.brandSuggestions.forEach((brand: any) => {
-        suggestions.push({
-          type: 'brand',
-          id: brand.id,
-          text: brand.name,
-          slug: brand.slug,
-          count: Math.floor(Math.random() * 30) + 5 // Estimativa
-        });
-      });
+      // Adicionar marcas com contadores reais
+      for (const brand of result.brandSuggestions) {
+        try {
+          const countResult = await db.query`
+            SELECT COUNT(DISTINCT p.id) as count
+            FROM products p
+            WHERE p.brand_id = ${brand.id} AND p.is_active = true
+          `;
+          const realCount = parseInt(countResult[0]?.count || '0');
+          
+          suggestions.push({
+            type: 'brand',
+            id: brand.id,
+            text: brand.name,
+            slug: brand.slug,
+            count: realCount
+          });
+        } catch (e) {
+          suggestions.push({
+            type: 'brand',
+            id: brand.id,
+            text: brand.name,
+            slug: brand.slug,
+            count: 0
+          });
+        }
+      }
       
       // Adicionar sugestão de busca geral se houver muitos resultados
       if (result.totalProducts > limit) {

@@ -17,9 +17,9 @@
 		title = ''
 	}: Props = $props();
 	
-	// Obter o ícone (pode ser string ou objeto)
+	// Obter o ícone (pode ser string ou objeto) - usando $state para reatividade
 	const iconData = MODERN_ICONS[name as keyof typeof MODERN_ICONS];
-	let iconSvg = '';
+	let iconSvg = $state('');
 	
 	if (typeof iconData === 'string') {
 		// Se for string, usar diretamente
@@ -29,8 +29,8 @@
 		iconSvg = `<svg viewBox="${iconData.viewBox}" fill="none" stroke="currentColor">${iconData.path}</svg>`;
 	}
 	
-	// Determinar classes
-	let sizeClass = '';
+	// Determinar classes - usando $state para reatividade
+	let sizeClass = $state('');
 	if (typeof size === 'string' && size in ICON_SIZES) {
 		sizeClass = ICON_SIZES[size as keyof typeof ICON_SIZES];
 	} else if (typeof size === 'number') {

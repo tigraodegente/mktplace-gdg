@@ -15,6 +15,10 @@
 		console.log('🔍 AttributesSection - formData.attributes:', typeof formData.attributes, formData.attributes);
 		console.log('🔍 AttributesSection - formData.specifications:', typeof formData.specifications, formData.specifications);
 		
+		// 🔧 DEBUG: Ver estrutura completa
+		console.log('🔍 AttributesSection - formData.specifications keys:', Object.keys(formData.specifications || {}));
+		console.log('🔍 AttributesSection - formData.specifications entries:', Object.entries(formData.specifications || {}));
+		
 		// Verificar e converter attributes se necessário
 		if (typeof formData.attributes === 'string') {
 			try {
@@ -45,10 +49,56 @@
 		
 		console.log('✅ AttributesSection - attributes final:', formData.attributes);
 		console.log('✅ AttributesSection - specifications final:', formData.specifications);
+		
+		// 🔧 FORÇA BRUTA: Se ainda está mostrando números como keys, converter
+		if (formData.specifications && Object.keys(formData.specifications).some(key => !isNaN(Number(key)))) {
+			console.log('🔧 FORÇA BRUTA: Detectados keys numéricos, forçando conversão');
+			try {
+				// Se parece com string JSON quebrada, tentar reconstruir
+				const stringified = JSON.stringify(formData.specifications);
+				console.log('🔧 FORÇA BRUTA: stringified:', stringified);
+				
+				// Tentar parsear novamente
+				formData.specifications = JSON.parse(stringified);
+				console.log('🔧 FORÇA BRUTA: Após reparsing:', formData.specifications);
+			} catch (error) {
+				console.log('🔧 FORÇA BRUTA: Erro no reparsing, resetando:', error);
+				formData.specifications = {};
+			}
+		}
 	}
 	
 	// Chamar a função de inicialização
 	ensureValidObjects();
+	
+	// 🔧 VARIÁVEIS DERIVADAS PARA DADOS SEGUROS
+	let safeSpecifications = $derived(() => {
+		if (typeof formData.specifications === 'string') {
+			try {
+				return JSON.parse(formData.specifications);
+			} catch {
+				return {};
+			}
+		}
+		if (!formData.specifications || typeof formData.specifications !== 'object' || Array.isArray(formData.specifications)) {
+			return {};
+		}
+		return formData.specifications;
+	});
+	
+	let safeAttributes = $derived(() => {
+		if (typeof formData.attributes === 'string') {
+			try {
+				return JSON.parse(formData.attributes);
+			} catch {
+				return {};
+			}
+		}
+		if (!formData.attributes || typeof formData.attributes !== 'object' || Array.isArray(formData.attributes)) {
+			return {};
+		}
+		return formData.attributes;
+	});
 	
 	// Adicionar atributo (para filtros)
 	function addAttribute() {
@@ -75,6 +125,18 @@
 	// Adicionar especificação
 	function addSpecification() {
 		if (newSpecification.key.trim() && newSpecification.value.trim()) {
+			// 🔧 GARANTIR QUE SPECIFICATIONS SEJA OBJETO
+			if (typeof formData.specifications === 'string') {
+				try {
+					formData.specifications = JSON.parse(formData.specifications);
+				} catch {
+					formData.specifications = {};
+				}
+			}
+			if (!formData.specifications || typeof formData.specifications !== 'object') {
+				formData.specifications = {};
+			}
+			
 			formData.specifications[newSpecification.key.trim()] = newSpecification.value.trim();
 			formData.specifications = { ...formData.specifications };
 			newSpecification = { key: '', value: '' };
@@ -158,11 +220,34 @@
 			if (response.ok) {
 				const result = await response.json();
 				if (result.success && result.data) {
+					console.log('🔧 IA SPECS: Dados recebidos:', typeof result.data, result.data);
+					
+					// 🔧 NORMALIZAR DADOS DA IA ANTES DE APLICAR
+					let safeData = result.data;
+					
+					// Se veio como string JSON, parsear
+					if (typeof result.data === 'string') {
+						try {
+							safeData = JSON.parse(result.data);
+							console.log('🔧 IA SPECS: Parseado de string:', safeData);
+						} catch (error) {
+							console.error('❌ IA SPECS: Erro ao parsear string JSON:', error);
+							safeData = {};
+						}
+					}
+					
+					// Garantir que formData.specifications seja objeto
+					if (typeof formData.specifications !== 'object' || Array.isArray(formData.specifications)) {
+						formData.specifications = {} as Record<string, any>;
+					}
+					
 					// Mesclar com especificações existentes
 					formData.specifications = {
 						...formData.specifications,
-						...result.data
-					};
+						...safeData
+					} as Record<string, any>;
+					
+					console.log('✅ IA SPECS: Especificações aplicadas:', formData.specifications);
 					toast.success('Especificações sugeridas pela IA foram adicionadas!');
 				}
 			} else {
@@ -206,6 +291,42 @@
 			};
 			toast.success(`Template de ${category} aplicado!`);
 		}
+	}
+	
+	// NOVA FUNÇÃO: Garantir que attributes sejam sempre arrays
+	function normalizeAttributes(attributes: Record<string, any>): Record<string, string[]> {
+		const normalized: Record<string, string[]> = {};
+		
+		for (const [key, value] of Object.entries(attributes)) {
+			if (Array.isArray(value)) {
+				normalized[key] = value.map(v => String(v)); // Garantir strings no array
+			} else if (typeof value === 'string') {
+				normalized[key] = [value]; // Converter string para array
+			} else {
+				normalized[key] = [String(value)]; // Converter outros tipos
+			}
+		}
+		
+		return normalized;
+	}
+	
+	// NOVA FUNÇÃO: Aplicar normalização quando dados vêm da IA
+	export function applyAIAttributes(aiAttributes: Record<string, any>) {
+		console.log('🔄 Normalizando attributes da IA:', aiAttributes);
+		const normalized = normalizeAttributes(aiAttributes);
+		
+		// Garantir que formData.attributes seja do tipo correto
+		if (!formData.attributes || typeof formData.attributes !== 'object') {
+			formData.attributes = {};
+		}
+		
+		formData.attributes = {
+			...formData.attributes,
+			...normalized
+		} as Record<string, any>;
+		
+		console.log('✅ Attributes normalizados:', formData.attributes);
+		toast.success('Atributos da IA aplicados e normalizados!');
 	}
 </script>
 
@@ -362,7 +483,7 @@
 		</div>
 		
 		<!-- Especificações Adicionadas -->
-		{#if Object.keys(formData.specifications).length > 0}
+		{#if formData.specifications && typeof formData.specifications === 'object' && !Array.isArray(formData.specifications) && Object.keys(formData.specifications).length > 0}
 			<div class="space-y-3">
 				<h5 class="text-sm font-medium text-gray-700">Especificações Configuradas:</h5>
 				{#each Object.entries(formData.specifications) as [key, value]}
@@ -387,6 +508,26 @@
 						</div>
 					{/if}
 				{/each}
+			</div>
+		{:else if typeof formData.specifications === 'string'}
+			<div class="space-y-3">
+				<h5 class="text-sm font-medium text-gray-700">⚠️ Dados de Especificações Corrompidos:</h5>
+				<div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+					<p class="text-sm text-yellow-800">As especificações estão em formato JSON string. Clique no botão abaixo para corrigir:</p>
+					<button 
+						type="button"
+						onclick={() => {
+							try {
+								formData.specifications = JSON.parse(formData.specifications);
+							} catch {
+								formData.specifications = {};
+							}
+						}}
+						class="mt-2 px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
+					>
+						🔧 Corrigir Dados
+					</button>
+				</div>
 			</div>
 		{:else}
 			<div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">

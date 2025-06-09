@@ -152,15 +152,24 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     // Processar campos JSONB
     const product = result[0];
     
-    // Garantir que attributes e specifications sejam objetos parseados corretamente
+    // 🔧 CORREÇÃO ROBUSTA - Garantir que attributes e specifications sejam objetos parseados corretamente
+    console.log('🔍 DEBUG API GET - Raw attributes:', typeof product.attributes, product.attributes);
+    console.log('🔍 DEBUG API GET - Raw specifications:', typeof product.specifications, product.specifications);
+    
     try {
       if (typeof product.attributes === 'string') {
         product.attributes = JSON.parse(product.attributes);
       } else if (!product.attributes) {
         product.attributes = {};
       }
+      
+      // 🔧 Se attributes tem keys numéricas, é problema de serialização
+      if (product.attributes && Object.keys(product.attributes).some(key => !isNaN(Number(key)))) {
+        console.log('🔧 API GET - Detectado problema em attributes, resetando');
+        product.attributes = {};
+      }
     } catch (error) {
-      console.error('Erro ao parsear attributes:', error);
+      console.error('❌ Erro ao parsear attributes:', error);
       product.attributes = {};
     }
     
@@ -170,10 +179,19 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       } else if (!product.specifications) {
         product.specifications = {};
       }
+      
+      // 🔧 CORREÇÃO ESPECÍFICA: Se specifications tem keys numéricas, resetar
+      if (product.specifications && Object.keys(product.specifications).some(key => !isNaN(Number(key)))) {
+        console.log('🔧 API GET - Detectado problema de serialização em specifications, resetando');
+        product.specifications = {};
+      }
     } catch (error) {
-      console.error('Erro ao parsear specifications:', error);
+      console.error('❌ Erro ao parsear specifications:', error);
       product.specifications = {};
     }
+    
+    console.log('✅ DEBUG API GET - Final attributes:', product.attributes);
+    console.log('✅ DEBUG API GET - Final specifications:', product.specifications);
     
     // Extrair custom_fields de specifications se existir
     if (product.specifications.custom_fields) {
@@ -189,6 +207,83 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     
     if (product.upsell_products && Array.isArray(product.upsell_products)) {
       product.upsell_product_ids = product.upsell_products.map((p: any) => p.id);
+    }
+    
+    // ✅ CARREGAR VARIAÇÕES DO PRODUTO
+    try {
+      // Carregar product_options
+      const optionsQuery = `
+        SELECT 
+          po.id,
+          po.name,
+          po.position,
+          COALESCE(
+            json_agg(
+              jsonb_build_object(
+                'id', pov.id,
+                'value', pov.value,
+                'position', pov.position
+              ) ORDER BY pov.position
+            ) FILTER (WHERE pov.id IS NOT NULL),
+            '[]'::json
+          ) as values
+        FROM product_options po
+        LEFT JOIN product_option_values pov ON pov.option_id = po.id
+        WHERE po.product_id = $1
+        GROUP BY po.id, po.name, po.position
+        ORDER BY po.position
+      `;
+      
+      const optionsResult = await db.query(optionsQuery, [id]);
+      product.product_options = optionsResult || [];
+      
+      // Carregar product_variants
+      const variantsQuery = `
+        SELECT 
+          pv.*,
+          -- Montar option_values como objeto JSON
+          COALESCE(
+            json_object_agg(po.name, pov.value) FILTER (WHERE po.name IS NOT NULL),
+            '{}'::json
+          ) as option_values
+        FROM product_variants pv
+        LEFT JOIN variant_option_values vov ON vov.variant_id = pv.id
+        LEFT JOIN product_option_values pov ON pov.id = vov.option_value_id
+        LEFT JOIN product_options po ON po.id = pov.option_id
+        WHERE pv.product_id = $1
+        GROUP BY pv.id
+        ORDER BY pv.id
+      `;
+      
+      const variantsResult = await db.query(variantsQuery, [id]);
+      product.product_variants = variantsResult || [];
+      
+      // ✅ DEFINIR has_variants BASEADO EM MÚLTIPLOS CRITÉRIOS
+      const hasStructuredVariants = product.product_options.length > 0 || product.product_variants.length > 0;
+      const hasAttributeVariations = product.attributes && Object.entries(product.attributes).some(([key, values]) => 
+        Array.isArray(values) && values.length > 1
+      );
+      
+      product.has_variants = hasStructuredVariants || hasAttributeVariations;
+      
+      console.log(`📦 Produto carregado com ${product.product_options.length} opções e ${product.product_variants.length} variações`);
+      console.log(`🔍 has_variants definido como: ${product.has_variants} (estruturadas: ${hasStructuredVariants}, attributes: ${hasAttributeVariations})`);
+      
+      // Debug dos attributes
+      if (product.attributes && Object.keys(product.attributes).length > 0) {
+        console.log('🎨 Attributes encontrados:', product.attributes);
+        Object.entries(product.attributes).forEach(([key, values]) => {
+          if (Array.isArray(values) && values.length > 1) {
+            console.log(`  - ${key}: ${values.join(', ')} (${values.length} opções → INDICA VARIAÇÕES)`);
+          }
+        });
+      }
+      
+    } catch (variantError) {
+      console.error('❌ Erro ao carregar variações:', variantError);
+      product.product_options = [];
+      product.product_variants = [];
+      product.has_variants = false;
     }
     
     await db.close();
@@ -214,6 +309,21 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
     
     console.log('Atualizando produto:', id, data);
     
+    // 🔧 NORMALIZAR ATTRIBUTES ANTES DE SALVAR
+    let normalizedAttributes: Record<string, string[]> = {};
+    if (data.attributes && typeof data.attributes === 'object') {
+      for (const [key, value] of Object.entries(data.attributes)) {
+        if (Array.isArray(value)) {
+          normalizedAttributes[key] = value.map(v => String(v)); // ✅ Já é array
+        } else if (typeof value === 'string') {
+          normalizedAttributes[key] = [value]; // ✅ String → Array  
+        } else {
+          normalizedAttributes[key] = [String(value)]; // ✅ Outros → Array
+        }
+      }
+      console.log('🔧 Attributes normalizados antes de salvar:', normalizedAttributes);
+    }
+    
     // Atualizar produto - apenas campos básicos existentes
     const result = await db.query`
       UPDATE products SET
@@ -233,8 +343,8 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         height = ${data.height || null},
         width = ${data.width || null},
         length = ${data.length || null},
-        brand_id = ${data.brand_id || null},
-        seller_id = ${data.seller_id || null},
+        brand_id = ${data.brand_id ? (typeof data.brand_id === 'string' ? data.brand_id : String(data.brand_id)) : null},
+        seller_id = ${data.seller_id ? (typeof data.seller_id === 'string' ? data.seller_id : String(data.seller_id)) : null},
         status = ${data.status || 'active'},
         is_active = ${data.is_active !== false},
         featured = ${data.featured === true},
@@ -255,7 +365,7 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         allow_reviews = ${data.allow_reviews !== false},
         age_restricted = ${data.age_restricted || false},
         is_customizable = ${data.is_customizable || false},
-        attributes = ${JSON.stringify(data.attributes || {})},
+        attributes = ${JSON.stringify(normalizedAttributes)},
         specifications = ${JSON.stringify(data.specifications || {})},
         manufacturing_country = ${getCountryCode(data.manufacturing_country)},
         tax_class = ${data.tax_class || 'standard'},
@@ -290,14 +400,33 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         const primaryCategoryId = data.primary_category_id || data.category_ids[0];
         
         for (const categoryId of data.category_ids) {
+          // 🔧 CORREÇÃO: Garantir que categoryId seja string UUID
+          const categoryIdStr = typeof categoryId === 'string' 
+            ? categoryId 
+            : String(categoryId);
+            
           await db.query`
             INSERT INTO product_categories (product_id, category_id, is_primary)
-            VALUES (${id}::uuid, ${categoryId}::uuid, ${categoryId === primaryCategoryId})
+            VALUES (${id}::uuid, ${categoryIdStr}::uuid, ${categoryId === primaryCategoryId})
             ON CONFLICT (product_id, category_id) DO UPDATE
             SET is_primary = ${categoryId === primaryCategoryId}
           `;
         }
       }
+    } else if (data.category_id) {
+      // Suporte para categoria única (compatibilidade)
+      await db.query`DELETE FROM product_categories WHERE product_id = ${id}::uuid`;
+      
+      // 🔧 CORREÇÃO: Garantir que category_id seja string UUID
+      const categoryIdStr = typeof data.category_id === 'string' 
+        ? data.category_id 
+        : String(data.category_id);
+        
+      await db.query`
+        INSERT INTO product_categories (product_id, category_id, is_primary)
+        VALUES (${id}::uuid, ${categoryIdStr}::uuid, true)
+        ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = true
+      `;
     }
     
     // Atualizar produtos relacionados
@@ -305,9 +434,17 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       await db.query`DELETE FROM product_related WHERE product_id = ${id}::uuid`;
       
       for (let i = 0; i < data.related_products.length; i++) {
+        // 🔧 CORREÇÃO: Garantir que related_product_id seja string UUID
+        const relatedProductId = data.related_products[i];
+        const relatedProductIdStr = typeof relatedProductId === 'string' 
+          ? relatedProductId 
+          : (typeof relatedProductId === 'object' && relatedProductId.id 
+            ? relatedProductId.id 
+            : String(relatedProductId));
+            
         await db.query`
           INSERT INTO product_related (product_id, related_product_id, position)
-          VALUES (${id}::uuid, ${data.related_products[i]}::uuid, ${i})
+          VALUES (${id}::uuid, ${relatedProductIdStr}::uuid, ${i})
         `;
       }
     }
@@ -317,9 +454,17 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       await db.query`DELETE FROM product_upsells WHERE product_id = ${id}::uuid`;
       
       for (let i = 0; i < data.upsell_products.length; i++) {
+        // 🔧 CORREÇÃO: Garantir que upsell_product_id seja string UUID
+        const upsellProductId = data.upsell_products[i];
+        const upsellProductIdStr = typeof upsellProductId === 'string' 
+          ? upsellProductId 
+          : (typeof upsellProductId === 'object' && upsellProductId.id 
+            ? upsellProductId.id 
+            : String(upsellProductId));
+            
         await db.query`
           INSERT INTO product_upsells (product_id, upsell_product_id, position)
-          VALUES (${id}::uuid, ${data.upsell_products[i]}::uuid, ${i})
+          VALUES (${id}::uuid, ${upsellProductIdStr}::uuid, ${i})
         `;
       }
     }
@@ -351,6 +496,96 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
           INSERT INTO product_images (product_id, url, position, is_primary, alt_text)
           VALUES (${id}::uuid, ${imageUrl}, ${i}, ${isPrimary}, ${'Imagem do produto'})
         `;
+      }
+    }
+    
+    // ✅ SALVAR VARIAÇÕES DO PRODUTO
+    if (data.product_options && Array.isArray(data.product_options)) {
+      console.log(`🎨 Salvando ${data.product_options.length} opções de variação...`);
+      
+      // 1. Remover variações antigas
+      await db.query`DELETE FROM variant_option_values WHERE variant_id IN (
+        SELECT id FROM product_variants WHERE product_id = ${id}::uuid
+      )`;
+      await db.query`DELETE FROM product_variants WHERE product_id = ${id}::uuid`;
+      await db.query`DELETE FROM product_option_values WHERE option_id IN (
+        SELECT id FROM product_options WHERE product_id = ${id}::uuid
+      )`;
+      await db.query`DELETE FROM product_options WHERE product_id = ${id}::uuid`;
+      
+      // 2. Salvar product_options e seus valores
+      const optionMapping = new Map(); // Mapear IDs temporários para IDs reais
+      
+      for (const option of data.product_options) {
+        if (option.name && option.values && Array.isArray(option.values)) {
+          // Inserir opção
+          const optionResult = await db.query`
+            INSERT INTO product_options (product_id, name, position)
+            VALUES (${id}::uuid, ${option.name}, ${option.position || 0})
+            RETURNING id
+          `;
+          
+          const optionId = optionResult[0].id;
+          optionMapping.set(option.name, { id: optionId, values: new Map() });
+          
+          // Inserir valores da opção
+          for (let i = 0; i < option.values.length; i++) {
+            const value = option.values[i];
+            if (value.value) {
+              const valueResult = await db.query`
+                INSERT INTO product_option_values (option_id, value, position)
+                VALUES (${optionId}, ${value.value}, ${value.position || i})
+                RETURNING id
+              `;
+              
+              optionMapping.get(option.name).values.set(value.value, valueResult[0].id);
+            }
+          }
+          
+          console.log(`✅ Opção "${option.name}" salva com ${option.values.length} valores`);
+        }
+      }
+      
+      // 3. Salvar product_variants se existirem
+      if (data.product_variants && Array.isArray(data.product_variants)) {
+        console.log(`🎨 Salvando ${data.product_variants.length} variações...`);
+        
+        for (const variant of data.product_variants) {
+          if (variant.sku && variant.option_values) {
+            // Inserir variante
+            const variantResult = await db.query`
+              INSERT INTO product_variants (
+                product_id, sku, price, original_price, cost, quantity, 
+                weight, barcode, is_active
+              )
+              VALUES (
+                ${id}::uuid, ${variant.sku}, ${variant.price || data.price}, 
+                ${variant.original_price || data.original_price || null}, 
+                ${variant.cost || data.cost || 0}, ${variant.quantity || 0},
+                ${variant.weight || data.weight || null}, ${variant.barcode || null}, 
+                ${variant.is_active !== false}
+              )
+              RETURNING id
+            `;
+            
+            const variantId = variantResult[0].id;
+            
+            // Associar variante com valores das opções
+            for (const [optionName, optionValue] of Object.entries(variant.option_values)) {
+              const optionData = optionMapping.get(optionName);
+              if (optionData && optionData.values.has(optionValue)) {
+                const optionValueId = optionData.values.get(optionValue);
+                
+                await db.query`
+                  INSERT INTO variant_option_values (variant_id, option_value_id)
+                  VALUES (${variantId}, ${optionValueId})
+                `;
+              }
+            }
+          }
+        }
+        
+        console.log(`✅ ${data.product_variants.length} variações salvas com sucesso!`);
       }
     }
     

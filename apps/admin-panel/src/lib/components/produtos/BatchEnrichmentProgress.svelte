@@ -93,13 +93,12 @@
 			}
 			
 			// Fazer a chamada real para a API
-			const response = await fetch(`/api/ai/enrich`, {
+			const response = await fetch(`/api/ai/enrich-and-save`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					action: 'enrich_all',
-					currentData: product,
-					category: product.category_name
+					productId: product.id,
+					productData: product
 				})
 			});
 			
@@ -108,11 +107,12 @@
 			}
 			
 			const result = await response.json();
+			console.log(`✅ [GRID] Produto ${product.name} processado:`, result);
 			
 			if (result.success) {
 				productProgress.status = 'completed';
 				productProgress.progress = 100;
-				productProgress.currentStep = 'Concluído';
+				productProgress.currentStep = 'Salvo no banco!';
 				successCount++;
 			} else {
 				throw new Error(result.error || 'Erro desconhecido');

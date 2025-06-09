@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ platform }) => {
 
     // Single optimized query to get all menu data
     const [featuredCategoriesResult, featuredPagesResult, allCategoriesResult] = await Promise.all([
-      // Featured categories with product counts
+      // Featured categories with product counts - INCLUIR SUBCATEGORIAS
       db.query`
         SELECT 
           c.id,
@@ -27,24 +27,29 @@ export const GET: RequestHandler = async ({ platform }) => {
           'category' as type,
           COALESCE(
             (SELECT COUNT(DISTINCT p.id)::int 
-             FROM products p 
-             WHERE p.category_id = c.id 
-             OR p.category_id IN (
-               SELECT id FROM categories WHERE parent_id = c.id
-             )
-             OR p.category_id IN (
-               SELECT id FROM categories WHERE parent_id IN (
-                 SELECT id FROM categories WHERE parent_id = c.id
-               )
-             )
+             FROM product_categories pc
+             JOIN products p ON p.id = pc.product_id
+             JOIN categories cat ON cat.id = pc.category_id
+             WHERE p.is_active = true
+             AND (cat.id = c.id OR cat.parent_id = c.id)
             ), 0
           ) as product_count
         FROM categories c
         WHERE c.is_featured = true
-        ORDER BY c.menu_order ASC, c.name ASC
+        AND c.is_active = true
+        AND EXISTS (
+          SELECT 1 
+          FROM product_categories pc
+          JOIN products p ON p.id = pc.product_id
+          JOIN categories cat ON cat.id = pc.category_id
+          WHERE p.is_active = true 
+          AND (cat.id = c.id OR cat.parent_id = c.id)
+        )
+        ORDER BY c.menu_order ASC NULLS LAST, c.name ASC
+        LIMIT 10
       `,
       
-      // Featured pages
+      // Featured pages - manter como está
       db.query`
         SELECT 
           p.id,
@@ -58,7 +63,7 @@ export const GET: RequestHandler = async ({ platform }) => {
         ORDER BY p.menu_order ASC, p.title ASC
       `,
       
-      // All categories for mega menu (optimized with recursive count)
+      // All categories for mega menu - FILTRAR APENAS COM PRODUTOS
       db.query`
         WITH RECURSIVE category_tree AS (
           -- Base case: main categories
@@ -71,12 +76,31 @@ export const GET: RequestHandler = async ({ platform }) => {
             1 as level,
             COALESCE(
               (SELECT COUNT(DISTINCT p.id)::int 
-               FROM products p 
-               WHERE p.category_id = c.id
+               FROM product_categories pc
+               JOIN products p ON p.id = pc.product_id
+               WHERE p.is_active = true 
+               AND pc.category_id = c.id
               ), 0
             ) as direct_product_count
           FROM categories c
           WHERE c.parent_id IS NULL
+          AND EXISTS (
+            SELECT 1 
+            FROM product_categories pc
+            JOIN products p ON p.id = pc.product_id
+            WHERE p.is_active = true
+            AND (
+              pc.category_id = c.id 
+              OR pc.category_id IN (
+                SELECT id FROM categories WHERE parent_id = c.id
+              )
+              OR pc.category_id IN (
+                SELECT id FROM categories WHERE parent_id IN (
+                  SELECT id FROM categories WHERE parent_id = c.id
+                )
+              )
+            )
+          )
           
           UNION ALL
           
@@ -90,13 +114,27 @@ export const GET: RequestHandler = async ({ platform }) => {
             ct.level + 1,
             COALESCE(
               (SELECT COUNT(DISTINCT p.id)::int 
-               FROM products p 
-               WHERE p.category_id = c.id
+               FROM product_categories pc
+               JOIN products p ON p.id = pc.product_id
+               WHERE p.is_active = true 
+               AND pc.category_id = c.id
               ), 0
             ) as direct_product_count
           FROM categories c
           INNER JOIN category_tree ct ON c.parent_id = ct.id
           WHERE ct.level < 3  -- Limit to 3 levels for performance
+          AND EXISTS (
+            SELECT 1 
+            FROM product_categories pc
+            JOIN products p ON p.id = pc.product_id
+            WHERE p.is_active = true
+            AND (
+              pc.category_id = c.id 
+              OR pc.category_id IN (
+                SELECT id FROM categories WHERE parent_id = c.id
+              )
+            )
+          )
         )
         SELECT 
           ct.id,
@@ -110,8 +148,10 @@ export const GET: RequestHandler = async ({ platform }) => {
             ct.direct_product_count + 
             (SELECT COALESCE(SUM(
               (SELECT COUNT(DISTINCT p.id)::int 
-               FROM products p 
-               WHERE p.category_id = child.id
+               FROM product_categories pc
+               JOIN products p ON p.id = pc.product_id
+               WHERE p.is_active = true
+               AND pc.category_id = child.id
               )
             ), 0)
             FROM categories child 
@@ -119,8 +159,10 @@ export const GET: RequestHandler = async ({ platform }) => {
             ) +
             (SELECT COALESCE(SUM(
               (SELECT COUNT(DISTINCT p.id)::int 
-               FROM products p 
-               WHERE p.category_id = grandchild.id
+               FROM product_categories pc
+               JOIN products p ON p.id = pc.product_id
+               WHERE p.is_active = true
+               AND pc.category_id = grandchild.id
               )
             ), 0)
             FROM categories grandchild 
@@ -130,6 +172,18 @@ export const GET: RequestHandler = async ({ platform }) => {
             ), 0
           ) as product_count
         FROM category_tree ct
+        WHERE ct.direct_product_count > 0 
+        OR EXISTS (
+          SELECT 1 FROM categories child 
+          WHERE child.parent_id = ct.id
+          AND EXISTS (
+            SELECT 1 
+            FROM product_categories pc
+            JOIN products p ON p.id = pc.product_id
+            WHERE p.is_active = true 
+            AND pc.category_id = child.id
+          )
+        )
         ORDER BY ct.level ASC, ct.name ASC
       `
     ]);

@@ -80,7 +80,8 @@ export const GET: RequestHandler = async ({ platform, url }) => {
             LIMIT 1
           ) as image_url
         FROM products p
-        INNER JOIN categories c ON c.id = p.category_id
+        INNER JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
+        INNER JOIN categories c ON c.id = pc.category_id
         WHERE 
           p.is_active = true 
           AND p.quantity > 0
@@ -116,7 +117,8 @@ export const GET: RequestHandler = async ({ platform, url }) => {
               LIMIT 1
             ) as image_url
           FROM products p
-          LEFT JOIN categories c ON c.id = p.category_id
+          LEFT JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
+          LEFT JOIN categories c ON c.id = pc.category_id
           WHERE 
             p.featured = true 
             AND p.is_active = true 
@@ -150,7 +152,8 @@ export const GET: RequestHandler = async ({ platform, url }) => {
             LIMIT 1
           ) as image_url
         FROM products p
-        LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
+        LEFT JOIN categories c ON c.id = pc.category_id
         WHERE 
           p.featured = true 
           AND p.is_active = true 

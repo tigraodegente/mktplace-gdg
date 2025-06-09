@@ -1,0 +1,10 @@
+import postgres from 'postgres';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.develop' });
+const sql = postgres(process.env.DATABASE_URL);
+const [prompt] = await sql`SELECT prompt_text FROM prompts WHERE prompt_key = 'complete_enrichment' AND category = 'general'`;
+console.log('PROMPT ATUAL:');
+console.log('=' .repeat(80));
+console.log(prompt ? prompt.prompt_text : 'PROMPT NÃO ENCONTRADO');
+console.log('=' .repeat(80));
+await sql.end(); 

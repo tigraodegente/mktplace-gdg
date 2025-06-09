@@ -87,6 +87,7 @@
 	let brandFilter = $state('all');
 	let selectedIds = $state<string[]>([]);
 	let priceRange = $state({ min: '', max: '' });
+	let customFilterValues = $state<Record<string, any>>({});
 	
 	// Paginação padrão
 	let page = $state(1);
@@ -190,19 +191,53 @@
 				limit: pageSize.toString(),
 				search,
 				status: statusFilter,
-				category: categoryFilter,
-				brand: brandFilter,
 				sortBy,
 				sortOrder
 			});
 			
+			// Categorias (suporte a múltiplas)
+			if (categoryFilter && categoryFilter !== 'all') {
+				if (Array.isArray(categoryFilter)) {
+					params.append('categories', categoryFilter.join(','));
+				} else {
+					params.append('categories', categoryFilter);
+				}
+			}
+			
+			// Marca
+			if (brandFilter && brandFilter !== 'all') {
+				params.append('brand', brandFilter);
+			}
+			
+			// Preços
 			if (priceRange.min) params.append('priceMin', priceRange.min);
 			if (priceRange.max) params.append('priceMax', priceRange.max);
 			
-			const response = await api.get(`${apiEndpoint}?${params}`);
+			// Filtros customizados específicos da página
+			if (customFilters && customFilters.length > 0) {
+				customFilters.forEach(filter => {
+					const value = customFilterValues[filter.key];
+					if (value && value !== '' && value !== 'all') {
+						params.append(filter.key, value);
+					}
+				});
+			}
 			
-			if (response.success) {
-				let rawData = response.data || [];
+			const token = localStorage.getItem('access_token');
+			
+			// Headers para autenticação
+			const headers = {
+				'Authorization': `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			};
+			
+			// Usar fetch diretamente para evitar duplicação de /api/
+			const response = await fetch(`${apiEndpoint}?${params}`, { headers });
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				let rawData = result.data || [];
 				
 				// Permitir transformação customizada dos dados
 				if (onDataLoad) {
@@ -210,11 +245,29 @@
 				}
 				
 				data = rawData;
-				totalItems = response.meta?.total || 0;
+				totalItems = result.meta?.total || 0;
+			} else {
+				console.error('❌ [AdminPageTemplate] Erro na resposta:', result);
+				
+				// Se erro de autenticação, redirecionar para login
+				if (result.error?.code === 'UNAUTHENTICATED') {
+					console.log('🔒 [AdminPageTemplate] Erro de autenticação, redirecionando para login');
+					goto('/login');
+					return;
+				}
+				
+				const errorMessage = result.error?.message || result.error || `Erro ao carregar ${entityNamePlural}`;
+				console.error('❌ [AdminPageTemplate] Mensagem de erro:', errorMessage);
 			}
 		} catch (error) {
-			console.error(`Erro ao carregar ${entityNamePlural}:`, error);
-			toast.error(`Erro ao carregar ${entityNamePlural}`);
+			console.error(`❌ [AdminPageTemplate] Erro ao carregar ${entityNamePlural}:`, error);
+			
+			// Se erro de rede/autenticação, tentar redirecionar
+			if (error.message?.includes('Failed to fetch') || error.message?.includes('401')) {
+				console.log('🔒 [AdminPageTemplate] Problema de autenticação detectado, redirecionando...');
+				goto('/login');
+				return;
+			}
 		} finally {
 			loading = false;
 		}
@@ -225,9 +278,18 @@
 		if (!statsEndpoint || !statsConfig) return;
 		
 		try {
-			const response = await api.get(statsEndpoint);
-			if (response.success) {
-				let rawStats = response.data || {};
+			// Usar fetch diretamente para evitar duplicação de /api/
+			const response = await fetch(statsEndpoint, {
+				headers: {
+					'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+					'Content-Type': 'application/json'
+				}
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				let rawStats = result.data || {};
 				
 				// Permitir transformação customizada das estatísticas
 				if (onStatsLoad) {
@@ -251,17 +313,30 @@
 		try {
 			// Carregar categorias se endpoint fornecido
 			if (categoriesEndpoint) {
-				const catResponse = await api.get(categoriesEndpoint);
-				if (catResponse.success) {
-					categories = catResponse.data?.categories || catResponse.data || [];
+				const catResponse = await fetch(categoriesEndpoint, {
+					headers: {
+						'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+						'Content-Type': 'application/json'
+					}
+				});
+				const catResult = await catResponse.json();
+				if (catResult.success) {
+					const loadedCategories = catResult.data?.categories || catResult.data || [];
+					categories = loadedCategories;
 				}
 			}
 			
 			// Carregar marcas se endpoint fornecido
 			if (brandsEndpoint) {
-				const brandResponse = await api.get(brandsEndpoint);
-				if (brandResponse.success) {
-					brands = brandResponse.data?.brands || brandResponse.data || [];
+				const brandResponse = await fetch(brandsEndpoint, {
+					headers: {
+						'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+						'Content-Type': 'application/json'
+					}
+				});
+				const brandResult = await brandResponse.json();
+				if (brandResult.success) {
+					brands = brandResult.data?.brands || brandResult.data || [];
 				}
 			}
 		} catch (error) {
@@ -275,21 +350,20 @@
 		loadData();
 	}, 500);
 	
-	// Watchers padrão
-	$effect(() => {
-		if (search !== undefined) debouncedSearch();
-	});
+	// Funções para controlar filtros sem $effect (evita loops infinitos)
+	function handleSearchChange() {
+		debouncedSearch();
+	}
 	
-	$effect(() => {
-		if (!loading && (statusFilter !== 'all' || categoryFilter !== 'all' || brandFilter !== 'all')) {
+	function handleFiltersChange() {
 			page = 1;
 			loadData();
 		}
-	});
 	
-	$effect(() => {
-		if (page > 1) loadData();
-	});
+	function handlePageChange(newPage: number) {
+		page = newPage;
+		loadData();
+	}
 	
 	// Função genérica para ordenação
 	function handleSort(column: string) {
@@ -305,6 +379,12 @@
 	
 	// Ações padrão da tabela
 	function getTableActions(row: any) {
+		// Se há ações customizadas, usar apenas elas
+		if (customActions) {
+			return customActions(row);
+		}
+		
+		// Caso contrário, usar ações padrão
 		const defaultActions = [
 			{
 				label: 'Editar',
@@ -317,11 +397,6 @@
 				onclick: () => deleteItem(row)
 			}
 		];
-		
-		// Permitir ações customizadas
-		if (customActions) {
-			return [...defaultActions, ...customActions(row)];
-		}
 		
 		return defaultActions;
 	}
@@ -383,16 +458,18 @@
 	}
 	
 	// Verificação de autenticação padrão
-	function checkAuthAndLoad() {
+	async function checkAuthAndLoad() {
 		if (typeof window === 'undefined') return;
 		
 		const token = localStorage.getItem('access_token');
 		const userStr = localStorage.getItem('user');
 		
 		if (token && userStr) {
-			loadData();
-			loadStats();
-			loadFilters();
+			await Promise.all([
+				loadData(),
+				loadStats(),
+				loadFilters()
+			]);
 		} else {
 			goto('/login');
 		}
@@ -423,7 +500,7 @@
 			<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
 				<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{title}</h1>
 				<Button 
-					icon="Plus" 
+					icon="plus" 
 					onclick={() => goto(newItemRoute)}
 					class="w-full sm:w-auto text-sm sm:text-base"
 				>
@@ -452,7 +529,7 @@
 			</div>
 		{/if}
 		
-		<!-- Filtros dinâmicos baseados na configuração -->
+		<!-- Filtros -->
 		<div class="mb-4 sm:mb-6">
 			<FiltersAccordion
 				categories={categoriesEndpoint ? categories : []}
@@ -466,34 +543,37 @@
 				bind:categoryFilter
 				bind:brandFilter
 				bind:priceRange
-				onFiltersChange={() => {
-					page = 1;
-					loadData();
-				}}
+				bind:search
+				bind:customFilterValues
+				{searchPlaceholder}
+				onFiltersChange={handleFiltersChange}
+				onSearchChange={handleSearchChange}
 				onCustomFilterChange={(key, value) => {
-					console.log(`Filtro customizado ${key}:`, value);
-					page = 1;
-					loadData();
+					customFilterValues[key] = value;
+					handleFiltersChange();
 				}}
 			/>
 		</div>
 		
-		<!-- Tabela -->
+		<!-- Tabela Responsiva -->
 		<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-			<div class="p-3 sm:p-4">
+			<div class="p-3 sm:p-6">
 				<!-- Ações em lote -->
 				{#if selectedIds.length > 0}
-					<div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-							<span class="text-sm text-blue-800">
+					<div class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+							<div class="flex items-center gap-2">
+								<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+								<span class="text-sm font-medium text-blue-800">
 								{selectedIds.length} {entityName}(s) selecionado(s)
 							</span>
+							</div>
 							<div class="flex gap-2 w-full sm:w-auto">
 								<Button
 									size="sm"
-									variant="ghost"
+									variant="danger"
 									onclick={deleteSelected}
-									class="flex-1 sm:flex-initial"
+									class="flex-1 sm:flex-initial text-xs sm:text-sm"
 								>
 									<span class="sm:hidden">Excluir</span>
 									<span class="hidden sm:inline">Excluir ({selectedIds.length})</span>
@@ -503,6 +583,8 @@
 					</div>
 				{/if}
 				
+				<!-- Desktop Table / Mobile Cards -->
+				<div class="hidden lg:block">
 				<DataTable
 					{columns}
 					{data}
@@ -513,13 +595,152 @@
 					{page}
 					{pageSize}
 					{totalItems}
-					onPageChange={(p: number) => page = p}
+						onPageChange={handlePageChange}
+					showHeaderPagination={true}
 					{sortBy}
 					{sortOrder}
 					onSort={handleSort}
 					actions={getTableActions}
 					emptyMessage={`Nenhum ${entityName} encontrado`}
 				/>
+				</div>
+
+				<!-- Mobile Cards -->
+				<div class="lg:hidden">
+					{#if loading}
+						<div class="space-y-4">
+							{#each Array(5) as _, i}
+								<div class="bg-gray-50 rounded-lg p-4 animate-pulse">
+									<div class="flex space-x-4">
+										<div class="w-16 h-16 bg-gray-200 rounded-lg"></div>
+										<div class="flex-1 space-y-2">
+											<div class="h-4 bg-gray-200 rounded w-3/4"></div>
+											<div class="h-3 bg-gray-200 rounded w-1/2"></div>
+											<div class="h-3 bg-gray-200 rounded w-1/4"></div>
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else if data.length === 0}
+						<div class="text-center py-12">
+							<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8V4a1 1 0 00-1-1H7a1 1 0 00-1 1v1m0 0V4h10v1M7 5v1h10V5"></path>
+							</svg>
+							<h3 class="mt-2 text-sm font-medium text-gray-900">{`Nenhum ${entityName} encontrado`}</h3>
+							<p class="mt-1 text-sm text-gray-500">Comece criando um novo {entityName}.</p>
+						</div>
+					{:else}
+						<div class="space-y-4">
+							{#each data as item}
+								<div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+									<!-- Mobile Card Content -->
+									<div class="flex items-start space-x-3">
+										<!-- Checkbox -->
+										<input 
+											type="checkbox" 
+											checked={selectedIds.includes(item.id)}
+											onchange={(e) => {
+												const target = e.target as HTMLInputElement;
+												if (target.checked) {
+													selectedIds = [...selectedIds, item.id];
+												} else {
+													selectedIds = selectedIds.filter(id => id !== item.id);
+												}
+											}}
+											class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+										/>
+										
+										<!-- Image -->
+										{#if item.image || item.images?.[0]}
+											<img 
+												src={item.image || item.images[0]} 
+												alt={item.name}
+												class="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+											/>
+										{:else}
+											<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+												<svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+												</svg>
+											</div>
+										{/if}
+										
+										<!-- Content -->
+										<div class="flex-1 min-w-0">
+											<div class="flex items-start justify-between">
+												<div class="flex-1">
+													<h3 class="text-sm font-medium text-gray-900 truncate">{item.name}</h3>
+													<p class="text-xs text-gray-500 mt-1">SKU: {item.sku}</p>
+													{#if item.category}
+														<p class="text-xs text-gray-400 mt-1">{item.category}</p>
+													{/if}
+												</div>
+												
+												<!-- Actions -->
+												<div class="flex space-x-2 ml-2">
+													{#each getTableActions(item) as action}
+														<button
+															onclick={action.onclick}
+															class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+														>
+															{action.label}
+														</button>
+													{/each}
+												</div>
+											</div>
+											
+											<!-- Price and Status -->
+											<div class="flex items-center justify-between mt-3">
+												<div class="flex items-center space-x-4">
+													{#if item.price}
+														<span class="text-lg font-semibold text-gray-900">R$ {item.price.toFixed(2)}</span>
+													{/if}
+													{#if item.quantity !== undefined}
+														<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {item.quantity === 0 ? 'bg-red-100 text-red-800' : item.quantity < 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
+															Estoque: {item.quantity}
+														</span>
+													{/if}
+												</div>
+												
+												{#if item.is_active !== undefined}
+													<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {item.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+														{item.is_active ? 'Ativo' : 'Inativo'}
+													</span>
+												{/if}
+											</div>
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+						
+						<!-- Mobile Pagination -->
+						{#if totalItems > pageSize}
+							<div class="mt-6 flex items-center justify-between">
+								<button
+									onclick={() => handlePageChange(page - 1)}
+									disabled={page <= 1}
+									class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									Anterior
+								</button>
+								
+								<span class="text-sm text-gray-700">
+									Página {page} de {Math.ceil(totalItems / pageSize)}
+								</span>
+								
+								<button
+									onclick={() => handlePageChange(page + 1)}
+									disabled={page >= Math.ceil(totalItems / pageSize)}
+									class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									Próxima
+								</button>
+							</div>
+						{/if}
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>

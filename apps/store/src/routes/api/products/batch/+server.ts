@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             SELECT id, name, slug, description, price, original_price, category_id,
                    brand_id, seller_id, quantity, rating_average, rating_count,
                    sales_count, tags, created_at, updated_at, featured, sku,
-                   pieces, is_active
+                   is_active
             FROM products
             WHERE id = ANY(${ids}) AND is_active = true
           `;
@@ -56,7 +56,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             SELECT id, name, slug, description, price, original_price, category_id,
                    brand_id, seller_id, quantity, rating_average, rating_count,
                    sales_count, tags, created_at, updated_at, featured, sku,
-                   pieces, is_active
+                   is_active
             FROM products
             WHERE slug = ANY(${slugs}) AND is_active = true
           `;
@@ -85,22 +85,28 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const sellerNames: Record<string, string> = {};
 
         if (include_relations) {
-          const categoryIds = [...new Set(products.map(p => p.category_id).filter(Boolean))];
-          const brandIds = [...new Set(products.map(p => p.brand_id).filter(Boolean))];
-          const sellerIds = [...new Set(products.map(p => p.seller_id).filter(Boolean))];
-
-          if (categoryIds.length > 0) {
+          // Buscar categorias através da tabela product_categories
+          const productIds = products.map(p => p.id);
+          if (productIds.length > 0) {
             try {
-              const categories = await db.query`
-                SELECT id, name, slug FROM categories WHERE id = ANY(${categoryIds})
+              const categoryRelations = await db.query`
+                SELECT pc.product_id, c.id, c.name, c.slug 
+                FROM product_categories pc
+                INNER JOIN categories c ON c.id = pc.category_id
+                WHERE pc.product_id = ANY(${productIds}) AND pc.is_primary = true
               `;
-              categories.forEach((cat: any) => {
-                categoryNames[cat.id] = cat.name;
+              categoryRelations.forEach((rel: any) => {
+                categoryNames[rel.product_id] = rel.name;
+                // Também adicionar pelo category_id para compatibilidade
+                categoryNames[rel.id] = rel.name;
               });
             } catch (e) {
               console.log('Erro ao buscar categorias');
             }
           }
+
+          const brandIds = [...new Set(products.map(p => p.brand_id).filter(Boolean))];
+          const sellerIds = [...new Set(products.map(p => p.seller_id).filter(Boolean))];
 
           if (brandIds.length > 0) {
             try {
@@ -152,7 +158,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         images: result.productImages[product.id] || [],
         image: result.productImages[product.id]?.[0] || `/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`,
         category_id: product.category_id,
-        category_name: result.categoryNames[product.category_id] || 'Categoria',
+        category_name: result.categoryNames[product.id] || 'Categoria',
         brand_id: product.brand_id,
         brand_name: result.brandNames[product.brand_id] || 'Marca',
         seller_id: product.seller_id,
@@ -167,7 +173,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         updated_at: product.updated_at,
         is_featured: product.featured || false,
         sku: product.sku,
-        pieces: product.pieces || 1,
+        pieces: 1,
         has_fast_delivery: true
       }));
       

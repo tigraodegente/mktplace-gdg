@@ -10,120 +10,95 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Parâmetros de query
 		const page = parseInt(url.searchParams.get('page') || '1');
 		const limit = parseInt(url.searchParams.get('limit') || '20');
-		const search = url.searchParams.get('search') || '';
-		const sellerId = url.searchParams.get('sellerId') || '';
-		const carrierId = url.searchParams.get('carrierId') || '';
-		const isActive = url.searchParams.get('isActive');
-		const sortBy = url.searchParams.get('sortBy') || 'created_at';
-		const sortOrder = url.searchParams.get('sortOrder') || 'desc';
-		
 		const offset = (page - 1) * limit;
 		
-		// Construir WHERE clause
-		const conditions = [];
-		const params = [];
-		let paramIndex = 1;
+		// Buscar configurações básicas (sem JOINs)
+		const basicConfigsResult = await db.query(`
+			SELECT * FROM seller_shipping_configs 
+			ORDER BY created_at DESC
+			LIMIT $1 OFFSET $2
+		`, [limit, offset]);
 		
-		if (search) {
-			conditions.push(`(u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex + 1} OR sc.name ILIKE $${paramIndex + 2})`);
-			params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-			paramIndex += 3;
+		const totalResult = await db.query('SELECT COUNT(*) as count FROM seller_shipping_configs');
+		const total = parseInt(totalResult[0].count);
+		
+		// Enriquecer dados buscando sellers e carriers separadamente
+		const configs = [];
+		
+		for (const config of basicConfigsResult) {
+			// Buscar dados do seller
+			let sellerName = 'N/A';
+			let sellerEmail = 'N/A';
+			
+			try {
+				const sellerResult = await db.query(
+					'SELECT name, email FROM users WHERE id = $1', 
+					[config.seller_id]
+				);
+				if (sellerResult[0]) {
+					sellerName = sellerResult[0].name || 'N/A';
+					sellerEmail = sellerResult[0].email || 'N/A';
+				}
+			} catch (e) {
+				console.log(`Erro ao buscar seller ${config.seller_id}:`, e);
+			}
+			
+			// Buscar dados do carrier
+			let carrierName = 'N/A';
+			let carrierType = 'N/A';
+			let carrierIsActive = false;
+			
+			try {
+				const carrierResult = await db.query(
+					'SELECT name, type, is_active FROM shipping_carriers WHERE id = $1',
+					[config.carrier_id]
+				);
+				if (carrierResult[0]) {
+					carrierName = carrierResult[0].name || 'N/A';
+					carrierType = carrierResult[0].type || 'N/A';
+					carrierIsActive = carrierResult[0].is_active || false;
+				}
+			} catch (e) {
+				console.log(`Erro ao buscar carrier ${config.carrier_id}:`, e);
+			}
+			
+			configs.push({
+				...config,
+				seller_name: sellerName,
+				seller_email: sellerEmail,
+				carrier_name: carrierName,
+				carrier_type: carrierType,
+				carrier_is_active: carrierIsActive,
+				available_rates: 0
+			});
 		}
 		
-		if (sellerId) {
-			conditions.push(`ssc.seller_id = $${paramIndex}`);
-			params.push(sellerId);
-			paramIndex++;
-		}
-		
-		if (carrierId) {
-			conditions.push(`ssc.carrier_id = $${paramIndex}`);
-			params.push(carrierId);
-			paramIndex++;
-		}
-		
-		if (isActive !== null && isActive !== undefined) {
-			conditions.push(`ssc.is_active = $${paramIndex}`);
-			params.push(isActive === 'true');
-			paramIndex++;
-		}
-		
-		const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-		
-		// Query principal com JOINs
-		const configsQuery = `
-			SELECT 
-				ssc.id,
-				ssc.seller_id,
-				ssc.carrier_id,
-				ssc.markup_percentage,
-				ssc.free_shipping_threshold,
-				ssc.handling_time_days,
-				ssc.is_active,
-				ssc.created_at,
-				ssc.updated_at,
-				u.name as seller_name,
-				u.email as seller_email,
-				sc.name as carrier_name,
-				sc.type as carrier_type,
-				sc.is_active as carrier_is_active,
-				COUNT(sr.id) as available_rates
-			FROM seller_shipping_configs ssc
-			JOIN shipping_carriers sc ON ssc.carrier_id = sc.id
-			JOIN users u ON ssc.seller_id = u.id
-			LEFT JOIN shipping_rates sr ON sr.carrier_id = ssc.carrier_id
-			${whereClause}
-			GROUP BY ssc.id, u.name, u.email, sc.name, sc.type, sc.is_active
-			ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
-			LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-		`;
-		
-		params.push(limit, offset);
-		
-		const configs = await db.query(configsQuery, params);
-		
-		// Count total
-		const countQuery = `
-			SELECT COUNT(*) as total
-			FROM seller_shipping_configs ssc
-			JOIN shipping_carriers sc ON ssc.carrier_id = sc.id
-			JOIN users u ON ssc.seller_id = u.id
-			${whereClause}
-		`;
-		
-		const countResult = await db.query(countQuery, params.slice(0, -2));
-		const total = parseInt(countResult[0]?.total || '0');
-		
-		// Estatísticas
-		const statsQuery = `
+		// Estatísticas reais
+		const statsResult = await db.query(`
 			SELECT 
 				COUNT(*) as total_configs,
 				COUNT(CASE WHEN is_active = true THEN 1 END) as active_configs,
 				COUNT(DISTINCT seller_id) as unique_sellers,
 				COUNT(DISTINCT carrier_id) as unique_carriers,
-				AVG(markup_percentage) as avg_markup,
-				AVG(free_shipping_threshold) as avg_free_threshold,
-				AVG(handling_time_days) as avg_handling_time
+				COALESCE(AVG(markup_percentage), 0) as avg_markup,
+				COALESCE(AVG(free_shipping_threshold), 0) as avg_free_threshold,
+				COALESCE(AVG(priority), 0) as avg_priority
 			FROM seller_shipping_configs
-		`;
+		`);
 		
-		const statsResult = await db.query(statsQuery);
-		const stats = statsResult[0];
+		const stats = statsResult[0] || {
+			total_configs: '0',
+			active_configs: '0', 
+			unique_sellers: '0',
+			unique_carriers: '0',
+			avg_markup: '0',
+			avg_free_threshold: '0',
+			avg_priority: '0'
+		};
 		
-		// Buscar sellers e carriers para filtros
-		const sellersQuery = `
-			SELECT u.id, u.name, u.email 
-			FROM users u 
-			WHERE u.role = 'seller' 
-			ORDER BY u.name
-		`;
-		
-		const carriersQuery = 'SELECT id, name FROM shipping_carriers ORDER BY name';
-		
-		const [sellers, carriers] = await Promise.all([
-			db.query(sellersQuery),
-			db.query(carriersQuery)
-		]);
+		// Filtros simplificados
+		const sellers: any[] = [];
+		const carriers: any[] = [];
 		
 		return json({
 			success: true,
@@ -142,7 +117,7 @@ export const GET: RequestHandler = async ({ url }) => {
 					uniqueCarriers: parseInt(stats?.unique_carriers || '0'),
 					avgMarkup: parseFloat(stats?.avg_markup || '0'),
 					avgFreeThreshold: parseFloat(stats?.avg_free_threshold || '0'),
-					avgHandlingTime: parseFloat(stats?.avg_handling_time || '0')
+					avgPriority: parseFloat(stats?.avg_priority || '0')
 				},
 				filters: {
 					sellers,
@@ -153,6 +128,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		
 	} catch (error) {
 		console.error('Erro ao buscar configurações de frete:', error);
+		if (error instanceof Error) {
+			console.error('Error details:', error.message);
+			console.error('Stack trace:', error.stack);
+		}
 		
 		// Fallback em caso de erro
 		return json({
@@ -160,7 +139,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			data: {
 				configs: [],
 				pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
-				stats: { totalConfigs: 0, activeConfigs: 0, uniqueSellers: 0, uniqueCarriers: 0, avgMarkup: 0, avgFreeThreshold: 0, avgHandlingTime: 0 },
+				stats: { totalConfigs: 0, activeConfigs: 0, uniqueSellers: 0, uniqueCarriers: 0, avgMarkup: 0, avgFreeThreshold: 0, avgPriority: 0 },
 				filters: { sellers: [], carriers: [] }
 			},
 			source: 'fallback'
@@ -231,7 +210,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const insertQuery = `
 			INSERT INTO seller_shipping_configs (
 				seller_id, carrier_id, markup_percentage, free_shipping_threshold,
-				handling_time_days, is_active
+				priority, is_active
 			) VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING *
 		`;
@@ -241,7 +220,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			data.carrier_id,
 			data.markup_percentage || 0,
 			data.free_shipping_threshold || null,
-			data.handling_time_days || 1,
+			data.priority || 1,
 			data.is_active !== false // default true
 		]);
 		
@@ -326,9 +305,8 @@ export const PUT: RequestHandler = async ({ request }) => {
 				carrier_id = COALESCE($3, carrier_id),
 				markup_percentage = COALESCE($4, markup_percentage),
 				free_shipping_threshold = COALESCE($5, free_shipping_threshold),
-				handling_time_days = COALESCE($6, handling_time_days),
-				is_active = COALESCE($7, is_active),
-				updated_at = CURRENT_TIMESTAMP
+				priority = COALESCE($6, priority),
+				is_active = COALESCE($7, is_active)
 			WHERE id = $1
 			RETURNING *
 		`;
@@ -339,7 +317,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 			data.carrier_id,
 			data.markup_percentage,
 			data.free_shipping_threshold,
-			data.handling_time_days,
+			data.priority,
 			data.is_active
 		]);
 		

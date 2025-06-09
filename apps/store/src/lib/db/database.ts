@@ -22,7 +22,12 @@ export interface DatabaseEnv {
 }
 
 export class Database {
-  private sql: any = null;
+  private sql: any;
+  private connectionPool: any;
+  private lastConnectionTime: number = 0;
+  private isConnected: boolean = false;
+  private retryAttempts: number = 0;
+  private maxRetries: number = 3;
   private config: DatabaseConfig;
   private isLocal: boolean;
 
@@ -40,6 +45,28 @@ export class Database {
     // Detectar se é conexão local
     this.isLocal = this.config.connectionString.includes('localhost') ||
       this.config.connectionString.includes('127.0.0.1');
+
+    this.setupConnectionMonitoring();
+  }
+
+  private setupConnectionMonitoring() {
+    // Verificar conexão a cada 30 segundos
+    setInterval(() => {
+      this.checkConnection();
+    }, 30000);
+  }
+
+  private async checkConnection(): Promise<boolean> {
+    try {
+      await this.sql`SELECT 1`;
+      this.isConnected = true;
+      this.retryAttempts = 0;
+      return true;
+    } catch (error) {
+      console.warn('🔌 Conexão com banco indisponível:', error);
+      this.isConnected = false;
+      return false;
+    }
   }
 
   private async getSqlClient() {
@@ -89,28 +116,80 @@ export class Database {
     }
   }
 
-  // Query que retorna múltiplas linhas
-  async query<T = any>(strings: TemplateStringsArray | string, ...values: any[]): Promise<T[]> {
+  async query(query: TemplateStringsArray | string, ...params: any[]): Promise<any> {
+    const maxRetryAttempts = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetryAttempts; attempt++) {
+      try {
     const sql = await this.getSqlClient();
     
-    try {
-    if (typeof strings === 'string') {
-      // Query simples com string
-        const result = await sql.unsafe(strings, values);
-        return result as unknown as T[];
+        // Se é string, usar query direto
+        if (typeof query === 'string') {
+          return await sql.unsafe(query, params);
+        }
+        
+        // Se é template literal, usar o operador template
+        const result = await sql(query, ...params);
+        
+        // Resetar contador de erro após sucesso
+        this.retryAttempts = 0;
+        this.isConnected = true;
+        
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        this.isConnected = false;
+        
+        console.warn(`❌ Erro na query (tentativa ${attempt}/${maxRetryAttempts}):`, error.message);
+        
+        // Se é erro de conectividade, tentar reconectar
+        if (this.isConnectionError(error)) {
+          console.log(`🔄 Tentando reconectar... (${attempt}/${maxRetryAttempts})`);
+          
+          // Aguardar antes de tentar novamente (backoff exponencial)
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          // Resetar sql client para reconectar
+          this.sql = null;
+          
+          continue;
+        } else {
+          // Se não é erro de conectividade, não tentar novamente
+          throw error;
+        }
       }
-      // Template literal query
-      const result = await sql(strings, ...values);
-      return result as unknown as T[];
-    } catch (error) {
-      console.error('❌ Erro na query:', error);
-      throw error;
     }
+
+    // Se chegou aqui, todas as tentativas falharam
+    console.error(`❌ Falha total na conexão após ${maxRetryAttempts} tentativas`);
+    throw new Error(`Database connection failed after ${maxRetryAttempts} attempts: ${lastError?.message}`);
   }
+
+  private isConnectionError(error: any): boolean {
+    const connectionErrors = [
+      'ENOTFOUND',
+      'ECONNREFUSED', 
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'connection_failure',
+      'network_failure'
+    ];
+    
+    return connectionErrors.some(errorType => 
+      error.code === errorType || 
+      error.message?.includes(errorType) ||
+      error.message?.includes('connection') ||
+      error.message?.includes('network')
+    );
+    }
+
+  // Query que retorna múltiplas linhas - usando a versão otimizada com retry acima
 
   // Query que retorna uma única linha
   async queryOne<T = any>(strings: TemplateStringsArray | string, ...values: any[]): Promise<T | null> {
-    const rows = await this.query<T>(strings, ...values);
+    const rows = await this.query(strings, ...values);
     return rows[0] || null;
   }
 

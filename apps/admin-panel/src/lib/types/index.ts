@@ -54,15 +54,17 @@ export interface Product extends BaseEntity {
 	tags?: string[];
 }
 
-// Categoria
+// Categoria (campos conforme retornados pela API)
 export interface Category extends BaseEntity {
 	name: string;
 	slug: string;
 	description?: string;
-	parent_id?: string;
-	image_url?: string;
-	is_active: boolean;
-	sort_order: number;
+	parentId?: string;
+	imageUrl?: string;
+	isActive: boolean;
+	position: number;
+	subcategoryCount?: number;
+	productCount?: number;
 }
 
 // Marca

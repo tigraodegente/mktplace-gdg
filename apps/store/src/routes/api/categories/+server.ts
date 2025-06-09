@@ -43,8 +43,8 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
       
       // Promise com timeout de 3 segundos
       const queryPromise = (async () => {
-        // Query com contagens reais de produtos
-        const categoriesQuery = `
+        // Query com contagens reais de produtos - FILTRADA PARA INCLUIR APENAS CATEGORIAS COM PRODUTOS
+        let categoriesQuery = `
           SELECT 
             c.id,
             c.name,
@@ -53,17 +53,53 @@ export const GET: RequestHandler = async ({ url, setHeaders, platform }) => {
             c.description,
             c.position,
             COALESCE(
-              (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = true), 
+              (SELECT COUNT(DISTINCT pc.product_id) 
+               FROM product_categories pc 
+               INNER JOIN products p ON p.id = pc.product_id 
+               INNER JOIN categories cat ON cat.id = pc.category_id
+               WHERE (cat.id = c.id OR cat.parent_id = c.id) 
+               AND p.is_active = true), 
               0
             ) as product_count
           FROM categories c
           WHERE c.is_active = true
+        `;
+        
+        // Se includeCount=true, filtrar apenas categorias com produtos
+        if (includeCount) {
+          console.log('🎯 Filtrando apenas categorias com produtos para menu');
+          categoriesQuery += `
+            AND (
+              EXISTS (
+                SELECT 1 FROM product_categories pc
+                INNER JOIN products p ON p.id = pc.product_id
+                WHERE pc.category_id = c.id 
+                AND p.is_active = true
+              )
+              OR EXISTS (
+                SELECT 1 FROM categories sub
+                WHERE sub.parent_id = c.id
+                AND EXISTS (
+                  SELECT 1 FROM product_categories pc
+                  INNER JOIN products p ON p.id = pc.product_id
+                  WHERE pc.category_id = sub.id 
+                  AND p.is_active = true
+                )
+              )
+            )
+          `;
+        }
+        
+        categoriesQuery += `
           ORDER BY c.position ASC NULLS LAST, c.name ASC
         `;
         
-        logger.debug('Executando query de categorias com contagens reais');
+        logger.debug(includeCount ? 'Executando query de categorias com contagens reais (filtrada)' : 'Executando query de categorias com contagens reais');
         const categories = await db.query(categoriesQuery);
-        logger.debug('Categorias carregadas com contagens reais', { count: categories.length });
+        logger.debug('Categorias carregadas com contagens reais', { 
+          count: categories.length, 
+          filtered: includeCount 
+        });
         
         return categories;
       })();
@@ -147,6 +183,8 @@ function buildCategoryHierarchy(categories: any[]): {
   
   // First pass: create all category objects
   for (const cat of categories) {
+    const productCount = parseInt(cat.product_count) || 0; // Usar contagem real do banco
+    
     categoryMap.set(cat.id, {
       id: cat.id,
       name: cat.name,
@@ -155,7 +193,7 @@ function buildCategoryHierarchy(categories: any[]): {
       position: cat.position,
       parent_id: cat.parent_id,
       subcategories: [],
-      product_count: parseInt(cat.product_count) || 0 // Usar contagem real do banco
+      product_count: productCount
     });
   }
   
@@ -174,7 +212,27 @@ function buildCategoryHierarchy(categories: any[]): {
     }
   }
   
+  // Third pass: Update parent product counts to include subcategories
+  for (const rootCategory of rootCategories) {
+    updateParentProductCount(rootCategory);
+  }
+  
   return { categoryMap, rootCategories };
+}
+
+/**
+ * Update parent product count to include all subcategories
+ * Agora não precisa mais somar, pois a query já inclui subcategorias
+ */
+function updateParentProductCount(category: CategoryData): number {
+  // A query já calcula incluindo subcategorias, então só precisamos
+  // processar recursivamente para manter a estrutura
+  for (const subcat of category.subcategories) {
+    updateParentProductCount(subcat);
+  }
+  
+  // Retornar a contagem já calculada pelo banco
+  return category.product_count || 0;
 }
 
 /**

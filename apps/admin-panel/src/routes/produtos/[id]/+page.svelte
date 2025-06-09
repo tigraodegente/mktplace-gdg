@@ -10,6 +10,8 @@
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
 	import SeoTab from '$lib/components/produtos/SeoTab.svelte';
 	import AdvancedTab from '$lib/components/produtos/AdvancedTab.svelte';
+	import VariantsTab from '$lib/components/produtos/VariantsTab.svelte';
+	import InventoryTab from '$lib/components/produtos/InventoryTab.svelte';
 	import { productService } from '$lib/services/productService';
 	import { toast } from '$lib/stores/toast';
 	
@@ -26,9 +28,11 @@
 	const tabs = [
 		{ id: 'basic', label: 'Informações Básicas', icon: 'Package' },
 		{ id: 'attributes', label: 'Atributos e Especificações', icon: 'Settings' },
-		{ id: 'media', label: 'Imagens', icon: 'image' },
-		{ id: 'shipping', label: 'Frete e Entrega', icon: 'truck' },
-		{ id: 'seo', label: 'SEO', icon: 'search' },
+		{ id: 'variants', label: 'Variações', icon: 'Layers' },
+		{ id: 'inventory', label: 'Estoque', icon: 'BarChart3' },
+		{ id: 'media', label: 'Imagens', icon: 'ImageIcon' },
+		{ id: 'shipping', label: 'Frete e Entrega', icon: 'Truck' },
+		{ id: 'seo', label: 'SEO', icon: 'Search' },
 		{ id: 'advanced', label: 'Avançado', icon: 'Settings' }
 	];
 	
@@ -110,6 +114,9 @@
 			if (response.ok) {
 				const result = await response.json();
 				if (result.success) {
+					console.log('🔍 DEBUG - Dados recebidos da API:', result.data);
+					console.log('🔍 DEBUG - ID do produto:', result.data.id);
+					console.log('🔍 DEBUG - brand_id do produto:', result.data.brand_id);
 					formData = result.data;
 					
 					// Inicializar arrays vazios se não existirem
@@ -119,9 +126,143 @@
 					formData.categories = formData.categories || [];
 					formData.variations = formData.variations || [];
 					
+					// ✅ INICIALIZAR VARIAÇÕES CORRETAMENTE
+					formData.product_options = formData.product_options || [];
+					formData.product_variants = formData.product_variants || [];
+					formData.has_variants = formData.has_variants || (formData.product_options.length > 0 || formData.product_variants.length > 0);
+					
 					// Inicializar atributos e especificações (NOVO)
 					formData.attributes = formData.attributes || {};
 					formData.specifications = formData.specifications || {};
+					
+					console.log('📦 Variações carregadas do banco:', {
+						product_options: formData.product_options.length,
+						product_variants: formData.product_variants.length,
+						has_variants: formData.has_variants
+					});
+					
+					// 🔍 DEBUG DETALHADO DOS ATTRIBUTES
+					if (formData.attributes && Object.keys(formData.attributes).length > 0) {
+						console.log('🎨 ATTRIBUTES DETECTADOS:');
+						Object.entries(formData.attributes).forEach(([key, values]) => {
+							const isVariation = Array.isArray(values) && values.length > 1;
+							console.log(`  - ${key}: ${Array.isArray(values) ? values.join(', ') : values} (${Array.isArray(values) ? values.length : 1} opções)${isVariation ? ' ← PODE SER VARIAÇÃO!' : ''}`);
+						});
+					}
+					
+					// 🎨 VERIFICAR SE ATTRIBUTES INDICAM VARIAÇÕES E CRIAR AUTOMATICAMENTE
+					if (formData.attributes && Object.keys(formData.attributes).length > 0) {
+						console.log('🎨 Verificando attributes para variações automáticas...');
+						
+						// Identificar attributes com múltiplas opções
+						const variationAttributes = Object.entries(formData.attributes).filter(([key, values]) => 
+							Array.isArray(values) && values.length > 1
+						);
+						
+						if (variationAttributes.length > 0 && (!formData.product_options || formData.product_options.length === 0)) {
+							console.log(`✅ Criando ${variationAttributes.length} opções de variação automaticamente dos attributes!`);
+							
+							formData.product_options = variationAttributes.map(([key, values], index) => ({
+								id: `auto_${Date.now()}_${index}`,
+								name: key,
+								position: index,
+								values: Array.isArray(values) ? values.map((value, valueIndex) => ({
+									id: `auto_${Date.now()}_${index}_${valueIndex}`,
+									value: String(value),
+									position: valueIndex
+								})) : []
+							}));
+							
+							formData.has_variants = true;
+							
+							console.log('📦 Opções de variação criadas automaticamente:', formData.product_options);
+							console.log('🔧 has_variants definido como true');
+							
+							// 🚨 GERAR AUTOMATICAMENTE AS VARIAÇÕES (product_variants)
+							console.log('🎨 Gerando variações automaticamente...');
+							if (formData.product_options.length > 0) {
+								// Função para gerar combinações
+								function generateVariantsFromOptions() {
+									const options = formData.product_options.filter((opt: any) => opt.values.length > 0);
+									if (options.length === 0) return [];
+
+									function cartesian(arrays: any[]): any[] {
+										return arrays.reduce((acc: any[], curr: any[]) => 
+											acc.flatMap((a: any) => curr.map((c: any) => [...a, c]))
+										, [[]]);
+									}
+
+									const valueArrays = options.map((option: any) => 
+										option.values.map((value: any) => ({ 
+											optionName: option.name, 
+											value: value.value 
+										}))
+									);
+
+									const combinations = cartesian(valueArrays);
+									
+									return combinations.map((combination: any[], index: number) => {
+										const option_values = combination.reduce((acc: Record<string, string>, { optionName, value }) => {
+											acc[optionName] = value;
+											return acc;
+										}, {});
+										
+										const variantName = Object.values(option_values).join(' / ');
+										
+										return {
+											id: Date.now() + index,
+											sku: `${formData.sku}-${index + 1}`,
+											price: formData.price || 0,
+											original_price: formData.original_price || 0,
+											cost: formData.cost || 0,
+											quantity: 0,
+											weight: formData.weight || 0,
+											barcode: '',
+											is_active: true,
+											option_values: option_values,
+											name: variantName
+										};
+									});
+								}
+								
+								formData.product_variants = generateVariantsFromOptions();
+								console.log(`✅ ${formData.product_variants.length} variações geradas automaticamente!`, formData.product_variants);
+							}
+						}
+					}
+					
+					// 🚨 CARREGAR VARIAÇÕES REAIS SE AINDA NÃO TEM VARIAÇÕES
+					if ((!formData.product_variants || formData.product_variants.length === 0) && 
+						(!formData.product_options || formData.product_options.length === 0) && 
+						formData.sku) {
+						console.log('🔍 Produto sem variações. Buscando variações reais...');
+						try {
+							const realVariationsResponse = await fetch(`/api/products/real-variations/${formData.id}`);
+							if (realVariationsResponse.ok) {
+								const realData = await realVariationsResponse.json();
+								if (realData.success && realData.variations && realData.variations.length > 0) {
+									console.log(`✅ CARREGADAS ${realData.variations.length} variações reais automaticamente!`);
+									
+									if (realData.type === 'structured') {
+										// Variações estruturadas
+										formData.product_variants = realData.variations;
+										formData.variant_type = 'structured';
+									} else {
+										// Produtos similares
+										formData.related_products = realData.variations;
+										formData.variant_type = 'real_products';
+									}
+									
+									formData.has_variants = true;
+									console.log('📦 Variações reais aplicadas:', realData.type, realData.variations.length);
+								} else {
+									console.log('ℹ️ Nenhuma variação real encontrada para este produto');
+								}
+							}
+						} catch (error) {
+							console.warn('⚠️ Erro ao carregar variações reais:', error);
+						}
+					}
 					
 					// Preparar campos especiais
 					if (formData.tags && Array.isArray(formData.tags)) {
@@ -190,7 +331,10 @@
 				width: formData.width ? parseFloat(formData.width) : null,
 				length: formData.length ? parseFloat(formData.length) : null,
 				delivery_days_min: formData.delivery_days_min ? parseInt(formData.delivery_days_min) : null,
-				delivery_days_max: formData.delivery_days_max ? parseInt(formData.delivery_days_max) : null
+				delivery_days_max: formData.delivery_days_max ? parseInt(formData.delivery_days_max) : null,
+				// Garantir que category_id seja enviado corretamente
+				category_id: formData.category_id || null,
+				brand_id: formData.brand_id || null
 			};
 			
 			// Remover campos temporários
@@ -199,6 +343,18 @@
 			delete dataToSend.category_name;
 			delete dataToSend.brand_name;
 			delete dataToSend.vendor_name;
+			
+			console.log('📝 Dados sendo enviados para a API:', {
+				id: formData.id,
+				name: dataToSend.name,
+				category_id: dataToSend.category_id,
+				brand_id: dataToSend.brand_id,
+				attributes: dataToSend.attributes,
+				specifications: dataToSend.specifications,
+				product_options: dataToSend.product_options?.length || 0,
+				product_variants: dataToSend.product_variants?.length || 0,
+				has_variants: dataToSend.has_variants
+			});
 			
 			const response = await fetch(`/api/products/${productId}`, {
 				method: 'PUT',
@@ -214,6 +370,7 @@
 				toast.success(result.message || 'Produto atualizado com sucesso!');
 				await loadProduct(); // Recarregar dados
 			} else {
+				console.error('❌ Erro no salvamento:', result);
 				toast.error(result.error || result.message || 'Erro ao salvar produto');
 			}
 		} catch (error) {
@@ -360,7 +517,7 @@
 			// Forçar reatividade
 			formData = { ...formData };
 			
-			toast.success('🚀 Produto enriquecido com IA! Revise todas as abas para ver as melhorias.');
+			toast.success('🚀 Produto enriquecido com IA! Revise todas as abas e clique em Salvar quando estiver pronto.');
 		} else {
 			console.error('Nenhum dado retornado do enriquecimento');
 			toast.error('Erro: Nenhum dado foi retornado pela IA');
@@ -369,10 +526,9 @@
 		showEnrichmentProgress = false;
 		isEnriching = false;
 		
-		// Salvar automaticamente se tiver dados
-		if (enrichedData) {
-			saveProduct();
-		}
+		// ❌ REMOVIDO: Não salvar automaticamente no formulário
+		// O usuário deve revisar e salvar manualmente
+		console.log('✅ Enriquecimento concluído. Aguardando usuário salvar manualmente.');
 	}
 	
 	// Callback quando o enriquecimento for cancelado
@@ -487,18 +643,18 @@
 		<!-- Tabs -->
 		<div class="bg-white border-b sticky top-0 z-10">
 			<div class="max-w-[calc(100vw-100px)] mx-auto px-4">
-				<div class="flex gap-6 overflow-x-auto">
+				<div class="flex gap-1 overflow-x-auto">
 					{#each tabs as tab}
 						<button
 							type="button"
 							onclick={() => activeTab = tab.id}
-							class="py-4 px-2 border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap {
+							class="py-4 px-4 border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap font-medium {
 								activeTab === tab.id 
-									? 'border-[#00BFB3] text-[#00BFB3]' 
-									: 'border-transparent text-gray-600 hover:text-gray-900'
+									? 'border-[#00BFB3] text-[#00BFB3] bg-[#00BFB3]/5' 
+									: 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
 							}"
 						>
-							<ModernIcon name={tab.icon} size={16} />
+													<ModernIcon name={tab.icon} size="sm" />
 							{tab.label}
 						</button>
 					{/each}
@@ -512,6 +668,10 @@
 				<BasicTab bind:formData />
 			{:else if activeTab === 'attributes'}
 				<AttributesSection bind:formData />
+			{:else if activeTab === 'variants'}
+				<VariantsTab bind:formData />
+			{:else if activeTab === 'inventory'}
+				<InventoryTab bind:formData />
 			{:else if activeTab === 'media'}
 				<MediaTab bind:formData {productId} />
 			{:else if activeTab === 'shipping'}

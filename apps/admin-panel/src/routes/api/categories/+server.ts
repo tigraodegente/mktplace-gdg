@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from '@sveltejs/kit';
 import { getDatabase } from '$lib/db';
 
 // GET - Listar categorias
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Buscando categorias');
+    const db = getDatabase();
     
     // Parâmetros
     const tree = url.searchParams.get('tree') === 'true';
@@ -44,7 +45,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       
       categories = await db.query(query);
     } else {
-      // Buscar lista simples
+      // Buscar lista simples com contagem correta de produtos
       const conditions = activeOnly ? 'WHERE c.is_active = true' : '';
       
       const listQuery = `
@@ -52,19 +53,27 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           c.*,
           pc.name as parent_name,
           pc.slug as parent_slug,
-          (
-            SELECT COUNT(*) 
-            FROM products p 
-            WHERE p.category_id = c.id 
-            AND p.is_active = true
-          ) as product_count,
-          (
-            SELECT COUNT(*) 
-            FROM categories sub 
-            WHERE sub.parent_id = c.id
-          ) as subcategory_count
+          COALESCE(prod_count.count, 0) as product_count,
+          COALESCE(sub_count.count, 0) as subcategory_count
         FROM categories c
         LEFT JOIN categories pc ON pc.id = c.parent_id
+        LEFT JOIN (
+          SELECT 
+            pc.category_id,
+            COUNT(DISTINCT p.id) as count
+          FROM product_categories pc
+          JOIN products p ON p.id = pc.product_id
+          WHERE p.is_active = true
+          GROUP BY pc.category_id
+        ) prod_count ON prod_count.category_id = c.id
+        LEFT JOIN (
+          SELECT 
+            parent_id,
+            COUNT(*) as count
+          FROM categories
+          WHERE parent_id IS NOT NULL
+          GROUP BY parent_id
+        ) sub_count ON sub_count.parent_id = c.id
         ${conditions}
         ORDER BY c.position, c.name
       `;
@@ -73,45 +82,56 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     }
     
     // Buscar estatísticas
-    const [stats] = await db.query`
+    const statsQuery = `
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE c.is_active = true) as active,
-        COUNT(*) FILTER (WHERE c.parent_id IS NULL) as root
-      FROM categories c
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active,
+        COUNT(CASE WHEN parent_id IS NULL THEN 1 END) as root,
+        COUNT(CASE WHEN parent_id IS NOT NULL THEN 1 END) as subcategories
+      FROM categories
     `;
     
-    await db.close();
+    const statsResult = await db.query(statsQuery);
+    const stats = statsResult[0];
     
-    // Formatar resposta
+    console.log('✅ Categorias encontradas:', categories.length);
+    console.log('✅ Estatísticas:', stats);
+    
+    // Formatar resposta compatível com AdminPageTemplate
     const formatted = categories.map((cat: any) => ({
       id: cat.id,
       name: cat.name,
       slug: cat.slug,
       description: cat.description,
-      imageUrl: cat.image_url,
-      parentId: cat.parent_id,
-      parentName: cat.parent_name,
-      parentSlug: cat.parent_slug,
-      position: cat.position,
-      isActive: cat.is_active,
-      productCount: cat.product_count || 0,
-      subcategoryCount: cat.subcategory_count || 0,
+      image_url: cat.image_url,
+      icon: cat.icon,
+      parent_id: cat.parent_id,
+      parent_name: cat.parent_name,
+      parent_slug: cat.parent_slug,
+      position: cat.position || 0,
+      is_active: cat.is_active,
+      product_count: parseInt(cat.product_count) || 0,
+      subcategory_count: parseInt(cat.subcategory_count) || 0,
       level: cat.level || 0,
-      createdAt: cat.created_at,
-      updatedAt: cat.updated_at
+      created_at: cat.created_at,
+      updated_at: cat.updated_at
     }));
     
     return json({
       success: true,
-      data: {
-        categories: tree ? buildTree(formatted) : formatted,
-        stats: {
-          total: stats.total || 0,
-          active: stats.active || 0,
-          root: stats.root || 0,
-          featured: 0
-        }
+      data: tree ? buildTree(formatted) : formatted,
+      meta: {
+        total: formatted.length,
+        page: 1,
+        pageSize: formatted.length
+      },
+      stats: {
+        total_categories: parseInt(stats.total) || 0,
+        active_categories: parseInt(stats.active) || 0,
+        inactive_categories: (parseInt(stats.total) || 0) - (parseInt(stats.active) || 0),
+        without_products: formatted.filter(c => c.product_count === 0).length,
+        root_categories: parseInt(stats.root) || 0,
+        subcategories: parseInt(stats.subcategories) || 0
       }
     });
     
@@ -125,9 +145,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 };
 
 // POST - Criar categoria
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Criando categoria');
+    const db = getDatabase();
     const data = await request.json();
     
     // Validações
@@ -139,12 +160,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     }
     
     // Verificar slug duplicado
-    const [existing] = await db.query`
-      SELECT id FROM categories WHERE slug = ${data.slug}
-    `;
+    const existingQuery = 'SELECT id FROM categories WHERE slug = $1';
+    const existing = await db.query(existingQuery, [data.slug]);
     
-    if (existing) {
-      await db.close();
+    if (existing.length > 0) {
       return json({
         success: false,
         error: 'Slug já existe'
@@ -152,30 +171,37 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     }
     
     // Inserir categoria
-    const [category] = await db.query`
+    const insertQuery = `
       INSERT INTO categories (
         name, slug, description, 
         image_url, parent_id, 
         position, is_active
-      ) VALUES (
-        ${data.name}, ${data.slug}, ${data.description || null},
-        ${data.imageUrl || null}, ${data.parentId || null},
-        ${data.position || 0}, ${data.isActive !== false}
-      ) RETURNING id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
     `;
     
-    await db.close();
+    const result = await db.query(insertQuery, [
+      data.name,
+      data.slug, 
+      data.description || null,
+      data.image_url || null,
+      data.parent_id || null,
+      data.position || 0,
+      data.is_active !== false
+    ]);
+    
+    console.log('✅ Categoria criada:', result[0].id);
     
     return json({
       success: true,
       data: {
-        id: category.id,
+        id: result[0].id,
         message: 'Categoria criada com sucesso'
       }
     });
     
   } catch (error) {
-    console.error('Error creating category:', error);
+    console.error('❌ Erro ao criar categoria:', error);
     return json({
       success: false,
       error: 'Erro ao criar categoria'
@@ -184,9 +210,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 };
 
 // PUT - Atualizar categoria
-export const PUT: RequestHandler = async ({ request, platform }) => {
+export const PUT: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Atualizando categoria');
+    const db = getDatabase();
     const data = await request.json();
     
     if (!data.id) {
@@ -197,10 +224,9 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     }
     
     // Verificar se não está criando loop (categoria pai é filha dela mesma)
-    if (data.parentId) {
-      const isDescendant = await checkIsDescendant(db, data.id, data.parentId);
+    if (data.parent_id) {
+      const isDescendant = await checkIsDescendant(db, data.id, data.parent_id);
       if (isDescendant) {
-        await db.close();
         return json({
           success: false,
           error: 'Não é possível definir uma subcategoria como pai'
@@ -209,20 +235,31 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     }
     
     // Atualizar categoria
-    await db.query`
+    const updateQuery = `
       UPDATE categories SET
-        name = ${data.name},
-        slug = ${data.slug},
-        description = ${data.description || null},
-        image_url = ${data.imageUrl || null},
-        parent_id = ${data.parentId || null},
-        position = ${data.position || 0},
-        is_active = ${data.isActive !== false},
+        name = $1,
+        slug = $2,
+        description = $3,
+        image_url = $4,
+        parent_id = $5,
+        position = $6,
+        is_active = $7,
         updated_at = NOW()
-      WHERE id = ${data.id}
+      WHERE id = $8
     `;
     
-    await db.close();
+    await db.query(updateQuery, [
+      data.name,
+      data.slug,
+      data.description || null,
+      data.image_url || null,
+      data.parent_id || null,
+      data.position || 0,
+      data.is_active !== false,
+      data.id
+    ]);
+    
+    console.log('✅ Categoria atualizada:', data.id);
     
     return json({
       success: true,
@@ -241,9 +278,10 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
 };
 
 // DELETE - Excluir categoria
-export const DELETE: RequestHandler = async ({ request, platform }) => {
+export const DELETE: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Excluindo categoria');
+    const db = getDatabase();
     const { id } = await request.json();
     
     if (!id) {
@@ -253,36 +291,34 @@ export const DELETE: RequestHandler = async ({ request, platform }) => {
       }, { status: 400 });
     }
     
-    // Verificar se tem produtos
-    const [productCount] = await db.query`
-      SELECT COUNT(*) as count FROM products WHERE category_id = ${id}
-    `;
+    // Verificar se tem produtos via product_categories
+    const productQuery = 'SELECT COUNT(*) as count FROM product_categories WHERE category_id = $1';
+    const productResult = await db.query(productQuery, [id]);
+    const productCount = parseInt(productResult[0]?.count || '0');
     
-    if (productCount.count > 0) {
-      await db.close();
+    if (productCount > 0) {
       return json({
         success: false,
-        error: `Categoria possui ${productCount.count} produtos. Remova os produtos primeiro.`
+        error: `Categoria possui ${productCount} produtos. Remova os produtos primeiro.`
       }, { status: 400 });
     }
     
     // Verificar se tem subcategorias
-    const [subCount] = await db.query`
-      SELECT COUNT(*) as count FROM categories WHERE parent_id = ${id}
-    `;
+    const subQuery = 'SELECT COUNT(*) as count FROM categories WHERE parent_id = $1';
+    const subResult = await db.query(subQuery, [id]);
+    const subCount = parseInt(subResult[0]?.count || '0');
     
-    if (subCount.count > 0) {
-      await db.close();
+    if (subCount > 0) {
       return json({
         success: false,
-        error: `Categoria possui ${subCount.count} subcategorias. Remova as subcategorias primeiro.`
+        error: `Categoria possui ${subCount} subcategorias. Remova as subcategorias primeiro.`
       }, { status: 400 });
     }
     
     // Excluir categoria
-    await db.query`DELETE FROM categories WHERE id = ${id}`;
+    await db.query('DELETE FROM categories WHERE id = $1', [id]);
     
-    await db.close();
+    console.log('✅ Categoria excluída:', id);
     
     return json({
       success: true,
@@ -292,7 +328,7 @@ export const DELETE: RequestHandler = async ({ request, platform }) => {
     });
     
   } catch (error) {
-    console.error('Error deleting category:', error);
+    console.error('❌ Erro ao excluir categoria:', error);
     return json({
       success: false,
       error: 'Erro ao excluir categoria'
@@ -326,15 +362,16 @@ function buildTree(categories: any[]): any[] {
 }
 
 async function checkIsDescendant(db: any, parentId: string, childId: string): Promise<boolean> {
-  const [result] = await db.query`
+  const query = `
     WITH RECURSIVE descendants AS (
-      SELECT id FROM categories WHERE id = ${parentId}
+      SELECT id FROM categories WHERE id = $1
       UNION ALL
       SELECT c.id FROM categories c
       INNER JOIN descendants d ON c.parent_id = d.id
     )
-    SELECT EXISTS(SELECT 1 FROM descendants WHERE id = ${childId}) as is_descendant
+    SELECT EXISTS(SELECT 1 FROM descendants WHERE id = $2) as is_descendant
   `;
   
-  return result.is_descendant;
+  const result = await db.query(query, [parentId, childId]);
+  return result[0]?.is_descendant || false;
 } 

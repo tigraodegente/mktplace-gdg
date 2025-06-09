@@ -84,7 +84,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
         // STEP 3: Processar cada zona (simplificado)
         if (zones.length > 0) {
-      for (const zone of zones) {
+          for (const zone of zones) {
             try {
               // Buscar regras de peso (query separada)
               const weightRules = await db.query`
@@ -97,51 +97,70 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
               let basePrice = 15.90; // Padrão
         
-        for (const rule of weightRules) {
+              for (const rule of weightRules) {
                 if (totalWeight >= rule.weight_from && totalWeight <= rule.weight_to) {
                   basePrice = parseFloat(rule.price);
-            break;
-          }
-        }
+                  break;
+                }
+              }
 
-              // Verificar frete grátis
-              const isFree = totalValue >= 199; // Threshold simplificado
+              // Buscar threshold do banco ou usar fallback alto
+              let freeShippingThreshold = 999999; // Sem frete grátis por padrão
+              try {
+                  const configQuery = await db.query`
+                      SELECT free_shipping_threshold 
+                      FROM seller_shipping_configs 
+                      WHERE (seller_id = ${sellerId} OR seller_id IS NULL)
+                      AND carrier_id = 'frenet-carrier'
+                      AND is_active = true
+                      ORDER BY seller_id DESC NULLS LAST, priority ASC
+                      LIMIT 1
+                  `;
+                  
+                  if (configQuery.length > 0 && configQuery[0].free_shipping_threshold) {
+                      freeShippingThreshold = parseFloat(configQuery[0].free_shipping_threshold);
+                  }
+              } catch (error) {
+                  console.warn('Erro ao buscar threshold do banco:', error);
+              }
+              
+              const isFree = totalValue >= freeShippingThreshold;
               const finalPrice = isFree ? 0 : basePrice;
 
               // Gerar nome automático baseado no prazo
-        let optionName;
-        if (zone.delivery_days_min === 0) {
-          optionName = 'Frenet - Entrega Hoje';
-        } else if (zone.delivery_days_min === 1) {
-          optionName = 'Frenet - Entrega Amanhã';
-        } else if (zone.delivery_days_min <= 2) {
-          optionName = 'Frenet - Expresso';
-        } else if (zone.delivery_days_min <= 5) {
-          optionName = 'Frenet - Padrão';
-        } else {
-          optionName = 'Frenet - Econômico';
-        }
+              let optionName;
+              if (zone.delivery_days_min === 0) {
+                optionName = 'Frenet - Entrega Hoje';
+              } else if (zone.delivery_days_min === 1) {
+                optionName = 'Frenet - Entrega Amanhã';
+              } else if (zone.delivery_days_min <= 2) {
+                optionName = 'Frenet - Expresso';
+              } else if (zone.delivery_days_min <= 5) {
+                optionName = 'Frenet - Padrão';
+              } else {
+                optionName = 'Frenet - Econômico';
+              }
 
-        const option = {
-          id: `frenet-${zone.id}`,
+              const option = {
+                id: `frenet-${zone.id}`,
                 carrierId: zone.carrier_id || 'frenet-carrier',
-          carrierName: 'Frenet',
-          name: optionName,
-          price: finalPrice,
+                carrierName: 'Frenet',
+                name: optionName,
+                price: finalPrice,
                 originalPrice: basePrice,
-          isFree,
-                freeReason: isFree ? `Frete grátis acima de R$ 199` : '',
-          deliveryDaysMin: zone.delivery_days_min,
-          deliveryDaysMax: zone.delivery_days_max,
-          breakdown: {
-            basePrice,
+                isFree,
+                freeReason: isFree ? `Frete grátis acima de R$ ${freeShippingThreshold.toFixed(2)}` : '',
+                deliveryDaysMin: zone.delivery_days_min,
+                deliveryDaysMax: zone.delivery_days_max,
+                breakdown: {
+                  basePrice,
                   taxes: { gris: 0, adv: 0 },
                   totalTaxes: 0,
                   freeShippingDiscount: isFree ? basePrice : 0
-          }
-        };
+                }
+              };
 
-        options.push(option);
+              options.push(option);
             } catch (e) {
               console.log(`Erro ao processar zona ${zone.id}`);
             }
@@ -154,8 +173,28 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             { name: 'Econômico', days: 7, price: 15.90 }
           ];
 
+          // Buscar threshold do banco para fallback também
+          let freeShippingThreshold = 999999;
+          try {
+              const configQuery = await db.query`
+                  SELECT free_shipping_threshold 
+                  FROM seller_shipping_configs 
+                  WHERE (seller_id = ${sellerId} OR seller_id IS NULL)
+                  AND carrier_id = 'frenet-carrier'
+                  AND is_active = true
+                  ORDER BY seller_id DESC NULLS LAST, priority ASC
+                  LIMIT 1
+              `;
+              
+              if (configQuery.length > 0 && configQuery[0].free_shipping_threshold) {
+                  freeShippingThreshold = parseFloat(configQuery[0].free_shipping_threshold);
+              }
+          } catch (error) {
+              console.warn('Erro ao buscar threshold do banco:', error);
+          }
+
           for (const opt of defaultOptions) {
-            const isFree = totalValue >= 199;
+            const isFree = totalValue >= freeShippingThreshold;
             
             options.push({
               id: `frenet-${opt.name.toLowerCase()}`,
@@ -165,7 +204,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
               price: isFree ? 0 : opt.price,
               originalPrice: opt.price,
               isFree,
-              freeReason: isFree ? 'Frete grátis acima de R$ 199' : '',
+              freeReason: isFree ? `Frete grátis acima de R$ ${freeShippingThreshold.toFixed(2)}` : '',
               deliveryDaysMin: opt.days,
               deliveryDaysMax: opt.days + 1,
               breakdown: {
@@ -176,7 +215,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
               }
             });
           }
-      }
+        }
 
         // Ordenar opções (frete grátis primeiro, depois por preço e prazo)
         options.sort((a: any, b: any) => {

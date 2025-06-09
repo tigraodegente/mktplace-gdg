@@ -97,7 +97,8 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 						b.name as brand_name,
 								s.company_name as seller_name
 					FROM products p
-					LEFT JOIN categories c ON c.id = p.category_id
+					LEFT JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
+					LEFT JOIN categories c ON c.id = pc.category_id
 					LEFT JOIN brands b ON b.id = p.brand_id
 					LEFT JOIN sellers s ON s.id = p.seller_id
 					WHERE 
@@ -194,7 +195,8 @@ export const load: PageServerLoad = async ({ platform, fetch, setHeaders }) => {
 						c.description,
 								COUNT(p.id) as product_count
 					FROM categories c
-					LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true AND p.quantity > 0
+					LEFT JOIN product_categories pc ON pc.category_id = c.id
+					LEFT JOIN products p ON p.id = pc.product_id AND p.is_active = true AND p.quantity > 0
 					WHERE c.is_active = true
 					GROUP BY c.id, c.name, c.slug, c.description
 							HAVING COUNT(p.id) > 0

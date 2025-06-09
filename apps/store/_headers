@@ -13,6 +13,14 @@
 /images/*
   Cache-Control: public, max-age=2592000
   
+# Imagens AWS S3 - Cache otimizado
+/fotos/*
+  Cache-Control: public, max-age=31536000, immutable
+  
+# URLs de imagem externa (AWS)
+https://gdg-images.s3.sa-east-1.amazonaws.com/*
+  Cache-Control: public, max-age=31536000, immutable
+  
 /api/*
   Cache-Control: no-cache, no-store, must-revalidate
   

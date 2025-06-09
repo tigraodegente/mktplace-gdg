@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Debug Categorias</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .result { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { border-color: #28a745; background: #d4edda; }
+        .error { border-color: #dc3545; background: #f8d7da; }
+        .warning { border-color: #ffc107; background: #fff3cd; }
+        pre { background: #e9ecef; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Debug de Categorias</h1>
+    <p>Teste para diagnosticar o problema no dropdown de categorias</p>
+    
+    <button onclick="testarCategorias()">🔍 Testar Categorias</button>
+    
+    <div id="resultado"></div>
+
+    <script>
+        async function testarCategorias() {
+            const resultDiv = document.getElementById('resultado');
+            resultDiv.innerHTML = '<div class="result">🔄 Testando API...</div>';
+            
+            try {
+                const response = await fetch('/api/categories');
+                const data = await response.json();
+                
+                let html = '';
+                
+                if (!data.success || !data.data?.categories) {
+                    html += '<div class="result error">❌ API não retornou categorias corretamente</div>';
+                    html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    resultDiv.innerHTML = html;
+                    return;
+                }
+                
+                const categories = data.data.categories;
+                const rootCategories = categories.filter(cat => !cat.parentId);
+                const rootWithParent_id = categories.filter(cat => !cat.parent_id);
+                
+                // Resumo
+                html += `<div class="result ${rootCategories.length > 0 ? 'success' : 'error'}">`;
+                html += `<h3>📊 Resumo</h3>`;
+                html += `<p><strong>Total de categorias:</strong> ${categories.length}</p>`;
+                html += `<p><strong>Categorias raiz (parentId):</strong> ${rootCategories.length}</p>`;
+                html += `<p><strong>Categorias raiz (parent_id):</strong> ${rootWithParent_id.length}</p>`;
+                html += `</div>`;
+                
+                // Diagnóstico
+                if (categories.length === 0) {
+                    html += '<div class="result error">❌ <strong>Problema:</strong> Nenhuma categoria no banco</div>';
+                } else if (rootCategories.length === 0) {
+                    html += '<div class="result error">❌ <strong>Problema:</strong> Nenhuma categoria raiz (parentId = null)</div>';
+                    
+                    if (rootWithParent_id.length > 0) {
+                        html += '<div class="result warning">💡 <strong>Solução:</strong> API usa parent_id mas componente usa parentId</div>';
+                        html += '<div class="result">🔧 <strong>Ação:</strong> Trocar .parentId por .parent_id no componente FiltersAccordion</div>';
+                    } else {
+                        html += '<div class="result warning">⚠️ Todas as categorias têm um pai. Precisa de categorias principais.</div>';
+                    }
+                } else {
+                    html += '<div class="result success">✅ <strong>Sucesso:</strong> Categorias raiz encontradas! Dropdown deveria funcionar.</div>';
+                }
+                
+                // Amostra de categorias
+                if (categories.length > 0) {
+                    html += '<div class="result"><h3>📋 Primeiras 5 categorias:</h3>';
+                    categories.slice(0, 5).forEach((cat, i) => {
+                        html += `<p>${i+1}. <strong>${cat.name}</strong> (ID: ${cat.id}) - parentId: ${cat.parentId || 'null'} | parent_id: ${cat.parent_id || 'null'}</p>`;
+                    });
+                    html += '</div>';
+                }
+                
+                // Categorias raiz (se existirem)
+                if (rootCategories.length > 0) {
+                    html += '<div class="result success"><h3>🌳 Categorias Raiz (parentId = null):</h3>';
+                    rootCategories.slice(0, 5).forEach((cat, i) => {
+                        html += `<p>${i+1}. ${cat.name}</p>`;
+                    });
+                    html += '</div>';
+                }
+                
+                if (rootWithParent_id.length > 0 && rootCategories.length === 0) {
+                    html += '<div class="result warning"><h3>🌳 Categorias Raiz (parent_id = null):</h3>';
+                    rootWithParent_id.slice(0, 5).forEach((cat, i) => {
+                        html += `<p>${i+1}. ${cat.name}</p>`;
+                    });
+                    html += '</div>';
+                }
+                
+                // Dados brutos
+                html += '<details><summary>📄 Ver dados brutos da API</summary>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                html += '</details>';
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Erro na requisição: ${error.message}</div>`;
+            }
+        }
+        
+        // Testar automaticamente ao carregar
+        window.onload = () => {
+            setTimeout(testarCategorias, 500);
+        };
+    </script>
+</body>
+</html> 

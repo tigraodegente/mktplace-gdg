@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
+	import { browser } from '$app/environment';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	
 	// Novo sistema de menu
@@ -11,12 +12,11 @@
 	import { menuStats } from '$lib/stores/menuStore';
 	import SideMenu from '$lib/components/shared/SideMenu.svelte';
 	
-	// Interface
-	interface User {
-		id: string;
-		name: string;
-		email: string;
-		role: 'admin' | 'vendor';
+	// Importar authStore e usar sua interface
+	import { authStore, type User as AuthUser } from '$lib/stores/auth';
+	
+	// Interface local estendendo a do authStore
+	interface User extends AuthUser {
 		avatarUrl?: string;
 	}
 	
@@ -48,6 +48,16 @@
 	// Verificar se está na página de login
 	const isLoginPage = $derived(currentPath === '/login');
 	
+	// Helper para verificar se é administrador
+	const isAdmin = $derived(user?.role === 'admin' || user?.role === 'super_admin');
+	
+	// Proteger rotas - redirecionar para login se não autenticado
+	$effect(() => {
+		if (!isLoginPage && !isLoading && !user) {
+			goto('/login');
+		}
+	});
+	
 	// Função para carregar estatísticas do menu
 	async function loadMenuStats() {
 		try {
@@ -67,33 +77,60 @@
 	
 	// Lifecycle
 	onMount(() => {
-		// Simular carregamento do usuário
-		setTimeout(() => {
-			const userParam = $page.url.searchParams.get('user');
-			
-			if (userParam === 'vendor') {
-				user = {
-					id: 'vendor-1',
-					name: 'João Vendedor',
-					email: 'joao@vendor.com',
-					role: 'vendor',
-					avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=João'
-				};
-			} else {
-				user = {
-					id: 'admin-1',
-					name: 'Maria Admin',
-					email: 'maria@admin.com',
-					role: 'admin',
-					avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
-				};
+		console.log('🚀 onMount executado');
+		
+		// Inicializar o authStore primeiro
+		console.log('🔄 Inicializando authStore...');
+		authStore.init();
+		
+		// Verificar localStorage imediatamente
+		if (browser) {
+			const token = localStorage.getItem('access_token');
+			const userStr = localStorage.getItem('user');
+			console.log('💾 LocalStorage:', { token: !!token, user: !!userStr });
+			if (userStr) {
+				try {
+					const userData = JSON.parse(userStr);
+					console.log('👤 Dados do usuário no localStorage:', userData);
+				} catch (e) {
+					console.error('❌ Erro ao parsear user do localStorage:', e);
+				}
 			}
+		}
+		
+		// Usar dados reais do authStore
+		const unsubscribe = authStore.subscribe(($authState) => {
+			console.log('🔐 AuthStore state atualizado:', $authState);
+			console.log('🔐 isAuthenticated:', $authState.isAuthenticated);
+			console.log('🔐 user:', $authState.user);
+			console.log('🔐 loading:', $authState.loading);
 			
-			isLoading = false;
-			
-			// Carregar estatísticas do menu após carregar usuário
-			loadMenuStats();
-		}, 500);
+			if ($authState.isAuthenticated && $authState.user) {
+				console.log('✅ Usuário autenticado, configurando state...');
+				user = {
+					...$authState.user,
+					avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${$authState.user.name}`
+				};
+				isLoading = false;
+				console.log('👤 User state local:', user);
+				
+				// Carregar estatísticas do menu após carregar usuário
+				loadMenuStats();
+			} else if (!$authState.loading) {
+				console.log('❌ Usuário não autenticado');
+				// Se não está autenticado e não está carregando, redirecionar para login
+				if (!isLoginPage) {
+					console.log('🔄 Redirecionando para login...');
+					goto('/login');
+				}
+				isLoading = false;
+			}
+		});
+		
+		// Cleanup subscription
+		return () => {
+			unsubscribe();
+		};
 		
 		// Fechar menus ao clicar fora
 		const handleClickOutside = (e: MouseEvent) => {
@@ -115,6 +152,16 @@
 	// Debug para o menu
 	$effect(() => {
 		console.log('🔧 Debug Menu:', { showSideMenu, isMobile });
+	});
+	
+	// Debug para o SideMenu
+	$effect(() => {
+		console.log('🍔 Debug SideMenu render:', { 
+			isLoading, 
+			user: !!user, 
+			showSideMenu,
+			shouldRender: !isLoading && user
+		});
 	});
 	
 	// Força atualização do layout quando o menu muda
@@ -140,8 +187,8 @@
 	});
 	
 	async function handleLogout() {
+		authStore.logout();
 		user = null;
-		await goto('/login');
 	}
 	
 	function goToStore() {
@@ -184,7 +231,7 @@
 						</div>
 						<div class="hidden sm:block">
 							<h1 class="text-lg font-bold text-gray-900">
-								{user?.role === 'admin' ? 'Admin Panel' : 'Seller Panel'}
+								{isAdmin ? 'Admin Panel' : 'Seller Panel'}
 							</h1>
 							<p class="text-xs text-gray-500">Marketplace GDG</p>
 						</div>
@@ -226,7 +273,7 @@
 								/>
 								<div class="hidden lg:block text-left">
 									<p class="text-sm font-semibold text-gray-900">{user.name}</p>
-									<p class="text-xs text-gray-500">{user.role === 'admin' ? 'Administrador' : 'Vendedor'}</p>
+									<p class="text-xs text-gray-500">{isAdmin ? 'Administrador' : 'Vendedor'}</p>
 								</div>
 							{/if}
 							<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

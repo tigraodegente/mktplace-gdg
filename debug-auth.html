@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Auth - Admin Panel</title>
+</head>
+<body>
+    <h1>Debug Autenticação</h1>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        // Verificar localStorage
+        const token = localStorage.getItem('access_token');
+        const user = localStorage.getItem('user');
+        
+        output.innerHTML = `
+            <h2>Status do localStorage:</h2>
+            <p><strong>Token:</strong> ${token ? '✅ Existe' : '❌ Não existe'}</p>
+            <p><strong>User:</strong> ${user ? '✅ Existe' : '❌ Não existe'}</p>
+            
+            <h2>Valores:</h2>
+            <p><strong>access_token:</strong> <code>${token || 'null'}</code></p>
+            <p><strong>user:</strong> <code>${user || 'null'}</code></p>
+            
+            <h2>Teste da API:</h2>
+            <button onclick="testAPI()">Testar API de Produtos</button>
+            <div id="api-result"></div>
+        `;
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = 'Testando...';
+            
+            try {
+                const response = await fetch('/api/products', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                resultDiv.innerHTML = `
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Resultado:</strong></p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p><strong>Erro:</strong> ${error.message}</p>`;
+            }
+        }
+        
+        window.testAPI = testAPI;
+    </script>
+</body>
+</html> 

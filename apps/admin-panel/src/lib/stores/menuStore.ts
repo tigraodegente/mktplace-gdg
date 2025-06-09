@@ -6,7 +6,7 @@ export interface MenuItem {
 	label: string;
 	href: string;
 	icon: string;
-	roles: ('admin' | 'vendor')[];
+	roles: ('admin' | 'vendor' | 'super_admin')[];
 	badge?: number;
 	badgeKey?: string;
 	children?: MenuItem[];
@@ -15,6 +15,7 @@ export interface MenuItem {
 
 export interface MenuStats {
 	products: { total: number; active: number; pending: number };
+	stock: { alerts: number; low_stock: number; out_of_stock: number };
 	orders: { total: number; pending: number };
 	users: { total: number; customers: number; vendors: number };
 	reviews: { total: number; pending: number };
@@ -95,6 +96,7 @@ menuSettings.subscribe(settings => {
 // Inicializar com dados mock
 export const mockStats: MenuStats = {
 	products: { total: 247, active: 189, pending: 12 },
+	stock: { alerts: 8, low_stock: 5, out_of_stock: 3 },
 	orders: { total: 1543, pending: 23 },
 	users: { total: 8920, customers: 8456, vendors: 464 },
 	reviews: { total: 2891, pending: 8 },
@@ -114,6 +116,8 @@ export const baseMenuItems: MenuItem[] = [
 	
 	// E-commerce
 	{ label: 'Produtos', href: '/produtos', icon: '📦', roles: ['admin', 'vendor'], badgeKey: 'products.total', category: 'ecommerce' },
+	{ label: 'Variações', href: '/variacoes', icon: '⚙️', roles: ['admin', 'vendor'], category: 'ecommerce' },
+	{ label: 'Estoque', href: '/estoque', icon: '📊', roles: ['admin', 'vendor'], badgeKey: 'stock.alerts', category: 'ecommerce' },
 	{ label: 'Pedidos', href: '/pedidos', icon: '📋', roles: ['admin', 'vendor'], badgeKey: 'orders.pending', category: 'ecommerce' },
 	{ label: 'Categorias', href: '/categorias', icon: '📁', roles: ['admin'], badgeKey: 'categories.active', category: 'ecommerce' },
 	{ label: 'Marcas', href: '/marcas', icon: '🏷️', roles: ['admin'], category: 'ecommerce' },
@@ -127,8 +131,10 @@ export const baseMenuItems: MenuItem[] = [
 	
 	// Vendas e Entregas
 	{ label: 'Devoluções', href: '/devolucoes', icon: '↩️', roles: ['admin', 'vendor'], badgeKey: 'returns.pending', category: 'sales' },
+	{ label: 'Armazéns', href: '/armazens', icon: '🏭', roles: ['admin'], category: 'sales' },
 	{ label: 'Frete', href: '/frete', icon: '🚚', roles: ['admin'], category: 'sales' },
 	{ label: 'Modalidades de Frete', href: '/modalidades-frete', icon: '⚙️', roles: ['admin'], category: 'sales' },
+	{ label: 'Configurações de Frete', href: '/configuracoes-frete', icon: '🔧', roles: ['admin'], category: 'sales' },
 	{ label: 'Transportadoras', href: '/transportadoras', icon: '🚐', roles: ['admin'], category: 'sales' },
 	{ label: 'Zonas de Frete', href: '/zonas', icon: '🌍', roles: ['admin'], category: 'sales' },
 	{ label: 'Tarifas Base', href: '/tarifas', icon: '💰', roles: ['admin'], category: 'sales' },
@@ -145,6 +151,7 @@ export const baseMenuItems: MenuItem[] = [
 	// Sistema
 	{ label: 'Integrações', href: '/integracoes', icon: '🔗', roles: ['admin'], category: 'system' },
 	{ label: 'Páginas', href: '/paginas', icon: '📝', roles: ['admin'], badgeKey: 'pages.total', category: 'system' },
+	{ label: 'Page Builder', href: '/paginas/builder', icon: '🎨', roles: ['admin'], category: 'system' },
 	{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin'], category: 'system' }
 ];
 

@@ -1131,77 +1131,312 @@ export const PageConfigs: Record<string, PageConfig> = {
         label: 'Status',
         sortable: true,
         align: 'center',
-        render: (value: string, row: any) => {
+        render: (value: string) => {
           const statuses = [
-            { key: 'pending', label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
-            { key: 'shipped', label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
-            { key: 'in_transit', label: 'Em Trânsito', color: 'bg-purple-100 text-purple-800' },
-            { key: 'delivered', label: 'Entregue', color: 'bg-green-100 text-green-800' },
-            { key: 'failed', label: 'Falha na Entrega', color: 'bg-red-100 text-red-800' }
+            { key: 'preparing', label: 'Preparando', color: 'yellow' },
+            { key: 'shipped', label: 'Enviado', color: 'blue' },
+            { key: 'in_transit', label: 'Em Trânsito', color: 'indigo' },
+            { key: 'delivered', label: 'Entregue', color: 'green' },
+            { key: 'returned', label: 'Devolvido', color: 'red' }
           ];
           const status = statuses[Math.floor(Math.random() * statuses.length)];
-          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${status.color}">${status.label}</span>`;
-        }
-      },
-      {
-        key: 'shipped_at',
-        label: 'Data de Envio',
-        sortable: true,
-        hideOnMobile: true,
-        render: (value: string, row: any) => {
-          const date = new Date();
-          date.setDate(date.getDate() - Math.floor(Math.random() * 7));
-          return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
+          return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${status.color}-100 text-${status.color}-800">${status.label}</span>`;
         }
       },
       {
         key: 'estimated_delivery',
         label: 'Previsão de Entrega',
         sortable: true,
-        align: 'center',
-        render: (value: string, row: any) => {
+        hideOnMobile: true,
+        render: () => {
           const date = new Date();
-          date.setDate(date.getDate() + Math.floor(Math.random() * 7) + 1);
+          date.setDate(date.getDate() + Math.floor(Math.random() * 10) + 1);
           return `<span class="text-sm">${date.toLocaleDateString('pt-BR')}</span>`;
+        }
+      },
+      {
+        key: 'created_at',
+        label: 'Criado em',
+        sortable: true,
+        hideOnMobile: true,
+        render: () => {
+          const date = new Date();
+          date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+          return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
         }
       }
     ],
     
     statsConfig: {
-      total: 'total_shipments',
-      active: 'in_transit_shipments',
-      pending: 'pending_shipments',
-      lowStock: 'failed_shipments'
+      total: 'total_envios',
+      active: 'em_transito',
+      pending: 'preparando',
+      lowStock: 'atrasados'
     },
     
-    searchPlaceholder: 'Buscar envios...',
-    searchFields: ['tracking_code', 'customer_name', 'order_id'],
+    searchPlaceholder: 'Buscar por código de rastreio, cliente...',
+    searchFields: ['tracking_code', 'customer_name', 'destination_city'],
     
     customFilters: [
       {
-        key: 'shipment_status',
-        label: 'Status do Envio',
+        key: 'status',
+        label: 'Status',
         type: 'select',
         options: [
           { value: 'all', label: 'Todos' },
-          { value: 'pending', label: 'Pendente' },
+          { value: 'preparing', label: 'Preparando' },
           { value: 'shipped', label: 'Enviado' },
           { value: 'in_transit', label: 'Em Trânsito' },
           { value: 'delivered', label: 'Entregue' },
-          { value: 'failed', label: 'Falha na Entrega' }
+          { value: 'returned', label: 'Devolvido' }
         ]
       },
       {
-        key: 'delivery_period',
-        label: 'Período de Entrega',
+        key: 'shipping_method',
+        label: 'Método de Envio',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'Todos' },
+          { value: 'pac', label: 'PAC' },
+          { value: 'sedex', label: 'SEDEX' },
+          { value: 'expressa', label: 'Expressa' },
+          { value: 'economica', label: 'Econômica' }
+        ]
+      },
+      {
+        key: 'date_range',
+        label: 'Período',
         type: 'select',
         options: [
           { value: 'all', label: 'Todos' },
           { value: 'today', label: 'Hoje' },
-          { value: 'tomorrow', label: 'Amanhã' },
-          { value: 'this_week', label: 'Esta Semana' },
-          { value: 'overdue', label: 'Em Atraso' }
+          { value: 'week', label: 'Esta Semana' },
+          { value: 'month', label: 'Este Mês' },
+          { value: 'quarter', label: 'Último Trimestre' }
         ]
+      }
+    ]
+  },
+
+  // ============ CONFIGURAÇÕES DE FRETE POR SELLER ============
+  'configuracoes-frete': {
+    title: 'Configurações de Frete por Seller',
+    entityName: 'configuração de frete',
+    entityNamePlural: 'configurações de frete',
+    newItemRoute: '/configuracoes-frete/nova',
+    editItemRoute: (id: string) => `/configuracoes-frete/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/shipping/seller-configs',
+    statsEndpoint: '/shipping/seller-configs/stats',
+    
+    // Colunas específicas de configurações de frete
+    columns: [
+      {
+        key: 'seller_name',
+        label: 'Seller',
+        sortable: true,
+        render: (value: string, row: any) => `
+          <div>
+            <div class="font-medium text-gray-900">${value || 'Nome do Seller'}</div>
+            <div class="text-sm text-gray-500">${row.seller_email || 'email@seller.com'}</div>
+          </div>
+        `
+      },
+      {
+        key: 'carrier_name',
+        label: 'Transportadora',
+        sortable: true,
+        render: (value: string, row: any) => `
+          <div class="flex items-center gap-2">
+            <div>
+              <div class="font-medium text-gray-900">${value || 'Transportadora'}</div>
+              <div class="text-xs text-gray-500 capitalize">${row.carrier_type || 'frenet'}</div>
+            </div>
+            ${row.carrier_is_active ? 
+              '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativa</span>' : 
+              '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativa</span>'
+            }
+          </div>
+        `
+      },
+      {
+        key: 'markup_percentage',
+        label: 'Markup (%)',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const markup = value || 0;
+          const color = markup === 0 ? 'text-gray-500' : markup <= 10 ? 'text-green-600' : markup <= 20 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${markup.toFixed(1)}%</span>`;
+        }
+      },
+      {
+        key: 'free_shipping_threshold',
+        label: 'Frete Grátis (R$)',
+        sortable: true,
+        align: 'right',
+        render: (value: number) => {
+          if (!value) return '<span class="text-gray-500">Sem frete grátis</span>';
+          const threshold = parseFloat(value.toString());
+          const color = threshold <= 100 ? 'text-green-600' : threshold <= 200 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">R$ ${threshold.toFixed(2)}</span>`;
+        }
+      },
+      {
+        key: 'handling_time_days',
+        label: 'Prazo Prep. (dias)',
+        sortable: true,
+        align: 'center',
+        hideOnMobile: true,
+        render: (value: number) => {
+          const days = value || 1;
+          const color = days <= 1 ? 'text-green-600' : days <= 3 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${days} dia${days !== 1 ? 's' : ''}</span>`;
+        }
+      },
+      {
+        key: 'available_rates',
+        label: 'Tarifas',
+        sortable: true,
+        align: 'center',
+        hideOnMobile: true,
+        render: (value: number) => {
+          const rates = value || 0;
+          const color = rates > 0 ? 'text-green-600' : 'text-gray-500';
+          return `<span class="font-medium ${color}">${rates} tarifa${rates !== 1 ? 's' : ''}</span>`;
+        }
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => 
+          value 
+            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>'
+            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativo</span>'
+      }
+    ],
+    
+    // Estatísticas de configurações de frete
+    statsConfig: {
+      total: 'totalConfigs',
+      active: 'activeConfigs', 
+      pending: 'inactiveConfigs',
+      lowStock: 'uniqueSellers'
+    },
+    
+    searchPlaceholder: 'Buscar por seller, transportadora...',
+    searchFields: ['seller_name', 'seller_email', 'carrier_name'],
+    
+    // Filtros customizados específicos para configurações de frete
+    customFilters: [
+      {
+        key: 'sellerId',
+        label: 'Seller',
+        type: 'select',
+        options: [] // Será preenchido dinamicamente
+      },
+      {
+        key: 'carrierId',
+        label: 'Transportadora',
+        type: 'select',
+        options: [] // Será preenchido dinamicamente
+      },
+      {
+        key: 'isActive',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'true', label: 'Ativo' },
+          { value: 'false', label: 'Inativo' }
+        ]
+      },
+      {
+        key: 'markup_range',
+        label: 'Faixa de Markup',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'Todos' },
+          { value: 'no_markup', label: 'Sem markup (0%)' },
+          { value: 'low', label: 'Baixo (1-10%)' },
+          { value: 'medium', label: 'Médio (11-20%)' },
+          { value: 'high', label: 'Alto (21%+)' }
+        ]
+      },
+      {
+        key: 'threshold_range',
+        label: 'Faixa Frete Grátis',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'Todos' },
+          { value: 'none', label: 'Sem frete grátis' },
+          { value: 'low', label: 'Até R$ 100' },
+          { value: 'medium', label: 'R$ 101-200' },
+          { value: 'high', label: 'R$ 201-500' },
+          { value: 'very_high', label: 'Acima R$ 500' }
+        ]
+      }
+    ],
+    
+    // Ações personalizadas para configurações de frete
+    customActions: (config: any) => {
+      const actions = [];
+      
+      // Ação: Editar threshold rapidamente
+      actions.push({
+        label: 'Editar Threshold',
+        icon: 'edit',
+        variant: 'primary',
+        onclick: () => {
+          const newThreshold = prompt('Novo valor para frete grátis (R$):', config.free_shipping_threshold || '0');
+          if (newThreshold && !isNaN(parseFloat(newThreshold))) {
+            console.log(`Atualizando threshold do seller ${config.seller_name} para R$ ${newThreshold}`);
+            // Aqui faria a chamada para API
+          }
+        }
+      });
+      
+      // Ação: Ver detalhes do seller
+      actions.push({
+        label: 'Ver Seller',
+        icon: 'user',
+        variant: 'secondary',
+        onclick: () => window.location.href = `/vendedores?sellerId=${config.seller_id}`
+      });
+      
+      // Ação: Configurar tarifas
+      actions.push({
+        label: 'Configurar Tarifas',
+        icon: 'settings',
+        variant: 'secondary',
+        onclick: () => window.location.href = `/tarifas?sellerId=${config.seller_id}&carrierId=${config.carrier_id}`
+      });
+      
+      return actions;
+    },
+    
+    // Ações em massa específicas
+    bulkActions: [
+      {
+        label: 'Ativar Selecionados',
+        icon: 'check',
+        variant: 'success',
+        action: 'bulk_activate'
+      },
+      {
+        label: 'Desativar Selecionados',
+        icon: 'x',
+        variant: 'danger',
+        action: 'bulk_deactivate'
+      },
+      {
+        label: 'Atualizar Threshold em Massa',
+        icon: 'edit',
+        variant: 'primary',
+        action: 'bulk_update_threshold'
       }
     ]
   },

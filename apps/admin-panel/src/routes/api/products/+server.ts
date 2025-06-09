@@ -18,6 +18,7 @@ interface SimpleProduct {
   brand: string;
   vendor: string;
   image: string;
+  is_active: boolean; // ✅ ADICIONADO
   status: string;
   rating?: number;
   reviews: number;
@@ -100,7 +101,22 @@ export const GET: RequestHandler = withAdminAuth(async ({ request, data, platfor
     const sortBy = url.searchParams.get('sortBy') || 'created_at';
     const sortOrder = url.searchParams.get('sortOrder') || 'desc';
     
-    console.log(`📊 Listando produtos - page: ${page}, limit: ${limit}, search: "${search}"`);
+    // Novos filtros
+    const categories = url.searchParams.get('categories') || '';
+    const brand = url.searchParams.get('brand') || '';
+    const priceMin = url.searchParams.get('priceMin') || '';
+    const priceMax = url.searchParams.get('priceMax') || '';
+    
+    console.log(`📊 Listando produtos - page: ${page}, limit: ${limit}, search: "${search}", status: "${status}", categories: "${categories}", brand: "${brand}", price: ${priceMin}-${priceMax}`);
+    
+    // ✅ LOGS DETALHADOS PARA DEBUG DOS FILTROS
+    console.log('🔍 [FILTROS DEBUG] Todos os parâmetros recebidos:');
+    for (const [key, value] of url.searchParams.entries()) {
+      console.log(`  ${key}: "${value}"`);
+    }
+    
+    // ✅ LOG DOS FILTROS CUSTOMIZADOS (usando variáveis já declaradas abaixo)
+    console.log('🔍 [FILTROS CUSTOMIZADOS] Verificando se serão processados corretamente...');;
     
     // Validar campos de ordenação
     const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at'];
@@ -136,8 +152,114 @@ export const GET: RequestHandler = withAdminAuth(async ({ request, data, platfor
       }
     }
     
+    // Filtro de categorias
+    console.log(`🔍 [CATEGORIES] categories="${categories}", será processado:`, !!categories);
+    if (categories) {
+      const categoryIds = categories.split(',').filter(id => id.trim());
+      console.log(`🔍 [CATEGORIES] categoryIds array:`, categoryIds);
+      if (categoryIds.length > 0) {
+        const categoryPlaceholders = categoryIds.map((_, index) => `$${paramIndex + index}`).join(',');
+        conditions.push(`p.id IN (
+          SELECT DISTINCT pc.product_id 
+          FROM product_categories pc 
+          WHERE pc.category_id IN (${categoryPlaceholders})
+        )`);
+        params.push(...categoryIds);
+        paramIndex += categoryIds.length;
+        console.log(`✅ [CATEGORIES] Aplicado filtro: ${categoryIds.length} categoria(s) - ${categoryIds.join(', ')}`);
+      }
+    }
+    
+    // Filtro de marca
+    if (brand && brand !== 'all') {
+      conditions.push(`p.brand_id = $${paramIndex}`);
+      params.push(brand);
+      paramIndex++;
+    }
+    
+    // Filtro de preço mínimo
+    if (priceMin) {
+      const minPrice = parseFloat(priceMin);
+      if (!isNaN(minPrice) && minPrice >= 0) {
+        conditions.push(`p.price >= $${paramIndex}`);
+        params.push(minPrice);
+        paramIndex++;
+      }
+    }
+    
+    // Filtro de preço máximo
+    if (priceMax) {
+      const maxPrice = parseFloat(priceMax);
+      if (!isNaN(maxPrice) && maxPrice >= 0) {
+        conditions.push(`p.price <= $${paramIndex}`);
+        params.push(maxPrice);
+        paramIndex++;
+      }
+    }
+    
+    // ✅ FILTROS CUSTOMIZADOS ADICIONADOS
+    // Filtro de produtos em destaque
+    const featured = url.searchParams.get('featured');
+    console.log(`🔍 [FEATURED] featured="${featured}", será processado:`, featured && featured !== '');
+    if (featured && featured !== '') {
+      const isFeatured = featured === 'true';
+      conditions.push(`p.featured = $${paramIndex}`);
+      params.push(isFeatured);
+      paramIndex++;
+      console.log(`✅ [FEATURED] Aplicado filtro: featured = ${isFeatured}`);
+    }
+    
+    // Filtro de status do estoque
+    const stockStatus = url.searchParams.get('stock_status');
+    console.log(`🔍 [STOCK_STATUS] stock_status="${stockStatus}", será processado:`, stockStatus && stockStatus !== '');
+    if (stockStatus && stockStatus !== '') {
+      switch (stockStatus) {
+        case 'in_stock':
+          conditions.push(`p.quantity > 5`);
+          console.log(`✅ [STOCK_STATUS] Aplicado filtro: in_stock (quantity > 5)`);
+          break;
+        case 'low_stock':
+          conditions.push(`p.quantity > 0 AND p.quantity <= 5`);
+          console.log(`✅ [STOCK_STATUS] Aplicado filtro: low_stock (0 < quantity <= 5)`);
+          break;
+        case 'out_of_stock':
+          conditions.push(`p.quantity = 0`);
+          console.log(`✅ [STOCK_STATUS] Aplicado filtro: out_of_stock (quantity = 0)`);
+          break;
+      }
+    }
+    
+    // Filtro de produtos com imagens
+    const hasImages = url.searchParams.get('has_images');
+    console.log(`🔍 [HAS_IMAGES] has_images="${hasImages}", será processado:`, hasImages && hasImages !== '');
+    if (hasImages && hasImages !== '') {
+      const shouldHaveImages = hasImages === 'true';
+      if (shouldHaveImages) {
+        conditions.push(`EXISTS (SELECT 1 FROM product_images pi WHERE pi.product_id = p.id)`);
+        console.log(`✅ [HAS_IMAGES] Aplicado filtro: produtos COM imagens`);
+      } else {
+        conditions.push(`NOT EXISTS (SELECT 1 FROM product_images pi WHERE pi.product_id = p.id)`);
+        console.log(`✅ [HAS_IMAGES] Aplicado filtro: produtos SEM imagens`);
+      }
+    }
+    
+    // Filtro por seller
+    const seller = url.searchParams.get('seller');
+    console.log(`🔍 [SELLER] seller="${seller}", será processado:`, seller && seller !== 'all' && seller !== '');
+    if (seller && seller !== 'all' && seller !== '') {
+      conditions.push(`p.seller_id = $${paramIndex}`);
+      params.push(seller);
+      paramIndex++;
+      console.log(`✅ [SELLER] Aplicado filtro: seller_id = ${seller}`);
+    }
+    
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
+    
+    // ✅ LOG FINAL DAS CONDIÇÕES E PARÂMETROS
+    console.log('🔍 [QUERY FINAL] Condições WHERE:', conditions);
+    console.log('🔍 [QUERY FINAL] Parâmetros:', params);
+    console.log('🔍 [QUERY FINAL] WHERE clause:', whereClause);
     
     // Query com contagem
     const query = `
@@ -161,44 +283,101 @@ export const GET: RequestHandler = withAdminAuth(async ({ request, data, platfor
         p.sales_count,
         p.created_at,
         p.updated_at,
+        b.name as brand_name,
+        c.name as category_name,
+        c.id as category_id,
+        COALESCE(
+          json_agg(
+            pi.url ORDER BY pi.position
+          ) FILTER (WHERE pi.url IS NOT NULL),
+          '[]'::json
+        ) as images,
         COUNT(*) OVER() as total_count
       FROM products p
+      LEFT JOIN brands b ON b.id = p.brand_id
+      LEFT JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
+      LEFT JOIN categories c ON c.id = pc.category_id
+      LEFT JOIN product_images pi ON pi.product_id = p.id
       ${whereClause}
+      GROUP BY p.id, p.name, p.slug, p.sku, p.price, p.original_price, p.cost, p.quantity, 
+               p.brand_id, p.seller_id, p.description, p.is_active, p.featured, p.status,
+               p.rating_average, p.rating_count, p.sales_count, p.created_at, p.updated_at,
+               b.name, c.name, c.id
       ORDER BY p.${safeSortBy} ${safeSortOrder}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     
     params.push(limit, offset);
     
+    // Log para debug
+    console.log('🔍 [API DEBUG] Query:', query.replace(/\s+/g, ' ').trim());
+    console.log('🔍 [API DEBUG] Params:', params);
+    
     // Executar query
     const products = await db.query(query, params);
     const totalCount = products[0]?.total_count || 0;
+    
+    // Log específico para verificar campos de data
+    if (products[0]) {
+      console.log('🔍 [DEBUG DATES] Primeiro produto raw:', {
+        id: products[0].id,
+        name: products[0].name,
+        quantity: products[0].quantity,
+        stock: products[0].stock,
+        images: products[0].images,
+        images_type: typeof products[0].images,
+        images_length: products[0].images ? products[0].images.length : 0,
+        created_at: products[0].created_at,
+        updated_at: products[0].updated_at,
+        created_at_type: typeof products[0].created_at,
+        updated_at_type: typeof products[0].updated_at
+      });
+    }
     
     await db.close();
     
     const response: SimplePaginatedResponse = {
       success: true,
-      data: products.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        sku: p.sku,
-        price: Number(p.price),
-        originalPrice: p.original_price ? Number(p.original_price) : undefined,
-        cost: p.cost ? Number(p.cost) : undefined,
-        stock: p.stock || 0,
-        category: 'Sem categoria',
-        brand: 'Marca',
-        vendor: 'Loja',
-        image: `/api/placeholder/200/200?text=${encodeURIComponent(p.name)}`,
-        status: p.is_active ? (p.stock > 0 ? 'active' : 'out_of_stock') : (p.status || 'inactive'),
-        rating: p.rating_average ? Number(p.rating_average) : undefined,
-        reviews: p.rating_count || 0,
-        sales: p.sales_count || 0,
-        featured: p.featured || false,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at
-      })),
+      data: products.map((p: any) => {
+        // Parse das imagens (vem como JSON string do PostgreSQL)
+        let productImages: string[] = [];
+        try {
+          if (p.images && typeof p.images === 'string') {
+            productImages = JSON.parse(p.images);
+          } else if (Array.isArray(p.images)) {
+            productImages = p.images;
+          }
+        } catch (error) {
+          console.warn('Erro ao parsear imagens do produto:', p.id, error);
+          productImages = [];
+        }
+        
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          sku: p.sku,
+          price: Number(p.price),
+          originalPrice: p.original_price ? Number(p.original_price) : undefined,
+          cost: p.cost ? Number(p.cost) : undefined,
+          stock: p.stock || 0,
+          category: p.category_name || 'Sem categoria',
+          category_id: p.category_id,
+          brand: p.brand_name || 'Sem marca',
+          brand_id: p.brand_id,
+          vendor: 'Loja',
+          image: productImages.length > 0 ? productImages[0] : `/api/placeholder/200/200?text=${encodeURIComponent(p.name)}`,
+          images: productImages,
+          is_active: Boolean(p.is_active), // ✅ CAMPO CORRIGIDO - incluindo is_active 
+          status: p.is_active ? (p.stock > 0 ? 'active' : 'out_of_stock') : (p.status || 'inactive'),
+          rating: p.rating_average ? Number(p.rating_average) : undefined,
+          reviews: p.rating_count || 0,
+          sales: p.sales_count || 0,
+          featured: p.featured || false,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at
+        };
+      }),
       meta: {
         page,
         limit,

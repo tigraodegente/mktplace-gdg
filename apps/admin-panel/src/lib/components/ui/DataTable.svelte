@@ -13,7 +13,7 @@
 		hideOnMobile?: boolean;
 	}
 	
-	interface Props {
+	interface DataTableProps {
 		columns: Column[];
 		data: any[];
 		loading?: boolean;
@@ -28,6 +28,7 @@
 		pageSize?: number;
 		totalItems?: number;
 		onPageChange?: (page: number) => void;
+		showHeaderPagination?: boolean;
 		// Ordenação
 		sortBy?: string;
 		sortOrder?: 'asc' | 'desc';
@@ -43,7 +44,7 @@
 	
 	let { 
 		columns,
-		data,
+		data = [],
 		loading = false,
 		emptyMessage = 'Nenhum registro encontrado',
 		class: className = '',
@@ -54,29 +55,30 @@
 		pageSize = 20,
 		totalItems = 0,
 		onPageChange,
+		showHeaderPagination = false,
 		sortBy = '',
 		sortOrder = 'asc',
 		onSort,
 		actions
-	} = $props<Props>();
+	}: DataTableProps = $props();
 	
-	// Estado de seleção
+	// Estado de seleção - protegido contra data undefined
 	let allSelected = $derived(
-		data.length > 0 && data.every(row => selectedIds.includes(row.id))
+		Array.isArray(data) && data.length > 0 && data.every((row: any) => selectedIds.includes(row.id))
 	);
 	
 	function toggleAll() {
 		if (allSelected) {
 			selectedIds = [];
 		} else {
-			selectedIds = data.map(row => row.id);
+			selectedIds = Array.isArray(data) ? data.map((row: any) => row.id) : [];
 		}
 		onSelectionChange?.(selectedIds);
 	}
 	
 	function toggleRow(id: string) {
 		if (selectedIds.includes(id)) {
-			selectedIds = selectedIds.filter(i => i !== id);
+			selectedIds = selectedIds.filter((i: string) => i !== id);
 		} else {
 			selectedIds = [...selectedIds, id];
 		}
@@ -87,11 +89,99 @@
 	let totalPages = $derived(Math.ceil(totalItems / pageSize));
 	let startItem = $derived((page - 1) * pageSize + 1);
 	let endItem = $derived(Math.min(page * pageSize, totalItems));
+	
+	function getHeaderPaginationNumbers(): number[] {
+		const length = Math.min(5, totalPages);
+		let startPage = Math.max(1, page - 2);
+		let endPage = Math.min(totalPages, startPage + length - 1);
+		startPage = Math.max(1, endPage - length + 1);
+		
+		const pages: number[] = [];
+		for (let i = 0; i < length; i++) {
+			pages.push(startPage + i);
+		}
+		return pages.filter(p => p >= 1 && p <= totalPages);
+	}
+	
+	function getFooterPaginationNumbers(): number[] {
+		if (totalPages <= 5) {
+			const pages: number[] = [];
+			for (let i = 1; i <= totalPages; i++) {
+				pages.push(i);
+			}
+			return pages;
+		} else {
+			const pages: number[] = [];
+			const length = Math.min(5, totalPages);
+			let startPage = Math.max(1, page - 2);
+			let endPage = Math.min(totalPages, startPage + length - 1);
+			startPage = Math.max(1, endPage - length + 1);
+			
+			for (let i = 0; i < length; i++) {
+				const pageNum = startPage + i;
+				if (pageNum >= 1 && pageNum <= totalPages) {
+					pages.push(pageNum);
+				}
+			}
+			return pages;
+		}
+	}
 </script>
 
 <div class={cn("w-full", className)}>
+	<!-- Header da Tabela com Paginação (opcional) -->
+	{#if showHeaderPagination && totalPages > 1}
+		<div class="bg-white border border-gray-200 rounded-t-lg border-b-0">
+			<div class="px-6 py-4 border-b border-gray-200">
+				<div class="flex items-center justify-between">
+					<div class="text-sm text-gray-700">
+						Mostrando {startItem} a {endItem} de {totalItems} registros
+					</div>
+					
+					<!-- Controles de Paginação -->
+					<div class="flex items-center gap-2">
+						<Button
+							variant="ghost"
+							onclick={() => onPageChange?.(page - 1)}
+							disabled={page <= 1 || loading}
+							class="text-gray-500 hover:text-gray-700"
+						>
+							←
+						</Button>
+						
+						<div class="flex items-center gap-1">
+							{#each getHeaderPaginationNumbers() as pageNum}
+								<button
+									onclick={() => onPageChange?.(pageNum)}
+									disabled={loading}
+									class="px-3 py-1 text-sm rounded-md transition-colors {page === pageNum 
+										? 'bg-[#00BFB3] text-white' 
+										: 'text-gray-700 hover:bg-gray-100'}"
+								>
+									{pageNum}
+								</button>
+							{/each}
+						</div>
+						
+						<Button
+							variant="ghost"
+							onclick={() => onPageChange?.(page + 1)}
+							disabled={page >= totalPages || loading}
+							class="text-gray-500 hover:text-gray-700"
+						>
+							→
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Tabela com padding e responsividade -->
-	<div class="overflow-x-auto border border-gray-200 rounded-lg">
+	<div class={cn(
+		"overflow-x-auto border border-gray-200",
+		showHeaderPagination && totalPages > 1 ? "rounded-b-lg border-t-0" : "rounded-lg"
+	)}>
 		<div class="min-w-full inline-block align-middle">
 			<div class="overflow-hidden">
 				<table class="min-w-full divide-y divide-gray-200">
@@ -151,14 +241,14 @@
 									</div>
 								</td>
 							</tr>
-						{:else if data.length === 0}
+						{:else if !Array.isArray(data) || data.length === 0}
 							<tr>
 								<td colspan={columns.length + (selectable ? 1 : 0) + (actions ? 1 : 0)} class="px-6 py-12 text-center text-gray-500">
 									{emptyMessage}
 								</td>
 							</tr>
 						{:else}
-							{#each data as row}
+							{#each (Array.isArray(data) ? data : []) as row}
 								<tr class="hover:bg-gray-50 transition-colors">
 									{#if selectable}
 										<td class="px-4 py-4">
@@ -216,7 +306,7 @@
 		</div>
 	</div>
 	
-	<!-- Paginação com padding -->
+	<!-- Paginação do Footer (sempre presente se houver páginas) -->
 	{#if totalPages > 1}
 		<div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
 			<div class="text-sm text-gray-700 text-center sm:text-left">
@@ -237,40 +327,51 @@
 				
 				<div class="flex gap-1">
 					{#if totalPages <= 5}
-						{#each Array(totalPages) as _, i}
+						{#each getFooterPaginationNumbers() as pageNum}
 							<Button
 								size="sm"
-								variant={i + 1 === page ? 'primary' : 'ghost'}
-								onclick={() => onPageChange?.(i + 1)}
+								variant={pageNum === page ? 'primary' : 'ghost'}
+								onclick={() => onPageChange?.(pageNum)}
 								class="min-w-[32px] text-xs sm:text-sm"
 							>
-								{i + 1}
+								{pageNum}
 							</Button>
 						{/each}
 					{:else}
 						<!-- Lógica para muitas páginas -->
 						{#if page > 3}
-							<Button size="sm" variant="ghost" onclick={() => onPageChange?.(1)} class="min-w-[32px] text-xs sm:text-sm">1</Button>
+							<Button 
+								size="sm" 
+								variant="ghost" 
+								onclick={() => onPageChange?.(1)} 
+								class="min-w-[32px] text-xs sm:text-sm"
+							>
+								1
+							</Button>
 							<span class="px-2 text-gray-400">...</span>
 						{/if}
 						
-						{#each Array(Math.min(5, totalPages)) as _, i}
-							{@const pageNum = page <= 3 ? i + 1 : page + i - 2}
-							{#if pageNum > 0 && pageNum <= totalPages}
-								<Button
-									size="sm"
-									variant={pageNum === page ? 'primary' : 'ghost'}
-									onclick={() => onPageChange?.(pageNum)}
-									class="min-w-[32px] text-xs sm:text-sm"
-								>
-									{pageNum}
-								</Button>
-							{/if}
+						{#each getFooterPaginationNumbers() as pageNum}
+							<Button
+								size="sm"
+								variant={pageNum === page ? 'primary' : 'ghost'}
+								onclick={() => onPageChange?.(pageNum)}
+								class="min-w-[32px] text-xs sm:text-sm"
+							>
+								{pageNum}
+							</Button>
 						{/each}
 						
 						{#if page < totalPages - 2}
 							<span class="px-2 text-gray-400">...</span>
-							<Button size="sm" variant="ghost" onclick={() => onPageChange?.(totalPages)} class="min-w-[32px] text-xs sm:text-sm">{totalPages}</Button>
+							<Button 
+								size="sm" 
+								variant="ghost" 
+								onclick={() => onPageChange?.(totalPages)} 
+								class="min-w-[32px] text-xs sm:text-sm"
+							>
+								{totalPages}
+							</Button>
 						{/if}
 					{/if}
 				</div>

@@ -153,7 +153,7 @@
 								<div class="space-y-2">
 									{#each category.subcategories as subcat}
 										<a 
-											href="/busca?categoria={category.slug},{subcat.slug}"
+											href="/busca?categoria={subcat.slug}"
 											class="block px-4 py-2 rounded-lg hover:bg-white hover:shadow-sm transition-all group"
 										>
 											<div class="flex items-center justify-between">
@@ -204,7 +204,7 @@
 							<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
 								{#each cats as cat}
 									<a 
-										href="/busca?categoria={cat.parentSlug ? `${cat.parentSlug},${cat.slug}` : cat.slug}"
+										href="/busca?categoria={cat.slug}"
 										class="text-gray-700 hover:text-[#00BFB3] transition-colors"
 									>
 										{cat.name}
