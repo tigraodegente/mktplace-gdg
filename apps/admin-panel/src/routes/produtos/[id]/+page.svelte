@@ -5,6 +5,7 @@
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import EnrichmentProgress from '$lib/components/produtos/EnrichmentProgress.svelte';
 	import BasicTab from '$lib/components/produtos/BasicTab.svelte';
+	import PricingTab from '$lib/components/produtos/PricingTab.svelte';
 	import AttributesSection from '$lib/components/produtos/AttributesSection.svelte';
 	import MediaTab from '$lib/components/produtos/MediaTab.svelte';
 	import ShippingTab from '$lib/components/produtos/ShippingTab.svelte';
@@ -12,27 +13,38 @@
 	import AdvancedTab from '$lib/components/produtos/AdvancedTab.svelte';
 	import VariantsTab from '$lib/components/produtos/VariantsTab.svelte';
 	import InventoryTab from '$lib/components/produtos/InventoryTab.svelte';
+	import ProductHistorySimple from '$lib/components/produtos/ProductHistorySimple.svelte';
+	import ProductHistoryAdvanced from '$lib/components/produtos/ProductHistoryAdvanced.svelte';
+	import DuplicateModal from '$lib/components/produtos/DuplicateModal.svelte';
 	import { productService } from '$lib/services/productService';
 	import { toast } from '$lib/stores/toast';
 	
 	// Estados
 	let loading = $state(true);
 	let saving = $state(false);
+	let duplicating = $state(false);
 	let activeTab = $state('basic');
 	let formData = $state<any>({});
 	let productId = $derived($page.params.id);
 	let showEnrichmentProgress = $state(false);
 	let isEnriching = $state(false);
+	let showHistory = $state(false);
+	let showDuplicateModal = $state(false);
+	
+	// Validação em tempo real
+	let validationErrors = $state<Record<string, string>>({});
+	let fieldsTouched = $state(new Set<string>());
 	
 	// Tabs disponíveis
 	const tabs = [
 		{ id: 'basic', label: 'Informações Básicas', icon: 'Package' },
+		{ id: 'pricing', label: 'Preços e Margens', icon: 'DollarSign' },
 		{ id: 'attributes', label: 'Atributos e Especificações', icon: 'Settings' },
 		{ id: 'variants', label: 'Variações', icon: 'Layers' },
 		{ id: 'inventory', label: 'Estoque', icon: 'BarChart3' },
-		{ id: 'media', label: 'Imagens', icon: 'ImageIcon' },
-		{ id: 'shipping', label: 'Frete e Entrega', icon: 'Truck' },
-		{ id: 'seo', label: 'SEO', icon: 'Search' },
+		{ id: 'media', label: 'Imagens', icon: 'image' },
+		{ id: 'shipping', label: 'Frete e Entrega', icon: 'truck' },
+		{ id: 'seo', label: 'SEO', icon: 'search' },
 		{ id: 'advanced', label: 'Avançado', icon: 'Settings' }
 	];
 	
@@ -294,6 +306,18 @@
 					formData.has_free_shipping = formData.has_free_shipping ?? false;
 					formData.track_inventory = formData.track_inventory ?? true;
 					formData.allow_backorder = formData.allow_backorder ?? false;
+					
+					// ===== MAPEAR CAMPOS DE PREÇO PARA O PricingTab =====
+					// O PricingTab espera: cost_price, sale_price, regular_price
+					// Mas o banco envia: cost, price, original_price
+					formData.cost_price = formData.cost || 0;
+					formData.sale_price = formData.price || 0;
+					formData.regular_price = formData.original_price || 0;
+					console.log('💰 Preços mapeados:', {
+						cost_price: formData.cost_price,
+						sale_price: formData.sale_price,
+						regular_price: formData.regular_price
+					});
 				} else {
 					toast.error(result.error || 'Erro ao carregar produto');
 					goto('/produtos');
@@ -313,18 +337,29 @@
 	
 	// Salvar produto
 	async function saveProduct() {
+		// Validar antes de salvar
+		if (!validateForm()) {
+			toast.error('Por favor, corrija os erros antes de salvar');
+			return;
+		}
+		
 		saving = true;
 		try {
+			// Capturar estado anterior para histórico
+			const originalData = { ...formData };
+			
 			// Preparar dados para envio
 			const dataToSend = {
 				...formData,
 				// Converter strings para arrays
 				tags: formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [],
 				meta_keywords: formData.meta_keywords_input?.split(',').map((k: string) => k.trim()).filter(Boolean) || [],
-				// Garantir que números sejam números
-				price: parseFloat(formData.price) || 0,
-				original_price: formData.original_price ? parseFloat(formData.original_price) : null,
-				cost: formData.cost ? parseFloat(formData.cost) : 0,
+				// ===== MAPEAR PREÇOS DO PricingTab PARA O BANCO =====
+				// PricingTab usa: cost_price, sale_price, regular_price
+				// Banco espera: cost, price, original_price
+				price: parseFloat(formData.sale_price || formData.price) || 0,
+				original_price: formData.regular_price ? parseFloat(formData.regular_price) : (formData.original_price ? parseFloat(formData.original_price) : null),
+				cost: parseFloat(formData.cost_price || formData.cost) || 0,
 				quantity: parseInt(formData.quantity) || 0,
 				weight: formData.weight ? parseFloat(formData.weight) : null,
 				height: formData.height ? parseFloat(formData.height) : null,
@@ -368,6 +403,23 @@
 			
 			if (response.ok && result.success) {
 				toast.success(result.message || 'Produto atualizado com sucesso!');
+				
+				// Registrar histórico de alterações
+				const changes: Record<string, { old: any; new: any }> = {};
+				if (originalData.name !== dataToSend.name) {
+					changes.name = { old: originalData.name, new: dataToSend.name };
+				}
+				if (originalData.price !== dataToSend.price) {
+					changes.price = { old: originalData.price, new: dataToSend.price };
+				}
+				if (originalData.sku !== dataToSend.sku) {
+					changes.sku = { old: originalData.sku, new: dataToSend.sku };
+				}
+				
+				if (Object.keys(changes).length > 0) {
+					await logProductHistory('updated', changes);
+				}
+				
 				await loadProduct(); // Recarregar dados
 			} else {
 				console.error('❌ Erro no salvamento:', result);
@@ -538,9 +590,117 @@
 		toast.info('Enriquecimento cancelado');
 	}
 	
+	// FUNÇÃO REMOVIDA - Agora usa o modal DuplicateModal.svelte
+	
+	// Validação em tempo real
+	function validateField(field: string, value: any) {
+		fieldsTouched.add(field);
+		
+		// Limpar erro anterior
+		delete validationErrors[field];
+		
+		// Validar campos obrigatórios
+		if (field === 'name' && (!value || value.trim().length < 3)) {
+			validationErrors[field] = 'Nome deve ter pelo menos 3 caracteres';
+		}
+		
+		if (field === 'sku' && (!value || value.trim() === '')) {
+			validationErrors[field] = 'SKU é obrigatório';
+		}
+		
+		if (field === 'price' && (!value || parseFloat(value) <= 0)) {
+			validationErrors[field] = 'Preço deve ser maior que zero';
+		}
+		
+		if (field === 'sale_price' && (!value || parseFloat(value) <= 0)) {
+			validationErrors[field] = 'Preço de venda deve ser maior que zero';
+		}
+		
+		// Revalidar se necessário
+		validationErrors = { ...validationErrors };
+	}
+	
+	// Validar antes de salvar
+	function validateForm() {
+		const errors: Record<string, string> = {};
+		
+		if (!formData.name || formData.name.trim().length < 3) {
+			errors.name = 'Nome é obrigatório e deve ter pelo menos 3 caracteres';
+		}
+		
+		if (!formData.sku || formData.sku.trim() === '') {
+			errors.sku = 'SKU é obrigatório';
+		}
+		
+		const price = parseFloat(formData.sale_price || formData.price);
+		if (!price || price <= 0) {
+			errors.price = 'Preço é obrigatório e deve ser maior que zero';
+		}
+		
+		validationErrors = errors;
+		return Object.keys(errors).length === 0;
+	}
+	
+	// Registrar histórico de alterações
+	async function logProductHistory(action: string, changes: Record<string, any>) {
+		try {
+			console.log('📝 Registrando histórico:', { action, changes, productId });
+			
+			const response = await fetch(`/api/products/${productId}/history`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+				},
+				body: JSON.stringify({
+					action,
+					changes
+				})
+			});
+			
+			const result = await response.json();
+			console.log('📋 Resultado do histórico:', result);
+			
+			if (!result.success) {
+				console.warn('⚠️ Erro ao registrar histórico:', result.error);
+			}
+		} catch (error) {
+			console.warn('❌ Erro ao registrar histórico:', error);
+		}
+	}
+	
+	// Criar histórico inicial se não existir
+	async function ensureProductHistory() {
+		if (!productId) return;
+		
+		try {
+			console.log('🔍 Verificando se produto tem histórico...');
+			
+			// Registrar criação se é a primeira vez carregando
+			await logProductHistory('created', {
+				name: { old: null, new: formData.name },
+				sku: { old: null, new: formData.sku },
+				price: { old: null, new: formData.price }
+			});
+		} catch (error) {
+			console.warn('Erro ao criar histórico inicial:', error);
+		}
+	}
+	
 	// Lifecycle
-	onMount(() => {
-		loadProduct();
+	onMount(async () => {
+		await loadProduct();
+		
+		// Garantir que existe histórico do produto
+		if (formData.name) {
+			await ensureProductHistory();
+		}
+		
+		// Verificar se deve abrir histórico automaticamente
+		const urlParams = new URLSearchParams(window.location.search);
+		if (urlParams.get('tab') === 'history') {
+			showHistory = true;
+		}
 	});
 </script>
 
@@ -583,6 +743,36 @@
 				</div>
 				
 				<div class="flex items-center gap-3">
+					<!-- Botão de Histórico -->
+					<button
+						type="button"
+						onclick={() => showHistory = true}
+						class="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+						title="Ver histórico de alterações"
+					>
+						<ModernIcon name="history" size="sm" />
+						Histórico
+					</button>
+					
+					<!-- Botão de Duplicar -->
+					<button
+						type="button"
+						onclick={() => {
+							console.log('🔍 BOTÃO DUPLICAR CLICADO!');
+							console.log('Product Name:', formData.name);
+							console.log('Product SKU:', formData.sku);
+							console.log('Product ID:', productId);
+							showDuplicateModal = true;
+							console.log('Modal state:', showDuplicateModal);
+						}}
+						disabled={loading}
+						class="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+						title="Duplicar produto"
+					>
+						<ModernIcon name="Copy" size="sm" />
+						Duplicar
+					</button>
+				
 					<!-- Botão de Enriquecimento Completo com IA -->
 					<button
 						type="button"
@@ -666,6 +856,8 @@
 		<div class="max-w-[calc(100vw-100px)] mx-auto p-6">
 			{#if activeTab === 'basic'}
 				<BasicTab bind:formData />
+			{:else if activeTab === 'pricing'}
+				<PricingTab bind:formData />
 			{:else if activeTab === 'attributes'}
 				<AttributesSection bind:formData />
 			{:else if activeTab === 'variants'}
@@ -684,6 +876,20 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Modal de Histórico Avançado -->
+<ProductHistoryAdvanced 
+	productId={productId}
+	bind:show={showHistory}
+/>
+
+<!-- Modal de Duplicação Avançada -->
+<DuplicateModal 
+	bind:show={showDuplicateModal}
+	productId={productId}
+	productName={formData.name}
+	productSku={formData.sku}
+/>
 
 <style>
 	:global(.btn) {

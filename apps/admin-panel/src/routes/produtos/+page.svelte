@@ -144,6 +144,50 @@
 				onclick: () => goto(`/produtos/${row.id}`)
 			},
 			{
+				label: 'Duplicar',
+				icon: 'copy',
+				onclick: async () => {
+					const confirmed = confirm(`Deseja duplicar o produto "${row.name}"?`);
+					if (!confirmed) return;
+					
+					try {
+						const response = await fetch(`/api/products/${row.id}/duplicate`, {
+							method: 'POST',
+							headers: {
+								'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify({
+								name: `${row.name} - Cópia`,
+								sku: `${row.sku}-COPY-${Date.now()}`,
+								slug: `${row.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-copy-${Date.now()}`
+							})
+						});
+						
+						const result = await response.json();
+						
+						if (response.ok && result.success) {
+							alert(result.message || 'Produto duplicado com sucesso!');
+							// Redirecionar para o produto duplicado
+							goto(`/produtos/${result.data.id}`);
+						} else {
+							throw new Error(result.error || 'Erro ao duplicar produto');
+						}
+					} catch (error) {
+						console.error('Erro ao duplicar produto:', error);
+						alert('Erro ao duplicar produto. Tente novamente.');
+					}
+				}
+			},
+			{
+				label: 'Histórico',
+				icon: 'history',
+				onclick: () => {
+					// Redirecionar para página de edição e abrir histórico
+					goto(`/produtos/${row.id}?tab=history`);
+				}
+			},
+			{
 				label: 'Ver na Loja',
 				icon: 'preview',
 				onclick: () => window.open(`${window.location.origin.replace(':5174', ':5173')}/produtos/${row.id}`, '_blank')

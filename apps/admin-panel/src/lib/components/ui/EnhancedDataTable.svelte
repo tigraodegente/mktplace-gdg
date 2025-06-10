@@ -257,15 +257,20 @@
 							{#if actions}
 								<div class="flex justify-end gap-1 mt-4 pt-4 border-t border-gray-100">
 									{#each actions(row) as action}
-										<Button
-											size="sm"
-											variant={action.variant || 'ghost'}
-											onclick={action.onclick}
-											class="!p-2 !min-w-8 !min-h-8"
-											title={action.label}
-										>
-											<ModernIcon name={action.icon} size="sm" />
-										</Button>
+										<div class="relative group">
+											<Button
+												size="sm"
+												variant={action.variant || 'ghost'}
+												onclick={action.onclick}
+												class="!p-2 !min-w-8 !min-h-8"
+											>
+												<ModernIcon name={action.icon} size="sm" />
+											</Button>
+											<!-- Tooltip customizado sem delay -->
+											<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-10">
+												{action.label}
+											</div>
+										</div>
 									{/each}
 								</div>
 							{/if}
@@ -372,15 +377,20 @@
 										<td class="px-4 sm:px-6 py-4 text-right text-sm">
 											<div class="flex justify-end gap-1">
 												{#each actions(row) as action}
-													<Button
-														size="sm"
-														variant={action.variant || 'ghost'}
-														onclick={action.onclick}
-														class="!p-2 !min-w-8 !min-h-8"
-														title={action.label}
-													>
-														<ModernIcon name={action.icon} size="sm" />
-													</Button>
+													<div class="relative group">
+														<Button
+															size="sm"
+															variant={action.variant || 'ghost'}
+															onclick={action.onclick}
+															class="!p-2 !min-w-8 !min-h-8"
+														>
+															<ModernIcon name={action.icon} size="sm" />
+														</Button>
+														<!-- Tooltip customizado sem delay -->
+														<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-10">
+															{action.label}
+														</div>
+													</div>
 												{/each}
 											</div>
 										</td>

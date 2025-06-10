@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import BasicTab from '$lib/components/produtos/BasicTab.svelte';
+	import PricingTab from '$lib/components/produtos/PricingTab.svelte';
 	import AttributesSection from '$lib/components/produtos/AttributesSection.svelte';
 	import VariantsTab from '$lib/components/produtos/VariantsTab.svelte';
 	import InventoryTab from '$lib/components/produtos/InventoryTab.svelte';
@@ -32,6 +33,14 @@
 		original_price: 0,
 		cost: 0,
 		currency: 'BRL',
+		
+		// Campos específicos para PricingTab
+		cost_price: 0,
+		sale_price: 0,
+		regular_price: 0,
+		markup_percentage: 0,
+		min_price: 0,
+		max_price: 0,
 		
 		// Estoque
 		quantity: 0,
@@ -110,6 +119,7 @@
 	// Tabs disponíveis - EXATAMENTE IGUAIS à página de edição
 	const tabs = [
 		{ id: 'basic', label: 'Informações Básicas', icon: 'Package' },
+		{ id: 'pricing', label: 'Preços e Margens', icon: 'DollarSign' },
 		{ id: 'attributes', label: 'Atributos e Especificações', icon: 'Settings' },
 		{ id: 'variants', label: 'Variações', icon: 'Layers' },
 		{ id: 'inventory', label: 'Estoque', icon: 'BarChart3' },
@@ -310,12 +320,18 @@
 	async function saveProduct() {
 		saving = true;
 		try {
-			// Preparar dados para envio
-			const dataToSend = {
-				...formData,
-				tags: formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [],
-				meta_keywords: formData.meta_keywords_input?.split(',').map((k: string) => k.trim()).filter(Boolean) || []
-			};
+					// Preparar dados para envio
+		const dataToSend = {
+			...formData,
+			tags: formData.tags_input?.split(',').map((t: string) => t.trim()).filter(Boolean) || [],
+			meta_keywords: formData.meta_keywords_input?.split(',').map((k: string) => k.trim()).filter(Boolean) || [],
+			// ===== MAPEAR PREÇOS DO PricingTab PARA O BANCO =====
+			// PricingTab usa: cost_price, sale_price, regular_price
+			// Banco espera: cost, price, original_price
+			price: parseFloat(formData.sale_price || formData.price) || 0,
+			original_price: formData.regular_price ? parseFloat(formData.regular_price) : null,
+			cost: parseFloat(formData.cost_price || formData.cost) || 0
+		};
 			
 			const response = await fetch('/api/products', {
 				method: 'POST',
@@ -433,6 +449,8 @@
 	<div class="max-w-[calc(100vw-100px)] mx-auto p-6">
 		{#if activeTab === 'basic'}
 			<BasicTab bind:formData />
+		{:else if activeTab === 'pricing'}
+			<PricingTab bind:formData />
 		{:else if activeTab === 'attributes'}
 			<AttributesSection bind:formData />
 		{:else if activeTab === 'variants'}

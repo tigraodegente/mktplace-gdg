@@ -143,8 +143,8 @@
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 						<div class="bg-white rounded-xl border border-gray-200 p-6">
 							<div class="flex items-center gap-4">
-								<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-									<ModernIcon name="Package" size="md" class="text-blue-600" />
+								<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+									<ModernIcon name="Package" size="md" class="text-[#00BFB3]" />
 								</div>
 								<div>
 									<p class="text-sm font-medium text-gray-600">Total de Produtos</p>

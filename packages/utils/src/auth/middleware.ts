@@ -60,30 +60,48 @@ export function withAuth(
 
       // Extrair token do header
       const authHeader = request.headers.get('Authorization');
+      console.log('🔐 [MIDDLEWARE] Auth header:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NENHUM');
+      
       const token = authService.extractTokenFromHeader(authHeader);
+      console.log('🔐 [MIDDLEWARE] Token extraído:', token ? `${token.substring(0, 20)}...` : 'NENHUM');
       
       let user: User | undefined;
       let isAuthenticated = false;
 
       if (token) {
-        const payload = authService.verifyToken(token);
-        if (payload) {
-          // Para desenvolvimento, usar dados do payload diretamente
-          // Em produção, buscar no banco: const dbUser = await getUserById(payload.userId, env);
-          user = {
-            id: payload.userId,
-            email: payload.email,
-            name: payload.email.split('@')[0], // Nome temporário
-            role: payload.role,
-            is_active: true
-          };
-          isAuthenticated = !!user;
-          console.log(`🔐 Usuário autenticado: ${user.email} (${user.role})`);
+        console.log('🔐 [MIDDLEWARE] Verificando token...');
+        try {
+          const payload = authService.verifyToken(token);
+          console.log('🔐 [MIDDLEWARE] Payload do token:', payload);
+          
+          if (payload) {
+            // Para desenvolvimento, usar dados do payload diretamente
+            // Em produção, buscar no banco: const dbUser = await getUserById(payload.userId, env);
+            user = {
+              id: payload.userId,
+              email: payload.email,
+              name: payload.email.split('@')[0], // Nome temporário
+              role: payload.role,
+              is_active: true
+            };
+            isAuthenticated = !!user;
+            console.log(`✅ [MIDDLEWARE] Usuário autenticado: ${user.email} (${user.role})`);
+          } else {
+            console.log('❌ [MIDDLEWARE] Token inválido - payload vazio');
+          }
+        } catch (tokenError) {
+          console.error('❌ [MIDDLEWARE] Erro ao verificar token:', tokenError);
         }
+      } else {
+        console.log('❌ [MIDDLEWARE] Nenhum token fornecido');
       }
+
+      console.log('🔐 [MIDDLEWARE] isAuthenticated:', isAuthenticated);
+      console.log('🔐 [MIDDLEWARE] options.required:', options.required);
 
       // Verificar se autenticação é obrigatória
       if (options.required && !isAuthenticated) {
+        console.log('❌ [MIDDLEWARE] Autenticação obrigatória mas usuário não autenticado');
         return new Response(JSON.stringify({
           success: false,
           error: {
@@ -98,6 +116,7 @@ export function withAuth(
 
       // Verificar roles
       if (isAuthenticated && user && options.roles && !authService.checkRole(user.role, options.roles)) {
+        console.log(`❌ [MIDDLEWARE] Role '${user.role}' não permitido. Roles aceitos:`, options.roles);
         return new Response(JSON.stringify({
           success: false,
           error: {
@@ -108,6 +127,8 @@ export function withAuth(
           status: 403,
           headers: { 'Content-Type': 'application/json' }
         });
+      } else if (isAuthenticated && user && options.roles) {
+        console.log(`✅ [MIDDLEWARE] Role '${user.role}' permitido`);
       }
 
       // Verificar permissões específicas

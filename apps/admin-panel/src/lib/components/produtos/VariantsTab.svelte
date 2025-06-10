@@ -1181,22 +1181,22 @@
 		{#if formData.product_variants && formData.product_variants.length > 0}
 			<div class="space-y-4">
 				<h4 class="font-semibold text-slate-900 flex items-center gap-2">
-					<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
 					</svg>
 					Sistema de Variações Estruturadas ({formData.product_variants.length})
 				</h4>
 				
-				<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+				<div class="bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-lg p-4 mb-4">
 					<div class="flex items-start gap-3">
 						<div class="flex-shrink-0">
-							<svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="w-5 h-5 text-[#00BFB3] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
 							</svg>
 						</div>
 						<div>
-							<h5 class="font-medium text-blue-900 mb-1">Sistema Ativado</h5>
-							<p class="text-sm text-blue-700">
+							<h5 class="font-medium text-[#00BFB3] mb-1">Sistema Ativado</h5>
+							<p class="text-sm text-gray-700">
 								Este produto possui <strong>{formData.product_variants.length} variações estruturadas</strong> no banco de dados.
 							</p>
 						</div>

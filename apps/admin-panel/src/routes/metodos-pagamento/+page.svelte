@@ -189,7 +189,7 @@
 			<div class="mt-4 sm:mt-0">
 				<button
 					on:click={() => showCreateModal = true}
-					class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+					class="bg-[#00BFB3] hover:bg-[#00A89D] text-white px-4 py-2 rounded-lg font-medium transition-colors"
 				>
 					+ Novo Método
 				</button>
@@ -204,7 +204,7 @@
 				placeholder="Buscar métodos de pagamento..."
 				bind:value={searchTerm}
 				on:input={handleSearch}
-				class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
 			>
 			<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
 				<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@
 
 	{#if loading}
 		<div class="flex items-center justify-center py-12">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00BFB3]"></div>
 			<span class="ml-3 text-gray-600">Carregando métodos de pagamento...</span>
 		</div>
 	{:else}

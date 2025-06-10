@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	
 	let { formData = $bindable() } = $props();
 
 	// Função para calcular porcentagem de desconto
@@ -50,14 +52,18 @@
 	<!-- PREÇOS PRINCIPAIS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			💰 Preços de Venda
+			<ModernIcon name="DollarSign" size="md" />
+			Preços de Venda
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			<!-- Preço de Custo -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					💰 Preço de Custo *
+					<span class="flex items-center gap-1">
+						<ModernIcon name="DollarSign" size="sm" />
+						Preço de Custo *
+					</span>
 				</label>
 				<div class="relative">
 					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
@@ -78,7 +84,10 @@
 			<!-- Preço de Venda -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🏷️ Preço de Venda *
+					<span class="flex items-center gap-1">
+						<ModernIcon name="Tag" size="sm" />
+						Preço de Venda *
+					</span>
 				</label>
 				<div class="relative">
 					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
@@ -98,7 +107,10 @@
 			<!-- Preço Regular (Comparação) -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					📊 Preço Regular
+					<span class="flex items-center gap-1">
+						<ModernIcon name="BarChart3" size="sm" />
+						Preço Regular
+					</span>
 				</label>
 				<div class="relative">
 					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
@@ -119,7 +131,7 @@
 		{#if discountPercentage > 0}
 			<div class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
 				<div class="flex items-center gap-2 text-[#00BFB3]">
-					✅
+					<ModernIcon name="CheckCircle" size="sm" />
 					<span class="font-medium">Desconto de {discountPercentage}% será exibido</span>
 				</div>
 			</div>
@@ -129,14 +141,18 @@
 	<!-- CALCULADORA DE MARKUP -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			🧮 Calculadora de Markup
+			<ModernIcon name="Calculator" size="md" />
+			Calculadora de Markup
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<!-- Markup Percentage -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					📈 Markup Desejado
+					<span class="flex items-center gap-1">
+						<ModernIcon name="TrendingUp" size="sm" />
+						Markup Desejado
+					</span>
 				</label>
 				<div class="relative">
 					<input
@@ -161,7 +177,8 @@
 					onclick={calculateSalePrice}
 					class="w-full px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-all flex items-center justify-center gap-2"
 				>
-					🧮 Calcular Preço de Venda
+					<ModernIcon name="Calculator" size="sm" />
+					Calcular Preço de Venda
 				</button>
 			</div>
 		</div>
@@ -170,7 +187,7 @@
 		{#if profitMargin > 0}
 			<div class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
 				<div class="flex items-center gap-2 text-[#00BFB3]">
-					📈
+					<ModernIcon name="TrendingUp" size="sm" />
 					<span class="font-medium">Margem de lucro: {profitMargin}%</span>
 				</div>
 			</div>
@@ -180,7 +197,8 @@
 	<!-- ANÁLISE FINANCEIRA -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			📊 Análise de Rentabilidade
+			<ModernIcon name="BarChart3" size="md" />
+			Análise de Rentabilidade
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -225,14 +243,18 @@
 	<!-- CONFIGURAÇÕES AVANÇADAS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-			⚙️ Configurações Avançadas de Preço
+			<ModernIcon name="Settings" size="md" />
+			Configurações Avançadas de Preço
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<!-- Preço Mínimo -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🔻 Preço Mínimo Permitido
+					<span class="flex items-center gap-1">
+						<ModernIcon name="TrendingDown" size="sm" />
+						Preço Mínimo Permitido
+					</span>
 				</label>
 				<div class="relative">
 					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
@@ -251,7 +273,10 @@
 			<!-- Preço Máximo -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
-					🔺 Preço Máximo Sugerido
+					<span class="flex items-center gap-1">
+						<ModernIcon name="TrendingUp" size="sm" />
+						Preço Máximo Sugerido
+					</span>
 				</label>
 				<div class="relative">
 					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
@@ -270,15 +295,69 @@
 	</div>
 
 	<!-- ALERTAS E VALIDAÇÕES -->
-	{#if formData.sale_price && formData.cost_price && parseFloat(formData.sale_price) <= parseFloat(formData.cost_price)}
-		<div class="bg-red-50 border border-red-200 rounded-lg p-4">
-			<div class="flex items-center gap-2 text-red-800">
-				⚠️
-				<div>
-					<p class="font-medium">Atenção: Preço de venda igual ou menor que o custo!</p>
-					<p class="text-sm">O produto será vendido com prejuízo ou sem lucro.</p>
+	<div class="space-y-4">
+		<!-- Alerta: Prejuízo -->
+		{#if formData.sale_price && formData.cost_price && parseFloat(formData.sale_price) <= parseFloat(formData.cost_price)}
+			<div class="bg-red-50 border border-red-200 rounded-lg p-4">
+				<div class="flex items-center gap-2 text-red-800">
+					<ModernIcon name="AlertTriangle" size="sm" />
+					<div>
+						<p class="font-medium">❌ Atenção: Preço de venda igual ou menor que o custo!</p>
+						<p class="text-sm">O produto será vendido com prejuízo ou sem lucro.</p>
+					</div>
 				</div>
 			</div>
-		</div>
-	{/if}
+		{/if}
+		
+		<!-- Alerta: Campos obrigatórios -->
+		{#if !formData.sale_price || parseFloat(formData.sale_price) <= 0}
+			<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+				<div class="flex items-center gap-2 text-yellow-800">
+					<ModernIcon name="AlertCircle" size="sm" />
+					<div>
+						<p class="font-medium">⚠️ Preço de venda é obrigatório</p>
+						<p class="text-sm">Informe um preço de venda válido maior que zero.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+		
+		{#if !formData.cost_price || parseFloat(formData.cost_price) < 0}
+			<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+				<div class="flex items-center gap-2 text-yellow-800">
+					<ModernIcon name="AlertCircle" size="sm" />
+					<div>
+						<p class="font-medium">⚠️ Preço de custo inválido</p>
+						<p class="text-sm">O custo deve ser maior ou igual a zero.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+		
+		<!-- Alerta: Margem baixa -->
+		{#if profitMargin > 0 && profitMargin < 20}
+			<div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+				<div class="flex items-center gap-2 text-orange-800">
+					<ModernIcon name="TrendingDown" size="sm" />
+					<div>
+						<p class="font-medium">📉 Margem de lucro baixa ({profitMargin}%)</p>
+						<p class="text-sm">Considere aumentar o preço de venda para melhorar a rentabilidade.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+		
+		<!-- Sucesso: Tudo OK -->
+		{#if formData.sale_price && formData.cost_price && parseFloat(formData.sale_price) > parseFloat(formData.cost_price) && profitMargin >= 20}
+			<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+				<div class="flex items-center gap-2 text-green-800">
+					<ModernIcon name="CheckCircle" size="sm" />
+					<div>
+						<p class="font-medium">✅ Configuração de preços está ótima!</p>
+						<p class="text-sm">Margem de lucro de {profitMargin}% e rentabilidade adequada.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
 </div> 

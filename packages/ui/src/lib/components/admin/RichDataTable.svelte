@@ -260,19 +260,24 @@
 								<td class="px-6 py-4 whitespace-nowrap text-right text-sm">
 									<div class="flex items-center justify-end gap-2">
 										{#each actions as action}
-											<button 
-												onclick={() => action.action(row)}
-												class="btn btn-{action.variant || 'secondary'} btn-sm"
-												title={action.label}
-											>
-												{#if action.icon}
-													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={action.icon}/>
-													</svg>
-												{:else}
+											<div class="relative group">
+												<button 
+													onclick={() => action.action(row)}
+													class="btn btn-{action.variant || 'secondary'} btn-sm"
+												>
+													{#if action.icon}
+														<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={action.icon}/>
+														</svg>
+													{:else}
+														{action.label}
+													{/if}
+												</button>
+												<!-- Tooltip customizado sem delay -->
+												<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-10">
 													{action.label}
-												{/if}
-											</button>
+												</div>
+											</div>
 										{/each}
 									</div>
 								</td>

@@ -62,7 +62,7 @@
 				return `
 					<div class="flex flex-wrap gap-1">
 						${displayValues.map(v => `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${v}</span>`).join('')}
-						${remaining > 0 ? `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">+${remaining}</span>` : ''}
+						${remaining > 0 ? `<span class="px-2 py-1 bg-[#00BFB3]/10 text-[#00BFB3] text-xs rounded">+${remaining}</span>` : ''}
 					</div>
 				`;
 			}
@@ -292,8 +292,8 @@
 						<p class="text-sm font-medium text-gray-600">Tipos Diferentes</p>
 						<p class="text-2xl font-bold text-gray-900 mt-1">{stats.types}</p>
 					</div>
-					<div class="p-3 bg-purple-100 rounded-lg">
-						<ModernIcon name="tag" size={24} color="#8B5CF6" />
+					<div class="p-3 bg-[#00BFB3]/10 rounded-lg">
+						<ModernIcon name="tag" size={24} color="#00BFB3" />
 					</div>
 				</div>
 			</div>
@@ -318,7 +318,7 @@
 				<ModernIcon name="filter" size="md" color="#6B7280" />
 				<h3 class="text-lg font-semibold text-gray-900">Filtros</h3>
 				{#if hasActiveFilters()}
-					<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+					<span class="bg-[#00BFB3]/10 text-[#00BFB3] text-xs px-2 py-1 rounded-full">
 						Filtros ativos
 					</span>
 				{/if}
@@ -368,7 +368,7 @@
 		<!-- Tabela -->
 		<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
 			{#if selectedIds.length > 0}
-				<div class="p-4 border-b border-gray-200 bg-blue-50">
+				<div class="p-4 border-b border-gray-200 bg-[#00BFB3]/10">
 					<div class="flex items-center gap-2">
 						<span class="text-sm text-gray-600">
 							{selectedIds.length} item(s) selecionado(s)
