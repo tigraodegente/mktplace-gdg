@@ -290,7 +290,7 @@
 			preco_max: undefined,
 			promocao: undefined,
 			frete_gratis: undefined,
-			disponivel: undefined,
+			disponivel: true, // ✅ CORRIGIDO: Deve ser true por padrão
 			avaliacao: undefined,
 			condicao: undefined,
 			vendedor: undefined,
