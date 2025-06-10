@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
+import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
 
 /**
  * Compara dois estados de produto e registra histórico das alterações
@@ -9,7 +10,8 @@ async function compareAndLogHistory(
   originalProduct: any, 
   finalProduct: any, 
   productId: string, 
-  db: any
+  db: any,
+  user?: any
 ): Promise<{ totalChanges: number; summary: string }> {
   const changes: Record<string, { old: any; new: any; label: string }> = {};
   
@@ -106,15 +108,17 @@ async function compareAndLogHistory(
   // Registrar no banco se há alterações
   if (totalChanges > 0) {
     try {
-      await db.query(`
+              await db.query(`
         INSERT INTO product_history (
-          product_id, user_id, action, changes, summary, created_at
+          product_id, user_id, user_name, user_email, action, changes, summary, created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, NOW()
+          $1, $2, $3, $4, $5, $6, $7, NOW()
         )
       `, [
         productId,
-        null, // TODO: Capturar user_id do contexto de autenticação
+        user?.id || null,
+        user?.name || 'Sistema',
+        user?.email || 'system@marketplace.com',
         'updated',
         JSON.stringify(changes),
         summary
@@ -554,11 +558,12 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 };
 
 // PUT - Atualizar produto por ID
-export const PUT: RequestHandler = async ({ params, request, platform }) => {
+export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platform, data }: any) => {
   try {
+    const user = authUtils.getUser({ data });
     const db = getDatabase(platform);
     const { id } = params;
-    const data = await request.json();
+    const requestData = await request.json();
     
     console.log('Atualizando produto:', id);
     
@@ -599,8 +604,8 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
     
     // 🔧 NORMALIZAR ATTRIBUTES ANTES DE SALVAR
     let normalizedAttributes: Record<string, string[]> = {};
-    if (data.attributes && typeof data.attributes === 'object') {
-      for (const [key, value] of Object.entries(data.attributes)) {
+    if (requestData.attributes && typeof requestData.attributes === 'object') {
+      for (const [key, value] of Object.entries(requestData.attributes)) {
         if (Array.isArray(value)) {
           normalizedAttributes[key] = value.map(v => String(v)); // ✅ Já é array
         } else if (typeof value === 'string') {
@@ -615,56 +620,56 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
     // Atualizar produto - apenas campos básicos existentes
     const result = await db.query`
       UPDATE products SET
-        name = ${data.name},
-        slug = ${data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
-        sku = ${data.sku},
-        description = ${data.description || ''},
-        short_description = ${data.short_description || null},
-        price = ${data.price},
-        original_price = ${data.original_price || null},
-        cost = ${data.cost || 0},
-        quantity = ${data.quantity || 0},
-        model = ${data.model || null},
-        barcode = ${data.barcode || null},
-        condition = ${data.condition || 'new'},
-        weight = ${data.weight || null},
-        height = ${data.height || null},
-        width = ${data.width || null},
-        length = ${data.length || null},
-        brand_id = ${data.brand_id ? (typeof data.brand_id === 'string' ? data.brand_id : String(data.brand_id)) : null},
-        seller_id = ${data.seller_id ? (typeof data.seller_id === 'string' ? data.seller_id : String(data.seller_id)) : null},
-        status = ${data.status || 'active'},
-        is_active = ${data.is_active !== false},
-        featured = ${data.featured === true},
-        track_inventory = ${data.track_inventory !== false},
-        allow_backorder = ${data.allow_backorder === true},
-        stock_location = ${data.stock_location || null},
-        currency = ${data.currency || 'BRL'},
-        tags = ${data.tags || []},
-        meta_title = ${data.meta_title || null},
-        meta_description = ${data.meta_description || null},
-        meta_keywords = ${data.meta_keywords || []},
-        published_at = ${data.published_at || null},
-        low_stock_alert = ${data.low_stock_alert || null},
-        has_free_shipping = ${data.has_free_shipping === true},
-        ncm_code = ${data.ncm_code || null},
-        gtin = ${data.gtin || null},
-        origin = ${data.origin || '0'},
-        allow_reviews = ${data.allow_reviews !== false},
-        age_restricted = ${data.age_restricted || false},
-        is_customizable = ${data.is_customizable || false},
+        name = ${requestData.name},
+        slug = ${requestData.slug || requestData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
+        sku = ${requestData.sku},
+        description = ${requestData.description || ''},
+        short_description = ${requestData.short_description || null},
+        price = ${requestData.price},
+        original_price = ${requestData.original_price || null},
+        cost = ${requestData.cost || 0},
+        quantity = ${requestData.quantity || 0},
+        model = ${requestData.model || null},
+        barcode = ${requestData.barcode || null},
+        condition = ${requestData.condition || 'new'},
+        weight = ${requestData.weight || null},
+        height = ${requestData.height || null},
+        width = ${requestData.width || null},
+        length = ${requestData.length || null},
+        brand_id = ${requestData.brand_id ? (typeof requestData.brand_id === 'string' ? requestData.brand_id : String(requestData.brand_id)) : null},
+        seller_id = ${requestData.seller_id ? (typeof requestData.seller_id === 'string' ? requestData.seller_id : String(requestData.seller_id)) : null},
+        status = ${requestData.status || 'active'},
+        is_active = ${requestData.is_active !== false},
+        featured = ${requestData.featured === true},
+        track_inventory = ${requestData.track_inventory !== false},
+        allow_backorder = ${requestData.allow_backorder === true},
+        stock_location = ${requestData.stock_location || null},
+        currency = ${requestData.currency || 'BRL'},
+        tags = ${requestData.tags || []},
+        meta_title = ${requestData.meta_title || null},
+        meta_description = ${requestData.meta_description || null},
+        meta_keywords = ${requestData.meta_keywords || []},
+        published_at = ${requestData.published_at || null},
+        low_stock_alert = ${requestData.low_stock_alert || null},
+        has_free_shipping = ${requestData.has_free_shipping === true},
+        ncm_code = ${requestData.ncm_code || null},
+        gtin = ${requestData.gtin || null},
+        origin = ${requestData.origin || '0'},
+        allow_reviews = ${requestData.allow_reviews !== false},
+        age_restricted = ${requestData.age_restricted || false},
+        is_customizable = ${requestData.is_customizable || false},
         attributes = ${JSON.stringify(normalizedAttributes)},
-        specifications = ${JSON.stringify(data.specifications || {})},
-        manufacturing_country = ${getCountryCode(data.manufacturing_country)},
-        tax_class = ${data.tax_class || 'standard'},
-        requires_shipping = ${data.requires_shipping !== false},
-        is_digital = ${data.is_digital || false},
-        care_instructions = ${data.care_instructions || null},
-        manual_link = ${data.manual_link || null},
-        internal_notes = ${data.internal_notes || null},
-        delivery_days = ${data.delivery_days_min || data.delivery_days_max || null},
-        seller_state = ${data.seller_state || null},
-        seller_city = ${data.seller_city || null},
+        specifications = ${JSON.stringify(requestData.specifications || {})},
+        manufacturing_country = ${getCountryCode(requestData.manufacturing_country)},
+        tax_class = ${requestData.tax_class || 'standard'},
+        requires_shipping = ${requestData.requires_shipping !== false},
+        is_digital = ${requestData.is_digital || false},
+        care_instructions = ${requestData.care_instructions || null},
+        manual_link = ${requestData.manual_link || null},
+        internal_notes = ${requestData.internal_notes || null},
+        delivery_days = ${requestData.delivery_days_min || requestData.delivery_days_max || null},
+        seller_state = ${requestData.seller_state || null},
+        seller_city = ${requestData.seller_city || null},
         updated_at = NOW()
       WHERE id = ${id}::uuid
       RETURNING *`;
@@ -889,7 +894,7 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       
       if (finalProduct && originalProduct) {
         // Comparar apenas campos da tabela products (mais eficiente)
-        const changes = await compareAndLogHistory(originalProduct, finalProduct, id, db);
+        const changes = await compareAndLogHistory(originalProduct, finalProduct, id, db, user);
         
         if (changes.totalChanges > 0) {
           console.log(`✅ Histórico registrado: ${changes.summary}`);
@@ -917,7 +922,7 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
       details: error 
     }, { status: 500 });
   }
-};
+});
 
 // DELETE - Excluir produto por ID
 export const DELETE: RequestHandler = async ({ params, url, platform }) => {

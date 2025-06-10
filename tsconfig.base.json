@@ -18,7 +18,6 @@
       "@mktplace/shared-types": ["./packages/shared-types/src/index.ts"],
       "@mktplace/ui": ["./packages/ui/src/index.ts"],
       "@mktplace/utils": ["./packages/utils/src/index.ts"],
-      "@mktplace/xata-client": ["./packages/xata-client/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "build", ".svelte-kit"]

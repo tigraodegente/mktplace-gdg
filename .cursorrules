@@ -3,7 +3,7 @@
 ## Contexto do Projeto
 Este é um marketplace completo desenvolvido como monorepo usando:
 - **Frontend**: SvelteKit + TypeScript + Tailwind CSS
-- **Backend**: Cloudflare Workers/Pages + Xata.io
+- **Backend**: Cloudflare Workers/Pages + Neon
 - **Arquitetura**: Monorepo com apps separadas (store, admin-panel, seller-panel)
 
 ## Estrutura do Projeto
@@ -17,7 +17,7 @@ Este é um marketplace completo desenvolvido como monorepo usando:
 │   ├── ui/            # Componentes compartilhados
 │   ├── shared-types/  # TypeScript types
 │   ├── utils/         # Funções utilitárias
-│   └── xata-client/   # Cliente Xata.io
+│   └── neon/   # Cliente Neon
 └── docs/              # Documentação
 ```
 
@@ -123,10 +123,10 @@ src/
 }
 ```
 
-## Banco de Dados (Xata.io)
+## Banco de Dados (Neon)
 
 ### Queries
-- Use o cliente Xata tipado
+- Use o cliente Neon tipado
 - Implemente paginação server-side
 - Use transações quando necessário
 - Otimize queries com índices apropriados
@@ -177,7 +177,7 @@ src/
 ## Recursos e Referências
 
 - [Documentação SvelteKit](https://kit.svelte.dev/docs)
-- [Documentação Xata.io](https://xata.io/docs)
+- [Documentação Neon](https://neon.tech/docs)
 - [Documentação Cloudflare](https://developers.cloudflare.com/)
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - Documentação interna: `/docs/`

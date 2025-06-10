@@ -438,7 +438,8 @@
 			const response = await fetch(`/api/products/${productId}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${localStorage.getItem('access_token')}`
 				},
 				body: JSON.stringify(dataToSend)
 			});

@@ -54,12 +54,6 @@ test-results/
 # Misc
 *.pem
 
-# Xata
-.xatarc
-.xata
-
-# Xata
-.xata/ 
 # Dados sensíveis
 cookies.txt
 *.session
