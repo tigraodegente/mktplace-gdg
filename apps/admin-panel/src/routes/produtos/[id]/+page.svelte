@@ -25,6 +25,7 @@
 	let duplicating = $state(false);
 	let activeTab = $state('basic');
 	let formData = $state<any>({});
+	let originalDatabaseData = $state<any>({}); // Dados originais do banco para comparação
 	let productId = $derived($page.params.id);
 	let showEnrichmentProgress = $state(false);
 	let isEnriching = $state(false);
@@ -129,6 +130,11 @@
 					console.log('🔍 DEBUG - Dados recebidos da API:', result.data);
 					console.log('🔍 DEBUG - ID do produto:', result.data.id);
 					console.log('🔍 DEBUG - brand_id do produto:', result.data.brand_id);
+					
+					// 🎯 GUARDAR DADOS ORIGINAIS PARA COMPARAÇÃO (ANTES DE QUALQUER PROCESSAMENTO)
+					originalDatabaseData = JSON.parse(JSON.stringify(result.data));
+					console.log('💾 Dados originais salvos para comparação:', originalDatabaseData);
+					
 					formData = result.data;
 					
 					// Inicializar arrays vazios se não existirem
@@ -345,8 +351,8 @@
 		
 		saving = true;
 		try {
-			// Capturar estado anterior para histórico
-			const originalData = { ...formData };
+			// ===== COMPARAR ESTADOS PARA HISTÓRICO DETALHADO =====
+			const { compareProductStates, logProductHistory: logDetailedHistory } = await import('$lib/utils/productHistory');
 			
 			// Preparar dados para envio
 			const dataToSend = {
@@ -378,6 +384,44 @@
 			delete dataToSend.category_name;
 			delete dataToSend.brand_name;
 			delete dataToSend.vendor_name;
+			delete dataToSend.cost_price;
+			delete dataToSend.sale_price;
+			delete dataToSend.regular_price;
+			delete dataToSend.categories;
+			delete dataToSend.category_ids;
+			delete dataToSend.related_products;
+			delete dataToSend.upsell_products;
+			delete dataToSend.download_files;
+			delete dataToSend.product_options;
+			delete dataToSend.product_variants;
+			delete dataToSend.variant_type;
+			delete dataToSend.related_product_ids;
+			delete dataToSend.upsell_product_ids;
+			delete dataToSend.custom_fields;
+			
+			// 🎯 COMPARAR COM DADOS ORIGINAIS DO BANCO (ANTES DO PROCESSAMENTO)
+			console.log('🔍 Comparando dados para histórico:');
+			console.log('  - Original (banco):', originalDatabaseData);
+			console.log('  - Novo (enviando):', dataToSend);
+			
+			const historyData = compareProductStates(originalDatabaseData, dataToSend);
+			
+			// 🚨 DEBUG: Mostrar EXATAMENTE quais campos foram detectados como alterados
+			console.log('🔍 CAMPOS DETECTADOS COMO ALTERADOS:');
+			Object.entries(historyData.changes).forEach(([field, change]) => {
+				console.log(`  - ${field}: "${change.old}" → "${change.new}" (${change.label})`);
+			});
+			
+			console.log('📊 Alterações detectadas:', {
+				totalChanges: historyData.totalChanges,
+				changesByType: historyData.changesByType,
+				summary: historyData.summary,
+				fields: Object.keys(historyData.changes).map(key => ({
+					field: key,
+					label: historyData.changes[key].label,
+					type: historyData.changes[key].type
+				}))
+			});
 			
 			console.log('📝 Dados sendo enviados para a API:', {
 				id: formData.id,
@@ -404,21 +448,8 @@
 			if (response.ok && result.success) {
 				toast.success(result.message || 'Produto atualizado com sucesso!');
 				
-				// Registrar histórico de alterações
-				const changes: Record<string, { old: any; new: any }> = {};
-				if (originalData.name !== dataToSend.name) {
-					changes.name = { old: originalData.name, new: dataToSend.name };
-				}
-				if (originalData.price !== dataToSend.price) {
-					changes.price = { old: originalData.price, new: dataToSend.price };
-				}
-				if (originalData.sku !== dataToSend.sku) {
-					changes.sku = { old: originalData.sku, new: dataToSend.sku };
-				}
-				
-				if (Object.keys(changes).length > 0) {
-					await logProductHistory('updated', changes);
-				}
+							// ✅ HISTÓRICO AGORA É REGISTRADO AUTOMATICAMENTE NO BACKEND
+			console.log('ℹ️ Histórico será registrado automaticamente pelo backend após salvar');
 				
 				await loadProduct(); // Recarregar dados
 			} else {
@@ -669,32 +700,9 @@
 		}
 	}
 	
-	// Criar histórico inicial se não existir
-	async function ensureProductHistory() {
-		if (!productId) return;
-		
-		try {
-			console.log('🔍 Verificando se produto tem histórico...');
-			
-			// Registrar criação se é a primeira vez carregando
-			await logProductHistory('created', {
-				name: { old: null, new: formData.name },
-				sku: { old: null, new: formData.sku },
-				price: { old: null, new: formData.price }
-			});
-		} catch (error) {
-			console.warn('Erro ao criar histórico inicial:', error);
-		}
-	}
-	
 	// Lifecycle
 	onMount(async () => {
 		await loadProduct();
-		
-		// Garantir que existe histórico do produto
-		if (formData.name) {
-			await ensureProductHistory();
-		}
 		
 		// Verificar se deve abrir histórico automaticamente
 		const urlParams = new URLSearchParams(window.location.search);

@@ -34,6 +34,7 @@
 		name: string;
 		slug: string;
 		options: Array<{ value: string; label: string; count: number }>;
+		totalProducts?: number;
 	}
 	
 	interface FilterSidebarProps {
@@ -229,15 +230,20 @@
 			[...localSelectedCategories].some(id => !newSelectedCategories.has(id));
 		
 		if (hasChanges) {
-			console.log('🔄 FilterSidebar: Sincronizando categorias (props → local):', {
-				propsSelected: Array.from(newSelectedCategories),
-				localSelected: Array.from(localSelectedCategories),
-				isUserInteracting,
-				hasChanges
-			});
+			console.log('🔄 ========================================');
+			console.log('🔄 SINCRONIZAÇÃO CATEGORIAS (props → local)');
+			console.log('🔄 ========================================');
+			console.log('📥 Props recebidas:', Array.from(newSelectedCategories));
+			console.log('💾 Estado local atual:', Array.from(localSelectedCategories));
+			console.log('👤 isUserInteracting:', isUserInteracting);
+			console.log('🔀 hasChanges:', hasChanges);
+			console.log('📂 Total categories disponíveis:', categories.length);
 			
 			// ✅ SEMPRE sincronizar se há mudanças nas props (vem da página principal)
 			localSelectedCategories = newSelectedCategories;
+			
+			console.log('✅ Sincronização APLICADA:', Array.from(localSelectedCategories));
+			console.log('🔄 ========================================');
 		}
 	});
 	
@@ -250,15 +256,20 @@
 			[...localSelectedBrands].some(id => !newSelectedBrands.has(id));
 		
 		if (hasChanges) {
-			console.log('🔄 FilterSidebar: Sincronizando marcas (props → local):', {
-				propsSelected: Array.from(newSelectedBrands),
-				localSelected: Array.from(localSelectedBrands),
-				isUserInteracting,
-				hasChanges
-			});
+			console.log('🔄 ========================================');
+			console.log('🔄 SINCRONIZAÇÃO MARCAS (props → local)');
+			console.log('🔄 ========================================');
+			console.log('📥 Props recebidas:', Array.from(newSelectedBrands));
+			console.log('💾 Estado local atual:', Array.from(localSelectedBrands));
+			console.log('👤 isUserInteracting:', isUserInteracting);
+			console.log('🔀 hasChanges:', hasChanges);
+			console.log('🏷️ Total brands disponíveis:', brands.length);
 			
 			// ✅ SEMPRE sincronizar se há mudanças nas props (vem da página principal)
 			localSelectedBrands = newSelectedBrands;
+			
+			console.log('✅ Sincronização APLICADA:', Array.from(localSelectedBrands));
+			console.log('🔄 ========================================');
 		}
 	});
 	
@@ -287,6 +298,19 @@
 	
 	// ✅ FUNÇÃO OTIMIZADA DE TOGGLE FILTER COM FEEDBACK
 	function toggleFilter(type: 'category' | 'brand', filter: Filter) {
+		console.log('🔘 ========================================');
+		console.log('🔘 FILTRO CLICADO - TOGGLE');
+		console.log('🔘 ========================================');
+		console.log('📂 Tipo:', type);
+		console.log('🏷️ Filtro:', filter.name);
+		console.log('🆔 ID/Slug:', filter.slug || filter.id);
+		console.log('📊 Produtos prometidos por este filtro:', filter.count || 'N/A');
+		console.log('📊 Estado ANTES:', {
+			categoriesLocal: Array.from(localSelectedCategories),
+			brandsLocal: Array.from(localSelectedBrands),
+			isUserInteracting: isUserInteracting
+		});
+		
 		isUserInteracting = true;
 		isApplyingFilters = true;
 		
@@ -298,10 +322,12 @@
 		if (currentSelected.has(filterValue)) {
 			currentSelected.delete(filterValue);
 			announceText = `Filtro ${filter.name} removido`;
+			console.log('➖ REMOVENDO filtro:', filterValue);
 		} else {
 			currentSelected.add(filterValue);
 			announceText = `Filtro ${filter.name} adicionado`;
 			wasAdded = true;
+			console.log('➕ ADICIONANDO filtro:', filterValue);
 		}
 		
 		// Forçar reatividade
@@ -311,9 +337,21 @@
 			localSelectedBrands = new Set([...localSelectedBrands]);
 		}
 		
+		console.log('📊 Estado DEPOIS:', {
+			categoriesLocal: Array.from(localSelectedCategories),
+			brandsLocal: Array.from(localSelectedBrands),
+			wasAdded: wasAdded
+		});
+		
 		// Emitir evento para atualizar a busca
 		const categories = Array.from(localSelectedCategories);
 		const brands = Array.from(localSelectedBrands);
+		
+		console.log('📡 EMITINDO evento filterChange:', {
+			categories,
+			brands,
+			priceRanges: selectedPriceRanges
+		});
 		
 		dispatch('filterChange', {
 			categories,
@@ -325,6 +363,7 @@
 		setTimeout(() => {
 			isUserInteracting = false;
 			isApplyingFilters = false;
+			console.log('🔄 Reset flags: isUserInteracting = false');
 		}, 300);
 	}
 	
@@ -406,16 +445,49 @@
 	}
 	
 	function handleDynamicOptionChange(optionSlug: string, event: CustomEvent<{ values: string[] }>) {
+		console.log('🎨 ========================================');
+		console.log('🎨 FILTRO DINÂMICO ALTERADO');
+		console.log('🎨 ========================================');
+		console.log('🔤 Option Slug:', optionSlug);
+		console.log('📋 Valores selecionados:', event.detail.values);
+		console.log('📊 Quantidade de valores:', event.detail.values.length);
+		
+		// Encontrar o filtro dinâmico para mostrar contadores
+		const dynamicOption = dynamicOptions.find(opt => opt.slug === optionSlug);
+		if (dynamicOption) {
+			console.log('📊 Filtro encontrado:', dynamicOption.name);
+			console.log('📊 Total de produtos para esta opção:', dynamicOption.totalProducts);
+			console.log('📊 Valores prometidos:');
+			event.detail.values.forEach(value => {
+				const optionValue = dynamicOption.options?.find(o => o.value === value);
+				if (optionValue) {
+					console.log(`  🎨 ${value}: ${optionValue.count} produtos prometidos`);
+				} else {
+					console.log(`  🎨 ${value}: contagem não encontrada`);
+				}
+			});
+		} else {
+			console.log('❌ Filtro dinâmico não encontrado:', optionSlug);
+		}
+		
 		announceText = `Filtro ${optionSlug} alterado`;
+		console.log('📡 Emitindo evento dynamicOptionChange...');
 		dispatch('dynamicOptionChange', { optionSlug, values: event.detail.values });
+		console.log('🎨 ========================================');
 	}
 	
 	// ✅ FUNÇÃO MELHORADA DE LIMPAR FILTROS - CORRIGIDA
 	function clearFilters() {
-		console.log('🧹 FilterSidebar: Iniciando limpeza de filtros', {
+		console.log('🧹 ========================================');
+		console.log('🧹 BOTÃO LIMPAR CLICADO');
+		console.log('🧹 ========================================');
+		console.log('📊 ESTADO ANTES da limpeza:', {
 			categorias: Array.from(localSelectedCategories),
 			marcas: Array.from(localSelectedBrands),
-			activeCount: activeFilterCount
+			priceRanges: selectedPriceRanges,
+			activeCount: activeFilterCount,
+			isUserInteracting: isUserInteracting,
+			isApplyingFilters: isApplyingFilters
 		});
 		
 		isApplyingFilters = true;
@@ -424,22 +496,32 @@
 		// ✅ PERMITIR sincronização durante limpeza
 		isUserInteracting = false;
 		
+		console.log('🔄 Flags alteradas: isUserInteracting = false, isApplyingFilters = true');
+		
 		// Limpar estados locais IMEDIATAMENTE
 		localSelectedCategories = new Set();
 		localSelectedBrands = new Set();
 		
-		console.log('🧹 FilterSidebar: Estados locais limpos, emitindo clearAll');
+		console.log('🗑️ Estados locais LIMPOS:');
+		console.log('  📂 localSelectedCategories:', Array.from(localSelectedCategories));
+		console.log('  🏷️ localSelectedBrands:', Array.from(localSelectedBrands));
+		
+		console.log('📡 EMITINDO evento clearAll para página principal...');
 		
 		// ⚠️ EMITIR APENAS clearAll - a página principal cuida da atualização da URL
 		dispatch('clearAll');
 		
 		setTimeout(() => {
 			isApplyingFilters = false;
-			console.log('🧹 FilterSidebar: Limpeza concluída', {
+			console.log('🧹 FilterSidebar: Limpeza CONCLUÍDA', {
 				categorias: Array.from(localSelectedCategories),
 				marcas: Array.from(localSelectedBrands),
-				activeCount: activeFilterCount
+				priceRanges: selectedPriceRanges,
+				activeCount: activeFilterCount,
+				isUserInteracting: isUserInteracting,
+				isApplyingFilters: isApplyingFilters
 			});
+			console.log('🧹 ========================================');
 		}, 300);
 	}
 	

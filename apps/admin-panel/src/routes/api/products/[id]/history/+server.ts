@@ -97,8 +97,8 @@ export const POST: RequestHandler = withAdminAuth(async ({ params, request, data
 			}, { status: 400 });
 		}
 		
-		// Gerar resumo das alterações
-		const summary = generateChangeSummary(body.changes, body.action);
+		// Usar resumo enviado pelo frontend (mais inteligente) ou gerar um básico
+		const summary = body.summary || generateChangeSummary(body.changes, body.action);
 		
 		// Inserir no histórico
 		const result = await db.query(`
@@ -131,7 +131,7 @@ export const POST: RequestHandler = withAdminAuth(async ({ params, request, data
 	}
 });
 
-// Função para gerar resumo das alterações
+// Função para gerar resumo das alterações (fallback se frontend não enviar)
 function generateChangeSummary(changes: Record<string, { old: any; new: any }>, action: string): string {
 	if (action === 'created') {
 		return 'Produto criado';
@@ -149,8 +149,12 @@ function generateChangeSummary(changes: Record<string, { old: any; new: any }>, 
 		return 'Produto despublicado';
 	}
 	
-	// Para ação 'updated', gerar resumo baseado nos campos alterados
+	// Para ação 'updated', gerar resumo específico
 	const changedFields = Object.keys(changes);
+	
+	if (changedFields.length === 0) {
+		return 'Nenhuma alteração detectada';
+	}
 	
 	if (changedFields.length === 1) {
 		const field = changedFields[0];
@@ -163,42 +167,104 @@ function generateChangeSummary(changes: Record<string, { old: any; new: any }>, 
 		return `${fields[0]} e ${fields[1]} alterados`;
 	}
 	
-	if (changedFields.length <= 5) {
+	if (changedFields.length === 3) {
 		const fields = changedFields.map(getFieldDisplayName);
-		const lastField = fields.pop();
-		return `${fields.join(', ')} e ${lastField} alterados`;
+		return `${fields[0]}, ${fields[1]} e ${fields[2]} alterados`;
 	}
 	
-	return `${changedFields.length} campos alterados`;
+	// Para 4+ campos, priorizar campos importantes
+	const priorityFields = ['name', 'price', 'sku', 'quantity', 'is_active'];
+	const priorityChanges = changedFields.filter(field => priorityFields.includes(field));
+	
+	if (priorityChanges.length > 0) {
+		const priorityNames = priorityChanges.map(getFieldDisplayName);
+		
+		if (priorityChanges.length === 1 && changedFields.length <= 4) {
+			const otherFields = changedFields.filter(f => !priorityFields.includes(f));
+			const otherNames = otherFields.slice(0, 2).map(getFieldDisplayName);
+			
+			if (otherNames.length === 1) {
+				return `${priorityNames[0]} e ${otherNames[0]} alterados`;
+			} else if (otherNames.length === 2) {
+				return `${priorityNames[0]}, ${otherNames[0]} e ${otherNames[1]} alterados`;
+			}
+		}
+		
+		if (priorityChanges.length >= 2) {
+			return `${priorityNames[0]}, ${priorityNames[1]} e outros ${changedFields.length - 2} campos alterados`;
+		}
+		
+		return `${priorityNames[0]} e outros ${changedFields.length - 1} campos alterados`;
+	}
+	
+	// Se não há campos prioritários, listar os primeiros
+	const firstFields = changedFields.slice(0, 3).map(getFieldDisplayName);
+	if (changedFields.length <= 3) {
+		return firstFields.join(', ') + ' alterados';
+	}
+	
+	return `${firstFields[0]}, ${firstFields[1]} e outros ${changedFields.length - 2} campos alterados`;
 }
 
 // Mapear nomes técnicos para nomes amigáveis
 function getFieldDisplayName(field: string): string {
 	const fieldNames: Record<string, string> = {
+		// Básicos
 		name: 'Nome',
+		slug: 'URL',
 		sku: 'SKU',
-		price: 'Preço',
-		original_price: 'Preço original',
-		cost: 'Custo',
+		barcode: 'Código de Barras',
+		model: 'Modelo',
 		description: 'Descrição',
-		short_description: 'Descrição curta',
-		quantity: 'Estoque',
-		is_active: 'Status ativo',
-		featured: 'Em destaque',
+		short_description: 'Descrição Curta',
+		
+		// Preços
+		price: 'Preço',
+		original_price: 'Preço Original',
+		cost: 'Custo',
+		sale_price: 'Preço de Venda',
+		regular_price: 'Preço Regular',
+		
+		// Status
+		is_active: 'Status Ativo',
+		status: 'Status',
+		featured: 'Em Destaque',
+		condition: 'Condição',
+		
+		// Estoque
+		quantity: 'Quantidade em Estoque',
+		stock_location: 'Localização do Estoque',
+		track_inventory: 'Controlar Estoque',
+		allow_backorder: 'Permitir Pré-venda',
+		
+		// Relacionamentos
 		category_id: 'Categoria',
 		brand_id: 'Marca',
-		tags: 'Tags',
+		seller_id: 'Vendedor',
+		
+		// Dimensões
 		weight: 'Peso',
 		height: 'Altura',
 		width: 'Largura',
 		length: 'Comprimento',
+		
+		// Frete
+		has_free_shipping: 'Frete Grátis',
+		delivery_days: 'Prazo de Entrega',
+		requires_shipping: 'Requer Frete',
+		is_digital: 'Produto Digital',
+		
+		// SEO
 		meta_title: 'Título SEO',
 		meta_description: 'Descrição SEO',
 		meta_keywords: 'Palavras-chave SEO',
-		attributes: 'Atributos',
-		specifications: 'Especificações',
-		images: 'Imagens'
+		
+		// Arrays/Objetos
+		tags: 'Tags',
+		images: 'Imagens',
+		attributes: 'Atributos para Filtros',
+		specifications: 'Especificações Técnicas'
 	};
 	
-	return fieldNames[field] || field;
+	return fieldNames[field] || field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 } 

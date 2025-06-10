@@ -47,6 +47,12 @@ setInterval(cleanupCache, 10 * 60 * 1000);
 
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
+    console.log('🚀 ========================================');
+    console.log('🚀 PRODUCTS API - NOVA REQUISIÇÃO');
+    console.log('🚀 ========================================');
+    console.log('🌐 URL Completa:', url.toString());
+    console.log('🔍 Query Params RAW:', Object.fromEntries(url.searchParams.entries()));
+    
     logger.debug('Products API - Starting request', { 
       queryParams: Object.fromEntries(url.searchParams.entries()) 
     });
@@ -63,6 +69,18 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const page = Math.max(1, Number(url.searchParams.get('pagina')) || 1);
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('itens')) || 20));
     
+    console.log('📊 PARÂMETROS EXTRAÍDOS:');
+    console.log('  🔤 searchQuery:', searchQuery);
+    console.log('  📂 categories:', categories);
+    console.log('  🏷️ brands:', brands);
+    console.log('  💰 priceMin:', priceMin);
+    console.log('  💰 priceMax:', priceMax);
+    console.log('  🎁 hasDiscount:', hasDiscount);
+    console.log('  📦 inStock:', inStock);
+    console.log('  🔀 sortBy:', sortBy);
+    console.log('  📄 page:', page);
+    console.log('  📊 limit:', limit);
+    
     // Extrair filtros dinâmicos
     const dynamicFilters: Record<string, string[]> = {};
     for (const [key, value] of url.searchParams.entries()) {
@@ -71,6 +89,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         dynamicFilters[optionSlug] = value.split(',').filter(Boolean);
       }
     }
+    
+    console.log('🎨 FILTROS DINÂMICOS PROCESSADOS:');
+    console.log('  📋 Quantidade:', Object.keys(dynamicFilters).length);
+    console.log('  🎯 Detalhes:', dynamicFilters);
     
     // 🔍 DEBUG: Log dos filtros dinâmicos
     if (Object.keys(dynamicFilters).length > 0) {
@@ -98,17 +120,24 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         categories, brands, priceMin, priceMax, hasDiscount, inStock, sortBy, page, limit
       })}`;
       
+      console.log('💾 VERIFICANDO CACHE:');
+      console.log('  🔑 Cache Key:', productCacheKey);
+      
       const cachedProducts = productsCache[productCacheKey];
       if (cachedProducts && (Date.now() - cachedProducts.timestamp) < CACHE_DURATION) {
-        console.log('🚀 USANDO CACHE DE PRODUTOS:', productCacheKey);
+        console.log('✅ CACHE HIT! Usando dados em cache');
+        console.log('  ⏰ Cache Age:', Math.round((Date.now() - cachedProducts.timestamp) / 1000), 'seconds');
+        console.log('  🎯 Cache Hits:', cachedProducts.hits);
         cachedProducts.hits++;
         
         // Ainda buscar facets se necessário
         const db = getDatabase(platform);
+        console.log('🔍 Buscando facets para resposta em cache...');
         const facets = await getFacets(db, searchQuery, {
           categories, brands, priceMin, priceMax, hasDiscount, inStock, dynamicFilters
         });
         
+        console.log('✅ RETORNANDO RESPOSTA DO CACHE');
         return json({
           success: true,
           data: {
@@ -117,6 +146,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           },
           source: 'cache'
         });
+      } else {
+        console.log('❌ CACHE MISS! Executando nova consulta');
+        if (cachedProducts) {
+          console.log('  ⏰ Cache Expired Age:', Math.round((Date.now() - cachedProducts.timestamp) / 1000), 'seconds');
+        }
       }
       
       // Executar busca com timeout otimizado
@@ -592,6 +626,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         source: 'database'
       });
       
+      console.log('🔍 BUSCANDO FACETS...');
       // Buscar facets para filtros (com filtros contextuais)
       const facets = await getFacets(db, searchQuery, {
         categories,
@@ -602,6 +637,14 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         inStock,
         dynamicFilters
       });
+      
+      console.log('✅ FACETS CARREGADOS:');
+      console.log('  📂 Categories:', facets.categories?.length || 0);
+      console.log('  🏷️ Brands:', facets.brands?.length || 0);
+      console.log('  💰 Price Ranges:', facets.priceRanges?.length || 0);
+      console.log('  🎨 Dynamic Options:', facets.dynamicOptions?.length || 0);
+      console.log('  ⭐ Ratings:', facets.ratings?.length || 0);
+      console.log('  🎁 Benefits:', facets.benefits ? 'Sim' : 'Não');
       
       const responseData = {
         products: formattedProducts,
@@ -623,6 +666,78 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         }
       };
       
+      console.log('📊 RESPOSTA FINAL PREPARADA:');
+      console.log('  📦 Produtos encontrados:', responseData.products.length);
+      console.log('  📄 Total no banco:', responseData.pagination.total);
+      console.log('  📑 Páginas totais:', responseData.pagination.totalPages);
+      console.log('  🔍 Filtros ativos:', {
+        categories: responseData.filters.categories.length,
+        brands: responseData.filters.brands.length,
+        priceRange: !!(responseData.filters.priceRange.min || responseData.filters.priceRange.max),
+        hasDiscount: responseData.filters.hasDiscount,
+        inStock: responseData.filters.inStock
+      });
+      
+      console.log('⚖️ ========================================');
+      console.log('⚖️ ANÁLISE: FILTROS vs PRODUTOS CARREGADOS');
+      console.log('⚖️ ========================================');
+      console.log(`📊 Total de produtos na resposta: ${responseData.products.length}`);
+      console.log(`📊 Total no banco (paginado): ${responseData.pagination.total}`);
+      console.log(`📄 Página atual: ${responseData.pagination.page} de ${responseData.pagination.totalPages}`);
+      
+      // Analisar filtros aplicados vs produtos carregados
+      if (responseData.filters.categories.length > 0) {
+        console.log('📂 FILTROS DE CATEGORIA APLICADOS:');
+        responseData.filters.categories.forEach((catSlug: string) => {
+          const facetCategory = facets.categories?.find((c: any) => (c.slug || c.id) === catSlug);
+          if (facetCategory) {
+            console.log(`  📂 ${facetCategory.name}: prometia ${facetCategory.count} produtos`);
+          } else {
+            console.log(`  📂 ${catSlug}: categoria não encontrada nos facets`);
+          }
+        });
+      }
+      
+      if (responseData.filters.brands.length > 0) {
+        console.log('🏷️ FILTROS DE MARCA APLICADOS:');
+        responseData.filters.brands.forEach((brandSlug: string) => {
+          const facetBrand = facets.brands?.find((b: any) => (b.slug || b.id) === brandSlug);
+          if (facetBrand) {
+            console.log(`  🏷️ ${facetBrand.name}: prometia ${facetBrand.count} produtos`);
+          } else {
+            console.log(`  🏷️ ${brandSlug}: marca não encontrada nos facets`);
+          }
+        });
+      }
+      
+      // Analisar filtros dinâmicos aplicados
+      if (Object.keys(dynamicFilters).length > 0) {
+        console.log('🎨 FILTROS DINÂMICOS APLICADOS:');
+        Object.entries(dynamicFilters).forEach(([optionSlug, values]) => {
+          console.log(`  🎨 ${optionSlug}: [${values.join(', ')}]`);
+          const facetOption = facets.dynamicOptions?.find((opt: any) => opt.slug === `opcao_${optionSlug}`);
+          if (facetOption) {
+            console.log(`    📊 Opção encontrada: ${facetOption.name} (${facetOption.totalProducts} produtos total)`);
+            values.forEach((value: string) => {
+              const optionValue = facetOption.options?.find((o: any) => o.value === value);
+              if (optionValue) {
+                console.log(`    • ${value}: prometia ${optionValue.count} produtos`);
+              } else {
+                console.log(`    • ${value}: valor não encontrado nos facets`);
+              }
+            });
+          } else {
+            console.log(`    ❌ Opção ${optionSlug} não encontrada nos facets`);
+          }
+        });
+      }
+      
+      if (responseData.filters.hasDiscount) {
+        console.log(`🎁 FILTRO DESCONTO: prometia ${facets.benefits?.discount || 0} produtos`);
+      }
+      
+      console.log('⚖️ ========================================');
+      
       // 🚀 SALVAR PRODUTOS NO CACHE
       if (formattedProducts.length > 0) {
         productsCache[productCacheKey] = {
@@ -636,6 +751,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         };
         console.log('💾 PRODUTOS SALVOS NO CACHE:', productCacheKey.substring(0, 50) + '...');
       }
+      
+      console.log('🚀 ========================================');
+      console.log('🚀 PRODUCTS API - RESPOSTA ENVIADA');
+      console.log('🚀 ========================================');
       
       return json({
         success: true,
@@ -686,16 +805,30 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
 // Modificar a função getFacets para adicionar cache e otimizações
 async function getFacets(db: any, searchQuery: string, filters: any = {}) {
-  // Performance otimizada - logs mínimos
+  console.log('🎯 ========================================');
+  console.log('🎯 getFacets - INICIANDO BUSCA DE FACETS');
+  console.log('🎯 ========================================');
+  console.log('🔤 Search Query:', searchQuery);
+  console.log('🔍 Filters recebidos:', filters);
   
   // 🚀 CACHE REATIVADO PARA PERFORMANCE
   const cacheKey = searchQuery ? `search:${searchQuery}` : 'global';
   const cached = facetsCache[cacheKey];
   
+  console.log('💾 Verificando cache de facets...');
+  console.log('  🔑 Cache Key:', cacheKey);
+  
   if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-    console.log('🚀 USANDO CACHE RÁPIDO:', cacheKey);
+    console.log('✅ CACHE HIT em facets!');
+    console.log('  ⏰ Cache Age:', Math.round((Date.now() - cached.timestamp) / 1000), 'seconds');
+    console.log('  🎯 Cache Hits:', cached.hits);
     cached.hits++;
     return cached.data;
+  } else {
+    console.log('❌ CACHE MISS em facets! Executando queries...');
+    if (cached) {
+      console.log('  ⏰ Cache Expired Age:', Math.round((Date.now() - cached.timestamp) / 1000), 'seconds');
+    }
   }
   
   try {
@@ -918,10 +1051,10 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
         timestamp: Date.now(),
         hits: 1
       };
-      console.log('💾 DADOS SALVOS NO CACHE:', cacheKey);
+      console.log('💾 FACETS SALVOS NO CACHE:', cacheKey);
     }
     
-    console.log('🔍 getFacets - DADOS REAIS ENCONTRADOS:', {
+    console.log('✅ getFacets - DADOS FACETS ENCONTRADOS:', {
       categories: facetsData.categories.length,
       brands: facetsData.brands.length,
       priceRanges: facetsData.priceRanges.length,
@@ -930,6 +1063,55 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
       sellers: facetsData.sellers.length,
       dynamicOptions: facetsData.dynamicOptions.length
     });
+    
+    console.log('📊 ========================================');
+    console.log('📊 CONTADORES DE PRODUTOS POR FILTRO');
+    console.log('📊 ========================================');
+    
+    // 1. CATEGORIAS
+    console.log('📂 CATEGORIAS:');
+    facetsData.categories.forEach((cat: any) => {
+      console.log(`  📂 ${cat.name}: ${cat.count} produtos`);
+    });
+    
+    // 2. MARCAS  
+    console.log('🏷️ MARCAS:');
+    facetsData.brands.forEach((brand: any) => {
+      console.log(`  🏷️ ${brand.name}: ${brand.count} produtos`);
+    });
+    
+    // 3. FAIXAS DE PREÇO
+    console.log('💰 FAIXAS DE PREÇO:');
+    facetsData.priceRanges.forEach((range: any) => {
+      console.log(`  💰 ${range.label}: ${range.products} produtos`);
+    });
+    
+    // 4. AVALIAÇÕES
+    console.log('⭐ AVALIAÇÕES:');
+    facetsData.ratings.forEach((rating: any) => {
+      console.log(`  ⭐ ${rating.value} estrelas: ${rating.count} produtos`);
+    });
+    
+    // 5. FILTROS DINÂMICOS (MAIS DETALHADO)
+    console.log('🎨 FILTROS DINÂMICOS DETALHADOS:');
+    facetsData.dynamicOptions.forEach((option: any) => {
+      console.log(`  🎨 ${option.name} (${option.totalProducts} produtos total):`);
+      option.options.forEach((opt: any) => {
+        console.log(`    • ${opt.value}: ${opt.count} produtos`);
+      });
+    });
+    
+    // 6. BENEFÍCIOS
+    console.log('🎁 BENEFÍCIOS:');
+    console.log(`  🎁 Com desconto: ${facetsData.benefits.discount} produtos`);
+    console.log(`  🚚 Frete grátis: ${facetsData.benefits.freeShipping} produtos`);
+    console.log(`  📦 Fora de estoque: ${facetsData.benefits.outOfStock} produtos`);
+    
+    console.log('📊 ========================================');
+    
+    console.log('🎯 ========================================');
+    console.log('🎯 getFacets - CONCLUÍDO COM SUCESSO');
+    console.log('🎯 ========================================');
     
     return facetsData;
     

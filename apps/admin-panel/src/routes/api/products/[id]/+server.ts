@@ -2,6 +2,259 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
+/**
+ * Compara dois estados de produto e registra histórico das alterações
+ */
+async function compareAndLogHistory(
+  originalProduct: any, 
+  finalProduct: any, 
+  productId: string, 
+  db: any
+): Promise<{ totalChanges: number; summary: string }> {
+  const changes: Record<string, { old: any; new: any; label: string }> = {};
+  
+  // Campos que devem ser ignorados na comparação
+  const ignoredFields = new Set([
+    'created_at', 'updated_at', 'id',
+    'images', // Ignorar imagens por enquanto (tem lógica específica)
+    'related_products', 'upsell_products', 'download_files',
+    'product_options', 'product_variants', 'variant_type',
+    'categories', 'category_ids', 'related_product_ids', 'upsell_product_ids'
+  ]);
+  
+  // Mapeamento de campos para nomes amigáveis
+  const fieldLabels: Record<string, string> = {
+    name: 'Nome',
+    sku: 'SKU',
+    price: 'Preço',
+    original_price: 'Preço Original',
+    cost: 'Custo',
+    quantity: 'Quantidade em Estoque',
+    description: 'Descrição',
+    short_description: 'Descrição Curta',
+    weight: 'Peso',
+    height: 'Altura',
+    width: 'Largura',
+    length: 'Comprimento',
+    category_id: 'Categoria',
+    category_name: 'Nome da Categoria',
+    brand_id: 'Marca',
+    brand_name: 'Nome da Marca',
+    seller_id: 'Vendedor',
+    seller_name: 'Nome do Vendedor',
+    is_active: 'Status Ativo',
+    featured: 'Em Destaque',
+    status: 'Status',
+    condition: 'Condição',
+    tags: 'Tags',
+    meta_title: 'Título SEO',
+    meta_description: 'Descrição SEO',
+    meta_keywords: 'Palavras-chave SEO',
+    attributes: 'Atributos para Filtros',
+    specifications: 'Especificações Técnicas',
+    images: 'Imagens',
+    track_inventory: 'Controlar Estoque',
+    allow_backorder: 'Permitir Pré-venda',
+    has_free_shipping: 'Frete Grátis',
+    requires_shipping: 'Requer Frete',
+    is_digital: 'Produto Digital'
+  };
+  
+  // Combinar todas as chaves de ambos os objetos
+  const allKeys = new Set([
+    ...Object.keys(originalProduct || {}),
+    ...Object.keys(finalProduct || {})
+  ]);
+  
+  for (const key of allKeys) {
+    if (ignoredFields.has(key)) continue;
+    
+    const oldValue = originalProduct?.[key];
+    const newValue = finalProduct?.[key];
+    
+    // Normalizar valores para comparação
+    const normalizedOld = normalizeValueForComparison(oldValue);
+    const normalizedNew = normalizeValueForComparison(newValue);
+    
+    // Comparar valores normalizados
+    if (!deepEqual(normalizedOld, normalizedNew)) {
+      const label = fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      changes[key] = {
+        old: oldValue,
+        new: newValue,
+        label
+      };
+      
+    }
+  }
+  
+  const totalChanges = Object.keys(changes).length;
+  
+  // Log resumido das alterações reais
+  if (totalChanges > 0) {
+    console.log(`🔍 ${totalChanges} campo(s) alterado(s):`);
+    Object.entries(changes).forEach(([field, change]) => {
+      console.log(`  - ${change.label}: "${change.old}" → "${change.new}"`);
+    });
+  } else {
+    console.log('ℹ️ Nenhuma alteração detectada');
+  }
+  
+  const summary = generateSmartSummary(changes, totalChanges);
+  
+  // Registrar no banco se há alterações
+  if (totalChanges > 0) {
+    try {
+      await db.query(`
+        INSERT INTO product_history (
+          product_id, user_id, action, changes, summary, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, NOW()
+        )
+      `, [
+        productId,
+        null, // TODO: Capturar user_id do contexto de autenticação
+        'updated',
+        JSON.stringify(changes),
+        summary
+      ]);
+      
+      console.log(`📝 Histórico salvo no banco: ${summary}`);
+    } catch (dbError) {
+      console.error('❌ Erro ao salvar histórico no banco:', dbError);
+    }
+  }
+  
+  return { totalChanges, summary };
+}
+
+/**
+ * Normaliza valores para comparação consistente
+ */
+function normalizeValueForComparison(value: any): any {
+  // null, undefined, string vazia → null
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  
+  // Arrays vazios → null
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+  
+  // Objetos vazios → null
+  if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+    return null;
+  }
+  
+  // Converter strings numéricas para números
+  if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value.trim())) {
+    return Number(value);
+  }
+  
+  // Converter strings booleanas
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') return true;
+    if (value.toLowerCase() === 'false') return false;
+  }
+  
+  // Para números, garantir que sejam do mesmo tipo
+  if (typeof value === 'number') {
+    return Number(value);
+  }
+  
+  return value;
+}
+
+/**
+ * Comparação profunda de valores
+ */
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+  
+  if ((a == null) !== (b == null)) return false;
+  if (a == null && b == null) return true;
+  
+  if (typeof a !== typeof b) return false;
+  
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((item, index) => deepEqual(item, b[index]));
+  }
+  
+  if (typeof a === 'object' && typeof b === 'object') {
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    
+    if (keysA.length !== keysB.length) return false;
+    
+    return keysA.every(key => 
+      keysB.includes(key) && deepEqual(a[key], b[key])
+    );
+  }
+  
+  return a === b;
+}
+
+/**
+ * Gera resumo inteligente das alterações
+ */
+function generateSmartSummary(changes: Record<string, any>, totalChanges: number): string {
+  if (totalChanges === 0) {
+    return 'Nenhuma alteração detectada';
+  }
+  
+  if (totalChanges === 1) {
+    const change = Object.values(changes)[0];
+    return `${change.label} alterado`;
+  }
+  
+  if (totalChanges === 2) {
+    const changesList = Object.values(changes);
+    return `${changesList[0].label} e ${changesList[1].label} alterados`;
+  }
+  
+  if (totalChanges === 3) {
+    const changesList = Object.values(changes);
+    return `${changesList[0].label}, ${changesList[1].label} e ${changesList[2].label} alterados`;
+  }
+  
+  // Para 4+ alterações, priorizar campos importantes
+  const priorityFields = ['name', 'price', 'sku', 'quantity', 'is_active'];
+  const allChanges = Object.entries(changes);
+  const priorityChanges = allChanges.filter(([field]) => priorityFields.includes(field));
+  
+  if (priorityChanges.length > 0) {
+    const priorityLabels = priorityChanges.map(([_, change]) => change.label);
+    
+    if (priorityChanges.length === 1 && totalChanges <= 4) {
+      const otherChanges = allChanges.filter(([field]) => !priorityFields.includes(field));
+      const otherLabels = otherChanges.slice(0, 2).map(([_, change]) => change.label);
+      
+      if (otherLabels.length === 1) {
+        return `${priorityLabels[0]} e ${otherLabels[0]} alterados`;
+      } else if (otherLabels.length === 2) {
+        return `${priorityLabels[0]}, ${otherLabels[0]} e ${otherLabels[1]} alterados`;
+      }
+    }
+    
+    if (priorityChanges.length >= 2) {
+      return `${priorityLabels[0]}, ${priorityLabels[1]} e outros ${totalChanges - 2} campos alterados`;
+    }
+    
+    return `${priorityLabels[0]} e outros ${totalChanges - 1} campos alterados`;
+  }
+  
+  // Se não há campos prioritários
+  const firstChanges = allChanges.slice(0, 3).map(([_, change]) => change.label);
+  if (totalChanges <= 3) {
+    return firstChanges.join(', ') + ' alterados';
+  }
+  
+  return `${firstChanges[0]}, ${firstChanges[1]} e outros ${totalChanges - 2} campos alterados`;
+}
+
 // Função para converter nomes de países para códigos ISO
 function getCountryCode(countryName: string | null): string | null {
   if (!countryName) return null;
@@ -307,7 +560,42 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
     const { id } = params;
     const data = await request.json();
     
-    console.log('Atualizando produto:', id, data);
+    console.log('Atualizando produto:', id);
+    
+    // 🎯 CAPTURAR ESTADO ORIGINAL SIMPLES PARA HISTÓRICO (SEM JOINS PESADOS)
+    const originalProductQuery = `
+      SELECT 
+        p.*,
+        -- Buscar categoria e marca por ID (mais rápido)
+        (SELECT name FROM categories WHERE id = (
+          SELECT category_id FROM product_categories WHERE product_id = p.id AND is_primary = true LIMIT 1
+        )) as category_name,
+        (SELECT name FROM brands WHERE id = p.brand_id) as brand_name,
+        (SELECT company_name FROM sellers WHERE id = p.seller_id) as seller_name
+      FROM products p
+      WHERE p.id = $1
+    `;
+    
+    const originalResult = await db.query(originalProductQuery, [id]);
+    const originalProduct = originalResult[0];
+    
+    if (!originalProduct) {
+      await db.close();
+      return json({ 
+        success: false, 
+        error: 'Produto não encontrado',
+        message: 'Produto não encontrado' 
+      }, { status: 404 });
+    }
+    
+    console.log('📋 Estado original capturado do banco:', {
+      id: originalProduct.id,
+      name: originalProduct.name,
+      quantity: originalProduct.quantity,
+      price: originalProduct.price,
+      category_id: originalProduct.category_id,
+      total_fields: Object.keys(originalProduct).length
+    });
     
     // 🔧 NORMALIZAR ATTRIBUTES ANTES DE SALVAR
     let normalizedAttributes: Record<string, string[]> = {};
@@ -389,6 +677,8 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         message: 'Produto não encontrado' 
       }, { status: 404 });
     }
+    
+    console.log('✅ Produto atualizado na tabela products');
 
     // Atualizar categorias (múltiplas)
     if (data.category_ids && Array.isArray(data.category_ids)) {
@@ -587,6 +877,29 @@ export const PUT: RequestHandler = async ({ params, request, platform }) => {
         
         console.log(`✅ ${data.product_variants.length} variações salvas com sucesso!`);
       }
+    }
+    
+    // 🎯 REGISTRAR HISTÓRICO OTIMIZADO (APENAS TABELA PRODUCTS)
+    try {
+      console.log('📊 Verificando alterações para histórico...');
+      
+      // Buscar apenas o estado final da tabela products (sem JOINs)
+      const finalResult = await db.query(`SELECT * FROM products WHERE id = $1`, [id]);
+      const finalProduct = finalResult[0];
+      
+      if (finalProduct && originalProduct) {
+        // Comparar apenas campos da tabela products (mais eficiente)
+        const changes = await compareAndLogHistory(originalProduct, finalProduct, id, db);
+        
+        if (changes.totalChanges > 0) {
+          console.log(`✅ Histórico registrado: ${changes.summary}`);
+        } else {
+          console.log('ℹ️ Nenhuma alteração detectada');
+        }
+      }
+    } catch (historyError) {
+      console.error('⚠️ Erro ao registrar histórico:', historyError);
+      // Não falhar a operação por causa do histórico
     }
     
     await db.close();

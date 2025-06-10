@@ -98,33 +98,46 @@
 	
 	// ✅ FUNÇÃO SIMPLES: Atualizar URL - COM MARCAÇÃO INTERNA
 	function updateURL(params: Record<string, any>) {
-		console.log('🌐 updateURL chamada com:', params);
+		console.log('🌐 ========================================');
+		console.log('🌐 UPDATE URL CHAMADA');
+		console.log('🌐 ========================================');
+		console.log('📋 Parâmetros recebidos:', params);
+		console.log('🔄 isInternalNavigation ANTES:', isInternalNavigation);
+		
 		isInternalNavigation = true; // ⚠️ MARCAR como navegação interna
+		console.log('🔄 isInternalNavigation DEPOIS:', isInternalNavigation);
 		
 		const urlParams = new URLSearchParams($page.url.searchParams);
 		console.log('🌐 URL atual:', $page.url.search);
+		console.log('📋 Parâmetros atuais:', Object.fromEntries(urlParams.entries()));
 		
+		console.log('🔄 Processando cada parâmetro:');
 		Object.entries(params).forEach(([key, value]) => {
 			if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
-				console.log(`🌐 Removendo parâmetro: ${key}`);
+				console.log(`  ➖ Removendo parâmetro: ${key} (valor: ${value})`);
 				urlParams.delete(key);
 			} else if (Array.isArray(value)) {
-				console.log(`🌐 Definindo array: ${key} = ${value.join(',')}`);
+				console.log(`  ➕ Definindo array: ${key} = ${value.join(',')} (length: ${value.length})`);
 				urlParams.set(key, value.join(','));
 			} else {
-				console.log(`🌐 Definindo valor: ${key} = ${String(value)}`);
+				console.log(`  ➕ Definindo valor: ${key} = ${String(value)} (tipo: ${typeof value})`);
 				urlParams.set(key, String(value));
 			}
 		});
 
 		// Resetar para página 1 quando mudar filtros (exceto se for mudança de página)
 		if (!params.hasOwnProperty('pagina')) {
+			console.log('  📄 Auto-resetando página para 1');
 			urlParams.set('pagina', '1');
 		}
 
 		const newUrl = `?${urlParams.toString()}`;
-		console.log('🌐 Nova URL (interna):', newUrl);
+		console.log('🌐 Nova URL construída:', newUrl);
+		console.log('📋 Parâmetros finais:', Object.fromEntries(urlParams.entries()));
+		console.log('🚀 Chamando goto() com replaceState: true...');
 		goto(newUrl, { replaceState: true });
+		console.log('✅ goto() executado');
+		console.log('🌐 ========================================');
 	}
 
 	// ✅ FUNÇÃO SIMPLES: Ordenar produtos
@@ -151,12 +164,27 @@
 	
 	// 🚀 FUNÇÃO OTIMIZADA: Executar busca com cache e performance
 	async function executeSearch(forceRefresh = false, overrideParams?: any) {
+		console.log('🔍 ========================================');
+		console.log('🔍 EXECUTE SEARCH - INICIANDO');
+		console.log('🔍 ========================================');
+		console.log('🔄 forceRefresh:', forceRefresh);
+		console.log('📋 overrideParams fornecido?', !!overrideParams);
+		if (overrideParams) console.log('📋 overrideParams:', overrideParams);
+		
 		// Limpar cache antigo periodicamente
 		cleanupCache();
 		
 		// Usar parâmetros passados ou ler da URL
 		const urlParams = overrideParams || getUrlParams();
+		console.log('📋 Parâmetros utilizados:', urlParams);
+		
 		const cacheKey = generateCacheKey(urlParams);
+		console.log('🔑 Cache key gerada:', cacheKey);
+		
+		console.log('💾 Status do cache:');
+		console.log('  📊 Cache size:', searchCache.size);
+		console.log('  🔍 Tem cache para esta key?', searchCache.has(cacheKey));
+		console.log('  🔄 Force refresh?', forceRefresh);
 		
 		console.log('🔍 executeSearch - INICIANDO:', {
 			forceRefresh,
@@ -227,6 +255,28 @@
 					totalCount: result.data?.pagination?.total || 0,
 					cached: false
 				});
+				
+				console.log('📦 ========================================');
+				console.log('📦 PRODUTOS CARREGADOS NO GRID');
+				console.log('📦 ========================================');
+				console.log('📊 Produtos na página atual:', result.data?.products?.length || 0);
+				console.log('📊 Total no banco:', result.data?.pagination?.total || 0);
+				console.log('📄 Página:', result.data?.pagination?.page || 1);
+				console.log('📄 Páginas totais:', result.data?.pagination?.totalPages || 1);
+				console.log('📊 Limite por página:', result.data?.pagination?.limit || 20);
+				
+				// Mostrar detalhes dos produtos carregados
+				if (result.data?.products?.length > 0) {
+					console.log('📦 PRODUTOS CARREGADOS (primeiros 5):');
+					result.data.products.slice(0, 5).forEach((product: any, index: number) => {
+						console.log(`  ${index + 1}. ${product.name} - R$ ${product.price} (estoque: ${product.stock})`);
+					});
+					if (result.data.products.length > 5) {
+						console.log(`  ... e mais ${result.data.products.length - 5} produtos`);
+					}
+				}
+				
+				console.log('📦 ========================================');
 
 				const searchResult = {
 					products: sortProducts(result.data?.products || [], urlParams.ordenar),
@@ -249,6 +299,58 @@
 				products = searchResult.products;
 				totalCount = searchResult.totalCount;
 				facets = searchResult.facets;
+				
+				console.log('🔄 ========================================');
+				console.log('🔄 COMPARAÇÃO FINAL: FILTROS vs GRID');
+				console.log('🔄 ========================================');
+				console.log('📊 Produtos no grid:', products.length);
+				console.log('📊 Total no banco:', totalCount);
+				
+				// Comparar com filtros aplicados
+				const currentFilters = getUrlParams();
+				console.log('🔍 Filtros aplicados:', currentFilters);
+				
+				// Verificar categorias
+				if (currentFilters.categoria.length > 0) {
+					console.log('📂 CATEGORIAS APLICADAS vs RESULTADO:');
+					currentFilters.categoria.forEach(catSlug => {
+						const facetCat = facets.categories?.find((c: any) => (c.slug || c.id) === catSlug);
+						if (facetCat) {
+							console.log(`  📂 ${facetCat.name}: prometia ${facetCat.count} → recebeu ${totalCount} total`);
+						}
+					});
+				}
+				
+				// Verificar marcas
+				if (currentFilters.marca.length > 0) {
+					console.log('🏷️ MARCAS APLICADAS vs RESULTADO:');
+					currentFilters.marca.forEach(brandSlug => {
+						const facetBrand = facets.brands?.find((b: any) => (b.slug || b.id) === brandSlug);
+						if (facetBrand) {
+							console.log(`  🏷️ ${facetBrand.name}: prometia ${facetBrand.count} → recebeu ${totalCount} total`);
+						}
+					});
+				}
+				
+				// Verificar filtros dinâmicos
+				const dynamicFilters = extractDynamicOptions();
+				if (Object.keys(dynamicFilters).length > 0) {
+					console.log('🎨 FILTROS DINÂMICOS vs RESULTADO:');
+					Object.entries(dynamicFilters).forEach(([key, values]) => {
+						const facetOption = facets.dynamicOptions?.find((opt: any) => opt.slug === `opcao_${key}`);
+						if (facetOption) {
+							console.log(`  🎨 ${facetOption.name}:`);
+							values.forEach(value => {
+								const optValue = facetOption.options?.find((o: any) => o.value === value);
+								if (optValue) {
+									console.log(`    • ${value}: prometia ${optValue.count} → recebeu ${totalCount} total`);
+								}
+							});
+						}
+					});
+				}
+				
+				console.log('🔄 ========================================');
 				
 				// Salvar no cache
 				searchCache.set(cacheKey, searchResult);
@@ -276,13 +378,17 @@
 
 	// ✅ FUNÇÃO SIMPLES: Limpar filtros
 	function clearAllFilters() {
+		console.log('🧹 ========================================');
+		console.log('🧹 PÁGINA PRINCIPAL - CLEAR ALL FILTERS');
+		console.log('🧹 ========================================');
+		
 		const currentParams = getUrlParams();
-		console.log('🧹 Página principal: Limpando todos os filtros', {
-			filtrosAtuais: currentParams,
-			hasActiveFilters: hasActiveFilters()
-		});
+		console.log('📋 Parâmetros atuais da URL:', currentParams);
+		console.log('🔍 hasActiveFilters():', hasActiveFilters());
 		
 		const dynamicOptions = extractDynamicOptions();
+		console.log('🎨 Filtros dinâmicos encontrados:', dynamicOptions);
+		
 		const clearParams = {
 			categoria: undefined,
 			marca: undefined,
@@ -306,8 +412,10 @@
 			pagina: 1
 		};
 		
-		console.log('🧹 Página principal: Aplicando clearParams:', clearParams);
+		console.log('🗑️ Parâmetros para limpeza:', clearParams);
+		console.log('🌐 Chamando updateURL...');
 		updateURL(clearParams);
+		console.log('🧹 ========================================');
 	}
 
 	// ✅ FUNÇÃO: Obter nome da categoria
@@ -509,8 +617,13 @@
 	}
 
 	function handleClearAll() {
-		console.log('🧹 Página principal: Recebido evento clearAll, executando clearAllFilters');
+		console.log('📡 ========================================');
+		console.log('📡 EVENTO clearAll RECEBIDO DO FilterSidebar');
+		console.log('📡 ========================================');
+		console.log('🔄 Chamando clearAllFilters()...');
 		clearAllFilters();
+		console.log('✅ clearAllFilters() executado');
+		console.log('📡 ========================================');
 	}
 
 	// ✅ HANDLER: Mudança de ordenação simplificada
@@ -577,10 +690,20 @@
 	$effect(() => {
 		const currentSearchParams = $page.url.search;
 		
+		console.log('🔄 ========================================');
+		console.log('🔄 $EFFECT - MONITORAMENTO DE URL');
+		console.log('🔄 ========================================');
+		console.log('🌐 URL atual:', currentSearchParams);
+		console.log('🌐 URL anterior:', lastSearchParams);
+		console.log('🔍 URLs são diferentes?', currentSearchParams !== lastSearchParams);
+		console.log('🏠 isFirstLoad:', isFirstLoad);
+		console.log('🔄 isInternalNavigation:', isInternalNavigation);
+		
 		// ⚠️ EXECUTAR BUSCA para qualquer mudança de URL (interna ou externa)
 		// CORREÇÃO: Executar também na primeira navegação
 		if (currentSearchParams !== lastSearchParams) {
-			console.log('🌐 URL mudou, executando busca:', {
+			console.log('✅ URL MUDOU! Processando...');
+			console.log('📊 Detalhes da mudança:', {
 				current: currentSearchParams,
 				last: lastSearchParams,
 				internal: isInternalNavigation,
@@ -590,22 +713,34 @@
 			// Na primeira carga, não executar busca (dados vêm do servidor)
 			// Em mudanças subsequentes, executar busca
 			if (!isFirstLoad) {
+				const delay = isInternalNavigation ? 50 : 0;
+				console.log(`⏰ Executando busca com delay de ${delay}ms...`);
 				setTimeout(() => {
+					console.log('🔍 Chamando executeSearch(true)...');
 					executeSearch(true);
-				}, isInternalNavigation ? 50 : 0);
+				}, delay);
+			} else {
+				console.log('⏭️ Primeira carga - pulando executeSearch (dados do servidor)');
 			}
+		} else {
+			console.log('➡️ URL não mudou - nenhuma ação necessária');
 		}
 		
 		// Sempre atualizar o último estado
+		console.log('💾 Atualizando lastSearchParams e isFirstLoad...');
 		lastSearchParams = currentSearchParams;
 		isFirstLoad = false;
+		console.log('💾 isFirstLoad agora é:', isFirstLoad);
 		
 		// Reset flag após processamento
 		if (isInternalNavigation) {
+			console.log('🔄 Resetando isInternalNavigation em 150ms...');
 			setTimeout(() => {
 				isInternalNavigation = false;
+				console.log('✅ isInternalNavigation resetado para false');
 			}, 150);
 		}
+		console.log('🔄 ========================================');
 	});
 
 	// ✅ PREPARAR DADOS PARA FILTERSIDEBAR

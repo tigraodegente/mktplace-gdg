@@ -62,7 +62,14 @@ export function withAuth(
       const authHeader = request.headers.get('Authorization');
       console.log('🔐 [MIDDLEWARE] Auth header:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NENHUM');
       
-      const token = authService.extractTokenFromHeader(authHeader);
+      let token = authService.extractTokenFromHeader(authHeader);
+      
+      // Se não há token no header, tentar extrair da URL (para dev/debug)
+      if (!token) {
+        const url = new URL(request.url);
+        token = url.searchParams.get('token');
+      }
+      
       console.log('🔐 [MIDDLEWARE] Token extraído:', token ? `${token.substring(0, 20)}...` : 'NENHUM');
       
       let user: User | undefined;
@@ -70,27 +77,30 @@ export function withAuth(
 
       if (token) {
         console.log('🔐 [MIDDLEWARE] Verificando token...');
+        console.log('🔍 [MIDDLEWARE] Token preview:', token.substring(0, 50) + '...');
         try {
-          const payload = authService.verifyToken(token);
+          const payload = authService.verifyToken(token) as any;
           console.log('🔐 [MIDDLEWARE] Payload do token:', payload);
           
-          if (payload) {
+          if (payload && payload.userId) {
             // Para desenvolvimento, usar dados do payload diretamente
             // Em produção, buscar no banco: const dbUser = await getUserById(payload.userId, env);
             user = {
               id: payload.userId,
               email: payload.email,
-              name: payload.email.split('@')[0], // Nome temporário
+              name: payload.name || payload.email?.split('@')[0] || 'Usuário', // Nome do payload ou temporário
               role: payload.role,
               is_active: true
             };
             isAuthenticated = !!user;
             console.log(`✅ [MIDDLEWARE] Usuário autenticado: ${user.email} (${user.role})`);
           } else {
-            console.log('❌ [MIDDLEWARE] Token inválido - payload vazio');
+            console.log('❌ [MIDDLEWARE] Token inválido - payload vazio ou sem userId');
+            console.log('🔍 [MIDDLEWARE] Payload recebido:', payload);
           }
         } catch (tokenError) {
           console.error('❌ [MIDDLEWARE] Erro ao verificar token:', tokenError);
+          console.error('🔍 [MIDDLEWARE] Token que causou erro:', token.substring(0, 100) + '...');
         }
       } else {
         console.log('❌ [MIDDLEWARE] Nenhum token fornecido');
@@ -102,11 +112,24 @@ export function withAuth(
       // Verificar se autenticação é obrigatória
       if (options.required && !isAuthenticated) {
         console.log('❌ [MIDDLEWARE] Autenticação obrigatória mas usuário não autenticado');
+        console.log('🔍 [MIDDLEWARE] Debug auth:', {
+          authHeader: authHeader ? 'presente' : 'ausente',
+          token: token ? 'presente' : 'ausente',
+          tokenLength: token?.length || 0,
+          isAuthenticated,
+          user: user ? 'presente' : 'ausente'
+        });
         return new Response(JSON.stringify({
           success: false,
           error: {
             code: 'UNAUTHENTICATED',
-            message: 'Usuário não autenticado'
+            message: 'Usuário não autenticado',
+            debug: {
+              hasAuthHeader: !!authHeader,
+              hasToken: !!token,
+              isAuthenticated,
+              hasUser: !!user
+            }
           }
         }), {
           status: 401,
