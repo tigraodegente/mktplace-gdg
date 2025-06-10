@@ -20,6 +20,7 @@
 		brands: [],
 		tags: [],
 		priceRange: { min: 0, max: 10000 },
+		priceRanges: [], // ✅ ADICIONADO: Faixas de preço dinâmicas
 		ratings: [],
 		conditions: [],
 		deliveryOptions: [],
@@ -60,6 +61,14 @@
 	function getUrlParams() {
 		const params = new URLSearchParams($page.url.searchParams);
 		
+		// ✅ INCLUIR filtros dinâmicos na extração de parâmetros
+		const dynamicFilters: Record<string, string[]> = {};
+		for (const [key, value] of params.entries()) {
+			if (key.startsWith('opcao_')) {
+				dynamicFilters[key] = value.split(',').filter(Boolean);
+			}
+		}
+		
 		return {
 			q: params.get('q') || '',
 			categoria: params.get('categoria')?.split(',').filter(Boolean) || [],
@@ -80,7 +89,9 @@
 			cidade: params.get('cidade') || '',
 			ordenar: params.get('ordenar') || 'relevancia',
 			pagina: Math.max(1, Number(params.get('pagina')) || 1),
-			itens: Math.min(100, Math.max(1, Number(params.get('itens')) || 20))
+			itens: Math.min(100, Math.max(1, Number(params.get('itens')) || 20)),
+			// ✅ INCLUIR FILTROS DINÂMICOS
+			...dynamicFilters
 		};
 	}
 
@@ -286,6 +297,7 @@
 						brands: result.data.facets?.brands || [],
 						tags: result.data.facets?.tags || [],
 						priceRange: result.data.facets?.priceRange || { min: 0, max: 10000 },
+						priceRanges: result.data.facets?.priceRanges || [], // ✅ ADICIONADO: Faixas de preço dinâmicas
 						ratings: result.data.facets?.ratings || [],
 						conditions: result.data.facets?.conditions || [],
 						deliveryOptions: result.data.facets?.deliveryOptions || [],
@@ -496,14 +508,18 @@
 	// ✅ HANDLERS SIMPLIFICADOS - SEM CONFLITOS
 	function handleFilterChange(event: CustomEvent) {
 		const { categories, brands, priceRange } = event.detail;
+		
+		// ✅ CORRIGIDO: Preservar filtros de preço existentes se não foram alterados neste evento
+		const currentParams = getUrlParams();
 		const updateParams = {
 			categoria: categories?.length ? categories : undefined,
 			marca: brands?.length ? brands : undefined,
-			preco_min: priceRange?.min ? String(priceRange.min) : undefined,
-			preco_max: priceRange?.max ? String(priceRange.max) : undefined
+			// 🔒 PRESERVAR preços existentes se não há priceRange no evento
+			preco_min: priceRange?.min ? String(priceRange.min) : currentParams.preco_min || undefined,
+			preco_max: priceRange?.max ? String(priceRange.max) : currentParams.preco_max || undefined
 		};
 		
-		console.log('🎯 handleFilterChange:', updateParams);
+		console.log('🎯 handleFilterChange (preservando preços):', updateParams);
 		updateURL(updateParams);
 		// ⚠️ REMOVIDO debouncedSearch - deixar o effect() da URL cuidar disso
 	}
@@ -553,7 +569,8 @@
 
 	function handleDynamicOptionChange(event: CustomEvent) {
 		const { optionSlug, values } = event.detail;
-		const updateParams = { [`opcao_${optionSlug}`]: values?.length ? values : undefined };
+		// ✅ CORRIGIDO: optionSlug já vem com 'opcao_', não duplicar
+		const updateParams = { [optionSlug]: values?.length ? values : undefined };
 		updateURL(updateParams);
 	}
 

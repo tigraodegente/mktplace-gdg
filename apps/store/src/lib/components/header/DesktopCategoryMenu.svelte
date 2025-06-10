@@ -117,7 +117,7 @@
                       >
                         <div class="flex items-center justify-between">
                           <span>{category.name}</span>
-                          {#if category.product_count > 0}
+                          {#if category.product_count && category.product_count > 0}
                             <span class="text-xs text-gray-500">
                               {formatProductCount(category.product_count)}
                             </span>
@@ -128,14 +128,14 @@
                       <!-- Subcategories -->
                       {#if category.children && category.children.length > 0}
                         <div class="space-y-1">
-                          {#each category.children.slice(0, 6) as subcategory}
+                          {#each category.children as subcategory}
                             <a
                               href="/busca?categoria={subcategory.slug}"
                               class="block text-gray-600 hover:text-teal-600 text-xs pl-2 py-1 hover:bg-gray-50 rounded transition-colors"
                             >
                               <div class="flex items-center justify-between">
                                 <span>{subcategory.name}</span>
-                                {#if subcategory.product_count > 0}
+                                {#if subcategory.product_count && subcategory.product_count > 0}
                                   <span class="text-xs text-gray-400">
                                     ({subcategory.product_count})
                                   </span>
@@ -143,16 +143,7 @@
                               </div>
                             </a>
                           {/each}
-                          
-                          <!-- Show "ver mais" if has more subcategories -->
-                          {#if category.hasMore}
-                            <a
-                              href="/busca?categoria={category.slug}"
-                              class="block text-teal-500 hover:text-teal-600 text-xs pl-2 py-1 font-medium"
-                            >
-                              ver mais...
-                            </a>
-                          {/if}
+
                         </div>
                       {/if}
                     </div>

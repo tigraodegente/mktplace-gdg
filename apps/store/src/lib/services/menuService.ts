@@ -143,12 +143,16 @@ class MenuService {
     return mainCategories.map(mainCat => ({
       ...mainCat,
       children: this.getChildCategories(mainCat.id, categories)
-        .slice(0, 6) // Limit to 6 for performance
         .map(child => ({
           ...child,
-          children: this.getChildCategories(child.id, categories)
+          children: this.getChildCategories(child.id, categories).map(grandchild => ({
+            ...grandchild,
+            children: [],
+            hasMore: false
+          })),
+          hasMore: false
         })),
-      hasMore: this.getChildCategories(mainCat.id, categories).length > 6
+      hasMore: false
     }));
   }
 

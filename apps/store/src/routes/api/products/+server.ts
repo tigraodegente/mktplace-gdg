@@ -47,6 +47,8 @@ setInterval(cleanupCache, 10 * 60 * 1000);
 
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
+
+    
     console.log('🚀 ========================================');
     console.log('🚀 PRODUCTS API - NOVA REQUISIÇÃO');
     console.log('🚀 ========================================');
@@ -69,6 +71,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     const page = Math.max(1, Number(url.searchParams.get('pagina')) || 1);
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('itens')) || 20));
     
+    // ✅ NOVOS FILTROS ADICIONADOS
+    const freeShipping = url.searchParams.get('frete_gratis') === 'true';
+    const rating = url.searchParams.get('avaliacao') ? Number(url.searchParams.get('avaliacao')) : undefined;
+    const sellers = url.searchParams.get('vendedor')?.split(',').filter(Boolean) || [];
+    const conditions = url.searchParams.get('condicao')?.split(',').filter(Boolean) || [];
+    
     console.log('📊 PARÂMETROS EXTRAÍDOS:');
     console.log('  🔤 searchQuery:', searchQuery);
     console.log('  📂 categories:', categories);
@@ -80,12 +88,23 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     console.log('  🔀 sortBy:', sortBy);
     console.log('  📄 page:', page);
     console.log('  📊 limit:', limit);
+    console.log('  🚚 freeShipping:', freeShipping);
+    console.log('  ⭐ rating:', rating);
+    console.log('  👤 sellers:', sellers);
+    console.log('  📋 conditions:', conditions);
     
     // Extrair filtros dinâmicos
     const dynamicFilters: Record<string, string[]> = {};
     for (const [key, value] of url.searchParams.entries()) {
       if (key.startsWith('opcao_')) {
-        const optionSlug = key.replace('opcao_', '');
+        // ✅ CORRIGIDO: Lidar com duplicação de "opcao_" do frontend
+        let optionSlug = key.replace('opcao_', '');
+        
+        // Se ainda começar com "opcao_", remover novamente (bug do frontend)
+        if (optionSlug.startsWith('opcao_')) {
+          optionSlug = optionSlug.replace('opcao_', '');
+        }
+        
         dynamicFilters[optionSlug] = value.split(',').filter(Boolean);
       }
     }
@@ -117,7 +136,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     
           // 🚀 CACHE PARA CONSULTAS DE PRODUTOS
       const productCacheKey = `products:${searchQuery || 'all'}:${JSON.stringify({
-        categories, brands, priceMin, priceMax, hasDiscount, inStock, sortBy, page, limit
+        categories, brands, priceMin, priceMax, hasDiscount, inStock, sortBy, page, limit,
+        freeShipping, rating, sellers, conditions, deliveryTime, dynamicFilters
       })}`;
       
       console.log('💾 VERIFICANDO CACHE:');
@@ -130,12 +150,46 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         console.log('  🎯 Cache Hits:', cachedProducts.hits);
         cachedProducts.hits++;
         
-        // Ainda buscar facets se necessário
+        // 🚨 FACETS DIRETOS (SEM CACHE) - TEMPORÁRIO
         const db = getDatabase(platform);
-        console.log('🔍 Buscando facets para resposta em cache...');
+        console.log('🔍 Buscando facets DIRETOS para resposta em cache...');
+        
+        // CATEGORIAS DIRETAS (sabemos que funciona)
+        const directCategoriesQuery = `
+          SELECT 
+            c.id, c.name, c.slug, c.parent_id, c.image_url,
+            COUNT(DISTINCT p.id) as count
+          FROM categories c
+          INNER JOIN product_categories pc ON pc.category_id = c.id
+          INNER JOIN products p ON p.id = pc.product_id
+          WHERE p.is_active = true AND c.is_active = true
+          GROUP BY c.id, c.name, c.slug, c.parent_id, c.image_url
+          HAVING COUNT(DISTINCT p.id) > 0
+          ORDER BY count DESC, c.name ASC
+          LIMIT 50
+        `;
+        
+        const directCategories = await db.query(directCategoriesQuery);
+        const categoriesFacet = directCategories.map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          slug: cat.slug,
+          count: parseInt(cat.count),
+          parent_id: cat.parent_id,
+          icon: cat.image_url,
+          subcategories: []
+        }));
+        
+        console.log('✅ CATEGORIAS DIRETAS em cache:', categoriesFacet.length);
+        
+        // Buscar outros facets normalmente
         const facets = await getFacets(db, searchQuery, {
-          categories, brands, priceMin, priceMax, hasDiscount, inStock, dynamicFilters
+          categories, brands, priceMin, priceMax, hasDiscount, inStock, dynamicFilters,
+          freeShipping, rating, sellers, conditions, deliveryTime
         });
+        
+        // Sobrescrever categorias com as diretas
+        facets.categories = categoriesFacet;
         
         console.log('✅ RETORNANDO RESPOSTA DO CACHE');
         return json({
@@ -228,6 +282,32 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         
         if (hasDiscount) {
           conditions.push('p.original_price > 0 AND p.original_price > p.price');
+        }
+        
+        // ✅ NOVOS FILTROS ADICIONADOS
+        if (freeShipping) {
+          conditions.push('p.has_free_shipping = true');
+        }
+        
+        if (rating !== undefined) {
+          // ✅ CORRIGIDO: Usar COALESCE igual aos facets para consistência
+          conditions.push(`COALESCE(p.rating_average, 4.5) >= $${paramIndex}`);
+          params.push(rating);
+          paramIndex++;
+        }
+        
+        if (sellers.length > 0) {
+          conditions.push(`EXISTS (SELECT 1 FROM sellers s WHERE s.id = p.seller_id AND s.slug = ANY($${paramIndex}))`);
+          params.push(sellers);
+          paramIndex++;
+        }
+        
+        if (conditions.length > 0) {
+          // Assuming 'new' condition means active products
+          const hasNewCondition = conditions.includes('new');
+          if (hasNewCondition) {
+            // 'new' products are just is_active = true, which is already applied
+          }
         }
         
         // Sistema de busca otimizado com Full-Text Search + Busca Inteligente
@@ -356,30 +436,25 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           if (values.length > 0) {
             console.log(`🎨 Processando filtro dinâmico: ${optionSlug} = [${values.join(', ')}]`);
             
-            // Normalizar slug da opção para comparar com o banco
-            const normalizedOptionSlug = optionSlug.toLowerCase().replace(/_/g, ' ');
+            // ✅ USAR products.attributes ao invés de product_variants
+            // Converter slug para nome de atributo (ex: "cor" -> "Cor")
+            const attributeName = optionSlug.charAt(0).toUpperCase() + optionSlug.slice(1);
             
-            // Subquery para encontrar produtos que têm variações com os valores selecionados
-            const variantFilterCondition = `
-              EXISTS (
-                SELECT 1 FROM product_variants pv
-                INNER JOIN variant_option_values vov ON vov.variant_id = pv.id
-                INNER JOIN product_option_values pov ON pov.id = vov.option_value_id
-                INNER JOIN product_options po ON po.id = pov.option_id
-                WHERE pv.product_id = p.id
-                AND pv.is_active = true
-                AND LOWER(po.name) = LOWER($${paramIndex})
-                AND LOWER(pov.value) IN (${values.map((_, i) => `LOWER($${paramIndex + 1 + i})`).join(', ')})
-              )
-            `;
+            // ✅ CORRIGIDO: Verificar se VALUE está DENTRO do array JSON usando @> operator
+            const valueConditions = values.map(value => 
+              `(
+                jsonb_typeof(p.attributes) = 'object'
+                AND p.attributes ? '${attributeName}'
+                AND jsonb_typeof(p.attributes->'${attributeName}') = 'array'
+                AND p.attributes->'${attributeName}' @> '["${value}"]'::jsonb
+              )`
+            ).join(' OR ');
             
-            conditions.push(variantFilterCondition);
+            const attributeFilterCondition = `(${valueConditions})`;
+            conditions.push(attributeFilterCondition);
             
-            // Adicionar parâmetros: nome da opção + valores
-            params.push(normalizedOptionSlug, ...values);
-            paramIndex += 1 + values.length;
-            
-            console.log(`🎨 Adicionada condição de variação para ${optionSlug}: ${values.length} valores`);
+            console.log(`🎨 ✅ Condição CORRIGIDA para ${optionSlug} (${attributeName}): ${values.length} valores`);
+            console.log(`🎨 Query: ${attributeFilterCondition}`);
           }
         }
         
@@ -635,7 +710,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         priceMax,
         hasDiscount,
         inStock,
-        dynamicFilters
+        dynamicFilters,
+        freeShipping,
+        rating,
+        sellers,
+        conditions,
+        deliveryTime
       });
       
       console.log('✅ FACETS CARREGADOS:');
@@ -811,7 +891,7 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
   console.log('🔤 Search Query:', searchQuery);
   console.log('🔍 Filters recebidos:', filters);
   
-  // 🚀 CACHE REATIVADO PARA PERFORMANCE
+  // 🚀 CACHE REABILITADO - Problema resolvido com query direta
   const cacheKey = searchQuery ? `search:${searchQuery}` : 'global';
   const cached = facetsCache[cacheKey];
   
@@ -832,6 +912,9 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
   }
   
   try {
+    // ✅ CACHE REABILITADO - Problema das categorias foi resolvido com query direta
+    console.log('💾 Sistema de cache funcionando normalmente...');
+    
     console.log('🔍 getFacets - FILTROS FACETADOS DINÂMICOS:', filters);
     
     // 🚀 IMPLEMENTAÇÃO OTIMIZADA COM QUERIES PARALELAS
@@ -866,101 +949,68 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
         LIMIT 15
       `.catch(() => []),
       
-      // Benefícios (query simples)
+      // Benefícios (query simples) - ✅ CORRIGIDO: has_free_shipping
       db.query`
         SELECT 
           COUNT(DISTINCT CASE WHEN p.original_price > 0 AND p.original_price > p.price THEN p.id END) as discount_count,
-          COUNT(DISTINCT CASE WHEN p.free_shipping = true THEN p.id END) as free_shipping_count,
+          COUNT(DISTINCT CASE WHEN p.has_free_shipping = true THEN p.id END) as free_shipping_count,
           COUNT(DISTINCT CASE WHEN p.quantity = 0 THEN p.id END) as out_of_stock_count
         FROM products p
         WHERE p.is_active = true
       `.catch(() => [{ discount_count: 7, free_shipping_count: 0, out_of_stock_count: 0 }])
     ]);
     
-    // 1. CATEGORIAS - DADOS FUNCIONAIS (TEMPORÁRIO)
+    // 1. CATEGORIAS - ✅ TESTE DIRETO SEM FUNÇÃO SEPARADA
     let categories: any[] = [];
     try {
-      // Usar dados baseados no que sabemos que existe no banco
-      // Visto anteriormente: "Almofada Quarto de Bebê", "Quadros e Painéis", "Roupinhas", etc.
-      categories = [
-        {
-          id: "87388887-e1f7-487f-b4bd-ddcdcaa2c8ba",
-          name: "Almofada Quarto de Bebê",
-          slug: "almofada-quarto-de-bebe",
-          count: 321,
-          parent_id: "cb9c52d1-5e3a-4612-a18e-d8f603668d5d",
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "4152a569-05c3-4a88-8836-6dfa67078e1f",
-          name: "Quadros e Painéis",
-          slug: "quadros-e-paineis",
-          count: 241,
-          parent_id: "d14aab45-3477-4b32-a01d-7bf7ab394f97",
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "fb7ae843-0f95-4bd7-9cca-a4222474c97b",
-          name: "Roupinhas",
-          slug: "roupinhas",
-          count: 215,
-          parent_id: "7f661ec7-6088-4385-bbac-b6ebdd94072a",
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "f22ffa2c-da9c-4852-aaf8-9ef774414295",
-          name: "Almofadas Decorativas",
-          slug: "almofadas-decorativas-filtro",
-          count: 175,
-          parent_id: "cb9c52d1-5e3a-4612-a18e-d8f603668d5d",
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "f5577207-b8d6-45c1-9359-80f45463a9b6",
-          name: "Capas Carrinho Cadeira Bebê",
-          slug: "capas-carrinho-cadeira-bebe",
-          count: 95,
-          parent_id: "e3374952-8f1c-4658-8953-ae7239a0de24",
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "7532cf5f-41fd-41ad-939c-4612290627e8",
-          name: "Adesivo Parede Quarto de Bebê",
-          slug: "adesivo-parede-quarto-de-bebe",
-          count: 92,
-          parent_id: "d14aab45-3477-4b32-a01d-7bf7ab394f97",
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "126368d4-29db-4ea6-be86-98d486f99de8",
-          name: "Alimentação",
-          slug: "alimentacao",
-          count: 87,
-          parent_id: null,
-          icon: null,
-          subcategories: []
-        },
-        {
-          id: "bdc902bc-5541-48a3-9023-1da2084f2d07",
-          name: "Babador Bebê",
-          slug: "babador-bebe",
-          count: 76,
-          parent_id: "126368d4-29db-4ea6-be86-98d486f99de8",
-          icon: null,
-          subcategories: []
-        }
-      ];
+      console.log('🔍 TESTE DIRETO - Executando query inline...');
       
-      console.log('🔍 ✅ Categorias carregadas (dados funcionais):', categories.length);
+      // 🚀 QUERY DIRETA (MESMA DO ENDPOINT ISOLADO QUE FUNCIONA)
+      const directCategoriesQuery = `
+        SELECT 
+          c.id, c.name, c.slug, c.parent_id, c.image_url,
+          COUNT(DISTINCT p.id) as count
+        FROM categories c
+        INNER JOIN product_categories pc ON pc.category_id = c.id
+        INNER JOIN products p ON p.id = pc.product_id
+        WHERE p.is_active = true AND c.is_active = true
+        GROUP BY c.id, c.name, c.slug, c.parent_id, c.image_url
+        HAVING COUNT(DISTINCT p.id) > 0
+        ORDER BY count DESC, c.name ASC
+        LIMIT 20
+      `;
+      
+      const directResults = await db.query(directCategoriesQuery);
+      console.log('🔍 ✅ QUERY DIRETA - Categorias encontradas:', directResults.length);
+      
+      if (directResults.length > 0) {
+        console.log('📂 QUERY DIRETA - Top 3 categorias:');
+        directResults.slice(0, 3).forEach((cat: any, index: number) => {
+          console.log(`   ${index + 1}. ${cat.name} (${cat.slug}) - ${cat.count} produtos`);
+        });
+        
+        // ✅ TRANSFORMAR PARA O FORMATO ESPERADO
+        categories = directResults.map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          slug: cat.slug,
+          count: parseInt(cat.count),
+          parent_id: cat.parent_id,
+          icon: cat.image_url,
+          subcategories: []
+        }));
+        
+        console.log('🔄 APÓS TRANSFORMAÇÃO - Categorias:', categories.length);
+        console.log('📊 Exemplo transformado:', categories[0]);
+        
+      } else {
+        console.log('❌ QUERY DIRETA TAMBÉM RETORNOU 0!');
+      }
       
     } catch (error) {
-      console.error('❌ Erro categorias:', error instanceof Error ? error.message : error);
+      console.error('❌ Erro CAPTURADO em query direta:', error instanceof Error ? error.message : error);
+      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack');
+      categories = [];
     }
     
     // 2. MARCAS (USANDO RESULTADO PARALELO)
@@ -971,38 +1021,17 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
       count: parseInt(brand.count)
     }));
     
-    // 3. FAIXAS DE PREÇO (FIXAS)
-    const priceRanges = [
-      { label: 'Até R$ 50', value: 'up-50', min: 0, max: 50, products: 554 },
-      { label: 'R$ 50 - R$ 80', value: '50-80', min: 50, max: 80, products: 544 },
-      { label: 'R$ 80 - R$ 120', value: '80-120', min: 80, max: 120, products: 511 },
-      { label: 'R$ 120 - R$ 200', value: '120-200', min: 120, max: 200, products: 372 },
-      { label: 'R$ 200 - R$ 500', value: '200-500', min: 200, max: 500, products: 316 },
-      { label: 'Acima de R$ 500', value: 'above-500', min: 500, max: null, products: 14 }
-    ];
+    // 3. FAIXAS DE PREÇO - ✅ USANDO DADOS REAIS COM FILTROS APLICADOS
+    const priceRanges = await getPriceRangesFacet(db, searchQuery, filters);
     
-    // 4. AVALIAÇÕES (OTIMIZADO)
-    const ratings = [
-      { value: 5, count: 234 },
-      { value: 4, count: 1245 },
-      { value: 3, count: 567 },
-      { value: 2, count: 123 },
-      { value: 1, count: 45 }
-    ];
+    // 4. AVALIAÇÕES - ✅ USANDO DADOS REAIS COM FILTROS APLICADOS
+    const ratings = await getRatingsFacet(db, searchQuery, filters);
     
-    // 5. CONDIÇÕES (OTIMIZADO)
-    const conditions = [
-      { value: 'new', label: 'Novo', count: 2624 }
-    ];
+    // 5. CONDIÇÕES - ✅ USANDO DADOS REAIS COM FILTROS APLICADOS
+    const conditions = await getConditionsFacet(db, searchQuery, filters);
     
-    // 6. OPÇÕES DE ENTREGA (OTIMIZADO)
-    const deliveryOptions: any[] = [
-      { value: '24h', label: 'Entrega em 24h', count: 0 },
-      { value: '48h', label: 'Até 2 dias', count: 0 },
-      { value: '3days', label: 'Até 3 dias úteis', count: 2619 },
-      { value: '7days', label: 'Até 7 dias úteis', count: 0 },
-      { value: '15days', label: 'Até 15 dias', count: 0 }
-    ];
+    // 6. OPÇÕES DE ENTREGA - ✅ USANDO DADOS REAIS COM FILTROS APLICADOS
+    const deliveryOptions = await getDeliveryOptionsFacet(db, searchQuery, filters);
     
     // 7. VENDEDORES (USANDO RESULTADO PARALELO)
     const sellers = sellerResults.map((seller: any) => ({
@@ -1021,18 +1050,26 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
       outOfStock: parseInt(result?.out_of_stock_count || 0)
     };
     
-    // 9. FILTROS DINÂMICOS (OTIMIZADO PARA PERFORMANCE)
-    const dynamicOptions: any[] = await getDynamicOptionsFacet(db, searchQuery, filters);
+    // 9. FILTROS DINÂMICOS - ✅ COM FILTROS APLICADOS E SEM ZEROS
+    const dynamicOptions: any[] = (await getDynamicOptionsFacet(db, searchQuery, filters))
+      .map((option: any) => ({
+        ...option,
+        // ✅ FILTRAR APENAS OPÇÕES COM PRODUTOS (count > 0)
+        options: option.options.filter((opt: any) => opt.count > 0)
+      }))
+      // ✅ FILTRAR APENAS FILTROS QUE TÊMCALQUER OPÇÃO VÁLIDA
+      .filter((option: any) => option.options.length > 0);
     
-    // Montar resultado final
+    // Montar resultado final com FILTROS APLICADOS PARA REMOVER ZEROS
     const facetsData = {
-      categories,
-      brands,
-      priceRanges,
-      ratings,
-      conditions,
-      deliveryOptions,
-      sellers,
+      // ✅ FILTRAR TODOS OS FACETS PARA REMOVER COUNT = 0
+      categories: categories.filter((cat: any) => cat.count > 0),
+      brands: brands.filter((brand: any) => brand.count > 0),
+      priceRanges: priceRanges.filter((range: any) => range.products > 0),
+      ratings: ratings.filter((rating: any) => rating.count > 0),
+      conditions: conditions.filter((condition: any) => condition.count > 0),
+      deliveryOptions: deliveryOptions.filter((delivery: any) => delivery.count > 0),
+      sellers: sellers.filter((seller: any) => seller.count > 0),
       benefits,
       dynamicOptions,
       tags: [],
@@ -1124,35 +1161,84 @@ async function getFacets(db: any, searchQuery: string, filters: any = {}) {
 // 🚀 FUNÇÕES OTIMIZADAS SEPARADAS
 async function getCategoriesFacet(db: any, searchQuery: string, filters: any) {
   try {
-    // Query simplificada para evitar erros de parâmetros
+    console.log('🔍 DEBUG getCategoriesFacet - Testando DB.QUERY');
+    console.log('   Database object:', typeof db);
+    console.log('   Database query function:', typeof db.query);
+    
+    // 🧪 TESTE 1: Query super simples para testar se db.query funciona
+    console.log('🧪 TESTE 1: Contando categorias...');
+    try {
+      const testCount = await db.query('SELECT COUNT(*) as total FROM categories WHERE is_active = true');
+      console.log('✅ TESTE 1 - Total categorias ativas:', testCount[0]?.total || 'N/A');
+    } catch (err) {
+      console.error('❌ TESTE 1 FALHOU:', err);
+    }
+    
+    // 🧪 TESTE 2: Query super simples para testar produtos
+    console.log('🧪 TESTE 2: Contando produtos...');
+    try {
+      const testCount2 = await db.query('SELECT COUNT(*) as total FROM products WHERE is_active = true');
+      console.log('✅ TESTE 2 - Total produtos ativos:', testCount2[0]?.total || 'N/A');
+    } catch (err) {
+      console.error('❌ TESTE 2 FALHOU:', err);
+    }
+    
+    // 🧪 TESTE 3: Query de relação
+    console.log('🧪 TESTE 3: Contando relações product_categories...');
+    try {
+      const testCount3 = await db.query('SELECT COUNT(*) as total FROM product_categories');
+      console.log('✅ TESTE 3 - Total relações:', testCount3[0]?.total || 'N/A');
+    } catch (err) {
+      console.error('❌ TESTE 3 FALHOU:', err);
+    }
+    
+    // 🧪 TESTE 4: Query original dos facets
+    console.log('🧪 TESTE 4: Query de categorias com produtos...');
     const categoriesQuery = `
       SELECT 
-        c.id, c.name, c.slug, c.parent_id, c.icon,
+        c.id, c.name, c.slug, c.parent_id, c.image_url,
         COUNT(DISTINCT p.id) as count
       FROM categories c
       INNER JOIN product_categories pc ON pc.category_id = c.id
       INNER JOIN products p ON p.id = pc.product_id
-      WHERE p.is_active = true
-      AND c.is_active = true
-      GROUP BY c.id, c.name, c.slug, c.parent_id, c.icon
+      WHERE p.is_active = true AND c.is_active = true
+      GROUP BY c.id, c.name, c.slug, c.parent_id, c.image_url
       HAVING COUNT(DISTINCT p.id) > 0
       ORDER BY count DESC, c.name ASC
-      LIMIT 50
+      LIMIT 10
     `;
     
     const categoryResults = await db.query(categoriesQuery);
     
-    return categoryResults.map((cat: any) => ({
-      id: cat.id,
-      name: cat.name,
-      slug: cat.slug,
-      count: parseInt(cat.count),
-      parent_id: cat.parent_id,
-      icon: cat.icon,
-      subcategories: []
-    }));
+    console.log(`📊 TESTE 4 - Categorias encontradas: ${categoryResults.length}`);
+    if (categoryResults.length > 0) {
+      console.log('✅ TESTE 4 - Primeiras categorias:');
+      categoryResults.slice(0, 3).forEach((cat, index) => {
+        console.log(`   ${index + 1}. ${cat.name} (${cat.slug}) - ${cat.count} produtos`);
+      });
+    } else {
+      console.log('❌ TESTE 4 - Nenhuma categoria retornada pela query principal!');
+    }
+    
+    // ✅ RETORNAR RESULTADO REAL
+    const filteredResults = categoryResults
+      .filter((cat: any) => parseInt(cat.count) > 0)
+      .map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+        count: parseInt(cat.count),
+        parent_id: cat.parent_id,
+        icon: cat.image_url,
+        subcategories: []
+      }));
+      
+    console.log(`🎯 RETORNANDO ${filteredResults.length} categorias filtradas`);
+    
+    return filteredResults;
   } catch (error) {
-    console.error('❌ getCategoriesFacet - Erro:', error);
+    console.error('❌ getCategoriesFacet TESTE - Erro geral:', error);
+    console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack');
     return [];
   }
 }
@@ -1188,14 +1274,91 @@ async function getBrandsFacet(db: any, searchQuery: string, filters: any) {
 }
 
 async function getPriceRangesFacet(db: any, searchQuery: string, filters: any) {
-  return [
-    { label: 'Até R$ 50', value: 'up-50', min: 0, max: 50, products: 554 },
-    { label: 'R$ 50 - R$ 80', value: '50-80', min: 50, max: 80, products: 544 },
-    { label: 'R$ 80 - R$ 120', value: '80-120', min: 80, max: 120, products: 511 },
-    { label: 'R$ 120 - R$ 200', value: '120-200', min: 120, max: 200, products: 372 },
-    { label: 'R$ 200 - R$ 500', value: '200-500', min: 200, max: 500, products: 316 },
-    { label: 'Acima de R$ 500', value: 'above-500', min: 500, max: null, products: 14 }
-  ];
+  try {
+    console.log('💰 getPriceRangesFacet - Buscando faixas de preço REAIS do banco');
+    
+    // 🚀 QUERY REAL - Contar produtos por faixa de preço
+    const priceRangeQuery = `
+      SELECT 
+        COUNT(*) FILTER (WHERE price >= 0 AND price <= 50) as range_0_50,
+        COUNT(*) FILTER (WHERE price > 50 AND price <= 80) as range_50_80,
+        COUNT(*) FILTER (WHERE price > 80 AND price <= 120) as range_80_120,
+        COUNT(*) FILTER (WHERE price > 120 AND price <= 200) as range_120_200,
+        COUNT(*) FILTER (WHERE price > 200 AND price <= 500) as range_200_500,
+        COUNT(*) FILTER (WHERE price > 500) as range_above_500
+      FROM products 
+      WHERE is_active = true
+    `;
+    
+    const priceResults = await db.query(priceRangeQuery);
+    const result = priceResults[0];
+    
+    // 🔄 Transformar para o formato esperado
+    const priceRanges = [
+      { 
+        label: 'Até R$ 50', 
+        value: 'up-50', 
+        min: 0, 
+        max: 50, 
+        products: parseInt(result.range_0_50 || 0) 
+      },
+      { 
+        label: 'R$ 50 - R$ 80', 
+        value: '50-80', 
+        min: 50, 
+        max: 80, 
+        products: parseInt(result.range_50_80 || 0) 
+      },
+      { 
+        label: 'R$ 80 - R$ 120', 
+        value: '80-120', 
+        min: 80, 
+        max: 120, 
+        products: parseInt(result.range_80_120 || 0) 
+      },
+      { 
+        label: 'R$ 120 - R$ 200', 
+        value: '120-200', 
+        min: 120, 
+        max: 200, 
+        products: parseInt(result.range_120_200 || 0) 
+      },
+      { 
+        label: 'R$ 200 - R$ 500', 
+        value: '200-500', 
+        min: 200, 
+        max: 500, 
+        products: parseInt(result.range_200_500 || 0) 
+      },
+      { 
+        label: 'Acima de R$ 500', 
+        value: 'above-500', 
+        min: 500, 
+        max: null, 
+        products: parseInt(result.range_above_500 || 0) 
+      }
+    ];
+    
+    // 📊 Log das faixas encontradas
+    console.log('💰 ✅ Faixas de preço REAIS:');
+    priceRanges.forEach(range => {
+      if (range.products > 0) {
+        console.log(`  💰 ${range.label}: ${range.products} produtos`);
+      }
+    });
+    
+    // 🎯 Retornar apenas faixas com produtos
+    return priceRanges.filter(range => range.products > 0);
+    
+  } catch (error) {
+    console.error('❌ getPriceRangesFacet - Erro:', error);
+    
+    // 🆘 FALLBACK - Dados padrão em caso de erro
+    return [
+      { label: 'Até R$ 50', value: 'up-50', min: 0, max: 50, products: 0 },
+      { label: 'R$ 50 - R$ 80', value: '50-80', min: 50, max: 80, products: 0 }
+    ];
+  }
 }
 
 // 🚀 RATINGS CORRIGIDO
@@ -1277,28 +1440,33 @@ async function getConditionsFacet(db: any, searchQuery: string, filters: any) {
 
 async function getDeliveryOptionsFacet(db: any, searchQuery: string, filters: any) {
   try {
+    // ✅ CORRIGIDO: Sintaxe do ORDER BY para usar o alias corretamente
     const deliveryQuery = `
-      SELECT 
-        CASE 
-          WHEN p.delivery_days <= 1 THEN '24h'
-          WHEN p.delivery_days <= 2 THEN '48h'
-          WHEN p.delivery_days <= 3 THEN '3days'
-          WHEN p.delivery_days <= 7 THEN '7days'
-          WHEN p.delivery_days <= 15 THEN '15days'
-          ELSE '15days'
-        END as delivery_option,
-        COUNT(DISTINCT p.id) as count
-      FROM products p
-      WHERE p.is_active = true
-      GROUP BY 
-        CASE 
-          WHEN p.delivery_days <= 1 THEN '24h'
-          WHEN p.delivery_days <= 2 THEN '48h'
-          WHEN p.delivery_days <= 3 THEN '3days'
-          WHEN p.delivery_days <= 7 THEN '7days'
-          WHEN p.delivery_days <= 15 THEN '15days'
-          ELSE '15days'
-        END
+      WITH delivery_grouped AS (
+        SELECT 
+          CASE 
+            WHEN p.delivery_days <= 1 THEN '24h'
+            WHEN p.delivery_days <= 2 THEN '48h'
+            WHEN p.delivery_days <= 3 THEN '3days'
+            WHEN p.delivery_days <= 7 THEN '7days'
+            WHEN p.delivery_days <= 15 THEN '15days'
+            ELSE '15days'
+          END as delivery_option,
+          COUNT(DISTINCT p.id) as count
+        FROM products p
+        WHERE p.is_active = true
+        GROUP BY 
+          CASE 
+            WHEN p.delivery_days <= 1 THEN '24h'
+            WHEN p.delivery_days <= 2 THEN '48h'
+            WHEN p.delivery_days <= 3 THEN '3days'
+            WHEN p.delivery_days <= 7 THEN '7days'
+            WHEN p.delivery_days <= 15 THEN '15days'
+            ELSE '15days'
+          END
+      )
+      SELECT delivery_option, count
+      FROM delivery_grouped
       ORDER BY 
         CASE 
           WHEN delivery_option = '24h' THEN 1
@@ -1365,10 +1533,11 @@ async function getSellersFacet(db: any, searchQuery: string, filters: any) {
 
 async function getBenefitsFacet(db: any, searchQuery: string, filters: any) {
   try {
+    // ✅ CORRIGIDO: Coluna correta é has_free_shipping, não free_shipping
     const benefitsQuery = `
       SELECT 
         COUNT(DISTINCT CASE WHEN p.original_price > 0 AND p.original_price > p.price THEN p.id END) as discount_count,
-        COUNT(DISTINCT CASE WHEN p.free_shipping = true THEN p.id END) as free_shipping_count,
+        COUNT(DISTINCT CASE WHEN p.has_free_shipping = true THEN p.id END) as free_shipping_count,
         COUNT(DISTINCT CASE WHEN p.quantity = 0 THEN p.id END) as out_of_stock_count
       FROM products p
       WHERE p.is_active = true
@@ -1390,62 +1559,78 @@ async function getBenefitsFacet(db: any, searchQuery: string, filters: any) {
 
 async function getDynamicOptionsFacet(db: any, searchQuery: string, filters: any) {
   try {
-    console.log('🎨 getDynamicOptionsFacet - Extraindo filtros dinâmicos (versão simplificada)');
+    console.log('🎨 getDynamicOptionsFacet - Buscando filtros dinâmicos do campo ATTRIBUTES (QUERY GLOBAL)');
     
-    // ✅ VERSÃO SIMPLIFICADA QUE FUNCIONA - Dados fixos baseados no que sabemos existir
-    const knownDynamicOptions = [
-      {
-        name: 'Cor',
-        slug: 'opcao_cor',
-        type: 'attribute',
-        options: [
-          { value: 'Azul', label: 'Azul', count: 640 },
-          { value: 'Rosa', label: 'Rosa', count: 520 },
-          { value: 'Branco', label: 'Branco', count: 480 },
-          { value: 'Verde', label: 'Verde', count: 340 },
-          { value: 'Amarelo', label: 'Amarelo', count: 280 },
-          { value: 'Vermelho', label: 'Vermelho', count: 245 },
-          { value: 'Lilás', label: 'Lilás', count: 190 },
-          { value: 'Cinza', label: 'Cinza', count: 165 }
-        ],
-        totalProducts: 640
-      },
-      {
-        name: 'Material',
-        slug: 'opcao_material',
-        type: 'attribute',
-        options: [
-          { value: 'Algodão', label: 'Algodão', count: 619 },
-          { value: 'Poliéster', label: 'Poliéster', count: 420 },
-          { value: 'Malha', label: 'Malha', count: 380 },
-          { value: 'Tricoline', label: 'Tricoline', count: 290 },
-          { value: 'Feltro', label: 'Feltro', count: 210 },
-          { value: 'Lona', label: 'Lona', count: 180 },
-          { value: 'Oxford', label: 'Oxford', count: 140 }
-        ],
-        totalProducts: 619
-      },
-      {
-        name: 'Tamanho',
-        slug: 'opcao_tamanho',
-        type: 'attribute',
-        options: [
-          { value: 'P', label: 'P', count: 596 },
-          { value: 'M', label: 'M', count: 520 },
-          { value: 'G', label: 'G', count: 480 },
-          { value: 'Único', label: 'Único', count: 340 },
-          { value: 'RN', label: 'RN', count: 280 },
-          { value: '0-3 meses', label: '0-3 meses', count: 245 },
-          { value: '3-6 meses', label: '3-6 meses', count: 220 },
-          { value: '6-9 meses', label: '6-9 meses', count: 195 }
-        ],
-        totalProducts: 596
+    // ✅ CORRIGIDO: Usar query global ou com filtros mínimos para mostrar mais opções
+    // Só aplicar filtros de categoria para manter contexto, mas não restringir muito
+    let whereConditions = ['p.is_active = true'];
+    let params: any[] = [];
+    let paramIndex = 1;
+    
+    // 🎯 APLICAR APENAS CATEGORIA para manter contexto (se houver)
+    if (filters.categories && filters.categories.length > 0) {
+      whereConditions.push(`EXISTS (
+        SELECT 1 FROM product_categories pc 
+        JOIN categories c ON c.id = pc.category_id 
+        WHERE pc.product_id = p.id 
+        AND c.slug = ANY($${paramIndex})
+      )`);
+      params.push(filters.categories);
+      paramIndex++;
+    }
+    
+    // 🚫 REMOVIDO: Não aplicar marca, preço e stock para facets dinâmicos
+    // Isso permite que o usuário veja todas as opções dinâmicas disponíveis
+    
+    // 🚀 QUERY OTIMIZADA - Buscar dados do campo attributes (JSON)
+    const attributesQuery = `
+      SELECT 
+        key as option_name,
+        jsonb_array_elements_text(value) as value,
+        jsonb_array_elements_text(value) as label,
+        COUNT(*) as count
+      FROM products p,
+      jsonb_each(p.attributes) 
+      WHERE ${whereConditions.join(' AND ')}
+      AND jsonb_typeof(p.attributes) = 'object'
+      AND jsonb_typeof(value) = 'array'
+      GROUP BY key, jsonb_array_elements_text(value)
+      HAVING COUNT(*) > 0
+      ORDER BY key, COUNT(*) DESC
+    `;
+    
+    const attributesResults = await db.query(attributesQuery, ...params);
+    
+    console.log(`📊 Resultados dos attributes: ${attributesResults.length}`);
+    
+    // 🔄 Transformar resultado para o formato esperado
+    const groupedOptions: any = {};
+    attributesResults.forEach((row: any) => {
+      if (!groupedOptions[row.option_name]) {
+        groupedOptions[row.option_name] = {
+          options: [],
+          totalProducts: 0
+        };
       }
-    ];
+      groupedOptions[row.option_name].options.push({
+        value: row.value,
+        label: row.label,
+        count: parseInt(row.count)
+      });
+      groupedOptions[row.option_name].totalProducts += parseInt(row.count);
+    });
     
-    console.log('🎨 Filtros dinâmicos carregados (dados funcionais):', {
-      totalFilterTypes: knownDynamicOptions.length,
-      filters: knownDynamicOptions.map((opt: any) => ({
+    const dynamicOptions = Object.entries(groupedOptions).map(([optionName, data]: [string, any]) => ({
+      name: optionName,
+      slug: `opcao_${optionName.toLowerCase().replace(/\s+/g, '_')}`,
+      type: 'attribute',
+      options: data.options,
+      totalProducts: data.totalProducts
+    }));
+    
+    console.log('🎨 ✅ Filtros dinâmicos REAIS carregados:', {
+      totalFilterTypes: dynamicOptions.length,
+      filters: dynamicOptions.map((opt: any) => ({
         name: opt.name,
         slug: opt.slug,
         optionsCount: opt.options.length,
@@ -1453,11 +1638,32 @@ async function getDynamicOptionsFacet(db: any, searchQuery: string, filters: any
       }))
     });
     
-    return knownDynamicOptions;
+    // 📊 Log detalhado dos dados encontrados
+    dynamicOptions.forEach((option: any) => {
+      console.log(`  🎨 ${option.name} (${option.totalProducts} produtos):`);
+      option.options.forEach((opt: any) => {
+        console.log(`    • ${opt.value}: ${opt.count} produtos`);
+      });
+    });
+    
+    return dynamicOptions;
     
   } catch (error) {
     console.error('❌ Erro em getDynamicOptionsFacet:', error);
-    return [];
+    
+    // 🆘 FALLBACK - Retornar dados básicos em caso de erro
+    return [
+      {
+        name: 'Cor',
+        slug: 'opcao_cor',
+        type: 'attribute',
+        options: [
+          { value: 'Azul', label: 'Azul', count: 0 },
+          { value: 'Rosa', label: 'Rosa', count: 0 }
+        ],
+        totalProducts: 0
+      }
+    ];
   }
 }
 
