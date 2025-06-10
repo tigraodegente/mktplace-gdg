@@ -276,6 +276,12 @@
 
 	// ✅ FUNÇÃO SIMPLES: Limpar filtros
 	function clearAllFilters() {
+		const currentParams = getUrlParams();
+		console.log('🧹 Página principal: Limpando todos os filtros', {
+			filtrosAtuais: currentParams,
+			hasActiveFilters: hasActiveFilters()
+		});
+		
 		const dynamicOptions = extractDynamicOptions();
 		const clearParams = {
 			categoria: undefined,
@@ -299,7 +305,59 @@
 			}), {}),
 			pagina: 1
 		};
+		
+		console.log('🧹 Página principal: Aplicando clearParams:', clearParams);
 		updateURL(clearParams);
+	}
+
+	// ✅ FUNÇÃO: Obter nome da categoria
+	function getCategoryName(categoryId: string, facetsCategories: any[]): string {
+		const category = facetsCategories.find((c: any) => (c.slug || c.id) === categoryId);
+		if (category?.name) return category.name;
+		
+		// Mapeamento COMPLETO de nomes de categorias como fallback
+		const categoryNames: Record<string, string> = {
+			'alimentacao-e-higiene': 'Alimentação e Higiene',
+			'almofadas': 'Almofadas', 
+			'almofada-quarto-de-bebe': 'Almofada para Quarto de Bebê',
+			'almofada-quarto-bebe': 'Almofada para Quarto de Bebê',
+			'decoracao': 'Decoração',
+			'quarto-de-bebe': 'Quarto de Bebê',
+			'quarto-bebe': 'Quarto de Bebê',
+			'enxoval': 'Enxoval',
+			'maternidade': 'Maternidade',
+			'roupinhas': 'Roupinhas',
+			'kit-berco': 'Kit Berço',
+			'brinquedos': 'Brinquedos',
+			'higiene': 'Higiene',
+			'cuidados': 'Cuidados'
+		};
+		
+		return categoryNames[categoryId] || categoryId.split('-').map(word => 
+			word.charAt(0).toUpperCase() + word.slice(1)
+		).join(' ');
+	}
+
+	// ✅ FUNÇÃO: Obter nome da condição
+	function getConditionName(condition: string): string {
+		const conditionLabels: Record<string, string> = {
+			'new': 'Novo',
+			'used': 'Usado', 
+			'refurbished': 'Recondicionado'
+		};
+		return conditionLabels[condition] || condition;
+	}
+
+	// ✅ FUNÇÃO: Obter nome do tempo de entrega
+	function getDeliveryLabel(delivery: string): string {
+		const deliveryLabels: Record<string, string> = {
+			'24h': '24 horas',
+			'48h': '48 horas',
+			'3days': '3 dias',
+			'7days': '7 dias',
+			'15days': '15 dias'
+		};
+		return deliveryLabels[delivery] || delivery;
 	}
 
 	// ✅ FUNÇÃO SIMPLES: Verificar filtros ativos
@@ -307,11 +365,14 @@
 		const params = getUrlParams();
 		const dynamicOptions = extractDynamicOptions();
 		
+		// CORREÇÃO: Verificar se preço foi realmente alterado pelo usuário
+		// Só considerar ativo se foi explicitamente definido na URL
+		const hasUserDefinedPriceRange = !!(params.preco_min || params.preco_max);
+		
 		return !!(
 			params.categoria.length ||
 			params.marca.length ||
-			params.preco_min ||
-			params.preco_max ||
+			hasUserDefinedPriceRange ||
 			params.promocao ||
 			params.frete_gratis ||
 			!params.disponivel ||
@@ -388,8 +449,67 @@
 		updateURL(updateParams);
 	}
 
+	// ✅ HANDLER: Mudança de faixas de preço
+	function handlePriceRangeChange(event: CustomEvent<{ ranges: string[] }>) {
+		const { ranges } = event.detail;
+		
+		// Converter faixas selecionadas de volta para min/max para URL
+		let preco_min: number | undefined = undefined;
+		let preco_max: number | undefined = undefined;
+		
+		if (ranges.length > 0) {
+			// Calcular valores min/max baseados nas faixas selecionadas
+			const minValues: number[] = [];
+			const maxValues: number[] = [];
+			
+			ranges.forEach(range => {
+				switch (range) {
+					case 'up-50':
+						minValues.push(0);
+						maxValues.push(50);
+						break;
+					case '50-80':
+						minValues.push(50);
+						maxValues.push(80);
+						break;
+					case '80-120':
+						minValues.push(80);
+						maxValues.push(120);
+						break;
+					case '120-200':
+						minValues.push(120);
+						maxValues.push(200);
+						break;
+					case '200-500':
+						minValues.push(200);
+						maxValues.push(500);
+						break;
+					case 'above-500':
+						minValues.push(500);
+						maxValues.push(99999);
+						break;
+				}
+			});
+			
+			// Usar o menor mínimo e o maior máximo das faixas selecionadas
+			if (minValues.length > 0) {
+				preco_min = Math.min(...minValues);
+			}
+			if (maxValues.length > 0) {
+				const maxValue = Math.max(...maxValues);
+				preco_max = maxValue === 99999 ? undefined : maxValue;
+			}
+		}
+		
+		const updateParams = { 
+			preco_min: preco_min || undefined, 
+			preco_max: preco_max || undefined
+		};
+		updateURL(updateParams);
+	}
+
 	function handleClearAll() {
-		console.log('🧹 Limpando todos os filtros');
+		console.log('🧹 Página principal: Recebido evento clearAll, executando clearAllFilters');
 		clearAllFilters();
 	}
 
@@ -452,26 +572,33 @@
 
 	// ✅ REAÇÃO CONTROLADA: Executar busca quando URL muda
 	let lastSearchParams = $state('');
+	let isFirstLoad = $state(true);
 	
 	$effect(() => {
 		const currentSearchParams = $page.url.search;
 		
 		// ⚠️ EXECUTAR BUSCA para qualquer mudança de URL (interna ou externa)
-		if (currentSearchParams !== lastSearchParams && lastSearchParams !== '') {
+		// CORREÇÃO: Executar também na primeira navegação
+		if (currentSearchParams !== lastSearchParams) {
 			console.log('🌐 URL mudou, executando busca:', {
 				current: currentSearchParams,
 				last: lastSearchParams,
-				internal: isInternalNavigation
+				internal: isInternalNavigation,
+				isFirstLoad: isFirstLoad
 			});
 			
-			// Busca com delay mínimo para evitar conflitos
-			setTimeout(() => {
-				executeSearch(true);
-			}, isInternalNavigation ? 50 : 0); // Delay menor para mudanças internas
+			// Na primeira carga, não executar busca (dados vêm do servidor)
+			// Em mudanças subsequentes, executar busca
+			if (!isFirstLoad) {
+				setTimeout(() => {
+					executeSearch(true);
+				}, isInternalNavigation ? 50 : 0);
+			}
 		}
 		
 		// Sempre atualizar o último estado
 		lastSearchParams = currentSearchParams;
+		isFirstLoad = false;
 		
 		// Reset flag após processamento
 		if (isInternalNavigation) {
@@ -486,51 +613,74 @@
 		const params = getUrlParams();
 		const dynamicOptions = extractDynamicOptions();
 
-			// ✅ CORRIGIDO: Processar categorias COM FALLBACK para categoria selecionada
-	let categoriesWithSelection = (facets.categories || []).map((cat: any) => {
-		const isSelected = params.categoria.includes(cat.slug || cat.id);
-		return {
-			...cat,
-			selected: isSelected
-		};
-	});
+		// ✅ PREPARAÇÃO DE DADOS PARA O FILTERSIDEBAR
 
-		// ✅ MARKETPLACE PATTERN: Se há categoria ativa mas facets.categories está vazio,
-		// manter dados da categoria selecionada para UI (header, filtros ativos, etc.)
-		if (params.categoria.length > 0 && categoriesWithSelection.length === 0) {
-			// Buscar dados da categoria selecionada do cache ou dados iniciais
+		// ✅ MAPEAMENTO COMPLETO DE CATEGORIAS CONHECIDAS
+		const categoryNames: Record<string, string> = {
+			'alimentacao-e-higiene': 'Alimentação e Higiene',
+			'almofadas': 'Almofadas', 
+			'almofada-quarto-de-bebe': 'Almofada para Quarto de Bebê',
+			'almofada-quarto-bebe': 'Almofada para Quarto de Bebê',
+			'decoracao': 'Decoração',
+			'quarto-de-bebe': 'Quarto de Bebê',
+			'quarto-bebe': 'Quarto de Bebê',
+			'enxoval': 'Enxoval',
+			'maternidade': 'Maternidade',
+			'roupinhas': 'Roupinhas',
+			'kit-berco': 'Kit Berço',
+			'brinquedos': 'Brinquedos',
+			'higiene': 'Higiene',
+			'cuidados': 'Cuidados'
+		};
+
+		// ✅ CORRIGIDO: Processar categorias SEMPRE com fallback
+		let categoriesWithSelection: any[] = [];
+
+		// Se há categorias nos facets, usar essas
+		if (facets.categories && facets.categories.length > 0) {
+			categoriesWithSelection = facets.categories.map((cat: any) => {
+				const isSelected = params.categoria.includes(cat.slug || cat.id);
+				return {
+					...cat,
+					selected: isSelected
+				};
+			});
+		}
+
+		// ✅ SEMPRE GARANTIR que categorias da URL estejam presentes
+		if (params.categoria.length > 0) {
 			for (const categorySlug of params.categoria) {
-				// Tentar encontrar a categoria nos dados iniciais do servidor
-				let categoryData = data?.serverData?.facets?.categories?.find((c: any) => 
-					(c.slug || c.id) === categorySlug
+				// Verificar se já existe na lista
+				const existingCategory = categoriesWithSelection.find(cat => 
+					(cat.slug || cat.id) === categorySlug
 				);
-				
-				// OU criar dados mínimos para categoria selecionada
-				if (!categoryData) {
-					// Mapeamento correto de nomes de categorias
-					const categoryNames: Record<string, string> = {
-						'alimentacao-e-higiene': 'Alimentação e Higiene',
-						'almofadas': 'Almofadas',
-						'decoracao': 'Decoração',
-						'quarto-de-bebe': 'Quarto de Bebê',
-						'enxoval': 'Enxoval',
-						'maternidade': 'Maternidade'
-					};
+
+				if (!existingCategory) {
+					// Tentar buscar dos dados do servidor
+					let categoryData = data?.serverData?.facets?.categories?.find((c: any) => 
+						(c.slug || c.id) === categorySlug
+					);
 					
-					categoryData = {
-						id: categorySlug,
-						slug: categorySlug,
-						name: categoryNames[categorySlug] || categorySlug.split('-').map(word => 
-							word.charAt(0).toUpperCase() + word.slice(1)
-						).join(' '),
-						count: totalCount || 0 // Usar total real de produtos encontrados
-					};
+					// OU criar dados mínimos 
+					if (!categoryData) {
+						categoryData = {
+							id: categorySlug,
+							slug: categorySlug,
+							name: categoryNames[categorySlug] || categorySlug.split('-').map(word => 
+								word.charAt(0).toUpperCase() + word.slice(1)
+							).join(' '),
+							count: totalCount || 0
+						};
+					}
+					
+					categoriesWithSelection.push({
+						...categoryData,
+						selected: true
+					});
+				} else if (!existingCategory.selected) {
+					// Garantir que está marcada como selecionada se está na URL
+					existingCategory.selected = true;
 				}
-				
-				categoriesWithSelection.push({
-					...categoryData,
-					selected: true
-				});
 			}
 		}
 
@@ -552,6 +702,29 @@
 			};
 		});
 
+		// ✅ SISTEMA DE FAIXAS DE PREÇO INTELIGENTES
+		// Converter valores min/max da URL para faixas selecionadas
+		const selectedPriceRanges: string[] = [];
+		if (params.preco_min || params.preco_max) {
+			const min = params.preco_min ? Number(params.preco_min) : 0;
+			const max = params.preco_max ? Number(params.preco_max) : 99999;
+			
+			// Mapear para faixas baseadas nos valores da URL
+			if (max <= 50) {
+				selectedPriceRanges.push('up-50');
+			} else if (min >= 0 && max <= 80) {
+				selectedPriceRanges.push('50-80');
+			} else if (min >= 50 && max <= 120) {
+				selectedPriceRanges.push('80-120');
+			} else if (min >= 80 && max <= 200) {
+				selectedPriceRanges.push('120-200');
+			} else if (min >= 120 && max <= 500) {
+				selectedPriceRanges.push('200-500');
+			} else if (min >= 200) {
+				selectedPriceRanges.push('above-500');
+			}
+		}
+		
 		const result = {
 			// Categorias com seleção
 			categories: categoriesWithSelection,
@@ -562,15 +735,8 @@
 			// Tags com seleção
 			tags: tagsWithSelection,
 			
-			// Range de preços
-			priceRange: {
-				min: facets.priceRange?.min || 0,
-				max: facets.priceRange?.max || 10000,
-				current: {
-					min: Number(params.preco_min) || facets.priceRange?.min || 0,
-					max: Number(params.preco_max) || facets.priceRange?.max || 10000
-				}
-			},
+			// ✅ FAIXAS DE PREÇO SELECIONADAS
+			selectedPriceRanges,
 			
 			// ✅ NOVOS FILTROS IMPLEMENTADOS
 			
@@ -605,6 +771,9 @@
 			// Filtros dinâmicos (Cor, Tamanho, Material, etc.)
 			dynamicOptions: facets.dynamicOptions || [],
 			selectedDynamicOptions: dynamicOptions,
+			
+			// ✅ NOVO: Faixas de preço dinâmicas
+			priceRanges: facets.priceRanges || [],
 			
 			// Estados e cidades (por enquanto vazios - podem ser implementados depois)
 			states: [],
@@ -727,6 +896,7 @@
 					{...sidebarData}
 					showCloseButton={false}
 					on:filterChange={handleFilterChange}
+					on:priceRangeChange={handlePriceRangeChange}
 					on:ratingChange={handleRatingChange}
 					on:conditionChange={handleConditionChange}
 					on:deliveryChange={handleDeliveryChange}
@@ -808,17 +978,14 @@
 								<span class="text-sm font-medium text-gray-700">Filtros ativos:</span>
 								
 								{#each currentParams.categoria as categoryId}
-									{@const category = facets.categories.find((c: any) => (c.slug || c.id) === categoryId)}
-									{#if category}
-										<span class="inline-flex items-center gap-1 bg-[#00BFB3]/10 text-[#00BFB3] px-3 py-1 rounded-full text-sm">
-											{category.name}
-											<button onclick={() => updateURL({ categoria: currentParams.categoria.filter(id => id !== categoryId) })} aria-label="Remover categoria {category.name}">
-												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-									</svg>
-											</button>
-										</span>
-							{/if}
+									<span class="inline-flex items-center gap-1 bg-[#00BFB3]/10 text-[#00BFB3] px-3 py-1 rounded-full text-sm">
+										{getCategoryName(categoryId, facets.categories)}
+										<button onclick={() => updateURL({ categoria: currentParams.categoria.filter(id => id !== categoryId) })} aria-label="Remover categoria {getCategoryName(categoryId, facets.categories)}">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+										</svg>
+										</button>
+									</span>
 								{/each}
 
 								{#each currentParams.marca as brandId}
@@ -829,12 +996,13 @@
 											<button onclick={() => updateURL({ marca: currentParams.marca.filter(id => id !== brandId) })} aria-label="Remover marca {brand.name}">
 												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-								</svg>
+												</svg>
 											</button>
 										</span>
 									{/if}
-										{/each}
+								{/each}
 
+								<!-- CORREÇÃO: Só mostrar filtro de preço se foi explicitamente definido na URL -->
 								{#if currentParams.preco_min || currentParams.preco_max}
 									<span class="inline-flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
 										{#if currentParams.preco_min && currentParams.preco_max}
@@ -847,7 +1015,140 @@
 										<button onclick={() => updateURL({ preco_min: undefined, preco_max: undefined })} aria-label="Remover filtro de preço">
 											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-										</svg>
+											</svg>
+										</button>
+									</span>
+								{/if}
+
+								<!-- ✅ FILTRO DE AVALIAÇÃO -->
+								{#if Number(currentParams.avaliacao) > 0}
+									<span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+										{currentParams.avaliacao}+ estrelas
+										<button onclick={() => updateURL({ avaliacao: undefined })} aria-label="Remover filtro de avaliação">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</span>
+								{/if}
+
+								<!-- ✅ FILTRO DE CONDIÇÕES -->
+								{#each currentParams.condicao as condicao}
+									<span class="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+										{getConditionName(condicao)}
+										<button onclick={() => updateURL({ condicao: currentParams.condicao.filter(c => c !== condicao) })} aria-label="Remover condição {getConditionName(condicao)}">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</span>
+								{/each}
+
+								<!-- ✅ FILTRO DE TEMPO DE ENTREGA -->
+								{#if currentParams.tempo_entrega}
+									<span class="inline-flex items-center gap-1 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm">
+										{getDeliveryLabel(currentParams.tempo_entrega)}
+										<button onclick={() => updateURL({ tempo_entrega: undefined })} aria-label="Remover filtro de tempo de entrega">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</span>
+								{/if}
+
+								<!-- ✅ FILTRO DE VENDEDORES -->
+								{#each currentParams.vendedor as vendedorId}
+									{@const seller = facets.sellers.find((s: any) => (s.slug || s.id) === vendedorId)}
+									{#if seller}
+										<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
+											{seller.name}
+											<button onclick={() => updateURL({ vendedor: currentParams.vendedor.filter(id => id !== vendedorId) })} aria-label="Remover vendedor {seller.name}">
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+												</svg>
+											</button>
+										</span>
+									{/if}
+								{/each}
+
+								<!-- ✅ FILTROS DE BENEFÍCIOS -->
+								{#if currentParams.promocao}
+									<span class="inline-flex items-center gap-1 bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
+										Em promoção
+										<button onclick={() => updateURL({ promocao: undefined })} aria-label="Remover filtro de promoção">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</span>
+								{/if}
+
+								{#if currentParams.frete_gratis}
+									<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm">
+										Frete grátis
+										<button onclick={() => updateURL({ frete_gratis: undefined })} aria-label="Remover filtro de frete grátis">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</span>
+								{/if}
+
+								{#if !currentParams.disponivel}
+									<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
+										Incluir indisponíveis
+										<button onclick={() => updateURL({ disponivel: true })} aria-label="Remover filtro de indisponíveis">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</span>
+								{/if}
+
+								<!-- ✅ FILTRO DE TAGS/TEMAS -->
+								{#each currentParams.tema as temaId}
+									{@const tag = facets.tags.find((t: any) => (t.slug || t.id) === temaId)}
+									{#if tag}
+										<span class="inline-flex items-center gap-1 bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm">
+											{tag.name}
+											<button onclick={() => updateURL({ tema: currentParams.tema.filter(id => id !== temaId) })} aria-label="Remover tema {tag.name}">
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+												</svg>
+											</button>
+										</span>
+									{/if}
+								{/each}
+
+								<!-- ✅ FILTROS DINÂMICOS (Cor, Tamanho, Material, etc.) -->
+								{#each Object.entries(extractDynamicOptions()) as [optionKey, values]}
+									{#each values as value}
+										<span class="inline-flex items-center gap-1 bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm">
+											{optionKey}: {value}
+											<button onclick={() => {
+												const newValues = values.filter(v => v !== value);
+												const newParams = { [`opcao_${optionKey}`]: newValues.length > 0 ? newValues : undefined };
+												updateURL(newParams);
+											}} aria-label="Remover {optionKey} {value}">
+												<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+												</svg>
+											</button>
+										</span>
+									{/each}
+								{/each}
+
+								<!-- ✅ FILTRO DE LOCALIZAÇÃO -->
+								{#if currentParams.estado}
+									<span class="inline-flex items-center gap-1 bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm">
+										{currentParams.estado}
+										{#if currentParams.cidade}
+											- {currentParams.cidade}
+										{/if}
+										<button onclick={() => updateURL({ estado: undefined, cidade: undefined })} aria-label="Remover filtro de localização">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
 										</button>
 									</span>
 								{/if}
@@ -876,6 +1177,7 @@
 									showCloseButton={false}
 									class="border-0 shadow-none p-0"
 									on:filterChange={handleFilterChange}
+									on:priceRangeChange={handlePriceRangeChange}
 									on:ratingChange={handleRatingChange}
 									on:conditionChange={handleConditionChange}
 									on:deliveryChange={handleDeliveryChange}

@@ -51,45 +51,45 @@ class EnriquecimentoIA {
     async obterProdutosParaProcessar() {
         console.log('🔍 Buscando TODOS os produtos para enriquecimento completo...\n');
 
-        // TODOS os produtos ativos, classificados por prioridade
+        // TODOS os produtos ativos, classificados por prioridade (usando product_categories)
         const todosProdutos = await sql`
-            SELECT 
-                id, sku, name, category_id, description, short_description, 
-                meta_description, meta_title, attributes, specifications, tags,
-                price, brand_id, created_at, is_active,
+            SELECT DISTINCT
+                p.id, p.sku, p.name, pc.category_id, p.description, p.short_description, 
+                p.meta_description, p.meta_title, p.attributes, p.specifications, p.tags,
+                p.price, p.brand_id, p.created_at, p.is_active,
                 -- Calcular nível de necessidade
                 CASE 
-                    WHEN category_id IS NULL THEN 'critica'
-                    WHEN description IS NULL OR description = '' OR description = 'Descrição do produto' THEN 'alta' 
-                    WHEN meta_description IS NULL OR meta_description = '' THEN 'media'
-                    WHEN attributes IS NULL OR attributes = '{}' OR attributes = '[]' THEN 'media'
-                    WHEN specifications IS NULL OR specifications = '{}' OR specifications = '[]' THEN 'baixa'
+                    WHEN pc.category_id IS NULL THEN 'critica'
+                    WHEN p.description IS NULL OR p.description = '' OR p.description = 'Descrição do produto' THEN 'alta' 
+                    WHEN p.meta_description IS NULL OR p.meta_description = '' THEN 'media'
+                    WHEN p.attributes IS NULL OR p.attributes = '{}' OR p.attributes = '[]' THEN 'media'
+                    WHEN p.specifications IS NULL OR p.specifications = '{}' OR p.specifications = '[]' THEN 'baixa'
                     ELSE 'melhoria'
                 END as prioridade,
                 -- Calcular score de necessidade (0-100)
                 (
-                    CASE WHEN category_id IS NULL THEN 40 ELSE 0 END +
-                    CASE WHEN description IS NULL OR description = '' OR description = 'Descrição do produto' THEN 25 ELSE 0 END +
-                    CASE WHEN meta_description IS NULL OR meta_description = '' THEN 15 ELSE 0 END +
-                    CASE WHEN attributes IS NULL OR attributes = '{}' OR attributes = '[]' THEN 10 ELSE 0 END +
-                    CASE WHEN specifications IS NULL OR specifications = '{}' OR specifications = '[]' THEN 5 ELSE 0 END +
-                    CASE WHEN short_description IS NULL OR short_description = '' THEN 3 ELSE 0 END +
-                    CASE WHEN meta_title IS NULL OR meta_title = name THEN 2 ELSE 0 END
-                ) as score_necessidade
-            FROM products 
-            WHERE is_active = true
-            ORDER BY 
-                -- Prioridade por necessidade
+                    CASE WHEN pc.category_id IS NULL THEN 40 ELSE 0 END +
+                    CASE WHEN p.description IS NULL OR p.description = '' OR p.description = 'Descrição do produto' THEN 25 ELSE 0 END +
+                    CASE WHEN p.meta_description IS NULL OR p.meta_description = '' THEN 15 ELSE 0 END +
+                    CASE WHEN p.attributes IS NULL OR p.attributes = '{}' OR p.attributes = '[]' THEN 10 ELSE 0 END +
+                    CASE WHEN p.specifications IS NULL OR p.specifications = '{}' OR p.specifications = '[]' THEN 5 ELSE 0 END +
+                    CASE WHEN p.short_description IS NULL OR p.short_description = '' THEN 3 ELSE 0 END +
+                    CASE WHEN p.meta_title IS NULL OR p.meta_title = p.name THEN 2 ELSE 0 END
+                ) as score_necessidade,
+                -- Adicionar campos de ordenação no SELECT para o DISTINCT funcionar
                 CASE 
-                    WHEN category_id IS NULL THEN 1
-                    WHEN description IS NULL OR description = '' OR description = 'Descrição do produto' THEN 2
-                    WHEN meta_description IS NULL OR meta_description = '' THEN 3
+                    WHEN pc.category_id IS NULL THEN 1
+                    WHEN p.description IS NULL OR p.description = '' OR p.description = 'Descrição do produto' THEN 2
+                    WHEN p.meta_description IS NULL OR p.meta_description = '' THEN 3
                     ELSE 4
-                END ASC,
-                -- Depois por score de necessidade (maior primeiro)
+                END as ordem_prioridade
+            FROM products p
+            LEFT JOIN product_categories pc ON p.id = pc.product_id AND pc.is_primary = true
+            WHERE p.is_active = true
+            ORDER BY 
+                ordem_prioridade ASC,
                 score_necessidade DESC,
-                -- Por último por nome
-                name ASC
+                p.name ASC
         `;
 
         // Filtrar produtos já processados
@@ -209,9 +209,81 @@ class EnriquecimentoIA {
 
             const updates = {};
 
-            // Categoria (SEMPRE atualizar se IA retornar)
+            // VALIDAR E ATUALIZAR CATEGORIA COM VERIFICAÇÃO
+            let categoryUpdated = false;
             if (dadosIA.category_id) {
-                updates.category_id = dadosIA.category_id;
+                try {
+                    // 1. PRIMEIRO: Verificar se a categoria existe no banco
+                    const categoryExists = await sql`
+                        SELECT id, name FROM categories WHERE id = ${dadosIA.category_id}
+                    `;
+
+                    if (categoryExists.length > 0) {
+                        console.log(`   ✅ Categoria válida encontrada: ${categoryExists[0].name}`);
+                        
+                        // 2. Verificar se já existe relacionamento
+                        const existingCategory = await sql`
+                            SELECT id FROM product_categories 
+                            WHERE product_id = ${produto.id}
+                        `;
+
+                        if (existingCategory.length > 0) {
+                            // Atualizar categoria existente
+                            await sql`
+                                UPDATE product_categories 
+                                SET category_id = ${dadosIA.category_id}, is_primary = true
+                                WHERE product_id = ${produto.id}
+                            `;
+                        } else {
+                            // Inserir nova categoria
+                            await sql`
+                                INSERT INTO product_categories (product_id, category_id, is_primary, created_at)
+                                VALUES (${produto.id}, ${dadosIA.category_id}, true, NOW())
+                            `;
+                        }
+                        categoryUpdated = true;
+                        console.log(`   ✅ Categoria atualizada: ${dadosIA.category_id}`);
+                    } else {
+                        console.log(`   ⚠️ CATEGORIA INVÁLIDA: ID ${dadosIA.category_id} não existe no banco`);
+                        console.log(`   🔍 Tentando encontrar categoria válida...`);
+                        
+                        // Tentar encontrar categoria por nome similar (fallback)
+                        if (dadosIA.category_name) {
+                            const similarCategory = await sql`
+                                SELECT id, name FROM categories 
+                                WHERE LOWER(name) LIKE ${`%${dadosIA.category_name.toLowerCase()}%`}
+                                LIMIT 1
+                            `;
+                            
+                            if (similarCategory.length > 0) {
+                                console.log(`   ✅ Categoria similar encontrada: ${similarCategory[0].name}`);
+                                
+                                const existingCategory = await sql`
+                                    SELECT id FROM product_categories WHERE product_id = ${produto.id}
+                                `;
+
+                                if (existingCategory.length > 0) {
+                                    await sql`
+                                        UPDATE product_categories 
+                                        SET category_id = ${similarCategory[0].id}, is_primary = true
+                                        WHERE product_id = ${produto.id}
+                                    `;
+                                } else {
+                                    await sql`
+                                        INSERT INTO product_categories (product_id, category_id, is_primary, created_at)
+                                        VALUES (${produto.id}, ${similarCategory[0].id}, true, NOW())
+                                    `;
+                                }
+                                categoryUpdated = true;
+                                console.log(`   ✅ Categoria aplicada via fallback: ${similarCategory[0].name}`);
+                            } else {
+                                console.log(`   ❌ Nenhuma categoria válida encontrada - produto ficará sem categoria`);
+                            }
+                        }
+                    }
+                } catch (categoryError) {
+                    console.log(`   ❌ Erro ao processar categoria: ${categoryError.message}`);
+                }
             }
 
             // Descriptions (SEMPRE atualizar se IA retornar)
@@ -245,7 +317,12 @@ class EnriquecimentoIA {
                 updates.specifications = dadosIA.specifications;
             }
 
-            // Montar query de update dinamicamente
+            // Montar query de update dinamicamente para tabela products
+            let camposAtualizados = [];
+            if (categoryUpdated) {
+                camposAtualizados.push('category_relationship');
+            }
+
             if (Object.keys(updates).length > 0) {
                 const setClauses = [];
                 const values = [produto.id];
@@ -273,13 +350,16 @@ class EnriquecimentoIA {
                 `;
 
                 await sql.unsafe(query, values);
+                camposAtualizados.push(...Object.keys(updates));
 
                 console.log(`   ✅ Aplicados ${Object.keys(updates).length} campos: ${Object.keys(updates).join(', ')}`);
-                return Object.keys(updates);
-            } else {
-                console.log(`   ⚠️ Nenhum campo novo para atualizar`);
-                return [];
             }
+
+            if (camposAtualizados.length === 0) {
+                console.log(`   ⚠️ Nenhum campo novo para atualizar`);
+            }
+
+            return camposAtualizados;
 
         } catch (error) {
             console.error(`   ❌ Erro ao aplicar no banco:`, error);
@@ -405,7 +485,7 @@ class EnriquecimentoIA {
             console.log(`   🎯 Restantes no catálogo: ${produtosRestantesTotal.length} produtos`);
             
             if (temMaisProdutos) {
-                console.log(`\n🔄 PARA CONTINUAR:`);
+                console.log(`\n�� PARA CONTINUAR:`);
                 console.log(`   node scripts/active/02-enriquecimento-completo-ia.mjs`);
                 console.log(`\n💡 VERIFICAR SALDO OPENAI:`);
                 console.log(`   https://platform.openai.com/account/billing`);

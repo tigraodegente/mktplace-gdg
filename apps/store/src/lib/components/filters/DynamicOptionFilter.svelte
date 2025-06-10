@@ -5,7 +5,7 @@
   interface Props {
     optionName: string;
     optionSlug: string;
-    facets?: Array<{ value: string; count: number }>;
+    facets?: Array<{ value: string; label: string; count: number }>;
     selectedValues?: string[];
   }
   
@@ -37,7 +37,7 @@
   
   let searchQuery = $state('');
   const filteredFacets = $derived(searchQuery
-    ? facets.filter(f => f.value.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? facets.filter(f => f.label.toLowerCase().includes(searchQuery.toLowerCase()))
     : facets);
 </script>
 
@@ -47,7 +47,7 @@
     {#if hasSelection}
       <button
         onclick={clearAll}
-        class="text-xs text-blue-600 hover:text-blue-800"
+        class="text-xs text-[#00BFB3] hover:text-[#00A89D]"
       >
         Limpar
       </button>
@@ -59,7 +59,7 @@
       type="text"
       bind:value={searchQuery}
       placeholder="Buscar {optionName.toLowerCase()}..."
-      class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+      class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-[#00BFB3] focus:border-[#00BFB3]"
     />
   {/if}
   
@@ -67,22 +67,21 @@
     {#each filteredFacets as facet}
       {@const isSelected = selectedValues.includes(facet.value)}
       
-      <label class="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+      <label class="flex items-center cursor-pointer hover:bg-[#00BFB3]/5 p-2 rounded-lg transition-all duration-200">
         <input
           type="checkbox"
           checked={isSelected}
           onchange={() => toggleValue(facet.value)}
-          class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          class="h-4 w-4 text-[#00BFB3] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3]/30 focus:border-[#00BFB3]"
         />
         
-        <span class="ml-2 flex-1 flex items-center gap-2">
-          <span class="text-sm text-gray-700">
-            {facet.value}
+        <span class="ml-3 flex-1 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700 {isSelected ? 'text-[#00BFB3] font-semibold' : ''}">
+            {facet.label}
           </span>
-        </span>
-        
-        <span class="text-xs text-gray-500">
-          ({facet.count})
+          <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full {isSelected ? 'bg-[#00BFB3]/10 text-[#00BFB3] font-medium' : ''}">
+            {facet.count}
+          </span>
         </span>
       </label>
     {/each}

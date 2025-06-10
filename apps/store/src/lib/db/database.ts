@@ -30,6 +30,7 @@ export class Database {
   private maxRetries: number = 3;
   private config: DatabaseConfig;
   private isLocal: boolean;
+  private connectionTimer: NodeJS.Timeout | null = null;
 
   constructor(config: DatabaseConfig | string) {
     // Se for string, assume PostgreSQL direto
@@ -46,24 +47,37 @@ export class Database {
     this.isLocal = this.config.connectionString.includes('localhost') ||
       this.config.connectionString.includes('127.0.0.1');
 
-    this.setupConnectionMonitoring();
+    // Limpar qualquer timer existente
+    if (this.connectionTimer) {
+      clearInterval(this.connectionTimer);
+      this.connectionTimer = null;
+    }
+
+    // Remover monitoramento automático para evitar erros
+    // this.setupConnectionMonitoring();
   }
 
   private setupConnectionMonitoring() {
-    // Verificar conexão a cada 30 segundos
-    setInterval(() => {
-      this.checkConnection();
-    }, 30000);
+    // Verificar conexão a cada 30 segundos - DESABILITADO
+    // setInterval(() => {
+    //   this.checkConnection();
+    // }, 30000);
   }
 
   private async checkConnection(): Promise<boolean> {
     try {
-      await this.sql`SELECT 1`;
+      // Só verificar conexão se o cliente SQL já foi inicializado
+      if (!this.sql) {
+        return false;
+      }
+      
+      const sql = await this.getSqlClient();
+      await sql`SELECT 1`;
       this.isConnected = true;
       this.retryAttempts = 0;
       return true;
     } catch (error) {
-      console.warn('🔌 Conexão com banco indisponível:', error);
+      // console.warn('🔌 Conexão com banco indisponível:', error);
       this.isConnected = false;
       return false;
     }

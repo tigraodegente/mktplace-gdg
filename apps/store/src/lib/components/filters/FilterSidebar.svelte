@@ -33,13 +33,20 @@
 	interface DynamicOption {
 		name: string;
 		slug: string;
-		values: Array<{ value: string; count: number }>;
+		options: Array<{ value: string; label: string; count: number }>;
 	}
 	
 	interface FilterSidebarProps {
 		categories?: Filter[];
 		brands?: Filter[];
-		priceRange?: { min: number; max: number; current: { min: number; max: number } };
+		selectedPriceRanges?: string[]; // ✅ MUDANÇA: Array de faixas selecionadas
+		priceRanges?: Array<{ // ✅ NOVO: Faixas dinâmicas do backend
+			label: string;
+			value: string;
+			min: number;
+			max: number | null;
+			products: number;
+		}>;
 		customFilters?: FilterGroup[];
 		loading?: boolean;
 		class?: string;
@@ -79,7 +86,8 @@
 	let {
 		categories = [],
 		brands = [],
-		priceRange,
+		selectedPriceRanges = [], // ✅ MUDANÇA: Array de faixas selecionadas
+		priceRanges = [], // ✅ NOVO: Faixas dinâmicas do backend
 		customFilters = [],
 		loading = false,
 		class: className = '',
@@ -126,7 +134,7 @@
 	let announceText = $state('');
 	
 	// Estado dos grupos expansíveis - ajustado para incluir mais grupos
-	let expandedGroups = $state<Set<string>>(new Set(['categories', 'price', 'brands', 'benefits']));
+	let expandedGroups = $state<Set<string>>(new Set(['categories', 'price', 'brands', 'benefits', 'rating', 'dynamic_cor', 'dynamic_tamanho', 'dynamic_material']));
 	
 	// Estado para controlar "ver mais" nas categorias e marcas
 	let showMoreCategories = $state(false);
@@ -140,9 +148,6 @@
 	
 	// Estado para controlar expansão de categorias pai
 	let expandedCategories = $state<Set<string>>(new Set());
-	
-	// Filtros selecionados - SIMPLIFICADO: usar diretamente as props ao invés de state interno
-	let selectedPrice = $state(priceRange?.current || (priceRange ? { min: priceRange.min, max: priceRange.max } : { min: 0, max: 10000 }));
 	
 	// CORRIGIDO: Usar estado local que sincroniza com props mas permite atualizações imediatas
 	let localSelectedCategories = $state<Set<string>>(new Set());
@@ -173,11 +178,11 @@
 		)
 	);
 	
-	// ✅ CONTADOR DE FILTROS ATIVOS
+	// ✅ CONTADOR DE FILTROS ATIVOS - MELHORADO
 	let activeFilterCount = $derived(
 		localSelectedCategories.size + 
 		localSelectedBrands.size + 
-		(selectedPrice.min > (priceRange?.min || 0) || selectedPrice.max < (priceRange?.max || 1000) ? 1 : 0) +
+		selectedPriceRanges.length +
 		(currentRating > 0 ? 1 : 0) +
 		selectedConditions.length +
 		(selectedDeliveryTime ? 1 : 0) +
@@ -214,36 +219,50 @@
 		};
 	});
 	
-	// ✅ SINCRONIZAÇÃO COM PROPS
+	// ✅ SINCRONIZAÇÃO COM PROPS - CORRIGIDA para remoção individual
 	$effect(() => {
-		if (!isUserInteracting) {
-			const newSelectedCategories = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
-			if (newSelectedCategories.size !== localSelectedCategories.size || 
-				[...newSelectedCategories].some(id => !localSelectedCategories.has(id))) {
-				localSelectedCategories = newSelectedCategories;
-			}
+		const newSelectedCategories = new Set(categories.filter(c => c.selected).map(c => c.slug || c.id));
+		
+		// ✅ VERIFICAR MUDANÇAS EM AMBAS AS DIREÇÕES
+		const hasChanges = newSelectedCategories.size !== localSelectedCategories.size || 
+			[...newSelectedCategories].some(id => !localSelectedCategories.has(id)) ||
+			[...localSelectedCategories].some(id => !newSelectedCategories.has(id));
+		
+		if (hasChanges) {
+			console.log('🔄 FilterSidebar: Sincronizando categorias (props → local):', {
+				propsSelected: Array.from(newSelectedCategories),
+				localSelected: Array.from(localSelectedCategories),
+				isUserInteracting,
+				hasChanges
+			});
+			
+			// ✅ SEMPRE sincronizar se há mudanças nas props (vem da página principal)
+			localSelectedCategories = newSelectedCategories;
 		}
 	});
 	
 	$effect(() => {
-		if (!isUserInteracting) {
-			const newSelectedBrands = new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
-			if (newSelectedBrands.size !== localSelectedBrands.size || 
-				[...newSelectedBrands].some(id => !localSelectedBrands.has(id))) {
-				localSelectedBrands = newSelectedBrands;
-			}
+		const newSelectedBrands = new Set(brands.filter(b => b.selected).map(b => b.slug || b.id));
+		
+		// ✅ VERIFICAR MUDANÇAS EM AMBAS AS DIREÇÕES
+		const hasChanges = newSelectedBrands.size !== localSelectedBrands.size || 
+			[...newSelectedBrands].some(id => !localSelectedBrands.has(id)) ||
+			[...localSelectedBrands].some(id => !newSelectedBrands.has(id));
+		
+		if (hasChanges) {
+			console.log('🔄 FilterSidebar: Sincronizando marcas (props → local):', {
+				propsSelected: Array.from(newSelectedBrands),
+				localSelected: Array.from(localSelectedBrands),
+				isUserInteracting,
+				hasChanges
+			});
+			
+			// ✅ SEMPRE sincronizar se há mudanças nas props (vem da página principal)
+			localSelectedBrands = newSelectedBrands;
 		}
 	});
 	
-	// ✅ ATUALIZAR SELECTEDPRICE QUANDO PRICERANGE MUDAR
-	$effect(() => {
-		if (priceRange) {
-			const newPrice = priceRange.current || { min: priceRange.min, max: priceRange.max };
-			if (selectedPrice.min !== newPrice.min || selectedPrice.max !== newPrice.max) {
-				selectedPrice = newPrice;
-			}
-		}
-	});
+	// ✅ Removed old price effect - now using price ranges
 	
 	// ✅ FUNÇÕES DE UX MELHORADAS
 	function toggleGroup(groupId: string) {
@@ -299,7 +318,7 @@
 		dispatch('filterChange', {
 			categories,
 			brands,
-			priceRange: selectedPrice
+			priceRanges: selectedPriceRanges
 		});
 		
 		// Reset flag com delay
@@ -327,15 +346,12 @@
 	}
 	
 	// ✅ HANDLERS PARA FILTROS AVANÇADOS
-	function handlePriceChange(event: CustomEvent<{ min: number; max: number }>) {
-		selectedPrice = event.detail;
+	function handlePriceChange(event: CustomEvent<{ ranges: string[] }>) {
 		isApplyingFilters = true;
-		announceText = `Faixa de preço alterada para R$ ${event.detail.min} - R$ ${event.detail.max}`;
+		announceText = `Faixas de preço alteradas: ${event.detail.ranges.length} faixas selecionadas`;
 		
-		dispatch('filterChange', {
-			categories: Array.from(localSelectedCategories),
-			brands: Array.from(localSelectedBrands),
-			priceRange: selectedPrice
+		dispatch('priceRangeChange', {
+			ranges: event.detail.ranges
 		});
 		
 		setTimeout(() => {
@@ -394,20 +410,36 @@
 		dispatch('dynamicOptionChange', { optionSlug, values: event.detail.values });
 	}
 	
-	// ✅ FUNÇÃO MELHORADA DE LIMPAR FILTROS - SEM LOOP
+	// ✅ FUNÇÃO MELHORADA DE LIMPAR FILTROS - CORRIGIDA
 	function clearFilters() {
+		console.log('🧹 FilterSidebar: Iniciando limpeza de filtros', {
+			categorias: Array.from(localSelectedCategories),
+			marcas: Array.from(localSelectedBrands),
+			activeCount: activeFilterCount
+		});
+		
 		isApplyingFilters = true;
 		announceText = 'Todos os filtros removidos';
+		
+		// ✅ PERMITIR sincronização durante limpeza
+		isUserInteracting = false;
 		
 		// Limpar estados locais IMEDIATAMENTE
 		localSelectedCategories = new Set();
 		localSelectedBrands = new Set();
 		
-		// ⚠️ CORRIGIDO: Emitir APENAS um evento clearAll - evita loop
+		console.log('🧹 FilterSidebar: Estados locais limpos, emitindo clearAll');
+		
+		// ⚠️ EMITIR APENAS clearAll - a página principal cuida da atualização da URL
 		dispatch('clearAll');
 		
 		setTimeout(() => {
 			isApplyingFilters = false;
+			console.log('🧹 FilterSidebar: Limpeza concluída', {
+				categorias: Array.from(localSelectedCategories),
+				marcas: Array.from(localSelectedBrands),
+				activeCount: activeFilterCount
+			});
 		}, 300);
 	}
 	
@@ -580,11 +612,7 @@
 					{/if}
 				</h3>
 				
-				<!-- Debug temporário -->
-				<div class="mb-3 p-2 bg-blue-50 rounded text-xs">
-					<p><strong>Debug:</strong> {categories.length} categorias disponíveis</p>
-					<p><strong>Selecionadas:</strong> {Array.from(localSelectedCategories).join(', ')}</p>
-				</div>
+
 				
 				<!-- Lista de categorias -->
 				{#if categories.length > 0}
@@ -618,60 +646,56 @@
 			</div>
 
 			
-			<!-- ✅ 2. FAIXA DE PREÇO - Com melhor acessibilidade -->
-			{#if priceRange}
-				<section id="filter-price" class="border-b border-gray-200 pb-4">
-					<button
-						onclick={() => toggleGroup('price')}
-						onkeydown={(e) => handleKeyDown(e, () => toggleGroup('price'))}
-						class="flex items-center justify-between w-full text-left py-3 px-2 rounded-lg hover:bg-gray-50 transition-all duration-200 focus:ring-2 focus:ring-[#00BFB3] focus:outline-none group"
-						aria-expanded={expandedGroups.has('price')}
-						aria-controls="price-content"
-						tabindex="0"
-					>
-						<div class="flex items-center gap-3">
-							<svg class="w-5 h-5 text-[#00BFB3] transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-							</svg>
-							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">
-								Preço
-								{#if selectedPrice.min > priceRange.min || selectedPrice.max < priceRange.max}
-									<span class="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-										R$ {selectedPrice.min} - R$ {selectedPrice.max}
-									</span>
-								{/if}
-							</h3>
-						</div>
-						<svg 
-							class="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:text-[#00BFB3] {expandedGroups.has('price') ? 'rotate-180' : ''}"
-							fill="none" 
-							stroke="currentColor" 
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+			<!-- ✅ 2. FAIXA DE PREÇO - Sistema de faixas inteligentes -->
+			<section id="filter-price" class="border-b border-gray-200 pb-4">
+				<button
+					onclick={() => toggleGroup('price')}
+					onkeydown={(e) => handleKeyDown(e, () => toggleGroup('price'))}
+					class="flex items-center justify-between w-full text-left py-3 px-2 rounded-lg hover:bg-gray-50 transition-all duration-200 focus:ring-2 focus:ring-[#00BFB3] focus:outline-none group"
+					aria-expanded={expandedGroups.has('price')}
+					aria-controls="price-content"
+					tabindex="0"
+				>
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-[#00BFB3] transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
 						</svg>
-					</button>
-					
-					{#if expandedGroups.has('price')}
-						<div 
-							id="price-content"
-							class="mt-4 px-2"
-							transition:slide={{ duration: 300, easing: quintOut }}
-							role="group"
-							aria-labelledby="filter-price"
-						>
-							<PriceRangeFilter
-								min={priceRange.min}
-								max={priceRange.max}
-								currentMin={selectedPrice.min}
-								currentMax={selectedPrice.max}
-								on:change={handlePriceChange}
-							/>
-						</div>
-					{/if}
-				</section>
-			{/if}
+						<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">
+							Faixa de preço
+							{#if selectedPriceRanges.length > 0}
+								<span class="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+									{selectedPriceRanges.length} faixas
+								</span>
+							{/if}
+						</h3>
+					</div>
+					<svg 
+						class="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:text-[#00BFB3] {expandedGroups.has('price') ? 'rotate-180' : ''}"
+						fill="none" 
+						stroke="currentColor" 
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+					</svg>
+				</button>
+				
+				{#if expandedGroups.has('price')}
+					<div 
+						id="price-content"
+						class="mt-4 px-2"
+						transition:slide={{ duration: 300, easing: quintOut }}
+						role="group"
+						aria-labelledby="filter-price"
+					>
+						<PriceRangeFilter
+							selectedRanges={selectedPriceRanges}
+							priceRanges={priceRanges}
+							on:change={handlePriceChange}
+						/>
+					</div>
+				{/if}
+			</section>
 			
 			<!-- ✅ 3. MARCAS - Com busca e animações -->
 			{#if brands.length > 0}
@@ -874,14 +898,9 @@
 								onchange={() => handleBenefitChange('discount', !hasDiscount)}
 								class="w-4 h-4 mr-3 text-red-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-red-200 focus:border-red-500 transition-all duration-200"
 							/>
-							<div class="flex items-center gap-2 flex-1">
-								<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-								</svg>
-								<span class="text-sm font-medium text-gray-700 group-hover/promo:text-red-600 transition-colors">
-									Em promoção
-								</span>
-							</div>
+							<span class="text-sm font-medium text-gray-700 group-hover/promo:text-red-600 transition-colors flex-1">
+								Em promoção
+							</span>
 							<span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
 								{benefitsCounts.discount}
 							</span>
@@ -895,14 +914,9 @@
 								onchange={() => handleBenefitChange('freeShipping', !hasFreeShipping)}
 								class="w-4 h-4 mr-3 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all duration-200"
 							/>
-							<div class="flex items-center gap-2 flex-1">
-								<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-								</svg>
-								<span class="text-sm font-medium text-gray-700 group-hover/shipping:text-green-600 transition-colors">
-									Frete grátis
-								</span>
-							</div>
+							<span class="text-sm font-medium text-gray-700 group-hover/shipping:text-green-600 transition-colors flex-1">
+								Frete grátis
+							</span>
 							<span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
 								{benefitsCounts.freeShipping}
 							</span>
@@ -916,14 +930,9 @@
 								onchange={() => handleBenefitChange('outOfStock', !showOutOfStock)}
 								class="w-4 h-4 mr-3 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200"
 							/>
-							<div class="flex items-center gap-2 flex-1">
-								<svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-								</svg>
-								<span class="text-sm font-medium text-gray-700 group-hover/stock:text-blue-600 transition-colors">
-									Incluir indisponíveis
-								</span>
-							</div>
+							<span class="text-sm font-medium text-gray-700 group-hover/stock:text-blue-600 transition-colors flex-1">
+								Incluir indisponíveis
+							</span>
 							<span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
 								{benefitsCounts.outOfStock}
 							</span>
@@ -950,7 +959,7 @@
 								Avaliação
 								{#if currentRating > 0}
 									<span class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-										{currentRating}+ ⭐
+										{currentRating}+ estrelas
 									</span>
 								{/if}
 							</h3>
@@ -1041,40 +1050,42 @@
 			{/if}
 			
 			<!-- ✅ 8. FILTROS DINÂMICOS -->
-			{#each dynamicOptions as option, index (`${option.name}-${option.slug}-${index}`)}
-				<section class="border-b border-gray-200 pb-4">
-					<button
-						onclick={() => toggleGroup(`dynamic_${option.slug}`)}
-						onkeydown={(e) => handleKeyDown(e, () => toggleGroup(`dynamic_${option.slug}`))}
-						class="flex items-center justify-between w-full text-left py-3 px-2 rounded-lg hover:bg-gray-50 transition-all duration-200 focus:ring-2 focus:ring-[#00BFB3] focus:outline-none group"
-						aria-expanded={expandedGroups.has(`dynamic_${option.slug}`)}
-						tabindex="0"
-					>
-						<div class="flex items-center gap-3">
-							<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+			{#if dynamicOptions && dynamicOptions.length > 0}
+				{#each dynamicOptions as option, index (`${option.name}-${option.slug}-${index}`)}
+					<section class="border-b border-gray-200 pb-4">
+						<button
+							onclick={() => toggleGroup(`dynamic_${option.slug}`)}
+							onkeydown={(e) => handleKeyDown(e, () => toggleGroup(`dynamic_${option.slug}`))}
+							class="flex items-center justify-between w-full text-left py-3 px-2 rounded-lg hover:bg-gray-50 transition-all duration-200 focus:ring-2 focus:ring-[#00BFB3] focus:outline-none group"
+							aria-expanded={expandedGroups.has(`dynamic_${option.slug}`)}
+							tabindex="0"
+						>
+							<div class="flex items-center gap-3">
+								<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+								</svg>
+								<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">
+									{option.name}
+									{#if selectedDynamicOptions[option.slug]?.length > 0}
+										<span class="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+											{selectedDynamicOptions[option.slug].length}
+										</span>
+									{/if}
+								</h3>
+							</div>
+							<svg class="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:text-[#00BFB3] {expandedGroups.has(`dynamic_${option.slug}`) ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 							</svg>
-							<h3 class="font-semibold text-gray-900 group-hover:text-[#00BFB3] transition-colors">
-								{option.name}
-								{#if selectedDynamicOptions[option.slug]?.length > 0}
-									<span class="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-										{selectedDynamicOptions[option.slug].length}
-									</span>
-								{/if}
-							</h3>
-						</div>
-						<svg class="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:text-[#00BFB3] {expandedGroups.has(`dynamic_${option.slug}`) ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-						</svg>
-					</button>
-					
-					{#if expandedGroups.has(`dynamic_${option.slug}`)}
-						<div class="mt-4 space-y-2" transition:slide={{ duration: 300, easing: quintOut }}>
-							<DynamicOptionFilter optionName={option.name} optionSlug={option.slug} facets={option.values} selectedValues={selectedDynamicOptions[option.slug] || []} on:change={(e) => handleDynamicOptionChange(option.slug, e)} />
-						</div>
-					{/if}
-				</section>
-			{/each}
+						</button>
+						
+						{#if expandedGroups.has(`dynamic_${option.slug}`)}
+							<div class="mt-4 space-y-2" transition:slide={{ duration: 300, easing: quintOut }}>
+								<DynamicOptionFilter optionName={option.name} optionSlug={option.slug} facets={option.options} selectedValues={selectedDynamicOptions[option.slug] || []} on:change={(e) => handleDynamicOptionChange(option.slug, e)} />
+							</div>
+						{/if}
+					</section>
+				{/each}
+			{/if}
 			
 			<!-- ✅ 12. DISPONIBILIDADE -->
 			<section class="pt-4">

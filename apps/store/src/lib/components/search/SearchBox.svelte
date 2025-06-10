@@ -44,7 +44,8 @@
 		isSearching = true;
 		searchDebounceTimer = setTimeout(async () => {
 			try {
-				suggestions = await searchService.quickSearch(searchQuery);
+				const result = await searchService.quickSearch(searchQuery);
+				suggestions = result;
 			} catch (error) {
 				console.error('Erro na busca:', error);
 				suggestions = [];

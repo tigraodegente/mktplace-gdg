@@ -3,9 +3,43 @@ import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
+// Função de normalização simplificada
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .trim();
+}
+
+// Gerar variações simples
+function generateSearchVariations(query: string): string[] {
+  const normalized = normalizeText(query);
+  const variations = new Set<string>([normalized, query.toLowerCase()]);
+  
+  // Variações comuns para português
+  const accentVariations = normalized
+    .replace(/a/g, '[aáàãâ]')
+    .replace(/e/g, '[eéê]')
+    .replace(/i/g, '[ií]')
+    .replace(/o/g, '[oóôõ]')
+    .replace(/u/g, '[uúü]')
+    .replace(/c/g, '[cç]');
+    
+  variations.add(accentVariations);
+  
+  // Para fragmentos como "berc", adicionar completions
+  if (normalized.endsWith('c') && normalized.length >= 3) {
+    variations.add(normalized.slice(0, -1) + 'ç');
+    variations.add(normalized.slice(0, -1) + 'ço');
+  }
+  
+  return Array.from(variations).slice(0, 5);
+}
+
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
-    console.log('🔍 Search Suggestions - Estratégia híbrida iniciada');
+    console.log('🔍 Search Suggestions - Iniciada');
     
     const query = url.searchParams.get('q') || '';
     const limit = Math.min(Number(url.searchParams.get('limit')) || 10, 20);
@@ -13,85 +47,126 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     if (query.length < 2) {
       return json({
         success: true,
-        data: {
-          suggestions: []
-        }
+        data: { suggestions: [] }
       });
     }
     
-    // Tentar buscar sugestões com timeout
+    console.log(`🔍 Buscando sugestões para: "${query}"`);
+    
     try {
       const db = getDatabase(platform);
       
-      // Promise com timeout de 4 segundos
-      const queryPromise = (async () => {
-        // STEP 1: Buscar produtos (query simplificada)
-        const productSuggestions = await db.query`
-          SELECT id, name, slug, price, original_price, rating_average, sales_count
-          FROM products
-          WHERE name ILIKE ${`%${query}%`} AND is_active = true AND quantity > 0
-          ORDER BY 
-            CASE WHEN name ILIKE ${`${query}%`} THEN 0 ELSE 1 END,
-            sales_count DESC NULLS LAST
-          LIMIT ${Math.min(limit, 8)}
+      // STEP 1: Buscar produtos - usando a mesma lógica robusta da busca principal
+      const productSuggestions = await db.query`
+        SELECT id, name, slug, price, original_price, rating_average, sales_count
+        FROM products
+        WHERE (
+          -- Busca original
+          name ILIKE ${`%${query}%`} OR
+          -- Busca normalizada robusta (mesma da busca principal)
+          LOWER(TRANSLATE(name, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy')) 
+          LIKE LOWER(TRANSLATE(${`%${query}%`}, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy'))
+        )
+        AND is_active = true 
+        AND quantity > 0
+        ORDER BY 
+          CASE 
+            WHEN LOWER(name) LIKE ${`${query.toLowerCase()}%`} THEN 0
+            WHEN LOWER(name) LIKE ${`%${query.toLowerCase()}%`} THEN 1
+            ELSE 2 
+          END,
+          sales_count DESC NULLS LAST
+        LIMIT ${Math.min(limit, 8)}
+      `;
+      
+      console.log(`🔍 Encontrados ${productSuggestions.length} produtos`);
+      
+      // STEP 2: Buscar categorias
+      let categorySuggestions = [];
+      try {
+        categorySuggestions = await db.query`
+          SELECT id, name, slug
+          FROM categories
+          WHERE (
+            name ILIKE ${`%${query}%`} OR
+            LOWER(TRANSLATE(name, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy')) 
+            LIKE LOWER(TRANSLATE(${`%${query}%`}, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy'))
+          )
+          AND is_active = true
+          ORDER BY CASE 
+            WHEN LOWER(name) LIKE ${`${query.toLowerCase()}%`} THEN 0 
+            ELSE 1 
+          END
+          LIMIT 3
         `;
-        
-        // STEP 2: Buscar categorias (query separada)
-        let categorySuggestions = [];
-        try {
-          categorySuggestions = await db.query`
-            SELECT id, name, slug
-            FROM categories
-            WHERE name ILIKE ${`%${query}%`} AND is_active = true
-            ORDER BY CASE WHEN name ILIKE ${`${query}%`} THEN 0 ELSE 1 END
-            LIMIT 3
-          `;
-        } catch (e) {
-          console.log('Erro ao buscar categorias');
-        }
-        
-        // STEP 3: Buscar marcas (query separada)
-        let brandSuggestions = [];
-        try {
-          brandSuggestions = await db.query`
-            SELECT id, name, slug
-            FROM brands
-            WHERE name ILIKE ${`%${query}%`} AND is_active = true
-            ORDER BY CASE WHEN name ILIKE ${`${query}%`} THEN 0 ELSE 1 END
-            LIMIT 3
-          `;
-        } catch (e) {
-          console.log('Erro ao buscar marcas');
-        }
-        
-        // STEP 4: Contar total simplificado
-        let totalProducts = 0;
-        try {
-          const totalResult = await db.query`
-            SELECT COUNT(*) as total
-            FROM products
-            WHERE name ILIKE ${`%${query}%`} AND is_active = true AND quantity > 0
-            LIMIT 100
-          `;
-          totalProducts = parseInt(totalResult[0]?.total || '0');
-        } catch (e) {
-          totalProducts = productSuggestions.length;
-        }
-        
-        return { productSuggestions, categorySuggestions, brandSuggestions, totalProducts };
-      })();
+      } catch (e) {
+        console.log('Erro ao buscar categorias:', e);
+      }
       
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 4000)
-      });
+      // STEP 3: Buscar marcas
+      let brandSuggestions = [];
+      try {
+        brandSuggestions = await db.query`
+          SELECT id, name, slug
+          FROM brands
+          WHERE (
+            name ILIKE ${`%${query}%`} OR
+            LOWER(TRANSLATE(name, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy')) 
+            LIKE LOWER(TRANSLATE(${`%${query}%`}, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy'))
+          )
+          AND is_active = true
+          ORDER BY CASE 
+            WHEN LOWER(name) LIKE ${`${query.toLowerCase()}%`} THEN 0 
+            ELSE 1 
+          END
+          LIMIT 3
+        `;
+      } catch (e) {
+        console.log('Erro ao buscar marcas:', e);
+      }
       
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+      // STEP 4: Contar total
+      let totalProducts = 0;
+      try {
+        const totalResult = await db.query`
+          SELECT COUNT(*) as total
+          FROM products
+          WHERE (
+            name ILIKE ${`%${query}%`} OR
+            LOWER(TRANSLATE(name, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy')) 
+            LIKE LOWER(TRANSLATE(${`%${query}%`}, 'áàãâäåæçéèêëíìîïñóòôõöøúùûüýÿ', 'aaaaaaaceeeeiiiinooooooouuuuyy'))
+          )
+          AND is_active = true 
+          AND quantity > 0
+        `;
+        totalProducts = parseInt(totalResult[0]?.total || '0');
+      } catch (e) {
+        totalProducts = productSuggestions.length;
+      }
       
       // Formatar sugestões
       const suggestions = [];
       
+      // Buscar imagens em batch (mais eficiente)
+      let productImages: any[] = [];
+      if (productSuggestions.length > 0) {
+        const productIds = productSuggestions.map((p: any) => p.id);
+        productImages = await db.query`
+          SELECT DISTINCT ON (product_id) product_id, url
+          FROM product_images 
+          WHERE product_id = ANY(${productIds})
+          ORDER BY product_id, position ASC
+        `;
+      }
+      
+      // Mapear imagens
+      const imageMap = new Map();
+      productImages.forEach(img => {
+        imageMap.set(img.product_id, img.url);
+      });
+      
       // Adicionar produtos
-      result.productSuggestions.forEach((product: any) => {
+      productSuggestions.forEach((product: any) => {
         const discount = product.original_price && product.price < product.original_price
           ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
           : null;
@@ -101,7 +176,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
           id: product.id,
           text: product.name,
           slug: product.slug,
-          image: `/api/placeholder/300/400?text=${encodeURIComponent(product.name)}`,
+          image: imageMap.get(product.id) || null,
           price: Number(product.price),
           originalPrice: product.original_price ? Number(product.original_price) : undefined,
           discount,
@@ -110,72 +185,35 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         });
       });
       
-      // Adicionar categorias com contadores reais
-      for (const category of result.categorySuggestions) {
-        try {
-          const countResult = await db.query`
-            SELECT COUNT(DISTINCT p.id) as count
-            FROM product_categories pc
-            JOIN products p ON p.id = pc.product_id
-            JOIN categories cat ON cat.id = pc.category_id
-            WHERE (cat.id = ${category.id} OR cat.parent_id = ${category.id})
-            AND p.is_active = true
-          `;
-          const realCount = parseInt(countResult[0]?.count || '0');
-          
-          suggestions.push({
-            type: 'category',
-            id: category.id,
-            text: category.name,
-            slug: category.slug,
-            count: realCount
-          });
-        } catch (e) {
-          suggestions.push({
-            type: 'category',
-            id: category.id,
-            text: category.name,
-            slug: category.slug,
-            count: 0
-          });
-        }
-      }
+      // Adicionar categorias
+      categorySuggestions.forEach((category: any) => {
+        suggestions.push({
+          type: 'category',
+          id: category.id,
+          text: category.name,
+          slug: category.slug,
+          count: 0 // Simplificado por enquanto
+        });
+      });
       
-      // Adicionar marcas com contadores reais
-      for (const brand of result.brandSuggestions) {
-        try {
-          const countResult = await db.query`
-            SELECT COUNT(DISTINCT p.id) as count
-            FROM products p
-            WHERE p.brand_id = ${brand.id} AND p.is_active = true
-          `;
-          const realCount = parseInt(countResult[0]?.count || '0');
-          
-          suggestions.push({
-            type: 'brand',
-            id: brand.id,
-            text: brand.name,
-            slug: brand.slug,
-            count: realCount
-          });
-        } catch (e) {
-          suggestions.push({
-            type: 'brand',
-            id: brand.id,
-            text: brand.name,
-            slug: brand.slug,
-            count: 0
-          });
-        }
-      }
+      // Adicionar marcas
+      brandSuggestions.forEach((brand: any) => {
+        suggestions.push({
+          type: 'brand',
+          id: brand.id,
+          text: brand.name,
+          slug: brand.slug,
+          count: 0 // Simplificado por enquanto
+        });
+      });
       
       // Adicionar sugestão de busca geral se houver muitos resultados
-      if (result.totalProducts > limit) {
+      if (totalProducts > limit) {
         suggestions.unshift({
           type: 'query',
           id: query,
           text: `Buscar "${query}"`,
-          count: result.totalProducts
+          count: totalProducts
         });
       }
       
@@ -184,8 +222,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
       return json({
         success: true,
         data: {
-        suggestions,
-          totalProducts: result.totalProducts
+          suggestions,
+          totalProducts
         },
         source: 'database'
       });
@@ -193,7 +231,6 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     } catch (error) {
       console.log(`⚠️ Erro search suggestions: ${error instanceof Error ? error.message : 'Erro'}`);
       
-      // Retornar erro ao invés de dados mockados
       return json({
         success: false,
         error: {

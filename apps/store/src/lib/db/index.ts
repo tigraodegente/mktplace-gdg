@@ -41,8 +41,10 @@ function createDatabaseConnection(platform?: App.Platform): Database {
     })
   }
   
-  // EM DESENVOLVIMENTO: Usar variável de ambiente se disponível
-  const dbUrl = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-raspy-meadow-acds6p80-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require'
+  // EM DESENVOLVIMENTO: Usar sempre o banco de desenvolvimento
+  const dbUrl = 'postgresql://neondb_owner:npg_wS8ux1paQcqY@ep-raspy-meadow-acds6p80-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require'
+  
+  console.log('🔧 DESENVOLVIMENTO: Usando banco ep-raspy-meadow (2.623 produtos)');
       
   console.log('🔌 Dev:', dbUrl.includes('neon.tech') ? 'NEON' : 'LOCAL')
       

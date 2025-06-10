@@ -1,31 +1,57 @@
-import { json } from '@sveltejs/kit'
-import type { RequestHandler } from './$types'
-import { env } from '$env/dynamic/private'
+import { json, type RequestHandler } from '@sveltejs/kit'
+import { getDatabase } from '$lib/db'
+import { dev } from '$app/environment'
 
 export const GET: RequestHandler = async ({ platform }) => {
   try {
-    // Acesso seguro às variáveis de ambiente
-    const envDbUrl = env.DATABASE_URL
-    const platformDbUrl = (platform as any)?.env?.DATABASE_URL
-    const dbUrl = platformDbUrl || envDbUrl || 'não encontrado'
+    const db = getDatabase(platform)
     
-    // Mascarar credenciais para não expor
-    const maskedUrl = dbUrl.replace(/\/\/.*@/, '//***@')
+    // Testar conexão simples
+    const result = await db.query`SELECT COUNT(*) as total_produtos FROM products WHERE is_active = true LIMIT 1`
+    const totalProdutos = result[0]?.total_produtos || 0
+    
+    // Testar products com attributes
+    const attributesResult = await db.query`
+      SELECT COUNT(*) as com_attributes 
+      FROM products 
+      WHERE is_active = true 
+      AND attributes IS NOT NULL 
+      AND attributes != '{}'::jsonb
+      LIMIT 1
+    `
+    const comAttributes = attributesResult[0]?.com_attributes || 0
+    
+    // Informações de debug
+    const debugInfo = {
+      environment: {
+        dev: dev,
+        nodeEnv: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      },
+      database: {
+        totalProdutos: parseInt(totalProdutos),
+        comAttributes: parseInt(comAttributes),
+        // Não expor a URL completa por segurança, só o hostname
+        connection: 'Connected successfully'
+      },
+      message: totalProdutos > 2000 ? 
+        '✅ Conectado ao banco de DESENVOLVIMENTO (ep-raspy-meadow)' :
+        '⚠️ Conectado ao banco de PRODUÇÃO (ep-dawn-field)'
+    }
+    
+    await db.close()
     
     return json({
       success: true,
-      data: {
-        hasEnv: !!envDbUrl,
-        hasPlatformEnv: !!platformDbUrl,
-        url: maskedUrl,
-        isLocal: dbUrl.includes('localhost'),
-        environment: (platform as any)?.env ? 'cloudflare' : 'development'
-      }
+      debug: debugInfo
     })
-  } catch (error) {
+  } catch (error: any) {
     return json({
       success: false,
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      error: {
+        message: error.message,
+        code: error.code
+      }
     })
   }
 } 

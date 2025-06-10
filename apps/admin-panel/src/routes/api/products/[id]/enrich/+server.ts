@@ -42,6 +42,36 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             // Atualizar produto no banco com dados enriquecidos
             const enrichedData = enrichedResult.data;
             
+            // 1. Primeiro, lidar com categoria separadamente
+            if (enrichedData.category_suggestion?.primary_category_id) {
+                try {
+                    // Verificar se já existe relacionamento de categoria
+                    const existingCategory = await db.query`
+                        SELECT id FROM product_categories WHERE product_id = ${id}
+                    `;
+
+                    if (existingCategory.length > 0) {
+                        // Atualizar categoria existente
+                        await db.query`
+                            UPDATE product_categories 
+                            SET category_id = ${enrichedData.category_suggestion.primary_category_id}, 
+                                is_primary = true
+                            WHERE product_id = ${id}
+                        `;
+                    } else {
+                        // Inserir nova categoria
+                        await db.query`
+                            INSERT INTO product_categories (product_id, category_id, is_primary, created_at)
+                            VALUES (${id}, ${enrichedData.category_suggestion.primary_category_id}, true, NOW())
+                        `;
+                    }
+                    console.log(`✅ Categoria atualizada: ${enrichedData.category_suggestion.primary_category_id}`);
+                } catch (categoryError) {
+                    console.log(`⚠️ Erro ao atualizar categoria: ${categoryError.message}`);
+                }
+            }
+            
+            // 2. Atualizar campos da tabela products (SEM category_id)
             const updateQuery = `
                 UPDATE products SET
                     name = COALESCE($1, name),
@@ -63,13 +93,12 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     meta_keywords = COALESCE($17, meta_keywords),
                     specifications = COALESCE($18, specifications),
                     attributes = COALESCE($19, attributes),
-                    category_id = COALESCE($20, category_id),
-                    brand_id = COALESCE($21, brand_id),
-                    care_instructions = COALESCE($22, care_instructions),
-                    warranty_period = COALESCE($23, warranty_period),
-                    manufacturing_country = COALESCE($24, manufacturing_country),
+                    brand_id = COALESCE($20, brand_id),
+                    care_instructions = COALESCE($21, care_instructions),
+                    warranty_period = COALESCE($22, warranty_period),
+                    manufacturing_country = COALESCE($23, manufacturing_country),
                     updated_at = NOW()
-                WHERE id = $25
+                WHERE id = $24
                 RETURNING *
             `;
             
@@ -93,7 +122,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 enrichedData.meta_keywords ? JSON.stringify(enrichedData.meta_keywords) : null,
                 enrichedData.suggested_specifications ? JSON.stringify(enrichedData.suggested_specifications) : null,
                 enrichedData.suggested_attributes ? JSON.stringify(enrichedData.suggested_attributes) : null,
-                enrichedData.category_suggestion?.primary_category_id,
                 enrichedData.brand_suggestion?.brand_id,
                 enrichedData.care_instructions,
                 enrichedData.warranty_period,
