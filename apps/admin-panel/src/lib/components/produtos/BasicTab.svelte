@@ -1,6 +1,8 @@
 <script lang="ts">
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import AISuggestionCard from '$lib/components/shared/AISuggestionCard.svelte';
+	import { aiReviewMode, aiSuggestionsByCategory } from '$lib/stores/aiReview';
 	import { toast } from '$lib/stores/toast';
 	
 	interface Props {
@@ -23,6 +25,10 @@
 	let aiLoading = $state<Record<string, boolean>>({});
 	let aiStatus = $state<Record<string, 'none' | 'success' | 'partial' | 'error'>>({});
 	let aiMessages = $state<Record<string, string>>({});
+	
+	// Estados para revisão IA em lote
+	let isAIReviewMode = $state(false);
+	let aiSuggestions = $state<any[]>([]);
 	
 	// Garantir que formData.tags seja sempre um array
 	$effect(() => {
@@ -622,6 +628,31 @@
 			formData.slug = generateSlug(formData.name);
 		}
 	});
+
+	// Subscrever ao modo IA
+	aiReviewMode.subscribe(mode => {
+		isAIReviewMode = mode;
+	});
+
+	// Subscrever às sugestões da categoria 'basic'
+	aiSuggestionsByCategory.subscribe(suggestions => {
+		// DEBUG: Mostrar todas as sugestões temporariamente
+		console.log('🔍 BasicTab: Todas as sugestões recebidas:', suggestions);
+		
+		// Pegar sugestões da categoria basic OU todas se não houver basic
+		aiSuggestions = suggestions.basic || [];
+		
+		// DEBUG: Se não há sugestões basic, mostrar total de outras categorias
+		if (aiSuggestions.length === 0) {
+			const allSuggestions = Object.values(suggestions).flat();
+			console.log('⚠️ Nenhuma sugestão "basic", mas temos', allSuggestions.length, 'no total:', suggestions);
+			
+			// Temporariamente mostrar todas as sugestões para debug
+			aiSuggestions = allSuggestions;
+		}
+		
+		console.log('📋 BasicTab: Sugestões filtradas para mostrar:', aiSuggestions);
+	});
 </script>
 
 <style>
@@ -629,6 +660,25 @@
 </style>
 
 <div class="space-y-8">
+	<!-- SUGESTÕES IA EM LOTE (quando modo revisão ativado) -->
+	{#if isAIReviewMode && aiSuggestions.length > 0}
+		<div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-6">
+			<h3 class="text-lg font-semibold text-[#00BFB3] mb-4 flex items-center gap-2">
+				<ModernIcon name="robot" size="md" />
+				Sugestões IA para Informações Básicas
+				<span class="px-2 py-1 bg-[#00BFB3] text-white rounded-full text-sm">
+					{aiSuggestions.length}
+				</span>
+			</h3>
+			
+			<div class="space-y-4">
+				{#each aiSuggestions as suggestion}
+					<AISuggestionCard {suggestion} {formData} />
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- INFORMAÇÕES BÁSICAS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1285,7 +1335,7 @@
 				type="datetime-local"
 				bind:value={formData.published_at}
 				class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
-				placeholder="Selecione data e hora"
+				placeholder=""
 			/>
 		</div>
 
@@ -1306,7 +1356,10 @@
 					bind:checked={formData.featured}
 					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
 				/>
-				<span class="text-sm font-medium text-gray-700">⭐ Produto em destaque</span>
+				<div class="flex items-center gap-2">
+					<ModernIcon name="Star" size="sm" />
+					<span class="text-sm font-medium text-gray-700">Produto em destaque</span>
+				</div>
 				<span class="text-xs text-gray-500">Aparece na homepage e banners</span>
 			</label>
 			
@@ -1316,7 +1369,10 @@
 					bind:checked={formData.age_restricted}
 					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
 				/>
-				<span class="text-sm font-medium text-gray-700">🔞 Restrito por idade</span>
+				<div class="flex items-center gap-2">
+					<ModernIcon name="Shield" size="sm" />
+					<span class="text-sm font-medium text-gray-700">Restrito por idade</span>
+				</div>
 				<span class="text-xs text-gray-500">Requer verificação de idade</span>
 			</label>
 		</div>
