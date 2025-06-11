@@ -326,7 +326,16 @@ export const aiReviewActions = {
 
 	// Finalizar revisão
 	finishReview(): void {
-		aiReviewStore.set(initialState);
+		// Não resetar completamente - apenas desativar o modo IA
+		// Os dados aplicados devem permanecer no formData
+		aiReviewStore.update(state => ({
+			...state,
+			isActive: false,
+			isLoading: false,
+			error: null,
+			// Manter suggestions para possível referência futura
+			// mas desativar o modo IA
+		}));
 	},
 
 	// Cancelar revisão

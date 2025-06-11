@@ -195,7 +195,7 @@ ROBOTS: ${currentData.robots_meta || 'Não informado'}
 INSTRUÇÕES:
 1. Meta título (50-60 caracteres) com palavra-chave principal
 2. Meta descrição (150-160 caracteres) persuasiva
-3. Meta keywords (8-12 palavras estratégicas)
+3. Meta keywords (8-12 palavras estratégicas SEPARADAS POR VÍRGULAS como STRING)
 4. Robots meta tags (index,follow ou noindex,nofollow)
 5. Structured Data JSON-LD completo para o produto
 6. Open Graph título e descrição para redes sociais
@@ -448,6 +448,46 @@ RETORNE APENAS JSON:
       "suggestedValue": "0.5",
       "confidence": 70,
       "reasoning": "Peso estimado baseado no tipo de produto",
+      "source": "ai",
+      "category": "shipping"
+    },
+    {
+      "field": "dimensions",
+      "label": "Dimensões da Embalagem",
+      "currentValue": "",
+      "suggestedValue": "30x40x5",
+      "confidence": 65,
+      "reasoning": "Dimensões estimadas da embalagem (LxAxP em cm)",
+      "source": "ai",
+      "category": "shipping"
+    },
+    {
+      "field": "length",
+      "label": "Comprimento (cm)",
+      "currentValue": "",
+      "suggestedValue": "30",
+      "confidence": 65,
+      "reasoning": "Comprimento estimado da embalagem em centímetros",
+      "source": "ai",
+      "category": "shipping"
+    },
+    {
+      "field": "width",
+      "label": "Largura (cm)", 
+      "currentValue": "",
+      "suggestedValue": "40",
+      "confidence": 65,
+      "reasoning": "Largura estimada da embalagem em centímetros",
+      "source": "ai",
+      "category": "shipping"
+    },
+    {
+      "field": "height",
+      "label": "Altura (cm)",
+      "currentValue": "",
+      "suggestedValue": "5",
+      "confidence": 65,
+      "reasoning": "Altura estimada da embalagem em centímetros",
       "source": "ai",
       "category": "shipping"
     }

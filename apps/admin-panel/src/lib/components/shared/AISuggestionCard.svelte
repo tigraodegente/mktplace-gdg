@@ -47,6 +47,32 @@
 			}).join('\n');
 			return formatted || '[Sem atributos]';
 		}
+
+		// 🎯 FORMATAR VARIANTES DE PRODUTO DE FORMA LEGÍVEL  
+		if (suggestion.field === 'product_variants' && Array.isArray(value)) {
+			if (value.length === 0) return '[Nenhuma variante]';
+			
+			const formatted = value.map((variant, index) => {
+				const options = variant.options ? Object.entries(variant.options).map(([key, val]) => `${key}: ${val}`).join(', ') : '';
+				const price = variant.price ? `R$ ${Number(variant.price).toFixed(2)}` : '';
+				const sku = variant.sku || '';
+				
+				return `${index + 1}. ${options}${price ? ` - ${price}` : ''}${sku ? ` (${sku})` : ''}`;
+			}).join('\n');
+			
+			return formatted;
+		}
+
+		// 🎯 FORMATAR OPÇÕES DE PRODUTO DE FORMA LEGÍVEL
+		if (suggestion.field === 'product_options' && typeof value === 'object' && value !== null) {
+			const formatted = Object.entries(value).map(([key, val]) => {
+				if (Array.isArray(val)) {
+					return `${key}: ${val.join(', ')}`;
+				}
+				return `${key}: ${val}`;
+			}).join('\n');
+			return formatted || '[Sem opções]';
+		}
 		
 		// 🎯 DETECTAR UUIDs não processados
 		if (typeof value === 'string' && value.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
