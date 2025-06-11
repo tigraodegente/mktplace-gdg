@@ -195,7 +195,7 @@ ROBOTS: ${currentData.robots_meta || 'Não informado'}
 INSTRUÇÕES:
 1. Meta título (50-60 caracteres) com palavra-chave principal
 2. Meta descrição (150-160 caracteres) persuasiva
-3. Meta keywords (8-12 palavras estratégicas SEPARADAS POR VÍRGULAS como STRING)
+3. Meta keywords (8-12 palavras estratégicas OBRIGATÓRIO COMO STRING separada por vírgulas, NÃO array)
 4. Robots meta tags (index,follow ou noindex,nofollow)
 5. Structured Data JSON-LD completo para o produto
 6. Open Graph título e descrição para redes sociais
@@ -210,6 +210,26 @@ RETORNE APENAS JSON:
       "suggestedValue": "TÍTULO SEO OTIMIZADO",
       "confidence": 95,
       "reasoning": "Otimizado para SEO",
+      "source": "ai",
+      "category": "seo"
+    },
+    {
+      "field": "meta_description",
+      "label": "Meta Descrição",
+      "currentValue": "${currentData.meta_description || ''}",
+      "suggestedValue": "DESCRIÇÃO OTIMIZADA AQUI",
+      "confidence": 95,
+      "reasoning": "Descrição meta otimizada para SEO",
+      "source": "ai",
+      "category": "seo"
+    },
+    {
+      "field": "meta_keywords",
+      "label": "Meta Keywords",
+      "currentValue": "${currentData.meta_keywords || ''}",
+      "suggestedValue": "palavra1, palavra2, palavra3, palavra4",
+      "confidence": 85,
+      "reasoning": "Keywords como STRING separada por vírgulas",
       "source": "ai",
       "category": "seo"
     },
@@ -230,6 +250,26 @@ RETORNE APENAS JSON:
       "suggestedValue": "{\\"@context\\": \\"https://schema.org\\", \\"@type\\": \\"Product\\", \\"name\\": \\"${currentData.name}\\", \\"description\\": \\"Descrição do produto\\", \\"brand\\": \\"Grão de Gente\\"}",
       "confidence": 90,
       "reasoning": "JSON-LD Schema.org para rich snippets nos resultados de pesquisa",
+      "source": "ai",
+      "category": "seo"
+    },
+    {
+      "field": "og_title",
+      "label": "Open Graph Título",
+      "currentValue": "${currentData.og_title || ''}",
+      "suggestedValue": "TÍTULO PARA REDES SOCIAIS",
+      "confidence": 85,
+      "reasoning": "Título otimizado para compartilhamento em redes sociais",
+      "source": "ai",
+      "category": "seo"
+    },
+    {
+      "field": "og_description",
+      "label": "Open Graph Descrição",
+      "currentValue": "${currentData.og_description || ''}",
+      "suggestedValue": "DESCRIÇÃO PARA REDES SOCIAIS",
+      "confidence": 85,
+      "reasoning": "Descrição otimizada para compartilhamento em redes sociais",
       "source": "ai",
       "category": "seo"
     }

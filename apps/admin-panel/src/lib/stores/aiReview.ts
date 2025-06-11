@@ -184,6 +184,8 @@ export const aiReviewActions = {
 		aiReviewStore.update(state => {
 			const suggestion = state.suggestions.find(s => s.field === field);
 			if (suggestion && !suggestion.applied) {
+				console.log(`🎯 Aplicando sugestão: ${field} = ${suggestion.suggestedValue}`);
+				
 				// Aplicar valor no formData
 				if (suggestion.field.includes('.')) {
 					// Campo aninhado (ex: dimensions.height)
@@ -194,9 +196,11 @@ export const aiReviewActions = {
 						obj = obj[keys[i]];
 					}
 					obj[keys[keys.length - 1]] = suggestion.suggestedValue;
+					console.log(`🎯 Aplicado campo aninhado: ${keys.join('.')}`, obj);
 				} else {
 					// Campo simples
 					formData[suggestion.field] = suggestion.suggestedValue;
+					console.log(`🎯 Aplicado campo simples: ${suggestion.field}`, formData[suggestion.field]);
 				}
 
 				// Marcar como aplicado
