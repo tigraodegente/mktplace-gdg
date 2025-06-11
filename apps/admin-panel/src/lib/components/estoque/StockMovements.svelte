@@ -46,10 +46,10 @@
 	// Tipos de movimentação
 	const movementTypes = [
 		{ value: 'purchase', label: '📦 Compra', color: 'green' },
-		{ value: 'sale', label: '🛒 Venda', color: 'blue' },
+		{ value: 'sale', label: '🛒 Venda', color: '[#00BFB3]' },
 		{ value: 'adjustment', label: '⚖️ Ajuste', color: 'yellow' },
-		{ value: 'transfer', label: '🔄 Transferência', color: 'purple' },
-		{ value: 'return', label: '↩️ Devolução', color: 'orange' },
+		{ value: 'transfer', label: '🔄 Transferência', color: '[#00BFB3]' },
+		{ value: 'return', label: '↩️ Devolução', color: 'red' },
 		{ value: 'loss', label: '❌ Perda', color: 'red' },
 		{ value: 'found', label: '✅ Encontrado', color: 'green' }
 	];

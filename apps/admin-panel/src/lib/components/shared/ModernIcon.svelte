@@ -37,6 +37,20 @@
 		// Se for número, usar como width e height customizado
 	}
 	
+	const colorMap = {
+		'gray': 'text-gray-500',
+		'red': 'text-red-500',
+		'green': 'text-green-500',
+		'blue': 'text-[#00BFB3]',
+		'purple': 'text-[#00BFB3]',
+		'[#00BFB3]': 'text-[#00BFB3]',
+		'#00BFB3': 'text-[#00BFB3]',
+		'indigo': 'text-indigo-500',
+		'pink': 'text-pink-500',
+		'yellow': 'text-yellow-500',
+		'orange': 'text-orange-500'
+	};
+	
 	let colorClass = '';
 	if (color in MODERN_COLORS) {
 		colorClass = MODERN_COLORS[color as keyof typeof MODERN_COLORS];

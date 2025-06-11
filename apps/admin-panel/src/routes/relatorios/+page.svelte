@@ -49,10 +49,10 @@
 	
 	// Report Data
 	let reportData = $state<ReportData[]>([
-		{ name: 'Vendas por Categoria', value: 'R$ 45.2K', change: '+12%', type: 'positive', color: 'from-blue-500 to-blue-600' },
-		{ name: 'Produtos Mais Vendidos', value: '234 itens', change: '+8%', type: 'positive', color: 'from-green-500 to-green-600' },
-		{ name: 'Taxa de Conversão', value: '3.2%', change: '-0.5%', type: 'negative', color: 'from-yellow-500 to-orange-500' },
-		{ name: 'Ticket Médio', value: 'R$ 289', change: '+15%', type: 'positive', color: 'from-purple-500 to-purple-600' },
+		{ name: 'Vendas por Categoria', value: 'R$ 45.2K', change: '+12%', type: 'positive', color: 'from-[#00BFB3] to-[#00A89D]' },
+		{ name: 'Pedidos Online', value: '1.2K', change: '+8%', type: 'positive', color: 'from-green-500 to-green-600' },
+		{ name: 'Taxa de Conversão', value: '3.2%', change: '-2%', type: 'negative', color: 'from-red-500 to-red-600' },
+		{ name: 'Ticket Médio', value: 'R$ 289', change: '+15%', type: 'positive', color: 'from-[#00BFB3] to-[#00A89D]' },
 	]);
 	
 	// Top Products
@@ -139,7 +139,7 @@
 			success: 'from-green-500 to-green-600',
 			warning: 'from-yellow-500 to-yellow-600',
 			danger: 'from-red-500 to-red-600',
-			info: 'from-blue-500 to-blue-600'
+			info: 'from-[#00BFB3] to-[#00A89D]'
 		};
 		return colors[color as keyof typeof colors] || colors.primary;
   }
@@ -365,7 +365,7 @@
 			in:fly={{ y: 20, duration: 600, delay: 800 }}
 		>
 			<div class="card-body">
-				<div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+				<div class="w-12 h-12 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
 					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
         </svg>
@@ -407,7 +407,7 @@
 			in:fly={{ y: 20, duration: 600, delay: 1000 }}
 		>
 			<div class="card-body">
-				<div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+				<div class="w-12 h-12 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
 					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
         </svg>

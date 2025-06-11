@@ -14,16 +14,22 @@ export interface MenuItem {
 }
 
 export interface MenuStats {
-	products: { total: number; active: number; pending: number };
-	stock: { alerts: number; low_stock: number; out_of_stock: number };
-	orders: { total: number; pending: number };
-	users: { total: number; customers: number; vendors: number };
-	reviews: { total: number; pending: number };
-	returns: { total: number; pending: number };
-	coupons: { total: number; active: number };
-	categories: { total: number; active: number };
-	pages: { total: number; published: number };
-	wishlists: { total: number; public: number };
+	products: { total: number; active: number; pending: number; low_stock: number };
+	stock: { alerts: number; low_stock: number; out_of_stock: number; critical: number };
+	orders: { total: number; pending: number; processing: number; shipped: number };
+	users: { total: number; customers: number; vendors: number; new_today: number };
+	reviews: { total: number; pending: number; flagged: number; unread: number };
+	returns: { total: number; pending: number; approved: number; critical: number };
+	coupons: { total: number; active: number; expiring: number; used_today: number };
+	categories: { total: number; active: number; trending: number };
+	pages: { total: number; published: number; draft: number; needs_review: number };
+	wishlists: { total: number; public: number; shared_today: number };
+	banners: { total: number; active: number; expiring: number; low_performance: number };
+	newsletter: { subscribers: number; active: number; unsubscribed_today: number; campaigns: number };
+	analytics: { alerts: number; reports_pending: number; insights: number };
+	financial: { transactions_pending: number; payouts_pending: number; disputes: number };
+	logs: { today: number; errors: number; warnings: number; critical: number };
+	system: { integrations_down: number; api_errors: number; performance_issues: number };
 }
 
 export type MenuState = 'hidden' | 'floating' | 'overlay' | 'minimized';
@@ -93,66 +99,79 @@ menuSettings.subscribe(settings => {
 	saveSettings(settings);
 });
 
-// Inicializar com dados mock
+// Inicializar com dados mock dinâmicos
 export const mockStats: MenuStats = {
-	products: { total: 247, active: 189, pending: 12 },
-	stock: { alerts: 8, low_stock: 5, out_of_stock: 3 },
-	orders: { total: 1543, pending: 23 },
-	users: { total: 8920, customers: 8456, vendors: 464 },
-	reviews: { total: 2891, pending: 8 },
-	returns: { total: 156, pending: 5 },
-	coupons: { total: 45, active: 32 },
-	categories: { total: 89, active: 67 },
-	pages: { total: 24, published: 18 },
-	wishlists: { total: 156, public: 89 }
+	products: { total: 2847, active: 2189, pending: 42, low_stock: 15 },
+	stock: { alerts: 23, low_stock: 15, out_of_stock: 8, critical: 3 },
+	orders: { total: 15432, pending: 89, processing: 156, shipped: 234 },
+	users: { total: 89203, customers: 84560, vendors: 4643, new_today: 12 },
+	reviews: { total: 28915, pending: 47, flagged: 8, unread: 23 },
+	returns: { total: 1567, pending: 34, approved: 12, critical: 5 },
+	coupons: { total: 245, active: 132, expiring: 8, used_today: 45 },
+	categories: { total: 189, active: 167, trending: 12 },
+	pages: { total: 124, published: 98, draft: 18, needs_review: 8 },
+	wishlists: { total: 1567, public: 890, shared_today: 23 },
+	banners: { total: 45, active: 32, expiring: 3, low_performance: 7 },
+	newsletter: { subscribers: 45832, active: 43291, unsubscribed_today: 12, campaigns: 8 },
+	analytics: { alerts: 5, reports_pending: 3, insights: 12 },
+	financial: { transactions_pending: 67, payouts_pending: 23, disputes: 4 },
+	logs: { today: 2847, errors: 12, warnings: 45, critical: 2 },
+	system: { integrations_down: 1, api_errors: 8, performance_issues: 3 }
 };
 
 menuStats.set(mockStats);
 
-// Menu items base com categorias
+// Menu items com ícones ModernIcon e badges inteligentes
 export const baseMenuItems: MenuItem[] = [
 	// Principal
-	{ label: 'Dashboard', href: '/', icon: '🏠', roles: ['admin', 'vendor'], category: 'main' },
+	{ label: 'Dashboard', href: '/', icon: 'Home', roles: ['admin', 'vendor'], category: 'main' },
 	
 	// E-commerce
-	{ label: 'Produtos', href: '/produtos', icon: '📦', roles: ['admin', 'vendor'], badgeKey: 'products.total', category: 'ecommerce' },
-	{ label: 'Variações', href: '/variacoes', icon: '⚙️', roles: ['admin', 'vendor'], category: 'ecommerce' },
-	{ label: 'Estoque', href: '/estoque', icon: '📊', roles: ['admin', 'vendor'], badgeKey: 'stock.alerts', category: 'ecommerce' },
-	{ label: 'Pedidos', href: '/pedidos', icon: '📋', roles: ['admin', 'vendor'], badgeKey: 'orders.pending', category: 'ecommerce' },
-	{ label: 'Categorias', href: '/categorias', icon: '📁', roles: ['admin'], badgeKey: 'categories.active', category: 'ecommerce' },
-	{ label: 'Marcas', href: '/marcas', icon: '🏷️', roles: ['admin'], category: 'ecommerce' },
-	{ label: 'Cupons', href: '/cupons', icon: '🎟️', roles: ['admin', 'vendor'], badgeKey: 'coupons.active', category: 'ecommerce' },
+	{ label: 'Produtos', href: '/produtos', icon: 'Package', roles: ['admin', 'vendor'], badgeKey: 'products.pending', category: 'ecommerce' },
+	{ label: 'Variações', href: '/variacoes', icon: 'Settings', roles: ['admin', 'vendor'], category: 'ecommerce' },
+	{ label: 'Estoque', href: '/estoque', icon: 'BarChart3', roles: ['admin', 'vendor'], badgeKey: 'stock.alerts', category: 'ecommerce' },
+	{ label: 'Pedidos', href: '/pedidos', icon: 'ShoppingCart', roles: ['admin', 'vendor'], badgeKey: 'orders.pending', category: 'ecommerce' },
+	{ label: 'Categorias', href: '/categorias', icon: 'Folder', roles: ['admin'], badgeKey: 'categories.trending', category: 'ecommerce' },
+	{ label: 'Marcas', href: '/marcas', icon: 'Tag', roles: ['admin'], category: 'ecommerce' },
+	{ label: 'Cupons', href: '/cupons', icon: 'Ticket', roles: ['admin', 'vendor'], badgeKey: 'coupons.expiring', category: 'ecommerce' },
 	
 	// Clientes e Vendedores
-	{ label: 'Usuários', href: '/usuarios', icon: '👥', roles: ['admin'], category: 'users' },
-	{ label: 'Vendedores', href: '/vendedores', icon: '🏪', roles: ['admin'], category: 'users' },
-	{ label: 'Avaliações', href: '/avaliacoes', icon: '⭐', roles: ['admin', 'vendor'], badgeKey: 'reviews.total', category: 'users' },
-	{ label: 'Listas de Presentes', href: '/listas-presentes', icon: '🎁', roles: ['admin'], badgeKey: 'wishlists.total', category: 'users' },
+	{ label: 'Usuários', href: '/usuarios', icon: 'Users', roles: ['admin'], badgeKey: 'users.new_today', category: 'users' },
+	{ label: 'Vendedores', href: '/vendedores', icon: 'Store', roles: ['admin'], category: 'users' },
+	{ label: 'Avaliações', href: '/avaliacoes', icon: 'Star', roles: ['admin', 'vendor'], badgeKey: 'reviews.pending', category: 'users' },
+	{ label: 'Listas de Presentes', href: '/listas-presentes', icon: 'Gift', roles: ['admin'], badgeKey: 'wishlists.shared_today', category: 'users' },
 	
 	// Vendas e Entregas
-	{ label: 'Devoluções', href: '/devolucoes', icon: '↩️', roles: ['admin', 'vendor'], badgeKey: 'returns.pending', category: 'sales' },
-	{ label: 'Armazéns', href: '/armazens', icon: '🏭', roles: ['admin'], category: 'sales' },
-	{ label: 'Frete', href: '/frete', icon: '🚚', roles: ['admin'], category: 'sales' },
-	{ label: 'Modalidades de Frete', href: '/modalidades-frete', icon: '⚙️', roles: ['admin'], category: 'sales' },
-	{ label: 'Configurações de Frete', href: '/configuracoes-frete', icon: '🔧', roles: ['admin'], category: 'sales' },
-	{ label: 'Transportadoras', href: '/transportadoras', icon: '🚐', roles: ['admin'], category: 'sales' },
-	{ label: 'Zonas de Frete', href: '/zonas', icon: '🌍', roles: ['admin'], category: 'sales' },
-	{ label: 'Tarifas Base', href: '/tarifas', icon: '💰', roles: ['admin'], category: 'sales' },
-	{ label: 'Envios', href: '/envios', icon: '📤', roles: ['admin'], category: 'sales' },
-	{ label: 'Cotações', href: '/cotacoes', icon: '📄', roles: ['admin'], category: 'sales' },
+	{ label: 'Devoluções', href: '/devolucoes', icon: 'RotateCcw', roles: ['admin', 'vendor'], badgeKey: 'returns.critical', category: 'sales' },
+	{ label: 'Armazéns', href: '/armazens', icon: 'Warehouse', roles: ['admin'], category: 'sales' },
+	{ label: 'Frete', href: '/frete', icon: 'Truck', roles: ['admin'], category: 'sales' },
+	{ label: 'Modalidades de Frete', href: '/modalidades-frete', icon: 'Settings', roles: ['admin'], category: 'sales' },
+	{ label: 'Configurações de Frete', href: '/configuracoes-frete', icon: 'Wrench', roles: ['admin'], category: 'sales' },
+	{ label: 'Transportadoras', href: '/transportadoras', icon: 'Truck', roles: ['admin'], category: 'sales' },
+	{ label: 'Zonas de Frete', href: '/zonas', icon: 'Globe', roles: ['admin'], category: 'sales' },
+	{ label: 'Tarifas Base', href: '/tarifas', icon: 'DollarSign', roles: ['admin'], category: 'sales' },
+	{ label: 'Envios', href: '/envios', icon: 'Send', roles: ['admin'], badgeKey: 'orders.shipped', category: 'sales' },
+	{ label: 'Cotações', href: '/cotacoes', icon: 'FileText', roles: ['admin'], category: 'sales' },
 	
 	// Financeiro e Pagamento
-	{ label: 'Financeiro', href: '/financeiro', icon: '💳', roles: ['admin'], category: 'financial' },
-	{ label: 'Métodos de Pagamento', href: '/metodos-pagamento', icon: '💵', roles: ['admin'], category: 'financial' },
+	{ label: 'Financeiro', href: '/financeiro', icon: 'CreditCard', roles: ['admin'], badgeKey: 'financial.transactions_pending', category: 'financial' },
+	{ label: 'Métodos de Pagamento', href: '/metodos-pagamento', icon: 'DollarSign', roles: ['admin'], category: 'financial' },
+	
+	// Marketing
+	{ label: 'Banners', href: '/banners', icon: 'Image', roles: ['admin'], badgeKey: 'banners.expiring', category: 'marketing' },
+	{ label: 'Newsletter', href: '/newsletter', icon: 'Mail', roles: ['admin'], badgeKey: 'newsletter.unsubscribed_today', category: 'marketing' },
 	
 	// Análises
-	{ label: 'Relatórios', href: '/relatorios', icon: '📊', roles: ['admin'], category: 'analytics' },
+	{ label: 'Relatórios', href: '/relatorios', icon: 'BarChart3', roles: ['admin'], badgeKey: 'analytics.reports_pending', category: 'analytics' },
+	{ label: 'Analytics Vendedores', href: '/analytics-vendedores', icon: 'TrendingUp', roles: ['admin'], badgeKey: 'analytics.insights', category: 'analytics' },
+	{ label: 'Dashboard Financeiro', href: '/dashboard-financeiro', icon: 'PieChart', roles: ['admin'], badgeKey: 'financial.payouts_pending', category: 'analytics' },
 	
 	// Sistema
-	{ label: 'Integrações', href: '/integracoes', icon: '🔗', roles: ['admin'], category: 'system' },
-	{ label: 'Páginas', href: '/paginas', icon: '📝', roles: ['admin'], badgeKey: 'pages.total', category: 'system' },
-	{ label: 'Page Builder', href: '/paginas/builder', icon: '🎨', roles: ['admin'], category: 'system' },
-	{ label: 'Configurações', href: '/configuracoes', icon: '⚙️', roles: ['admin'], category: 'system' }
+	{ label: 'Integrações', href: '/integracoes', icon: 'Link', roles: ['admin'], badgeKey: 'system.integrations_down', category: 'system' },
+	{ label: 'Páginas', href: '/paginas', icon: 'FileText', roles: ['admin'], badgeKey: 'pages.needs_review', category: 'system' },
+	{ label: 'Page Builder', href: '/paginas/builder', icon: 'Palette', roles: ['admin'], category: 'system' },
+	{ label: 'Logs & Auditoria', href: '/logs', icon: 'Search', roles: ['admin'], badgeKey: 'logs.critical', category: 'system' },
+	{ label: 'Configurações', href: '/configuracoes', icon: 'Settings', roles: ['admin'], badgeKey: 'system.performance_issues', category: 'system' }
 ];
 
 // Funções auxiliares

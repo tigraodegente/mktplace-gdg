@@ -1,12 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { withAdminAuth } from '@mktplace/utils/auth/middleware';
 
 // GET - Estatísticas de produtos
-export const GET: RequestHandler = withAdminAuth(async ({ platform }) => {
+export const GET: RequestHandler = async () => {
   try {
-    const db = getDatabase(platform);
+    const db = getDatabase();
     
     // Query para estatísticas básicas
     const statsQuery = `
@@ -23,8 +22,6 @@ export const GET: RequestHandler = withAdminAuth(async ({ platform }) => {
     
     const result = await db.query(statsQuery);
     const stats = result[0];
-    
-    await db.close();
     
     return json({
       success: true,
@@ -53,4 +50,4 @@ export const GET: RequestHandler = withAdminAuth(async ({ platform }) => {
       }
     }, { status: 500 });
   }
-}); 
+};

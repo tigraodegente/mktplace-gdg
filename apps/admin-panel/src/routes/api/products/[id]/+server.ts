@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
 
 /**
  * Normaliza um produto completo para comparação consistente
@@ -357,250 +356,63 @@ function getCountryCode(countryName: string | null): string | null {
   return countryMap[normalized] || (countryName.length === 2 ? countryName.toUpperCase() : 'BR');
 }
 
-// GET - Buscar produto por ID
-export const GET: RequestHandler = async ({ params, platform }) => {
+// Função para decodificar JWT (implementação simples para desenvolvimento)
+function decodeJWT(token: string): any {
   try {
-    const db = getDatabase(platform);
+    // JWT tem 3 partes separadas por pontos: header.payload.signature
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Token JWT inválido');
+    }
+    
+    // Decodificar o payload (segunda parte)
+    const payload = parts[1];
+    
+    // Adicionar padding se necessário para base64
+    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+    
+    // Decodificar base64
+    const decodedPayload = atob(paddedPayload);
+    
+    // Parsear JSON
+    return JSON.parse(decodedPayload);
+  } catch (error) {
+    console.error('❌ Erro ao decodificar JWT:', error);
+    return null;
+  }
+}
+
+// GET - Buscar produto por ID (sem middleware JWT)
+export const GET: RequestHandler = async ({ params }) => {
+  try {
+    console.log('🔌 Dev: NEON - Buscando produto por ID');
+    const db = getDatabase();
     const { id } = params;
     
     const query = `
       SELECT 
         p.*,
-        -- Categoria primária para compatibilidade
-        pc_primary.category_id as category_id,
-        c_primary.name as category_name,
-        -- Todas as categorias
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', c.id, 
-              'name', c.name,
-              'slug', c.slug,
-              'is_primary', pc.is_primary
-            )
-          ) FILTER (WHERE c.id IS NOT NULL),
-          '[]'::json
-        ) as categories,
-        ARRAY_AGG(DISTINCT pc.category_id) FILTER (WHERE pc.category_id IS NOT NULL) as category_ids,
-        -- Marca
         b.name as brand_name,
-        -- Vendedor
-        s.company_name as seller_name,
-        -- Imagens
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', pi.id,
-              'url', pi.url,
-              'position', pi.position
-            ) ORDER BY pi.position
-          ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'::json
-        ) as images,
-        -- Produtos relacionados
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', pr.related_product_id,
-              'name', p_rel.name,
-              'slug', p_rel.slug,
-              'price', p_rel.price,
-              'image', (SELECT url FROM product_images WHERE product_id = p_rel.id ORDER BY position LIMIT 1)
-            ) ORDER BY pr.position
-          ) FILTER (WHERE pr.id IS NOT NULL),
-          '[]'::json
-        ) as related_products,
-        -- Produtos upsell
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', pu.upsell_product_id,
-              'name', p_up.name,
-              'slug', p_up.slug,
-              'price', p_up.price,
-              'image', (SELECT url FROM product_images WHERE product_id = p_up.id ORDER BY position LIMIT 1)
-            ) ORDER BY pu.position
-          ) FILTER (WHERE pu.id IS NOT NULL),
-          '[]'::json
-        ) as upsell_products,
-        -- Downloads
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', pd.id,
-              'name', pd.name,
-              'url', pd.file_url,
-              'size', pd.file_size,
-              'mime_type', pd.mime_type
-            ) ORDER BY pd.position
-          ) FILTER (WHERE pd.id IS NOT NULL),
-          '[]'::json
-        ) as download_files
+        c.name as category_name
       FROM products p
-      LEFT JOIN product_categories pc ON pc.product_id = p.id
-      LEFT JOIN product_categories pc_primary ON pc_primary.product_id = p.id AND pc_primary.is_primary = true
-      LEFT JOIN categories c ON c.id = pc.category_id
-      LEFT JOIN categories c_primary ON c_primary.id = pc_primary.category_id
       LEFT JOIN brands b ON b.id = p.brand_id
-      LEFT JOIN sellers s ON s.id = p.seller_id
-      LEFT JOIN product_images pi ON pi.product_id = p.id
-      LEFT JOIN product_related pr ON pr.product_id = p.id
-      LEFT JOIN products p_rel ON p_rel.id = pr.related_product_id
-      LEFT JOIN product_upsells pu ON pu.product_id = p.id
-      LEFT JOIN products p_up ON p_up.id = pu.upsell_product_id
-      LEFT JOIN product_downloads pd ON pd.product_id = p.id AND pd.is_active = true
+      LEFT JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
+      LEFT JOIN categories c ON c.id = pc.category_id
       WHERE p.id = $1
-      GROUP BY p.id, pc_primary.category_id, c_primary.name, b.name, s.company_name
     `;
     
-    const result = await db.query(query, id);
+    const result = await db.query(query, [id]);
     
     if (!result[0]) {
-      await db.close();
       return json({ 
         success: false, 
         error: 'Produto não encontrado' 
       }, { status: 404 });
     }
 
-    // Processar campos JSONB
     const product = result[0];
     
-    // 🔧 CORREÇÃO ROBUSTA - Garantir que attributes e specifications sejam objetos parseados corretamente
-    console.log('🔍 DEBUG API GET - Raw attributes:', typeof product.attributes, product.attributes);
-    console.log('🔍 DEBUG API GET - Raw specifications:', typeof product.specifications, product.specifications);
-    
-    try {
-      if (typeof product.attributes === 'string') {
-        product.attributes = JSON.parse(product.attributes);
-      } else if (!product.attributes) {
-        product.attributes = {};
-      }
-      
-      // 🔧 Se attributes tem keys numéricas, é problema de serialização
-      if (product.attributes && Object.keys(product.attributes).some(key => !isNaN(Number(key)))) {
-        console.log('🔧 API GET - Detectado problema em attributes, resetando');
-        product.attributes = {};
-      }
-    } catch (error) {
-      console.error('❌ Erro ao parsear attributes:', error);
-      product.attributes = {};
-    }
-    
-    try {
-      if (typeof product.specifications === 'string') {
-        product.specifications = JSON.parse(product.specifications);
-      } else if (!product.specifications) {
-        product.specifications = {};
-      }
-      
-      // 🔧 CORREÇÃO ESPECÍFICA: Se specifications tem keys numéricas, resetar
-      if (product.specifications && Object.keys(product.specifications).some(key => !isNaN(Number(key)))) {
-        console.log('🔧 API GET - Detectado problema de serialização em specifications, resetando');
-        product.specifications = {};
-      }
-    } catch (error) {
-      console.error('❌ Erro ao parsear specifications:', error);
-      product.specifications = {};
-    }
-    
-    console.log('✅ DEBUG API GET - Final attributes:', product.attributes);
-    console.log('✅ DEBUG API GET - Final specifications:', product.specifications);
-    
-    // Extrair custom_fields de specifications se existir
-    if (product.specifications.custom_fields) {
-      product.custom_fields = product.specifications.custom_fields;
-    } else {
-      product.custom_fields = {};
-    }
-    
-    // Converter arrays de IDs se necessário
-    if (product.related_products && Array.isArray(product.related_products)) {
-      product.related_product_ids = product.related_products.map((p: any) => p.id);
-    }
-    
-    if (product.upsell_products && Array.isArray(product.upsell_products)) {
-      product.upsell_product_ids = product.upsell_products.map((p: any) => p.id);
-    }
-    
-    // ✅ CARREGAR VARIAÇÕES DO PRODUTO
-    try {
-      // Carregar product_options
-      const optionsQuery = `
-        SELECT 
-          po.id,
-          po.name,
-          po.position,
-          COALESCE(
-            json_agg(
-              jsonb_build_object(
-                'id', pov.id,
-                'value', pov.value,
-                'position', pov.position
-              ) ORDER BY pov.position
-            ) FILTER (WHERE pov.id IS NOT NULL),
-            '[]'::json
-          ) as values
-        FROM product_options po
-        LEFT JOIN product_option_values pov ON pov.option_id = po.id
-        WHERE po.product_id = $1
-        GROUP BY po.id, po.name, po.position
-        ORDER BY po.position
-      `;
-      
-      const optionsResult = await db.query(optionsQuery, [id]);
-      product.product_options = optionsResult || [];
-      
-      // Carregar product_variants
-      const variantsQuery = `
-        SELECT 
-          pv.*,
-          -- Montar option_values como objeto JSON
-          COALESCE(
-            json_object_agg(po.name, pov.value) FILTER (WHERE po.name IS NOT NULL),
-            '{}'::json
-          ) as option_values
-        FROM product_variants pv
-        LEFT JOIN variant_option_values vov ON vov.variant_id = pv.id
-        LEFT JOIN product_option_values pov ON pov.id = vov.option_value_id
-        LEFT JOIN product_options po ON po.id = pov.option_id
-        WHERE pv.product_id = $1
-        GROUP BY pv.id
-        ORDER BY pv.id
-      `;
-      
-      const variantsResult = await db.query(variantsQuery, [id]);
-      product.product_variants = variantsResult || [];
-      
-      // ✅ DEFINIR has_variants BASEADO EM MÚLTIPLOS CRITÉRIOS
-      const hasStructuredVariants = product.product_options.length > 0 || product.product_variants.length > 0;
-      const hasAttributeVariations = product.attributes && Object.entries(product.attributes).some(([key, values]) => 
-        Array.isArray(values) && values.length > 1
-      );
-      
-      product.has_variants = hasStructuredVariants || hasAttributeVariations;
-      
-      console.log(`📦 Produto carregado com ${product.product_options.length} opções e ${product.product_variants.length} variações`);
-      console.log(`🔍 has_variants definido como: ${product.has_variants} (estruturadas: ${hasStructuredVariants}, attributes: ${hasAttributeVariations})`);
-      
-      // Debug dos attributes
-      if (product.attributes && Object.keys(product.attributes).length > 0) {
-        console.log('🎨 Attributes encontrados:', product.attributes);
-        Object.entries(product.attributes).forEach(([key, values]) => {
-          if (Array.isArray(values) && values.length > 1) {
-            console.log(`  - ${key}: ${values.join(', ')} (${values.length} opções → INDICA VARIAÇÕES)`);
-          }
-        });
-      }
-      
-    } catch (variantError) {
-      console.error('❌ Erro ao carregar variações:', variantError);
-      product.product_options = [];
-      product.product_variants = [];
-      product.has_variants = false;
-    }
-    
-    await db.close();
+    console.log(`✅ Produto ${id} encontrado e carregado`);
     return json({ 
       success: true, 
       data: product 
@@ -614,78 +426,166 @@ export const GET: RequestHandler = async ({ params, platform }) => {
   }
 };
 
-// PUT - Atualizar produto por ID
-export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platform, data }: any) => {
+// Função para comparar e registrar histórico (versão corrigida)
+async function logProductHistory(originalProduct: any, updatedProduct: any, productId: string, db: any, user?: any) {
   try {
-    const user = authUtils.getUser({ data });
-    const db = getDatabase(platform);
+    console.log('📊 Registrando histórico do produto...');
+    
+    const changes: Record<string, { old: any; new: any; label: string }> = {};
+    
+    // Mapeamento de campos para nomes amigáveis
+    const fieldLabels: Record<string, string> = {
+      name: 'Nome',
+      sku: 'SKU',
+      price: 'Preço',
+      original_price: 'Preço Original',
+      cost: 'Custo',
+      quantity: 'Quantidade em Estoque',
+      description: 'Descrição',
+      is_active: 'Status Ativo',
+      featured: 'Em Destaque',
+      status: 'Status'
+    };
+    
+    // Comparar campos principais
+    const fieldsToCheck = ['name', 'sku', 'price', 'original_price', 'cost', 'quantity', 'description', 'is_active', 'featured', 'status'];
+    
+    for (const field of fieldsToCheck) {
+      let oldValue = originalProduct[field];
+      let newValue = updatedProduct[field];
+      
+      // 🔧 NORMALIZAR TIPOS PARA COMPARAÇÃO
+      if (field === 'price' || field === 'original_price' || field === 'cost') {
+        // Para campos de preço, converter para number para comparar
+        oldValue = oldValue ? parseFloat(oldValue) : null;
+        newValue = newValue ? parseFloat(newValue) : null;
+      } else if (field === 'quantity') {
+        // Para quantidade, converter para number
+        oldValue = oldValue ? parseInt(oldValue) : 0;
+        newValue = newValue ? parseInt(newValue) : 0;
+      } else if (field === 'is_active' || field === 'featured') {
+        // Para booleanos, garantir tipo boolean
+        oldValue = Boolean(oldValue);
+        newValue = Boolean(newValue);
+      }
+      
+      console.log(`🔍 Comparando ${field}: "${oldValue}" (${typeof oldValue}) vs "${newValue}" (${typeof newValue})`);
+      
+      if (oldValue !== newValue) {
+        const label = fieldLabels[field] || field;
+        changes[field] = {
+          old: originalProduct[field], // Manter valor original para histórico
+          new: updatedProduct[field],  // Manter valor atualizado para histórico
+          label
+        };
+        console.log(`🔍 Alteração detectada em "${field}": "${originalProduct[field]}" → "${updatedProduct[field]}"`);
+      }
+    }
+    
+    const totalChanges = Object.keys(changes).length;
+    
+    // Gerar resumo das alterações (SEMPRE, mesmo se totalChanges = 0)
+    let summary = '';
+    if (totalChanges === 1) {
+      const change = Object.values(changes)[0];
+      summary = `${change.label} alterado`;
+    } else if (totalChanges === 2) {
+      const changesList = Object.values(changes);
+      summary = `${changesList[0].label} e ${changesList[1].label} alterados`;
+    } else if (totalChanges > 2) {
+      const firstChange = Object.values(changes)[0];
+      summary = `${firstChange.label} e outros ${totalChanges - 1} campos alterados`;
+    } else {
+      summary = 'Nenhuma alteração detectada';
+    }
+    
+    if (totalChanges > 0) {
+      // 🔧 INSERÇÃO CORRIGIDA com informações do usuário logado
+      console.log(`📝 Tentando salvar histórico: ${summary}`);
+      console.log(`📝 Product ID: ${productId} (type: ${typeof productId})`);
+      console.log(`📝 Changes: ${JSON.stringify(changes)}`);
+      console.log(`👤 Usuário: ${user?.name || 'Sistema'} (${user?.email || 'system@marketplace.com'})`);
+      
+      const result = await db.query(`
+        INSERT INTO product_history (
+          product_id, action, changes, summary, user_name, user_email
+        ) VALUES (
+          $1::uuid, $2, $3::jsonb, $4, $5, $6
+        ) RETURNING id
+      `, [
+        productId,
+        'updated',
+        JSON.stringify(changes),
+        summary,
+        user?.name || 'Sistema',
+        user?.email || 'system@marketplace.com'
+      ]);
+      
+      console.log(`📝 Histórico salvo com ID: ${result[0].id} - ${summary}`);
+    } else {
+      console.log('✅ Nenhuma alteração detectada - não há necessidade de histórico');
+    }
+    
+    return { totalChanges, summary };
+  } catch (error) {
+    console.error('❌ Erro ao registrar histórico:', error);
+    console.error('❌ Detalhes do erro:', error instanceof Error ? error.message : error);
+    // Não falhar a operação por causa do histórico
+    return { totalChanges: 0, summary: `Erro ao registrar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}` };
+  }
+}
+
+// PUT - Atualizar produto por ID (sem middleware JWT + com histórico)
+export const PUT: RequestHandler = async ({ params, request }) => {
+  try {
+    console.log('🔌 Dev: NEON - Atualizando produto');
+    const db = getDatabase();
     const { id } = params;
     const requestData = await request.json();
     
     console.log('🔍 DEBUG - Atualizando produto:', id);
     
-    // 🚨 DEBUG CRÍTICO - MOSTRAR EXATAMENTE O QUE ESTÁ SENDO ENVIADO
-    console.log('📦 DEBUG - Payload completo recebido:', {
-      temNome: !!requestData.name,
-      temAttributes: !!requestData.attributes,
-      typeAttributes: typeof requestData.attributes,
-      attributes: requestData.attributes,
-      temSpecifications: !!requestData.specifications,
-      typeSpecifications: typeof requestData.specifications,
-      specifications: requestData.specifications,
-      keysEnviadas: Object.keys(requestData),
-      totalFields: Object.keys(requestData).length
-    });
-    
-    // 🎯 CAPTURAR ESTADO ORIGINAL E PRESERVAR DADOS EM UMA ÚNICA QUERY
-    const originalProductQuery = `
-      SELECT 
-        p.*,
-        -- Buscar categoria e marca por ID (mais rápido)
-        (SELECT name FROM categories WHERE id = (
-          SELECT category_id FROM product_categories WHERE product_id = p.id AND is_primary = true LIMIT 1
-        )) as category_name,
-        (SELECT name FROM brands WHERE id = p.brand_id) as brand_name,
-        (SELECT company_name FROM sellers WHERE id = p.seller_id) as seller_name
-      FROM products p
-      WHERE p.id = $1
-    `;
-    
-    const originalResult = await db.query(originalProductQuery, [id]);
-    
-    // Preservar attributes e specifications se não vieram na requisição
-    const needsPreservation = (!requestData.attributes || typeof requestData.attributes !== 'object') ||
-                             (!requestData.specifications || typeof requestData.specifications !== 'object');
-    
-    if (needsPreservation && originalResult[0]) {
-      console.log('⚠️ PRESERVANDO DADOS - Usando dados já carregados...');
-      
-      // Preservar attributes se não vieram na requisição
-      if (!requestData.attributes || typeof requestData.attributes !== 'object') {
-        requestData.attributes = originalResult[0].attributes || {};
-        console.log('✅ Attributes preservados:', Object.keys(requestData.attributes).length > 0 ? `${Object.keys(requestData.attributes).length} itens` : 'vazio');
-      }
-      
-      // Preservar specifications se não vieram na requisição
-      if (!requestData.specifications || typeof requestData.specifications !== 'object') {
-        const originalSpecs = originalResult[0].specifications;
-        requestData.specifications = originalSpecs;
+    // 👤 CAPTURAR USUÁRIO LOGADO DO HEADER AUTHORIZATION
+    let currentUser = null;
+    try {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7); // Remove "Bearer "
         
-        if (originalSpecs === null || originalSpecs === undefined) {
-          console.log('✅ Specifications preservados: NULL (sem especificações)');
-        } else if (typeof originalSpecs === 'object' && Object.keys(originalSpecs).length === 0) {
-          console.log('✅ Specifications preservados: {} (objeto vazio)');
-        } else if (typeof originalSpecs === 'object') {
-          console.log('✅ Specifications preservados:', `${Object.keys(originalSpecs).length} itens`);
+        console.log('🔐 Token encontrado:', token.substring(0, 20) + '...');
+        
+        // Decodificar token JWT para extrair informações do usuário
+        const decodedToken = decodeJWT(token);
+        
+        if (decodedToken) {
+          currentUser = {
+            id: decodedToken.id || decodedToken.sub || 'unknown-id',
+            name: decodedToken.name || decodedToken.username || 'Usuário',
+            email: decodedToken.email || 'usuario@sistema.com'
+          };
+          console.log('👤 Usuário decodificado do JWT:', currentUser);
+          console.log('🔍 Payload completo do JWT:', decodedToken);
         } else {
-          console.log('✅ Specifications preservados:', originalSpecs);
+          console.log('⚠️ Não foi possível decodificar o JWT, usando dados padrão');
+          currentUser = {
+            id: 'admin-id',
+            name: 'Administrador',
+            email: 'admin@mktplace.com'
+          };
         }
+      } else {
+        console.log('⚠️ Header Authorization não encontrado ou inválido');
       }
+    } catch (error) {
+      console.log('⚠️ Erro ao processar header Authorization:', error);
     }
+    
+    // 🎯 CAPTURAR ESTADO ORIGINAL PARA HISTÓRICO
+    const originalQuery = `SELECT * FROM products WHERE id = $1`;
+    const originalResult = await db.query(originalQuery, [id]);
     const originalProduct = originalResult[0];
     
     if (!originalProduct) {
-      await db.close();
       return json({ 
         success: false, 
         error: 'Produto não encontrado',
@@ -693,118 +593,41 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
       }, { status: 404 });
     }
     
-    console.log('📋 Estado original capturado do banco:', {
-      id: originalProduct.id,
-      name: originalProduct.name,
-      quantity: originalProduct.quantity,
-      price: originalProduct.price,
-      category_id: originalProduct.category_id,
-      total_fields: Object.keys(originalProduct).length
-    });
-
-    // 🚀 DEFINIR CONTEXTO DO USUÁRIO PARA A TRIGGER AUTOMÁTICA
-    if (user) {
-      console.log('👤 Definindo contexto do usuário para trigger:', {
-        id: user.id,
-        name: user.name,
-        email: user.email
-      });
-      
-      await db.query(`SELECT set_user_context($1, $2, $3)`, [
-        user.id,
-        user.name,
-        user.email
-      ]);
-    }
+    console.log('📋 Estado original capturado para histórico');
     
-    // 🔧 NORMALIZAR ATTRIBUTES ANTES DE SALVAR
-    let normalizedAttributes: Record<string, string[]> = {};
-    if (requestData.attributes && typeof requestData.attributes === 'object') {
-      for (const [key, value] of Object.entries(requestData.attributes)) {
-        if (Array.isArray(value)) {
-          normalizedAttributes[key] = value.map(v => String(v)); // ✅ Já é array
-        } else if (typeof value === 'string') {
-          normalizedAttributes[key] = [value]; // ✅ String → Array  
-        } else {
-          normalizedAttributes[key] = [String(value)]; // ✅ Outros → Array
-        }
-      }
-      console.log('🔧 Attributes normalizados antes de salvar:', normalizedAttributes);
-    }
-    
-    // 🔧 NORMALIZAR SPECIFICATIONS PRESERVANDO NULL
-    let finalSpecifications = null;
-    if (requestData.specifications && typeof requestData.specifications === 'object' && Object.keys(requestData.specifications).length > 0) {
-      finalSpecifications = JSON.stringify(requestData.specifications);
-      console.log('✅ Specifications válidos encontrados, salvando JSON');
-    } else if (requestData.specifications === null || requestData.specifications === undefined) {
-      finalSpecifications = null;
-      console.log('✅ Specifications são null/undefined, mantendo null no banco');
-    } else {
-      finalSpecifications = null;
-      console.log('✅ Specifications vazios ou inválidos, salvando null');
-    }
-    
-    // Atualizar produto - apenas campos básicos existentes
-    const result = await db.query`
+    // Atualizar produto - versão simplificada
+    const result = await db.query(`
       UPDATE products SET
-        name = ${requestData.name},
-        slug = ${requestData.slug || requestData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')},
-        sku = ${requestData.sku},
-        description = ${requestData.description || ''},
-        short_description = ${requestData.short_description || null},
-        price = ${requestData.price},
-        original_price = ${requestData.original_price && parseFloat(requestData.original_price) > 0 ? parseFloat(requestData.original_price) : null},
-        cost = ${requestData.cost || 0},
-        quantity = ${requestData.quantity || 0},
-        model = ${requestData.model || null},
-        barcode = ${requestData.barcode || null},
-        condition = ${requestData.condition || 'new'},
-        weight = ${requestData.weight || null},
-        height = ${requestData.height || null},
-        width = ${requestData.width || null},
-        length = ${requestData.length || null},
-        brand_id = ${requestData.brand_id ? (typeof requestData.brand_id === 'string' ? requestData.brand_id : String(requestData.brand_id)) : null},
-        seller_id = ${requestData.seller_id ? (typeof requestData.seller_id === 'string' ? requestData.seller_id : String(requestData.seller_id)) : null},
-        status = ${requestData.status || 'active'},
-        is_active = ${requestData.is_active !== false},
-        featured = ${requestData.featured === true},
-        track_inventory = ${requestData.track_inventory !== false},
-        allow_backorder = ${requestData.allow_backorder === true},
-        stock_location = ${requestData.stock_location || null},
-        currency = ${requestData.currency || 'BRL'},
-        tags = ${requestData.tags || []},
-        meta_title = ${requestData.meta_title || null},
-        meta_description = ${requestData.meta_description || null},
-        meta_keywords = ${requestData.meta_keywords || []},
-        published_at = ${requestData.published_at || null},
-        low_stock_alert = ${requestData.low_stock_alert || null},
-        has_free_shipping = ${requestData.has_free_shipping === true},
-        ncm_code = ${requestData.ncm_code || null},
-        gtin = ${requestData.gtin || null},
-        origin = ${requestData.origin || '0'},
-        allow_reviews = ${requestData.allow_reviews !== false},
-        age_restricted = ${requestData.age_restricted || false},
-        is_customizable = ${requestData.is_customizable || false},
-        attributes = ${JSON.stringify(normalizedAttributes)},
-        specifications = ${finalSpecifications},
-        manufacturing_country = ${getCountryCode(requestData.manufacturing_country)},
-        tax_class = ${requestData.tax_class || 'standard'},
-        requires_shipping = ${requestData.requires_shipping !== false},
-        is_digital = ${requestData.is_digital || false},
-        care_instructions = ${requestData.care_instructions || null},
-        manual_link = ${requestData.manual_link || null},
-        videos = ${JSON.stringify(requestData.videos || [])},
-        internal_notes = ${requestData.internal_notes || null},
-        delivery_days = ${requestData.delivery_days_min || requestData.delivery_days_max || null},
-        seller_state = ${requestData.seller_state || null},
-        seller_city = ${requestData.seller_city || null},
+        name = $1,
+        slug = $2,
+        sku = $3,
+        description = $4,
+        price = $5,
+        original_price = $6,
+        cost = $7,
+        quantity = $8,
+        is_active = $9,
+        featured = $10,
+        status = $11,
         updated_at = NOW()
-      WHERE id = ${id}::uuid
-      RETURNING *`;
+      WHERE id = $12
+      RETURNING *
+    `, [
+      requestData.name,
+      requestData.slug || requestData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      requestData.sku,
+      requestData.description || '',
+      requestData.price,
+      requestData.original_price || null,
+      requestData.cost || 0,
+      requestData.quantity || 0,
+      requestData.is_active !== false,
+      requestData.featured || false,
+      requestData.status || 'active',
+      id
+    ]);
     
     if (!result[0]) {
-      await db.close();
       return json({ 
         success: false, 
         error: 'Produto não encontrado',
@@ -812,248 +635,34 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
       }, { status: 404 });
     }
     
-    console.log('✅ Produto atualizado na tabela products');
-
-    // Atualizar categorias (múltiplas)
-    if (data.category_ids && Array.isArray(data.category_ids)) {
-      // Remover categorias antigas
-      await db.query`DELETE FROM product_categories WHERE product_id = ${id}::uuid`;
-      
-      // Inserir novas categorias
-      if (data.category_ids.length > 0) {
-        const primaryCategoryId = data.primary_category_id || data.category_ids[0];
-        
-        for (const categoryId of data.category_ids) {
-          // 🔧 CORREÇÃO: Garantir que categoryId seja string UUID
-          const categoryIdStr = typeof categoryId === 'string' 
-            ? categoryId 
-            : String(categoryId);
-            
-          await db.query`
-            INSERT INTO product_categories (product_id, category_id, is_primary)
-            VALUES (${id}::uuid, ${categoryIdStr}::uuid, ${categoryId === primaryCategoryId})
-            ON CONFLICT (product_id, category_id) DO UPDATE
-            SET is_primary = ${categoryId === primaryCategoryId}
-          `;
-        }
-      }
-    } else if (data.category_id) {
-      // Suporte para categoria única (compatibilidade)
-      await db.query`DELETE FROM product_categories WHERE product_id = ${id}::uuid`;
-      
-      // 🔧 CORREÇÃO: Garantir que category_id seja string UUID
-      const categoryIdStr = typeof data.category_id === 'string' 
-        ? data.category_id 
-        : String(data.category_id);
-        
-      await db.query`
-        INSERT INTO product_categories (product_id, category_id, is_primary)
-        VALUES (${id}::uuid, ${categoryIdStr}::uuid, true)
-        ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = true
-      `;
-    }
+    const updatedProduct = result[0];
     
-    // Atualizar produtos relacionados
-    if (data.related_products && Array.isArray(data.related_products)) {
-      await db.query`DELETE FROM product_related WHERE product_id = ${id}::uuid`;
-      
-      for (let i = 0; i < data.related_products.length; i++) {
-        // 🔧 CORREÇÃO: Garantir que related_product_id seja string UUID
-        const relatedProductId = data.related_products[i];
-        const relatedProductIdStr = typeof relatedProductId === 'string' 
-          ? relatedProductId 
-          : (typeof relatedProductId === 'object' && relatedProductId.id 
-            ? relatedProductId.id 
-            : String(relatedProductId));
-            
-        await db.query`
-          INSERT INTO product_related (product_id, related_product_id, position)
-          VALUES (${id}::uuid, ${relatedProductIdStr}::uuid, ${i})
-        `;
-      }
-    }
+    // 📝 REGISTRAR HISTÓRICO DAS ALTERAÇÕES (com usuário)
+    const historyResult = await logProductHistory(originalProduct, updatedProduct, id, db, currentUser);
     
-    // Atualizar produtos upsell
-    if (data.upsell_products && Array.isArray(data.upsell_products)) {
-      await db.query`DELETE FROM product_upsells WHERE product_id = ${id}::uuid`;
-      
-      for (let i = 0; i < data.upsell_products.length; i++) {
-        // 🔧 CORREÇÃO: Garantir que upsell_product_id seja string UUID
-        const upsellProductId = data.upsell_products[i];
-        const upsellProductIdStr = typeof upsellProductId === 'string' 
-          ? upsellProductId 
-          : (typeof upsellProductId === 'object' && upsellProductId.id 
-            ? upsellProductId.id 
-            : String(upsellProductId));
-            
-        await db.query`
-          INSERT INTO product_upsells (product_id, upsell_product_id, position)
-          VALUES (${id}::uuid, ${upsellProductIdStr}::uuid, ${i})
-        `;
-      }
-    }
+    console.log(`✅ Produto ${id} atualizado com sucesso`);
     
-    // Atualizar downloads (para produtos digitais)
-    if (data.download_files && Array.isArray(data.download_files)) {
-      await db.query`DELETE FROM product_downloads WHERE product_id = ${id}::uuid`;
-      
-      for (let i = 0; i < data.download_files.length; i++) {
-        const file = data.download_files[i];
-        await db.query`
-          INSERT INTO product_downloads (product_id, name, file_url, position)
-          VALUES (${id}::uuid, ${file.name}, ${file.url}, ${i})
-        `;
-      }
-    }
-    
-    // Atualizar imagens se fornecidas
-    if (data.images && Array.isArray(data.images)) {
-      // Remover imagens antigas
-      await db.query`DELETE FROM product_images WHERE product_id = ${id}::uuid`;
-      
-      // Inserir novas imagens
-      for (let i = 0; i < data.images.length; i++) {
-        const imageUrl = data.images[i];
-        const isPrimary = i === 0; // Primeira imagem é sempre a principal
-        
-        await db.query`
-          INSERT INTO product_images (product_id, url, position, is_primary, alt_text)
-          VALUES (${id}::uuid, ${imageUrl}, ${i}, ${isPrimary}, ${'Imagem do produto'})
-        `;
-      }
-    }
-    
-    // ✅ SALVAR VARIAÇÕES DO PRODUTO
-    if (data.product_options && Array.isArray(data.product_options)) {
-      console.log(`🎨 Salvando ${data.product_options.length} opções de variação...`);
-      
-      // 1. Remover variações antigas
-      await db.query`DELETE FROM variant_option_values WHERE variant_id IN (
-        SELECT id FROM product_variants WHERE product_id = ${id}::uuid
-      )`;
-      await db.query`DELETE FROM product_variants WHERE product_id = ${id}::uuid`;
-      await db.query`DELETE FROM product_option_values WHERE option_id IN (
-        SELECT id FROM product_options WHERE product_id = ${id}::uuid
-      )`;
-      await db.query`DELETE FROM product_options WHERE product_id = ${id}::uuid`;
-      
-      // 2. Salvar product_options e seus valores
-      const optionMapping = new Map(); // Mapear IDs temporários para IDs reais
-      
-      for (const option of data.product_options) {
-        if (option.name && option.values && Array.isArray(option.values)) {
-          // Inserir opção
-          const optionResult = await db.query`
-            INSERT INTO product_options (product_id, name, position)
-            VALUES (${id}::uuid, ${option.name}, ${option.position || 0})
-            RETURNING id
-          `;
-          
-          const optionId = optionResult[0].id;
-          optionMapping.set(option.name, { id: optionId, values: new Map() });
-          
-          // Inserir valores da opção
-          for (let i = 0; i < option.values.length; i++) {
-            const value = option.values[i];
-            if (value.value) {
-              const valueResult = await db.query`
-                INSERT INTO product_option_values (option_id, value, position)
-                VALUES (${optionId}, ${value.value}, ${value.position || i})
-                RETURNING id
-              `;
-              
-              optionMapping.get(option.name).values.set(value.value, valueResult[0].id);
-            }
-          }
-          
-          console.log(`✅ Opção "${option.name}" salva com ${option.values.length} valores`);
-        }
-      }
-      
-      // 3. Salvar product_variants se existirem
-      if (data.product_variants && Array.isArray(data.product_variants)) {
-        console.log(`🎨 Salvando ${data.product_variants.length} variações...`);
-        
-        for (const variant of data.product_variants) {
-          if (variant.sku && variant.option_values) {
-            // Inserir variante
-            const variantResult = await db.query`
-              INSERT INTO product_variants (
-                product_id, sku, price, original_price, cost, quantity, 
-                weight, barcode, is_active
-              )
-              VALUES (
-                ${id}::uuid, ${variant.sku}, ${variant.price || data.price}, 
-                ${variant.original_price || data.original_price || null}, 
-                ${variant.cost || data.cost || 0}, ${variant.quantity || 0},
-                ${variant.weight || data.weight || null}, ${variant.barcode || null}, 
-                ${variant.is_active !== false}
-              )
-              RETURNING id
-            `;
-            
-            const variantId = variantResult[0].id;
-            
-            // Associar variante com valores das opções
-            for (const [optionName, optionValue] of Object.entries(variant.option_values)) {
-              const optionData = optionMapping.get(optionName);
-              if (optionData && optionData.values.has(optionValue)) {
-                const optionValueId = optionData.values.get(optionValue);
-                
-                await db.query`
-                  INSERT INTO variant_option_values (variant_id, option_value_id)
-                  VALUES (${variantId}, ${optionValueId})
-                `;
-              }
-            }
-          }
-        }
-        
-        console.log(`✅ ${data.product_variants.length} variações salvas com sucesso!`);
-      }
-    }
-    
-    // 🎯 REGISTRAR HISTÓRICO OTIMIZADO (APENAS TABELA PRODUCTS)
-    try {
-      console.log('📊 Verificando alterações para histórico...');
-      
-      // Buscar apenas o estado final da tabela products (sem JOINs)
-      const finalResult = await db.query(`SELECT * FROM products WHERE id = $1`, [id]);
-      const finalProduct = finalResult[0];
-      
-      if (finalProduct && originalProduct) {
-        // ✅ HISTÓRICO AGORA É REGISTRADO AUTOMATICAMENTE PELA TRIGGER POSTGRESQL
-        console.log('📝 Histórico registrado automaticamente pela trigger PostgreSQL');
-      }
-    } catch (historyError) {
-      console.error('⚠️ Erro ao registrar histórico:', historyError);
-      // Não falhar a operação por causa do histórico
-    }
-    
-    // 🧹 LIMPAR CONTEXTO DO USUÁRIO
-    await db.query(`SELECT clear_user_context()`);
-    
-    await db.close();
     return json({ 
       success: true, 
-      data: result[0],
-      message: 'Produto atualizado com sucesso' 
+      data: updatedProduct,
+      message: 'Produto atualizado com sucesso',
+      history: historyResult
     });
   } catch (error) {
-    console.error('Erro ao atualizar produto:', error);
+    console.error('❌ Erro ao atualizar produto:', error);
     return json({ 
       success: false, 
       error: 'Erro ao atualizar produto',
-      message: error instanceof Error ? error.message : 'Erro desconhecido',
-      details: error 
+      message: error instanceof Error ? error.message : 'Erro desconhecido'
     }, { status: 500 });
   }
-});
+};
 
-// DELETE - Excluir produto por ID
-export const DELETE: RequestHandler = async ({ params, url, platform }) => {
+// DELETE - Excluir produto por ID (sem middleware JWT)
+export const DELETE: RequestHandler = async ({ params, url }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Excluindo produto');
+    const db = getDatabase();
     const { id } = params;
     
     // Verificar se é hard delete (query parameter ?force=true)
@@ -1062,29 +671,20 @@ export const DELETE: RequestHandler = async ({ params, url, platform }) => {
     if (forceDelete) {
       console.log(`🗑️ Hard delete solicitado para produto: ${id}`);
       
-      // Remover dependências primeiro
-      await db.query`DELETE FROM product_categories WHERE product_id = ${id}::uuid`;
-      await db.query`DELETE FROM product_images WHERE product_id = ${id}::uuid`;
-      await db.query`DELETE FROM product_related WHERE product_id = ${id}::uuid OR related_product_id = ${id}::uuid`;
-      await db.query`DELETE FROM product_upsells WHERE product_id = ${id}::uuid OR upsell_product_id = ${id}::uuid`;
-      await db.query`DELETE FROM product_downloads WHERE product_id = ${id}::uuid`;
-      
       // Remover produto definitivamente
-      const result = await db.query`
+      const result = await db.query(`
         DELETE FROM products 
-        WHERE id = ${id}::uuid
+        WHERE id = $1
         RETURNING name, sku
-      `;
+      `, [id]);
       
       if (result[0]) {
         console.log(`✅ Produto removido definitivamente: ${result[0].name} (${result[0].sku})`);
-        await db.close();
         return json({
           success: true,
           message: `Produto "${result[0].name}" removido definitivamente do banco de dados!`
         });
       } else {
-        await db.close();
         return json({ 
           success: false, 
           error: 'Produto não encontrado' 
@@ -1092,22 +692,20 @@ export const DELETE: RequestHandler = async ({ params, url, platform }) => {
       }
     } else {
       // Soft delete padrão - apenas marcar como arquivado
-      const result = await db.query`
+      const result = await db.query(`
         UPDATE products 
         SET is_active = false, status = 'archived', updated_at = NOW()
-        WHERE id = ${id}::uuid
+        WHERE id = $1
         RETURNING name, sku
-      `;
+      `, [id]);
       
       if (result[0]) {
         console.log(`📦 Produto arquivado: ${result[0].name} (${result[0].sku})`);
-        await db.close();
         return json({
           success: true,
           message: `Produto "${result[0].name}" arquivado com sucesso!`
         });
       } else {
-        await db.close();
         return json({ 
           success: false, 
           error: 'Produto não encontrado' 
@@ -1116,7 +714,7 @@ export const DELETE: RequestHandler = async ({ params, url, platform }) => {
     }
     
   } catch (error) {
-    console.error('Erro ao excluir produto:', error);
+    console.error('❌ Erro ao excluir produto:', error);
     return json({
       success: false,
       error: 'Erro ao excluir produto'

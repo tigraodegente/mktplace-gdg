@@ -166,7 +166,7 @@
 							on:click={navigateAndClose}
 							class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-3 rounded-xl text-slate-700 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10 transition-all duration-200 {isActiveRoute(item.href) ? 'bg-gradient-to-r from-[#00BFB3]/20 to-[#00BFB3]/10 text-[#00BFB3] font-semibold border-l-4 border-[#00BFB3]' : ''}"
 						>
-							<span class="text-base lg:text-lg">{item.icon}</span>
+							<ModernIcon name={item.icon} size="sm" />
 							<span class="flex-1 text-sm lg:text-base">{item.label}</span>
 							
 							<!-- Favorito -->
@@ -200,7 +200,7 @@
 									on:click={navigateAndClose}
 									class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-3 rounded-xl text-slate-700 hover:text-[#00BFB3] hover:bg-[#00BFB3]/10 transition-all duration-200 {isActiveRoute(item.href) ? 'bg-gradient-to-r from-[#00BFB3]/20 to-[#00BFB3]/10 text-[#00BFB3] font-semibold border-l-4 border-[#00BFB3]' : ''}"
 								>
-									<span class="text-base lg:text-lg">{item.icon}</span>
+									<ModernIcon name={item.icon} size="sm" />
 									<span class="flex-1 text-sm lg:text-base">{item.label}</span>
 									
 									<!-- Favorito -->

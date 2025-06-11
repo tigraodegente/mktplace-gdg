@@ -32,16 +32,20 @@ export function withAuth(
 ) {
   return async (context: any): Promise<Response> => {
     const { request, platform } = context;
-    const env = platform?.env as Env;
     
-    if (!env?.JWT_SECRET) {
+    // Suporte para SvelteKit dev (process.env) e Cloudflare Workers (platform.env)
+    const env = platform?.env as Env;
+    const jwtSecret = env?.JWT_SECRET || process.env.JWT_SECRET;
+    const databaseUrl = env?.DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!jwtSecret) {
       console.error('❌ [MIDDLEWARE] JWT_SECRET não configurado no ambiente');
       if (options.required) {
         return authUtils.unauthorizedResponse('Configuração de autenticação inválida');
       }
     }
 
-    const authService = createAuthService({ jwtSecret: env.JWT_SECRET });
+    const authService = createAuthService({ jwtSecret });
     
     let user: User | undefined;
     let token: string | undefined;
@@ -85,7 +89,9 @@ export function withAuth(
           console.log('🔍 [MIDDLEWARE] Buscando usuário no banco:', payload.userId);
           
           try {
-            const dbUser = await getUserById(payload.userId, env);
+            // Criar objeto env compatível
+            const envCompat = env || { DATABASE_URL: databaseUrl, JWT_SECRET: jwtSecret };
+            const dbUser = await getUserById(payload.userId, envCompat);
             if (dbUser) {
               user = dbUser;
               isAuthenticated = true;

@@ -181,7 +181,7 @@
 	function getActivityIcon(type: string) {
 		const icons = {
 			order: 'text-cyan-600 bg-cyan-100',
-			product: 'text-purple-600 bg-purple-100',
+			product: 'text-[#00BFB3] bg-[#00BFB3]/10',
 			user: 'text-green-600 bg-green-100',
 			payment: 'text-yellow-600 bg-yellow-100'
 		};

@@ -1,14 +1,24 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import AISuggestionCard from '$lib/components/shared/AISuggestionCard.svelte';
+	import { aiReviewMode, aiSuggestionsByCategory } from '$lib/stores/aiReview';
 	import { toast } from '$lib/stores/toast';
 	
-	let { formData = $bindable() } = $props();
+	interface Props {
+		formData: any;
+	}
+	
+	let { formData = $bindable() }: Props = $props();
 	
 	// Estados locais
 	let newAttribute = $state({ key: '', values: '' });
 	let newSpecification = $state({ key: '', value: '' });
 	let aiLoading = $state(false);
 	let aiLoadingSpecs = $state(false);
+	
+	// Estados para revisão IA em lote
+	let isAIReviewMode = $state(false);
+	let aiSuggestions = $state<any[]>([]);
 	
 	// Garantir que os campos existam e sejam objetos válidos
 	function ensureValidObjects() {
@@ -150,6 +160,17 @@
 		formData.specifications = { ...formData.specifications };
 		toast.success('Especificação removida');
 	}
+	
+	// Subscrever ao modo IA
+	aiReviewMode.subscribe(mode => {
+		isAIReviewMode = mode;
+	});
+
+	// Subscrever às sugestões da categoria 'attributes'
+	aiSuggestionsByCategory.subscribe(suggestions => {
+		aiSuggestions = suggestions.attributes || [];
+		console.log('🏷️ AttributesSection: Sugestões recebidas:', aiSuggestions);
+	});
 	
 	// Sugerir atributos com IA
 	async function suggestAttributesWithAI() {
@@ -331,6 +352,25 @@
 </script>
 
 <div class="space-y-8">
+	<!-- SUGESTÕES IA EM LOTE (quando modo revisão ativado) -->
+	{#if isAIReviewMode && aiSuggestions.length > 0}
+		<div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-6">
+			<h3 class="text-lg font-semibold text-[#00BFB3] mb-4 flex items-center gap-2">
+				<ModernIcon name="Tag" size="md" />
+				Sugestões IA para Atributos e Filtros
+				<span class="px-2 py-1 bg-[#00BFB3] text-white rounded-full text-sm">
+					{aiSuggestions.length}
+				</span>
+			</h3>
+			
+			<div class="space-y-4">
+				{#each aiSuggestions as suggestion}
+					<AISuggestionCard {suggestion} {formData} />
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- ATRIBUTOS PARA FILTROS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<div class="flex items-center justify-between mb-4">

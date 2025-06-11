@@ -304,8 +304,8 @@
 			
 			<div class="bg-white rounded-lg border border-gray-200 p-6">
 				<div class="flex items-center gap-3">
-					<div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
-						<ModernIcon name="Settings" size="md" color="purple" />
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+						<ModernIcon name="Settings" size="md" color="[#00BFB3]" />
 					</div>
 					<div>
 						<p class="text-sm text-gray-600">Categorias</p>
@@ -403,7 +403,7 @@
 										</span>
 									</td>
 									<td class="px-6 py-4">
-										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600">
+										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#00BFB3]/10 text-[#00BFB3]">
 											{promptTypes.find(t => t.value === prompt.name)?.label || prompt.name}
 										</span>
 									</td>

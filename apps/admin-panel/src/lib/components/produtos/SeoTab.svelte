@@ -1,8 +1,14 @@
 <script lang="ts">
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
+	import AISuggestionCard from '$lib/components/shared/AISuggestionCard.svelte';
+	import { aiReviewMode, aiSuggestionsByCategory } from '$lib/stores/aiReview';
 	import { toast } from '$lib/stores/toast';
 	
-	let { formData = $bindable() } = $props();
+	interface Props {
+		formData: any;
+	}
+	
+	let { formData = $bindable() }: Props = $props();
 
 	// Estados de loading para IA expandidos
 	let aiLoading = $state<Record<string, boolean>>({
@@ -38,6 +44,21 @@
 		'esporte': ['esporte', 'fitness', 'exercício', 'atividade', 'saúde'],
 		'beleza': ['beleza', 'cuidado', 'cosmético', 'bem-estar', 'pele']
 	};
+
+	// Estados para revisão IA em lote
+	let isAIReviewMode = $state(false);
+	let aiSuggestions = $state<any[]>([]);
+
+	// Subscrever ao modo IA
+	aiReviewMode.subscribe(mode => {
+		isAIReviewMode = mode;
+	});
+
+	// Subscrever às sugestões da categoria 'seo'
+	aiSuggestionsByCategory.subscribe(suggestions => {
+		aiSuggestions = suggestions.seo || [];
+		console.log('🔍 SeoTab: Sugestões recebidas:', aiSuggestions);
+	});
 
 	// Função de enriquecimento com IA expandida
 	async function enrichField(field: string) {
@@ -299,7 +320,26 @@
 </script>
 
 <div class="space-y-8">
-	<!-- META TAGS BÁSICAS -->
+	<!-- SUGESTÕES IA EM LOTE (quando modo revisão ativado) -->
+	{#if isAIReviewMode && aiSuggestions.length > 0}
+		<div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-6">
+			<h3 class="text-lg font-semibold text-[#00BFB3] mb-4 flex items-center gap-2">
+				<ModernIcon name="search" size="md" />
+				Sugestões IA para SEO e Buscadores
+				<span class="px-2 py-1 bg-[#00BFB3] text-white rounded-full text-sm">
+					{aiSuggestions.length}
+				</span>
+			</h3>
+			
+			<div class="space-y-4">
+				{#each aiSuggestions as suggestion}
+					<AISuggestionCard {suggestion} {formData} />
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- META TAGS PRINCIPAIS -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
 		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
 			<ModernIcon name="edit" size="md" /> Meta Tags Essenciais

@@ -19,7 +19,7 @@
 			width: '140px',
 			render: (value: string, row: OrderWithDetails) => `
 				<div class="flex items-center gap-3">
-					<div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
+					<div class="w-10 h-10 bg-gradient-to-br from-[#00BFB3] to-[#00A89D] rounded-lg flex items-center justify-center text-white font-semibold text-sm">
 						#${value.slice(-3)}
 					</div>
 					<div>
@@ -52,8 +52,8 @@
 			render: (value: string) => {
 				const statusMap = {
 					pending: { color: 'amber', label: 'Pendente' },
-					processing: { color: 'blue', label: 'Processando' },
-					shipped: { color: 'purple', label: 'Enviado' },
+					processing: { color: '[#00BFB3]', label: 'Processando' },
+					shipped: { color: '[#00BFB3]', label: 'Enviado' },
 					delivered: { color: 'green', label: 'Entregue' },
 					cancelled: { color: 'red', label: 'Cancelado' },
 					refunded: { color: 'gray', label: 'Reembolsado' }

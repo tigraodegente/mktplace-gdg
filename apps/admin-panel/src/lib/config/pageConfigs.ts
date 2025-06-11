@@ -50,6 +50,15 @@ export interface PageConfig {
   // Transformações de dados
   onDataLoad?: (data: any[]) => any[];
   onStatsLoad?: (stats: any) => any;
+  onBulkDelete?: (ids: string[]) => Promise<void>;
+  
+  // Ações em massa customizadas
+  bulkActions?: Array<{
+    label: string;
+    icon: string;
+    variant: string;
+    action: string;
+  }>;
 }
 
 /**
@@ -58,31 +67,757 @@ export interface PageConfig {
 export const PageConfigs: Record<string, PageConfig> = {
   // ============ PRODUTOS ============
   produtos: {
-    title: 'Produtos',
+    title: 'Gestão de Produtos',
     entityName: 'produto',
     entityNamePlural: 'produtos',
     newItemRoute: '/produtos/novo',
     editItemRoute: (id: string) => `/produtos/${id}`,
     
     // API endpoints
-    apiEndpoint: '/products',
-    statsEndpoint: '/products/stats',
-    categoriesEndpoint: '/categories',
-    brandsEndpoint: '/brands',
+    apiEndpoint: '/api/products',
+    deleteEndpoint: '/api/products',
+    statsEndpoint: '/api/products/stats',
+    categoriesEndpoint: '/api/categories',
+    brandsEndpoint: '/api/brands',
     
-    // Colunas específicas de produtos
-    columns: PageColumnSets.produtos,
+    // Colunas específicas de produtos com renders complexos
+    columns: [
+      {
+        key: 'image',
+        label: 'Produto',
+        width: '250px',
+        render: (value: string, row: any) => {
+          const imageUrl = row.images?.[0] || row.image || `/api/placeholder/80/80?text=${encodeURIComponent(row.name)}`;
+          return `
+            <div class="flex items-center space-x-3">
+              <img src="${imageUrl}" 
+                alt="${row.name}" 
+                class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                onerror="this.src='/api/placeholder/80/80?text=${encodeURIComponent(row.name)}'"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="font-medium text-gray-900 text-sm lg:text-base truncate">${row.name}</div>
+                <div class="text-xs lg:text-sm text-gray-500 mt-1">SKU: ${row.sku}</div>
+                <div class="text-xs text-gray-400 lg:hidden">${row.category || 'Sem categoria'}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'category',
+        label: 'Categoria',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string, row: any) => {
+          return `<span class="text-sm text-gray-600">${row.category || 'Sem categoria'}</span>`;
+        }
+      },
+      {
+        key: 'price',
+        label: 'Preço',
+        sortable: true,
+        align: 'right',
+        render: (value: number, row: any) => {
+          const hasDiscount = row.original_price && row.original_price > value;
+          return `
+            <div class="text-right">
+              <div class="font-semibold text-gray-900 text-sm lg:text-base">R$ ${value.toFixed(2)}</div>
+              ${hasDiscount ? `<div class="text-xs text-gray-500 line-through">R$ ${row.original_price!.toFixed(2)}</div>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'quantity',
+        label: 'Estoque',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const bgColor = value === 0 ? 'bg-red-100 text-red-800' : value < 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+          return `
+            <div class="text-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor}">
+                ${value}
+              </span>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: any, row: any) => {
+          const isActive = Boolean(row.is_active);
+          const bgClass = isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+          const status = isActive ? 'Ativo' : 'Inativo';
+          return `
+            <div class="text-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgClass}">
+                ${status}
+              </span>
+            </div>
+          `;
+        }
+      }
+    ],
     
     // Estatísticas de produtos
     statsConfig: {
-      total: 'total_products',
-      active: 'active_products',
-      pending: 'inactive_products',
-      lowStock: 'low_stock_products'
+      total: 'total',
+      active: 'active',
+      pending: 'inactive',
+      lowStock: 'low_stock'
     },
     
-    searchPlaceholder: 'Buscar produtos...',
-    searchFields: ['name', 'sku', 'description']
+    searchPlaceholder: 'Buscar produtos, SKUs, descrições...',
+    searchFields: ['name', 'sku', 'description'],
+    
+    // Filtros customizados específicos para produtos
+    customFilters: [
+      {
+        key: 'featured',
+        label: 'Produtos em Destaque',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos os produtos' },
+          { value: 'true', label: 'Em destaque' },
+          { value: 'false', label: 'Não destacados' }
+        ]
+      },
+      {
+        key: 'stock_status',
+        label: 'Status do Estoque',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos os estoques' },
+          { value: 'in_stock', label: 'Em estoque' },
+          { value: 'low_stock', label: 'Estoque baixo' },
+          { value: 'out_of_stock', label: 'Sem estoque' }
+        ]
+      },
+      {
+        key: 'has_images',
+        label: 'Produtos com Imagens',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos os produtos' },
+          { value: 'true', label: 'Com imagens' },
+          { value: 'false', label: 'Sem imagens' }
+        ]
+      }
+    ],
+    
+    // Transformação de dados recebidos da API
+    onDataLoad: (data: any[]) => {
+      if (!data || !Array.isArray(data)) return [];
+      
+      return data.map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        description: product.description,
+        price: Number(product.price || 0),
+        original_price: product.originalPrice ? Number(product.originalPrice) : undefined,
+        cost: product.cost ? Number(product.cost) : undefined,
+        quantity: Number(product.stock || product.quantity || 0),
+        category: product.category || product.category_name,
+        category_id: product.category_id,
+        brand: product.brand || product.brand_name,
+        brand_id: product.brand_id,
+        images: product.images || (product.image ? [product.image] : []),
+        image: product.image,
+        is_active: product.is_active !== false,
+        featured: product.featured || false,
+        created_at: product.createdAt || product.created_at,
+        updated_at: product.updatedAt || product.updated_at
+      }));
+    },
+    
+    // Transformação de estatísticas da API
+    onStatsLoad: (rawStats: any) => {
+      return {
+        total: rawStats.total || 0,
+        active: rawStats.active || 0,
+        inactive: rawStats.inactive || 0,
+        low_stock: rawStats.low_stock || 0
+      };
+    },
+    
+    // Ações customizadas para produtos
+    customActions: (row: any) => {
+      return [
+        {
+          label: 'Editar',
+          icon: 'edit',
+          onclick: () => {
+            if (typeof window !== 'undefined') {
+              window.location.href = `/produtos/${row.id}`;
+            }
+          }
+        },
+        {
+          label: 'Duplicar',
+          icon: 'copy',
+          onclick: async () => {
+            if (typeof window === 'undefined') return;
+            
+            const confirmed = confirm(`Deseja duplicar o produto "${row.name}"?`);
+            if (!confirmed) return;
+            
+            try {
+              const response = await fetch(`/api/products/${row.id}/duplicate`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  name: `${row.name} - Cópia`,
+                  sku: `${row.sku}-COPY-${Date.now()}`,
+                  slug: `${row.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-copy-${Date.now()}`
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok && result.success) {
+                alert(result.message || 'Produto duplicado com sucesso!');
+                window.location.href = `/produtos/${result.data.id}`;
+              } else {
+                throw new Error(result.error || 'Erro ao duplicar produto');
+              }
+            } catch (error) {
+              console.error('Erro ao duplicar produto:', error);
+              alert('Erro ao duplicar produto. Tente novamente.');
+            }
+          }
+        },
+        {
+          label: 'Histórico',
+          icon: 'history',
+          onclick: () => {
+            if (typeof window !== 'undefined') {
+              window.location.href = `/produtos/${row.id}?tab=history`;
+            }
+          }
+        },
+        {
+          label: 'Ver na Loja',
+          icon: 'preview',
+          onclick: () => {
+            if (typeof window !== 'undefined') {
+              const storeUrl = window.location.origin.replace(':5174', ':5173');
+              window.open(`${storeUrl}/produtos/${row.id}`, '_blank');
+            }
+          }
+        },
+        {
+          label: 'Excluir',
+          icon: 'trash',
+          onclick: async () => {
+            if (typeof window === 'undefined') return;
+            
+            const confirmed = confirm(`Tem certeza que deseja EXCLUIR o produto "${row.name}"? Esta ação é irreversível!`);
+            if (!confirmed) return;
+            
+            try {
+              const response = await fetch(`/api/products/${row.id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error('Erro ao excluir produto');
+              }
+              
+              window.location.reload();
+            } catch (error) {
+              console.error('Erro ao excluir produto:', error);
+              alert('Erro ao excluir produto. Tente novamente.');
+            }
+          }
+        }
+      ];
+    },
+    
+    // Ação em lote para produtos
+    onBulkDelete: async (ids: string[]) => {
+      if (typeof window === 'undefined') return;
+      
+      const confirmed = confirm(`Tem certeza que deseja EXCLUIR ${ids.length} produto(s)? Esta ação é irreversível!`);
+      if (!confirmed) return;
+      
+      try {
+        const response = await fetch('/api/products/bulk-delete', {
+          method: 'DELETE',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          },
+          body: JSON.stringify({ ids })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao excluir produtos');
+        }
+      } catch (error) {
+        console.error('Erro na ação em lote:', error);
+        throw error;
+      }
+    }
+  },
+
+  // ============ AVALIACOES ============
+  avaliacoes: {
+    title: 'Avaliações',
+    entityName: 'avaliação',
+    entityNamePlural: 'avaliações',
+    newItemRoute: '/avaliacoes/nova',
+    editItemRoute: (id: string) => `/avaliacoes/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/reviews',
+    deleteEndpoint: '/api/reviews',
+    statsEndpoint: '/api/reviews/stats',
+    
+    // Colunas específicas de avaliações
+    columns: [
+      {
+        key: 'product',
+        label: 'Produto',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const productName = row.product_name || value?.name || 'Produto removido';
+          const productSku = row.product_sku || value?.sku || 'N/A';
+          return `
+            <div class="flex items-center space-x-3">
+              <img src="${row.product_image || '/api/placeholder/40/40'}" 
+                alt="${productName}" 
+                class="w-10 h-10 rounded object-cover flex-shrink-0"
+                onerror="this.src='/api/placeholder/40/40'"
+              />
+              <div>
+                <div class="font-medium text-gray-900 text-sm">${productName}</div>
+                <div class="text-xs text-gray-500">SKU: ${productSku}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'customer',
+        label: 'Cliente',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const customerName = row.customer_name || value?.name || 'Cliente anônimo';
+          const customerEmail = row.customer_email || value?.email || 'Email não informado';
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${customerName}</div>
+              <div class="text-xs text-gray-500">${customerEmail}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'rating',
+        label: 'Avaliação',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const rating = value || 0;
+          const stars = Array.from({ length: 5 }, (_, i) => i < rating ? '★' : '☆').join('');
+          const color = rating >= 4 ? 'text-green-600' : rating >= 3 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${stars} ${rating}/5</span>`;
+        }
+      },
+      {
+        key: 'comment',
+        label: 'Comentário',
+        render: (value: string) => {
+          if (!value) return '<span class="text-gray-500 italic">Sem comentário</span>';
+          const truncated = value.length > 60 ? value.slice(0, 60) + '...' : value;
+          return `<span class="text-sm text-gray-600" title="${value}">${truncated}</span>`;
+        }
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: string) => {
+          const statuses = {
+            pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
+            approved: { label: 'Aprovado', color: 'bg-green-100 text-green-800' },
+            rejected: { label: 'Rejeitado', color: 'bg-red-100 text-red-800' },
+            flagged: { label: 'Sinalizado', color: 'bg-orange-100 text-orange-800' }
+          };
+          const status = statuses[value as keyof typeof statuses] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${status.color}">${status.label}</span>`;
+        }
+      },
+      {
+        key: 'created_at',
+        label: 'Data',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `
+            <div>
+              <div class="text-sm text-gray-900">${date.toLocaleDateString('pt-BR')}</div>
+              <div class="text-xs text-gray-500">${date.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
+            </div>
+          `;
+        }
+      }
+    ],
+    
+    // Estatísticas de avaliações
+    statsConfig: {
+      total: 'total_reviews',
+      active: 'approved_reviews',
+      pending: 'pending_reviews',
+      lowStock: 'rejected_reviews'
+    },
+    
+    searchPlaceholder: 'Buscar avaliações...',
+    searchFields: ['product_name', 'customer_name', 'comment'],
+    
+    // Filtros customizados específicos para avaliações
+    customFilters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'pending', label: 'Pendente' },
+          { value: 'approved', label: 'Aprovado' },
+          { value: 'rejected', label: 'Rejeitado' },
+          { value: 'flagged', label: 'Sinalizado' }
+        ]
+      },
+      {
+        key: 'rating',
+        label: 'Avaliação',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: '5', label: '5 estrelas' },
+          { value: '4', label: '4 estrelas' },
+          { value: '3', label: '3 estrelas' },
+          { value: '2', label: '2 estrelas' },
+          { value: '1', label: '1 estrela' }
+        ]
+      }
+    ],
+    
+    // Ações específicas para avaliações
+    customActions: (review: any) => {
+      const actions = [];
+      
+      if (review.status === 'pending') {
+        actions.push({
+          label: 'Aprovar',
+          icon: 'Check',
+          variant: 'secondary',
+          onclick: () => console.log('Aprovando avaliação:', review.id)
+        });
+        
+        actions.push({
+          label: 'Rejeitar',
+          icon: 'X',
+          variant: 'danger',
+          onclick: () => console.log('Rejeitando avaliação:', review.id)
+        });
+      }
+      
+      if (review.status === 'approved') {
+        actions.push({
+          label: 'Sinalizar',
+          icon: 'Flag',
+          variant: 'warning',
+          onclick: () => console.log('Sinalizando avaliação:', review.id)
+        });
+      }
+      
+      return actions;
+    }
+  },
+
+  // ============ DEVOLUCOES ============
+  devolucoes: {
+    title: 'Devoluções',
+    entityName: 'devolução',
+    entityNamePlural: 'devoluções',
+    newItemRoute: '/devolucoes/nova',
+    editItemRoute: (id: string) => `/devolucoes/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/returns',
+    deleteEndpoint: '/api/returns',
+    statsEndpoint: '/api/returns/stats',
+    
+    // Colunas específicas de devoluções
+    columns: [
+      {
+        key: 'order',
+        label: 'Pedido',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const orderId = row.order_id || value?.id || 'N/A';
+          const orderDate = row.order_date ? new Date(row.order_date).toLocaleDateString('pt-BR') : 'N/A';
+          return `
+            <div>
+              <div class="font-medium text-gray-900">#${orderId}</div>
+              <div class="text-xs text-gray-500">${orderDate}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'customer',
+        label: 'Cliente',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const customerName = row.customer_name || value?.name || 'Cliente não informado';
+          const customerEmail = row.customer_email || value?.email || '';
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${customerName}</div>
+              ${customerEmail ? `<div class="text-xs text-gray-500">${customerEmail}</div>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'reason',
+        label: 'Motivo',
+        sortable: true,
+        render: (value: string) => {
+          const reasons = {
+            defective: { label: 'Produto Defeituoso', color: 'bg-red-100 text-red-800' },
+            wrong_item: { label: 'Item Errado', color: 'bg-orange-100 text-orange-800' },
+            not_as_described: { label: 'Não Conforme', color: 'bg-yellow-100 text-yellow-800' },
+            changed_mind: { label: 'Desistência', color: 'bg-blue-100 text-blue-800' },
+            damaged: { label: 'Danificado', color: 'bg-purple-100 text-purple-800' }
+          };
+          const reason = reasons[value as keyof typeof reasons] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${reason.color}">${reason.label}</span>`;
+        }
+      },
+      {
+        key: 'amount',
+        label: 'Valor',
+        sortable: true,
+        align: 'right',
+        render: (value: number) => {
+          const amount = value || 0;
+          return `<span class="font-bold text-red-600">R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: string) => {
+          const statuses = {
+            requested: { label: 'Solicitado', color: 'bg-yellow-100 text-yellow-800' },
+            approved: { label: 'Aprovado', color: 'bg-green-100 text-green-800' },
+            processing: { label: 'Processando', color: 'bg-blue-100 text-blue-800' },
+            completed: { label: 'Concluído', color: 'bg-green-100 text-green-800' },
+            rejected: { label: 'Rejeitado', color: 'bg-red-100 text-red-800' }
+          };
+          const status = statuses[value as keyof typeof statuses] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${status.color}">${status.label}</span>`;
+        }
+      },
+      {
+        key: 'created_at',
+        label: 'Data Solicitação',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `<span class="text-sm text-gray-600">${date.toLocaleDateString('pt-BR')}</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de devoluções
+    statsConfig: {
+      total: 'total_returns',
+      active: 'processing_returns',
+      pending: 'requested_returns',
+      lowStock: 'rejected_returns'
+    },
+    
+    searchPlaceholder: 'Buscar devoluções...',
+    searchFields: ['order_id', 'customer_name', 'reason'],
+    
+    // Filtros customizados específicos para devoluções
+    customFilters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'requested', label: 'Solicitado' },
+          { value: 'approved', label: 'Aprovado' },
+          { value: 'processing', label: 'Processando' },
+          { value: 'completed', label: 'Concluído' },
+          { value: 'rejected', label: 'Rejeitado' }
+        ]
+      },
+      {
+        key: 'reason',
+        label: 'Motivo',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'defective', label: 'Produto Defeituoso' },
+          { value: 'wrong_item', label: 'Item Errado' },
+          { value: 'not_as_described', label: 'Não Conforme' },
+          { value: 'changed_mind', label: 'Desistência' },
+          { value: 'damaged', label: 'Danificado' }
+        ]
+      }
+    ]
+  },
+
+  // ============ MARCAS ============
+  marcas: {
+    title: 'Marcas',
+    entityName: 'marca',
+    entityNamePlural: 'marcas',
+    newItemRoute: '/marcas/nova',
+    editItemRoute: (id: string) => `/marcas/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/brands',
+    deleteEndpoint: '/api/brands',
+    statsEndpoint: '/api/brands/stats',
+    
+    // Colunas específicas de marcas
+    columns: [
+      {
+        key: 'logo',
+        label: 'Marca',
+        width: '250px',
+        render: (value: string, row: any) => {
+          const logoUrl = row.logo_url || value || `/api/placeholder/60/60?text=${encodeURIComponent(row.name)}`;
+          return `
+            <div class="flex items-center space-x-3">
+              <img src="${logoUrl}" 
+                alt="${row.name}" 
+                class="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                onerror="this.src='/api/placeholder/60/60?text=${encodeURIComponent(row.name)}'"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="font-medium text-gray-900">${row.name}</div>
+                <div class="text-xs text-gray-500">${row.slug || 'slug-gerado'}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'products_count',
+        label: 'Produtos',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const count = value || 0;
+          const color = count > 50 ? 'text-green-600' : count > 10 ? 'text-blue-600' : 'text-gray-600';
+          return `<span class="font-medium ${color}">${count.toLocaleString()}</span>`;
+        }
+      },
+      {
+        key: 'description',
+        label: 'Descrição',
+        render: (value: string) => {
+          if (!value) return '<span class="text-gray-500 italic">Sem descrição</span>';
+          const truncated = value.length > 50 ? value.slice(0, 50) + '...' : value;
+          return `<span class="text-sm text-gray-600" title="${value}">${truncated}</span>`;
+        }
+      },
+      {
+        key: 'is_featured',
+        label: 'Destaque',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => 
+          value 
+            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">⭐ Destaque</span>'
+            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Normal</span>'
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => 
+          value 
+            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>'
+            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativo</span>'
+      }
+    ],
+    
+    // Estatísticas de marcas
+    statsConfig: {
+      total: 'total_brands',
+      active: 'active_brands',
+      pending: 'inactive_brands',
+      lowStock: 'empty_brands'
+    },
+    
+    searchPlaceholder: 'Buscar marcas...',
+    searchFields: ['name', 'description', 'slug'],
+    
+    // Filtros customizados específicos para marcas
+    customFilters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativo' },
+          { value: 'inactive', label: 'Inativo' }
+        ]
+      },
+      {
+        key: 'featured',
+        label: 'Destaque',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'featured', label: 'Em Destaque' },
+          { value: 'normal', label: 'Normal' }
+        ]
+      },
+      {
+        key: 'products_range',
+        label: 'Produtos',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'empty', label: 'Sem produtos' },
+          { value: 'few', label: '1-10 produtos' },
+          { value: 'medium', label: '11-50 produtos' },
+          { value: 'many', label: '50+ produtos' }
+        ]
+      }
+    ]
   },
 
   // ============ PEDIDOS ============
@@ -202,59 +937,9 @@ export const PageConfigs: Record<string, PageConfig> = {
     searchFields: ['name', 'description']
   },
 
-  // ============ MARCAS ============
-  marcas: {
-    title: 'Marcas',
-    entityName: 'marca',
-    entityNamePlural: 'marcas',
-    newItemRoute: '/marcas/nova',
-    editItemRoute: (id: string) => `/marcas/${id}`,
-    
-    // API endpoints
-    apiEndpoint: '/brands',
-    statsEndpoint: '/brands/stats',
-    
-    // Colunas específicas de marcas
-    columns: PageColumnSets.marcas,
-    
-    // Estatísticas de marcas
-    statsConfig: {
-      total: 'total_brands',
-      active: 'active_brands',
-      pending: 'inactive_brands',
-      lowStock: 'empty_brands'
-    },
-    
-    searchPlaceholder: 'Buscar marcas...',
-    searchFields: ['name', 'description']
-  },
 
-  // ============ CUPONS ============
-  cupons: {
-    title: 'Cupons de Desconto',
-    entityName: 'cupom',
-    entityNamePlural: 'cupons',
-    newItemRoute: '/cupons/novo',
-    editItemRoute: (id: string) => `/cupons/${id}`,
-    
-    // API endpoints
-    apiEndpoint: '/coupons',
-    statsEndpoint: '/coupons/stats',
-    
-    // Colunas específicas de cupons
-    columns: PageColumnSets.cupons,
-    
-    // Estatísticas de cupons
-    statsConfig: {
-      total: 'total_coupons',
-      active: 'active_coupons',
-      pending: 'expired_coupons',
-      lowStock: 'used_coupons'
-    },
-    
-    searchPlaceholder: 'Buscar cupons...',
-    searchFields: ['code', 'name']
-  },
+
+
 
   // ============ VENDEDORES ============
   vendedores: {
@@ -306,98 +991,7 @@ export const PageConfigs: Record<string, PageConfig> = {
     searchFields: ['name', 'email', 'phone', 'company']
   },
 
-  // ============ AVALIAÇÕES ============
-  avaliacoes: {
-    title: 'Avaliações',
-    entityName: 'avaliação',
-    entityNamePlural: 'avaliações',
-    newItemRoute: '/avaliacoes/nova',
-    editItemRoute: (id: string) => `/avaliacoes/${id}`,
-    
-    // API endpoints
-    apiEndpoint: '/reviews',
-    statsEndpoint: '/reviews/stats',
-    
-    // Colunas específicas de avaliações
-    columns: [
-      {
-        key: 'product',
-        label: 'Produto',
-        sortable: true,
-        render: (value: any) => `
-          <div>
-            <div class="font-medium text-gray-900">${value?.name || 'Produto removido'}</div>
-            <div class="text-sm text-gray-500">SKU: ${value?.sku || 'N/A'}</div>
-          </div>
-        `
-      },
-      {
-        key: 'customer',
-        label: 'Cliente',
-        sortable: true,
-        render: (value: any) => `
-          <div>
-            <div class="font-medium text-gray-900">${value?.name || 'Cliente anônimo'}</div>
-            <div class="text-sm text-gray-500">${value?.email || 'Email não informado'}</div>
-          </div>
-        `
-      },
-      {
-        key: 'rating',
-        label: 'Avaliação',
-        sortable: true,
-        align: 'center',
-        render: (value: number) => {
-          const stars = Array.from({ length: 5 }, (_, i) => i < value ? '★' : '☆').join('');
-          return `<span class="text-yellow-500">${stars} ${value}/5</span>`;
-        }
-      },
-      {
-        key: 'comment',
-        label: 'Comentário',
-        render: (value: string) => {
-          const truncated = value?.length > 50 ? value.slice(0, 50) + '...' : value || 'Sem comentário';
-          return `<span class="text-sm text-gray-600">${truncated}</span>`;
-        }
-      },
-      {
-        key: 'status',
-        label: 'Status',
-        sortable: true,
-        align: 'center',
-        render: (value: string) => {
-          const configs = {
-            pending: { class: 'bg-yellow-100 text-yellow-800', label: 'Pendente' },
-            approved: { class: 'bg-green-100 text-green-800', label: 'Aprovado' },
-            rejected: { class: 'bg-red-100 text-red-800', label: 'Rejeitado' }
-          };
-          const config = (configs as any)[value] || configs.pending;
-          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${config.class}">${config.label}</span>`;
-        }
-      },
-      {
-        key: 'created_at',
-        label: 'Data',
-        sortable: true,
-        hideOnMobile: true,
-        render: (value: string) => {
-          const date = new Date(value);
-          return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
-        }
-      }
-    ],
-    
-    // Estatísticas de avaliações
-    statsConfig: {
-      total: 'total_reviews',
-      active: 'approved_reviews',
-      pending: 'pending_reviews',
-      lowStock: 'rejected_reviews'
-    },
-    
-    searchPlaceholder: 'Buscar avaliações...',
-    searchFields: ['product_name', 'customer_name', 'comment']
-  },
+
 
   // ============ FRETE ============
   frete: {
@@ -1569,7 +2163,1679 @@ export const PageConfigs: Record<string, PageConfig> = {
         ]
       }
     ]
-  }
+  },
+
+  // ============ NEWSLETTER ============
+  newsletter: {
+    title: 'Gestão de Newsletter',
+    entityName: 'assinante',
+    entityNamePlural: 'assinantes',
+    newItemRoute: '/newsletter/novo',
+    editItemRoute: (id: string) => `/newsletter/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/newsletter/subscribers',
+    deleteEndpoint: '/api/newsletter/subscribers',
+    statsEndpoint: '/api/newsletter/stats',
+    
+    // Colunas específicas de newsletter
+    columns: [
+      {
+        key: 'email',
+        label: 'Email',
+        sortable: true,
+        render: (value: string, row: any) => {
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${value}</div>
+              <div class="text-xs text-gray-500">
+                Inscrito em ${new Date(row.created_at).toLocaleDateString('pt-BR')}
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        render: (value: string) => {
+          const statuses = {
+            active: { label: 'Ativo', color: 'bg-green-100 text-green-800' },
+            inactive: { label: 'Inativo', color: 'bg-red-100 text-red-800' },
+            pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' }
+          };
+          const status = statuses[value as keyof typeof statuses] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${status.color}">${status.label}</span>`;
+        }
+      },
+      {
+        key: 'source',
+        label: 'Origem',
+        sortable: true,
+        render: (value: string) => {
+          const sources = {
+            website: { label: 'Site', color: 'bg-blue-100 text-blue-800' },
+            popup: { label: 'Pop-up', color: 'bg-purple-100 text-purple-800' },
+            checkout: { label: 'Checkout', color: 'bg-green-100 text-green-800' },
+            manual: { label: 'Manual', color: 'bg-gray-100 text-gray-800' }
+          };
+          const source = sources[value as keyof typeof sources] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${source.color}">${source.label}</span>`;
+        }
+      },
+      {
+        key: 'engagement_score',
+        label: 'Engajamento',
+        sortable: true,
+        render: (value: number) => {
+          const score = value || 0;
+          const color = score > 70 ? 'text-green-600' : score > 40 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${score}%</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de newsletter
+    statsConfig: {
+      total: 'total_subscribers',
+      active: 'active_subscribers',
+      pending: 'pending_subscribers',
+      lowStock: 'unsubscribed_today'
+    },
+    
+    searchPlaceholder: 'Buscar por email...',
+    searchFields: ['email'],
+    
+    // Filtros customizados específicos para newsletter
+    customFilters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativo' },
+          { value: 'inactive', label: 'Inativo' },
+          { value: 'pending', label: 'Pendente' }
+        ]
+      },
+      {
+        key: 'source',
+        label: 'Origem',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'website', label: 'Site' },
+          { value: 'popup', label: 'Pop-up' },
+          { value: 'checkout', label: 'Checkout' },
+          { value: 'manual', label: 'Manual' }
+        ]
+      }
+    ]
+  },
+
+  // ============ BANNERS ============
+  banners: {
+    title: 'Gestão de Banners',
+    entityName: 'banner',
+    entityNamePlural: 'banners',
+    newItemRoute: '/banners/novo',
+    editItemRoute: (id: string) => `/banners/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/banners',
+    deleteEndpoint: '/api/banners',
+    statsEndpoint: '/api/banners/stats',
+    
+    // Colunas específicas de banners
+    columns: [
+      {
+        key: 'image',
+        label: 'Banner',
+        width: '200px',
+        render: (value: string, row: any) => {
+          const imageUrl = row.image_url || `/api/placeholder/150/80?text=${encodeURIComponent(row.title)}`;
+          return `
+            <div class="flex items-center space-x-3">
+              <img src="${imageUrl}" 
+                alt="${row.title}" 
+                class="w-16 h-10 rounded object-cover flex-shrink-0 shadow-sm"
+                onerror="this.src='/api/placeholder/150/80?text=${encodeURIComponent(row.title)}'"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="font-medium text-gray-900 text-sm truncate">${row.title}</div>
+                <div class="text-xs text-gray-500">${row.position || 'Home'}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'position',
+        label: 'Posição',
+        sortable: true,
+        render: (value: string) => {
+          const positions = {
+            home: { label: 'Home', color: 'bg-blue-100 text-blue-800' },
+            category: { label: 'Categoria', color: 'bg-green-100 text-green-800' },
+            delivery: { label: 'Entrega', color: 'bg-purple-100 text-purple-800' }
+          };
+          const position = positions[value as keyof typeof positions] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${position.color}">${position.label}</span>`;
+        }
+      },
+      {
+        key: 'clicks',
+        label: 'Cliques',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const clicks = value || 0;
+          const color = clicks > 100 ? 'text-green-600' : clicks > 50 ? 'text-yellow-600' : 'text-gray-600';
+          return `<span class="font-medium ${color}">${clicks.toLocaleString()}</span>`;
+        }
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => 
+          value 
+            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>'
+            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativo</span>'
+      },
+      {
+        key: 'expires_at',
+        label: 'Expira em',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string) => {
+          if (!value) return '<span class="text-gray-500">Sem expiração</span>';
+          const date = new Date(value);
+          const isExpired = date < new Date();
+          const color = isExpired ? 'text-red-600' : 'text-gray-600';
+          return `<span class="text-sm ${color}">${date.toLocaleDateString('pt-BR')}</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de banners
+    statsConfig: {
+      total: 'total_banners',
+      active: 'active_banners',
+      pending: 'inactive_banners',
+      lowStock: 'expiring_banners'
+    },
+    
+    searchPlaceholder: 'Buscar banners...',
+    searchFields: ['title', 'description'],
+    
+    // Filtros customizados específicos para banners
+    customFilters: [
+      {
+        key: 'position',
+        label: 'Posição',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'home', label: 'Home' },
+          { value: 'category', label: 'Categoria' },
+          { value: 'delivery', label: 'Entrega' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativo' },
+          { value: 'inactive', label: 'Inativo' }
+        ]
+      }
+    ]
+  },
+
+  // ============ ANALYTICS VENDEDORES ============
+  'analytics-vendedores': {
+    title: 'Analytics de Vendedores',
+    entityName: 'vendedor',
+    entityNamePlural: 'vendedores',
+    newItemRoute: '/vendedores/novo',
+    editItemRoute: (id: string) => `/vendedores/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/sellers/analytics',
+    statsEndpoint: '/api/sellers/analytics/stats',
+    
+    // Colunas específicas de analytics de vendedores
+    columns: [
+      {
+        key: 'seller',
+        label: 'Vendedor',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const medal = row.ranking <= 3 ? (row.ranking === 1 ? '🥇' : row.ranking === 2 ? '🥈' : '🥉') : '';
+          return `
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 bg-gradient-to-r from-[#00BFB3] to-[#00A89D] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                ${row.seller_name?.charAt(0) || 'V'}
+              </div>
+              <div>
+                <div class="font-medium text-gray-900 flex items-center gap-1">
+                  ${medal} ${row.seller_name || 'Vendedor'}
+                </div>
+                <div class="text-xs text-gray-500">Ranking #${row.ranking || '?'}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'revenue',
+        label: 'Receita',
+        sortable: true,
+        align: 'right',
+        render: (value: number) => {
+          const revenue = value || 0;
+          return `<span class="font-bold text-green-600">R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'orders',
+        label: 'Pedidos',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const orders = value || 0;
+          return `<span class="font-medium text-blue-600">${orders.toLocaleString()}</span>`;
+        }
+      },
+      {
+        key: 'conversion_rate',
+        label: 'Conversão',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const rate = value || 0;
+          const color = rate > 5 ? 'text-green-600' : rate > 2 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${rate.toFixed(1)}%</span>`;
+        }
+      },
+      {
+        key: 'growth',
+        label: 'Crescimento',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const growth = value || 0;
+          const isPositive = growth >= 0;
+          const color = isPositive ? 'text-green-600' : 'text-red-600';
+          const icon = isPositive ? '↗️' : '↘️';
+          return `<span class="font-medium ${color}">${icon} ${Math.abs(growth).toFixed(1)}%</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de analytics
+    statsConfig: {
+      total: 'total_sellers',
+      active: 'active_sellers',
+      pending: 'low_performance',
+      lowStock: 'new_sellers'
+    },
+    
+    searchPlaceholder: 'Buscar vendedores...',
+    searchFields: ['seller_name', 'seller_email'],
+    
+    // Filtros customizados específicos para analytics de vendedores
+    customFilters: [
+      {
+        key: 'performance',
+        label: 'Performance',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'high', label: 'Alta Performance' },
+          { value: 'medium', label: 'Média Performance' },
+          { value: 'low', label: 'Baixa Performance' }
+        ]
+      },
+      {
+        key: 'period',
+        label: 'Período',
+        type: 'select',
+        options: [
+          { value: '7d', label: 'Últimos 7 dias' },
+          { value: '30d', label: 'Últimos 30 dias' },
+          { value: '90d', label: 'Últimos 90 dias' },
+          { value: '1y', label: 'Último ano' }
+        ]
+      }
+    ]
+  },
+
+  // ============ DASHBOARD FINANCEIRO ============
+  'dashboard-financeiro': {
+    title: 'Dashboard Financeiro',
+    entityName: 'transação',
+    entityNamePlural: 'transações',
+    newItemRoute: '/financeiro/nova',
+    editItemRoute: (id: string) => `/financeiro/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/financial/dashboard',
+    statsEndpoint: '/api/financial/stats',
+    
+    // Colunas específicas de dashboard financeiro
+    columns: [
+      {
+        key: 'date',
+        label: 'Data',
+        sortable: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${date.toLocaleDateString('pt-BR')}</div>
+              <div class="text-xs text-gray-500">${date.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'revenue',
+        label: 'Receita',
+        sortable: true,
+        align: 'right',
+        render: (value: number) => {
+          const revenue = value || 0;
+          return `<span class="font-bold text-green-600">R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'expenses',
+        label: 'Despesas',
+        sortable: true,
+        align: 'right',
+        render: (value: number) => {
+          const expenses = value || 0;
+          return `<span class="font-medium text-red-600">R$ ${expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'profit',
+        label: 'Lucro',
+        sortable: true,
+        align: 'right',
+        render: (value: number, row: any) => {
+          const profit = (row.revenue || 0) - (row.expenses || 0);
+          const color = profit >= 0 ? 'text-green-600' : 'text-red-600';
+          return `<span class="font-bold ${color}">R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'margin',
+        label: 'Margem',
+        sortable: true,
+        align: 'center',
+        render: (value: number, row: any) => {
+          const revenue = row.revenue || 0;
+          const expenses = row.expenses || 0;
+          const margin = revenue > 0 ? ((revenue - expenses) / revenue * 100) : 0;
+          const color = margin > 20 ? 'text-green-600' : margin > 10 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${margin.toFixed(1)}%</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas do dashboard financeiro
+    statsConfig: {
+      total: 'total_revenue',
+      active: 'profit_margin',
+      pending: 'pending_transactions',
+      lowStock: 'overdue_payments'
+    },
+    
+    searchPlaceholder: 'Buscar transações...',
+    searchFields: ['description', 'reference'],
+    
+    // Filtros customizados específicos para dashboard financeiro
+    customFilters: [
+      {
+        key: 'period',
+        label: 'Período',
+        type: 'select',
+        options: [
+          { value: 'week', label: 'Esta Semana' },
+          { value: 'month', label: 'Este Mês' },
+          { value: 'quarter', label: 'Este Trimestre' },
+          { value: 'year', label: 'Este Ano' }
+        ]
+      },
+      {
+        key: 'type',
+        label: 'Tipo',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'revenue', label: 'Receita' },
+          { value: 'expense', label: 'Despesa' }
+        ]
+      }
+    ]
+  },
+
+  // ============ LOGS ============
+  logs: {
+    title: 'Logs & Auditoria',
+    entityName: 'log',
+    entityNamePlural: 'logs',
+    newItemRoute: '', // Logs são read-only
+    editItemRoute: (id: string) => `/logs/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/logs',
+    statsEndpoint: '/api/logs/stats',
+    
+    // Colunas específicas de logs
+    columns: [
+      {
+        key: 'timestamp',
+        label: 'Data/Hora',
+        sortable: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `
+            <div>
+              <div class="font-medium text-gray-900 text-xs">${date.toLocaleDateString('pt-BR')}</div>
+              <div class="text-xs text-gray-500">${date.toLocaleTimeString('pt-BR')}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'action',
+        label: 'Ação',
+        sortable: true,
+        render: (value: string, row: any) => {
+          const actions = {
+            login: { label: 'Login', color: 'bg-blue-100 text-blue-800' },
+            logout: { label: 'Logout', color: 'bg-gray-100 text-gray-800' },
+            create: { label: 'Criar', color: 'bg-green-100 text-green-800' },
+            update: { label: 'Editar', color: 'bg-yellow-100 text-yellow-800' },
+            delete: { label: 'Excluir', color: 'bg-red-100 text-red-800' }
+          };
+          const action = actions[value as keyof typeof actions] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `
+            <div>
+              <span class="px-2 py-1 text-xs font-medium rounded-full ${action.color}">${action.label}</span>
+              <div class="text-xs text-gray-500 mt-1">${row.entity || ''}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'user',
+        label: 'Usuário',
+        sortable: true,
+        render: (value: any, row: any) => {
+          return `
+            <div>
+              <div class="font-medium text-gray-900 text-sm">${row.user_name || 'Sistema'}</div>
+              <div class="text-xs text-gray-500">${row.user_email || row.ip_address}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'details',
+        label: 'Detalhes',
+        render: (value: string, row: any) => {
+          const details = value || row.description || 'Sem detalhes';
+          const truncated = details.length > 50 ? details.slice(0, 50) + '...' : details;
+          return `<span class="text-sm text-gray-600" title="${details}">${truncated}</span>`;
+        }
+      },
+      {
+        key: 'ip_address',
+        label: 'IP',
+        hideOnMobile: true,
+        render: (value: string) => {
+          return `<span class="text-xs text-gray-500 font-mono">${value || 'N/A'}</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de logs
+    statsConfig: {
+      total: 'total_logs',
+      active: 'logs_today',
+      pending: 'critical_logs',
+      lowStock: 'failed_actions'
+    },
+    
+    searchPlaceholder: 'Buscar logs...',
+    searchFields: ['action', 'user_name', 'details'],
+    
+    // Filtros customizados específicos para logs
+    customFilters: [
+      {
+        key: 'action',
+        label: 'Ação',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'login', label: 'Login' },
+          { value: 'logout', label: 'Logout' },
+          { value: 'create', label: 'Criar' },
+          { value: 'update', label: 'Editar' },
+          { value: 'delete', label: 'Excluir' }
+        ]
+      },
+      {
+        key: 'period',
+        label: 'Período',
+        type: 'select',
+        options: [
+          { value: 'today', label: 'Hoje' },
+          { value: 'week', label: 'Esta Semana' },
+          { value: 'month', label: 'Este Mês' },
+          { value: 'quarter', label: 'Este Trimestre' }
+        ]
+      }
+    ]
+  },
+
+  // ============ FINANCEIRO ============
+  financeiro: {
+    title: 'Financeiro',
+    entityName: 'transação',
+    entityNamePlural: 'transações',
+    newItemRoute: '/financeiro/nova',
+    editItemRoute: (id: string) => `/financeiro/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/financial/transactions',
+    deleteEndpoint: '/api/financial/transactions',
+    statsEndpoint: '/api/financial/stats',
+    
+    // Colunas específicas de financeiro
+    columns: [
+      {
+        key: 'date',
+        label: 'Data',
+        sortable: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${date.toLocaleDateString('pt-BR')}</div>
+              <div class="text-xs text-gray-500">${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'type',
+        label: 'Tipo',
+        sortable: true,
+        render: (value: string) => {
+          const types = {
+            revenue: { label: 'Receita', color: 'bg-green-100 text-green-800' },
+            expense: { label: 'Despesa', color: 'bg-red-100 text-red-800' },
+            transfer: { label: 'Transferência', color: 'bg-blue-100 text-blue-800' },
+            commission: { label: 'Comissão', color: 'bg-purple-100 text-purple-800' }
+          };
+          const type = types[value as keyof typeof types] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${type.color}">${type.label}</span>`;
+        }
+      },
+      {
+        key: 'category',
+        label: 'Categoria',
+        sortable: true,
+        render: (value: string) => {
+          return `<span class="text-sm text-gray-600">${value || 'Sem categoria'}</span>`;
+        }
+      },
+      {
+        key: 'amount',
+        label: 'Valor',
+        sortable: true,
+        align: 'right',
+        render: (value: number, row: any) => {
+          const amount = value || 0;
+          const isPositive = row.type === 'revenue' || row.type === 'commission';
+          const color = isPositive ? 'text-green-600' : 'text-red-600';
+          const prefix = isPositive ? '+' : '-';
+          return `<span class="font-bold ${color}">${prefix} R$ ${Math.abs(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'description',
+        label: 'Descrição',
+        render: (value: string) => {
+          if (!value) return '<span class="text-gray-500 italic">Sem descrição</span>';
+          const truncated = value.length > 40 ? value.slice(0, 40) + '...' : value;
+          return `<span class="text-sm text-gray-600" title="${value}">${truncated}</span>`;
+        }
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: string) => {
+          const statuses = {
+            pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
+            confirmed: { label: 'Confirmado', color: 'bg-green-100 text-green-800' },
+            cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800' }
+          };
+          const status = statuses[value as keyof typeof statuses] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${status.color}">${status.label}</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de financeiro
+    statsConfig: {
+      total: 'total_transactions',
+      active: 'confirmed_transactions',
+      pending: 'pending_transactions',
+      lowStock: 'cancelled_transactions'
+    },
+    
+    searchPlaceholder: 'Buscar transações...',
+    searchFields: ['description', 'category', 'reference'],
+    
+    // Filtros customizados específicos para financeiro
+    customFilters: [
+      {
+        key: 'type',
+        label: 'Tipo',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'revenue', label: 'Receita' },
+          { value: 'expense', label: 'Despesa' },
+          { value: 'transfer', label: 'Transferência' },
+          { value: 'commission', label: 'Comissão' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'pending', label: 'Pendente' },
+          { value: 'confirmed', label: 'Confirmado' },
+          { value: 'cancelled', label: 'Cancelado' }
+        ]
+      }
+    ]
+  },
+
+  // ============ ARMAZENS ============
+  armazens: {
+    title: 'Armazéns',
+    entityName: 'armazém',
+    entityNamePlural: 'armazéns',
+    newItemRoute: '/armazens/novo',
+    editItemRoute: (id: string) => `/armazens/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/warehouses',
+    deleteEndpoint: '/api/warehouses',
+    statsEndpoint: '/api/warehouses/stats',
+    
+    // Colunas específicas de armazéns
+    columns: [
+      {
+        key: 'name',
+        label: 'Nome',
+        sortable: true,
+        render: (value: string, row: any) => {
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${value}</div>
+              <div class="text-xs text-gray-500">${row.code || 'Código não definido'}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'location',
+        label: 'Localização',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const city = row.city || value?.city || '';
+          const state = row.state || value?.state || '';
+          return `
+            <div>
+              <div class="text-sm text-gray-900">${city}</div>
+              <div class="text-xs text-gray-500">${state}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'capacity',
+        label: 'Capacidade',
+        sortable: true,
+        align: 'center',
+        render: (value: number, row: any) => {
+          const current = row.current_stock || 0;
+          const total = value || 0;
+          const percentage = total > 0 ? (current / total * 100) : 0;
+          const color = percentage > 90 ? 'text-red-600' : percentage > 70 ? 'text-yellow-600' : 'text-green-600';
+          return `
+            <div>
+              <div class="font-medium ${color}">${current.toLocaleString()} / ${total.toLocaleString()}</div>
+              <div class="text-xs text-gray-500">${percentage.toFixed(1)}% ocupado</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'manager',
+        label: 'Responsável',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const name = row.manager_name || value?.name || 'Não definido';
+          const email = row.manager_email || value?.email || '';
+          return `
+            <div>
+              <div class="text-sm text-gray-900">${name}</div>
+              ${email ? `<div class="text-xs text-gray-500">${email}</div>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => 
+          value 
+            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>'
+            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativo</span>'
+      }
+    ],
+    
+    // Estatísticas de armazéns
+    statsConfig: {
+      total: 'total_warehouses',
+      active: 'active_warehouses',
+      pending: 'inactive_warehouses',
+      lowStock: 'full_warehouses'
+    },
+    
+    searchPlaceholder: 'Buscar armazéns...',
+    searchFields: ['name', 'code', 'city', 'manager_name'],
+    
+    // Filtros customizados específicos para armazéns
+    customFilters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativo' },
+          { value: 'inactive', label: 'Inativo' }
+        ]
+      },
+      {
+        key: 'capacity',
+        label: 'Ocupação',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'low', label: 'Até 50%' },
+          { value: 'medium', label: '50-80%' },
+          { value: 'high', label: 'Acima 80%' }
+        ]
+      }
+    ]
+  },
+
+  // ============ LISTAS PRESENTES ============
+  'listas-presentes': {
+    title: 'Listas de Presentes',
+    entityName: 'lista',
+    entityNamePlural: 'listas',
+    newItemRoute: '/listas-presentes/nova',
+    editItemRoute: (id: string) => `/listas-presentes/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/gift-lists',
+    deleteEndpoint: '/api/gift-lists',
+    statsEndpoint: '/api/gift-lists/stats',
+    
+    // Colunas específicas de listas de presentes
+    columns: [
+      {
+        key: 'name',
+        label: 'Nome da Lista',
+        sortable: true,
+        render: (value: string, row: any) => {
+          const eventDate = row.event_date ? new Date(row.event_date).toLocaleDateString('pt-BR') : '';
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${value}</div>
+              <div class="text-xs text-gray-500">${row.event_type || 'Evento'} ${eventDate ? `- ${eventDate}` : ''}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'owner',
+        label: 'Proprietário',
+        sortable: true,
+        render: (value: any, row: any) => {
+          const name = row.owner_name || value?.name || 'Não informado';
+          const email = row.owner_email || value?.email || '';
+          return `
+            <div>
+              <div class="font-medium text-gray-900">${name}</div>
+              ${email ? `<div class="text-xs text-gray-500">${email}</div>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'items_count',
+        label: 'Itens',
+        sortable: true,
+        align: 'center',
+        render: (value: number, row: any) => {
+          const total = value || 0;
+          const purchased = row.purchased_items || 0;
+          const percentage = total > 0 ? (purchased / total * 100) : 0;
+          const color = percentage === 100 ? 'text-green-600' : percentage > 50 ? 'text-blue-600' : 'text-gray-600';
+          return `
+            <div>
+              <div class="font-medium ${color}">${purchased}/${total}</div>
+              <div class="text-xs text-gray-500">${percentage.toFixed(0)}% comprado</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'total_value',
+        label: 'Valor Total',
+        sortable: true,
+        align: 'right',
+        render: (value: number) => {
+          const amount = value || 0;
+          return `<span class="font-medium text-gray-900">R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
+      },
+      {
+        key: 'privacy',
+        label: 'Privacidade',
+        sortable: true,
+        align: 'center',
+        render: (value: string) => {
+          const privacies = {
+            public: { label: 'Pública', color: 'bg-green-100 text-green-800' },
+            private: { label: 'Privada', color: 'bg-red-100 text-red-800' },
+            friends: { label: 'Amigos', color: 'bg-blue-100 text-blue-800' }
+          };
+          const privacy = privacies[value as keyof typeof privacies] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${privacy.color}">${privacy.label}</span>`;
+        }
+      },
+      {
+        key: 'created_at',
+        label: 'Criada em',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `<span class="text-sm text-gray-600">${date.toLocaleDateString('pt-BR')}</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de listas de presentes
+    statsConfig: {
+      total: 'total_lists',
+      active: 'public_lists',
+      pending: 'private_lists',
+      lowStock: 'completed_lists'
+    },
+    
+    searchPlaceholder: 'Buscar listas...',
+    searchFields: ['name', 'owner_name', 'event_type'],
+    
+    // Filtros customizados específicos para listas de presentes
+    customFilters: [
+      {
+        key: 'privacy',
+        label: 'Privacidade',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'public', label: 'Pública' },
+          { value: 'private', label: 'Privada' },
+          { value: 'friends', label: 'Amigos' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'active', label: 'Ativa' },
+          { value: 'completed', label: 'Concluída' },
+          { value: 'expired', label: 'Expirada' }
+        ]
+      }
+    ]
+  },
+
+
+
+  // ============ METODOS PAGAMENTO ============
+  'metodos-pagamento': {
+    title: 'Métodos de Pagamento',
+    entityName: 'método',
+    entityNamePlural: 'métodos',
+    newItemRoute: '/metodos-pagamento/novo',
+    editItemRoute: (id: string) => `/metodos-pagamento/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/payment-methods',
+    deleteEndpoint: '/api/payment-methods',
+    statsEndpoint: '/api/payment-methods/stats',
+    
+    // Colunas específicas de métodos de pagamento
+    columns: [
+      {
+        key: 'name',
+        label: 'Método',
+        sortable: true,
+        render: (value: string, row: any) => {
+          const icon = row.icon || '💳';
+          return `
+            <div class="flex items-center space-x-3">
+              <div class="text-2xl">${icon}</div>
+              <div>
+                <div class="font-medium text-gray-900">${value}</div>
+                <div class="text-xs text-gray-500">${row.provider || 'Provedor não definido'}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'type',
+        label: 'Tipo',
+        sortable: true,
+        render: (value: string) => {
+          const types = {
+            credit_card: { label: 'Cartão de Crédito', color: 'bg-blue-100 text-blue-800' },
+            debit_card: { label: 'Cartão de Débito', color: 'bg-green-100 text-green-800' },
+            pix: { label: 'PIX', color: 'bg-purple-100 text-purple-800' },
+            bank_slip: { label: 'Boleto', color: 'bg-orange-100 text-orange-800' },
+            digital_wallet: { label: 'Carteira Digital', color: 'bg-indigo-100 text-indigo-800' }
+          };
+          const type = types[value as keyof typeof types] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${type.color}">${type.label}</span>`;
+        }
+      },
+      {
+        key: 'fee_percentage',
+        label: 'Taxa (%)',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const fee = value || 0;
+          const color = fee === 0 ? 'text-green-600' : fee < 3 ? 'text-blue-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${fee.toFixed(2)}%</span>`;
+        }
+      },
+      {
+        key: 'installments',
+        label: 'Parcelas',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const max = value || 1;
+          return `<span class="text-sm text-gray-600">até ${max}x</span>`;
+        }
+      },
+      {
+        key: 'usage_count',
+        label: 'Uso',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const count = value || 0;
+          return `<span class="font-medium text-gray-900">${count.toLocaleString()}</span>`;
+        }
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => 
+          value 
+            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>'
+            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativo</span>'
+      }
+    ],
+    
+    // Estatísticas de métodos de pagamento
+    statsConfig: {
+      total: 'total_methods',
+      active: 'active_methods',
+      pending: 'inactive_methods',
+      lowStock: 'high_fee_methods'
+    },
+    
+    searchPlaceholder: 'Buscar métodos...',
+    searchFields: ['name', 'provider', 'type'],
+    
+    // Filtros customizados específicos para métodos de pagamento
+    customFilters: [
+      {
+        key: 'type',
+        label: 'Tipo',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'credit_card', label: 'Cartão de Crédito' },
+          { value: 'debit_card', label: 'Cartão de Débito' },
+          { value: 'pix', label: 'PIX' },
+          { value: 'bank_slip', label: 'Boleto' },
+          { value: 'digital_wallet', label: 'Carteira Digital' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativo' },
+          { value: 'inactive', label: 'Inativo' }
+        ]
+      }
+    ]
+  },
+
+  // ============ INTEGRACOES ============
+  integracoes: {
+    title: 'Integrações',
+    entityName: 'integração',
+    entityNamePlural: 'integrações',
+    newItemRoute: '/integracoes/nova',
+    editItemRoute: (id: string) => `/integracoes/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/integrations',
+    deleteEndpoint: '/api/integrations',
+    statsEndpoint: '/api/integrations/stats',
+    
+    // Colunas específicas de integrações
+    columns: [
+      {
+        key: 'name',
+        label: 'Integração',
+        sortable: true,
+        render: (value: string, row: any) => {
+          const icon = row.icon || '🔗';
+          return `
+            <div class="flex items-center space-x-3">
+              <div class="text-2xl">${icon}</div>
+              <div>
+                <div class="font-medium text-gray-900">${value}</div>
+                <div class="text-xs text-gray-500">${row.provider || 'Provedor'}</div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'type',
+        label: 'Tipo',
+        sortable: true,
+        render: (value: string) => {
+          const types = {
+            payment: { label: 'Pagamento', color: 'bg-green-100 text-green-800' },
+            shipping: { label: 'Frete', color: 'bg-blue-100 text-blue-800' },
+            erp: { label: 'ERP', color: 'bg-purple-100 text-purple-800' },
+            analytics: { label: 'Analytics', color: 'bg-orange-100 text-orange-800' },
+            marketing: { label: 'Marketing', color: 'bg-pink-100 text-pink-800' },
+            crm: { label: 'CRM', color: 'bg-indigo-100 text-indigo-800' }
+          };
+          const type = types[value as keyof typeof types] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${type.color}">${type.label}</span>`;
+        }
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: string) => {
+          const statuses = {
+            active: { label: 'Ativo', color: 'bg-green-100 text-green-800' },
+            inactive: { label: 'Inativo', color: 'bg-red-100 text-red-800' },
+            error: { label: 'Erro', color: 'bg-red-100 text-red-800' },
+            testing: { label: 'Teste', color: 'bg-yellow-100 text-yellow-800' }
+          };
+          const status = statuses[value as keyof typeof statuses] || { label: value, color: 'bg-gray-100 text-gray-800' };
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${status.color}">${status.label}</span>`;
+        }
+      },
+      {
+        key: 'last_sync',
+        label: 'Última Sync',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string) => {
+          if (!value) return '<span class="text-gray-500">Nunca</span>';
+          const date = new Date(value);
+          const now = new Date();
+          const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+          const color = diffHours < 1 ? 'text-green-600' : diffHours < 24 ? 'text-yellow-600' : 'text-red-600';
+          return `
+            <div>
+              <div class="text-sm ${color}">${date.toLocaleDateString('pt-BR')}</div>
+              <div class="text-xs text-gray-500">${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'health_score',
+        label: 'Saúde',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const score = value || 0;
+          const color = score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600';
+          return `<span class="font-medium ${color}">${score}%</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de integrações
+    statsConfig: {
+      total: 'total_integrations',
+      active: 'active_integrations',
+      pending: 'error_integrations',
+      lowStock: 'testing_integrations'
+    },
+    
+    searchPlaceholder: 'Buscar integrações...',
+    searchFields: ['name', 'provider', 'type'],
+    
+    // Filtros customizados específicos para integrações
+    customFilters: [
+      {
+        key: 'type',
+        label: 'Tipo',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'payment', label: 'Pagamento' },
+          { value: 'shipping', label: 'Frete' },
+          { value: 'erp', label: 'ERP' },
+          { value: 'analytics', label: 'Analytics' },
+          { value: 'marketing', label: 'Marketing' },
+          { value: 'crm', label: 'CRM' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativo' },
+          { value: 'inactive', label: 'Inativo' },
+          { value: 'error', label: 'Erro' },
+          { value: 'testing', label: 'Teste' }
+        ]
+      }
+    ]
+  },
+
+  // ============ VARIACOES ============
+  variacoes: {
+    title: 'Variações de Produtos',
+    entityName: 'variação',
+    entityNamePlural: 'variações',
+    newItemRoute: '/variacoes/nova',
+    editItemRoute: (id: string) => `/variacoes/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/variations',
+    deleteEndpoint: '/api/variations',
+    statsEndpoint: '/api/variations/stats',
+    
+    // Colunas específicas de variações
+    columns: [
+      {
+        key: 'name',
+        label: 'Nome da Variação',
+        sortable: true,
+        render: (value: string, row: any) => `
+          <div>
+            <div class="font-medium text-gray-900">${row.name}</div>
+            <div class="text-sm text-gray-500">Tipo: ${row.type}</div>
+          </div>
+        `
+      },
+      {
+        key: 'values',
+        label: 'Valores',
+        render: (value: string[], row: any) => {
+          const values = Array.isArray(value) ? value : [];
+          const displayValues = values.slice(0, 3);
+          const remaining = values.length - 3;
+          
+          return `
+            <div class="flex flex-wrap gap-1">
+              ${displayValues.map(v => `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${v}</span>`).join('')}
+              ${remaining > 0 ? `<span class="px-2 py-1 bg-[#00BFB3]/10 text-[#00BFB3] text-xs rounded">+${remaining}</span>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'products_count',
+        label: 'Produtos',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => `
+          <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+            ${value || 0} produtos
+          </span>
+        `
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: boolean) => {
+          const status = value ? 'Ativa' : 'Inativa';
+          const bgClass = value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${bgClass}">${status}</span>`;
+        }
+      },
+      {
+        key: 'created_at',
+        label: 'Criado em',
+        sortable: true,
+        render: (value: string) => {
+          const date = new Date(value);
+          return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
+        }
+      }
+    ],
+    
+    // Estatísticas de variações
+    statsConfig: {
+      total: 'total_variations',
+      active: 'active_variations',
+      pending: 'inactive_variations',
+      lowStock: 'types_count'
+    },
+    
+    searchPlaceholder: 'Buscar variações...',
+    searchFields: ['name', 'type', 'values'],
+    
+    // Filtros customizados específicos para variações
+    customFilters: [
+      {
+        key: 'type',
+        label: 'Tipo',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos os Tipos' },
+          { value: 'color', label: 'Cor' },
+          { value: 'size', label: 'Tamanho' },
+          { value: 'material', label: 'Material' },
+          { value: 'style', label: 'Estilo' },
+          { value: 'weight', label: 'Peso' },
+          { value: 'voltage', label: 'Voltagem' },
+          { value: 'capacity', label: 'Capacidade' },
+          { value: 'flavor', label: 'Sabor' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativas' },
+          { value: 'inactive', label: 'Inativas' }
+        ]
+      }
+    ],
+    
+    // Ações customizadas para variações
+    customActions: (row: any) => [
+      {
+        label: 'Editar',
+        icon: 'Edit',
+        onclick: () => window.location.href = `/variacoes/${row.id}`
+      },
+      {
+        label: 'Ver Produtos',
+        icon: 'Package',
+        onclick: () => window.location.href = `/produtos?variation=${row.id}`
+      },
+      {
+        label: 'Excluir',
+        icon: 'Trash',
+        onclick: () => {
+          if (confirm(`Tem certeza que deseja excluir a variação "${row.name}"?`)) {
+            // Implementar exclusão via API
+            window.location.reload();
+          }
+        }
+      }
+    ],
+    
+    // Transformação de dados
+    onDataLoad: (data: any[]) => {
+      if (!data || !Array.isArray(data)) return [];
+      
+      return data.map((variation: any) => ({
+        id: variation.id,
+        name: variation.name,
+        type: variation.type,
+        values: variation.values || [],
+        products_count: Number(variation.products_count || 0),
+        is_active: Boolean(variation.is_active),
+        created_at: variation.created_at
+      }));
+    },
+    
+    // Transformação de estatísticas
+    onStatsLoad: (rawStats: any) => {
+      return {
+        total: rawStats.total_variations || rawStats.total || 0,
+        active: rawStats.active_variations || rawStats.active || 0,
+        inactive: rawStats.inactive_variations || rawStats.inactive || 0,
+        types_count: rawStats.types_count || rawStats.types || 0
+             };
+     }
+   },
+
+     // ============ CUPONS ============
+  cupons: {
+    title: 'Gestão de Cupons',
+    entityName: 'cupom',
+    entityNamePlural: 'cupons',
+    newItemRoute: '/cupons/novo',
+    editItemRoute: (id: string) => `/cupons/${id}`,
+    
+    // API endpoints
+    apiEndpoint: '/api/coupons',
+    deleteEndpoint: '/api/coupons',
+    statsEndpoint: '/api/coupons/stats',
+    
+    // Colunas específicas de cupons
+    columns: [
+      {
+        key: 'code',
+        label: 'Código',
+        sortable: true,
+        render: (value: string, row: any) => `
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
+              ${row.type === 'percentage' ? '%' : row.type === 'fixed' ? 'R$' : '🚚'}
+            </div>
+            <div>
+              <div class="font-medium text-gray-900">${value}</div>
+              <div class="text-sm text-gray-500">${row.type === 'percentage' ? 'Percentual' : row.type === 'fixed' ? 'Valor Fixo' : 'Frete Grátis'}</div>
+            </div>
+          </div>
+        `
+      },
+      {
+        key: 'description',
+        label: 'Descrição',
+        sortable: true,
+        render: (value: string) => `<div class="max-w-xs truncate font-medium text-gray-900">${value}</div>`
+      },
+      {
+        key: 'value',
+        label: 'Valor',
+        sortable: true,
+        align: 'center',
+        render: (value: number, row: any) => {
+          if (row.type === 'percentage') return `<span class="font-medium text-green-600">${value}%</span>`;
+          if (row.type === 'fixed') return `<span class="font-medium text-green-600">R$ ${value.toFixed(2)}</span>`;
+          return `<span class="font-medium text-blue-600">Frete Grátis</span>`;
+        }
+      },
+      {
+        key: 'usage_stats',
+        label: 'Uso',
+        align: 'center',
+        render: (value: any, row: any) => {
+          const usageText = row.usage_limit ? `${row.usage_count}/${row.usage_limit}` : `${row.usage_count}`;
+          return `<div class="text-center font-medium text-gray-900">${usageText}</div>`;
+        }
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        align: 'center',
+        render: (value: string, row: any) => {
+          const now = new Date();
+          const start = new Date(row.start_date);
+          const end = new Date(row.end_date);
+          let status = 'active';
+          
+          if (!row.is_active) status = 'inactive';
+          else if (now < start) status = 'scheduled';
+          else if (now > end) status = 'expired';
+          else if (row.usage_limit && row.usage_count >= row.usage_limit) status = 'exhausted';
+          
+          const statusMap = {
+            active: { color: 'green', label: 'Ativo' },
+            scheduled: { color: 'blue', label: 'Agendado' },
+            expired: { color: 'yellow', label: 'Expirado' },
+            exhausted: { color: 'red', label: 'Esgotado' },
+            inactive: { color: 'gray', label: 'Inativo' }
+          };
+          const config = statusMap[status] || statusMap.inactive;
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full bg-${config.color}-100 text-${config.color}-800">${config.label}</span>`;
+        }
+      }
+    ],
+    
+    // Configurações de busca e filtros
+    searchPlaceholder: 'Buscar cupons...',
+    searchFields: ['code', 'description'],
+    
+    // Configurações de estatísticas
+    statsConfig: {
+      total: 'total_coupons',
+      active: 'active_coupons', 
+      pending: 'scheduled_coupons',
+      lowStock: 'expired_coupons'
+    },
+    
+    // Filtros personalizados
+    customFilters: [
+      {
+        key: 'type',
+        label: 'Tipo de Cupom',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos os Tipos' },
+          { value: 'percentage', label: 'Percentual' },
+          { value: 'fixed', label: 'Valor Fixo' },
+          { value: 'free_shipping', label: 'Frete Grátis' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'active', label: 'Ativos' },
+          { value: 'scheduled', label: 'Agendados' },
+          { value: 'expired', label: 'Expirados' },
+          { value: 'exhausted', label: 'Esgotados' },
+          { value: 'inactive', label: 'Inativos' }
+        ]
+      }
+    ]
+  },
+
+  // ============ PAGINAS CMS ============
+  paginas: {
+     title: 'Páginas CMS',
+     entityName: 'página',
+     entityNamePlural: 'páginas',
+     newItemRoute: '/paginas/nova',
+     editItemRoute: (id: string) => `/paginas/${id}`,
+     
+     // API endpoints
+     apiEndpoint: '/api/pages',
+     deleteEndpoint: '/api/pages',
+     statsEndpoint: '/api/pages/stats',
+     
+     // Colunas específicas de páginas
+     columns: [
+       {
+         key: 'title',
+         label: 'Título',
+         sortable: true,
+         render: (value: string, row: any) => `
+           <div>
+             <div class="font-medium text-gray-900">${value}</div>
+             <div class="text-sm text-gray-500">/${row.slug}</div>
+           </div>
+         `
+       },
+       {
+         key: 'isPublished',
+         label: 'Status',
+         sortable: true,
+         align: 'center',
+         render: (value: boolean) => {
+           const status = value ? 'Publicada' : 'Rascunho';
+           const color = value ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800';
+           return `<span class="px-2 py-1 text-xs font-medium rounded-full ${color}">${status}</span>`;
+         }
+       },
+       {
+         key: 'createdAt',
+         label: 'Criado em',
+         sortable: true,
+         render: (value: string) => {
+           const date = new Date(value);
+           return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
+         }
+       },
+       {
+         key: 'updatedAt',
+         label: 'Atualizado em',
+         sortable: true,
+         render: (value: string) => {
+           const date = new Date(value);
+           return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
+         }
+       }
+     ],
+     
+     // Estatísticas de páginas
+     statsConfig: {
+       total: 'total',
+       active: 'published',
+       pending: 'draft',
+       lowStock: 'blog_posts'
+     },
+     
+     searchPlaceholder: 'Buscar páginas...',
+     searchFields: ['title', 'slug', 'content'],
+     
+     // Filtros customizados específicos para páginas
+     customFilters: [
+       {
+         key: 'status',
+         label: 'Status',
+         type: 'select',
+         options: [
+           { value: '', label: 'Todos os Status' },
+           { value: 'published', label: 'Publicadas' },
+           { value: 'draft', label: 'Rascunho' }
+         ]
+       }
+     ],
+     
+     // Ações customizadas para páginas
+     customActions: (row: any) => [
+       {
+         label: 'Editar',
+         icon: 'Edit',
+         onclick: () => window.location.href = `/paginas/${row.id}`
+       },
+       {
+         label: 'Visualizar',
+         icon: 'Eye',
+         onclick: () => window.open(`/${row.slug}`, '_blank')
+       },
+       {
+         label: 'Excluir',
+         icon: 'Trash',
+         onclick: () => {
+           if (confirm(`Tem certeza que deseja excluir a página "${row.title}"?`)) {
+             // Implementar exclusão via API
+             window.location.reload();
+           }
+         }
+       }
+     ],
+     
+     // Transformação de dados
+     onDataLoad: (data: any[]) => {
+       if (!data || !Array.isArray(data)) return [];
+       
+       return data.map((page: any) => ({
+         id: page.id,
+         title: page.title,
+         slug: page.slug,
+         content: page.content,
+         isPublished: Boolean(page.isPublished),
+         createdAt: page.createdAt,
+         updatedAt: page.updatedAt
+       }));
+     },
+     
+     // Transformação de estatísticas
+     onStatsLoad: (rawStats: any) => {
+       return {
+         total: rawStats.total || 0,
+         active: rawStats.published || 0,
+         pending: rawStats.draft || 0,
+         lowStock: rawStats.blog_posts || 0
+       };
+     }
+   }
 };
 
 /**

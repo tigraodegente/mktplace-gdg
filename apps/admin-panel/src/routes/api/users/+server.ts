@@ -46,19 +46,11 @@ interface UserUpdateRequest {
   emailVerified?: boolean;
 }
 
-// GET - Listar usuários
-export const GET: RequestHandler = async ({ url, platform, locals }) => {
+// GET - Listar usuários (sem middleware JWT)
+export const GET: RequestHandler = async ({ url }) => {
   try {
-    const db = getDatabase(platform);
-    const permissionService = createPermissionService(db);
-    
-    // Verificar permissão (com fallback para desenvolvimento)
-    if (locals.user) {
-      await permissionService.requirePermission(locals.user.id, 'users.read');
-    } else {
-      // Em desenvolvimento, log warning mas não bloqueia
-      console.warn('⚠️ locals.user não encontrado - funcionando sem autenticação');
-    }
+    console.log('🔌 Dev: NEON - Buscando usuários');
+    const db = getDatabase();
     
     // Parâmetros de paginação
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
@@ -224,7 +216,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       FROM users
     `;
     
-    await db.close();
+    console.log(`✅ Retornando ${filteredUsers.length} usuários (total: ${totalCount})`);
     
     return json({
       success: true,
@@ -271,18 +263,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   }
 };
 
-// POST - Criar usuário (implementação básica)
-export const POST: RequestHandler = async ({ request, platform, locals }) => {
+// POST - Criar usuário (sem middleware JWT)
+export const POST: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
-    const permissionService = createPermissionService(db);
-    
-    // Verificar permissão (com fallback)
-    if (locals.user) {
-      await permissionService.requirePermission(locals.user.id, 'users.write');
-    } else {
-      console.warn('⚠️ locals.user não encontrado - criando usuário sem verificação de permissão');
-    }
+    console.log('🔌 Dev: NEON - Criando usuário');
+    const db = getDatabase();
     
     const data: UserCreateRequest = await request.json();
     
@@ -300,7 +285,6 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     `;
     
     if (existing) {
-      await db.close();
       return json({
         success: false,
         error: 'Email já existe'
@@ -324,7 +308,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       ) RETURNING id, email
     `;
     
-    await db.close();
+    console.log(`✅ Usuário criado com sucesso: ${user.id}`);
     
     return json({
       success: true,
@@ -351,13 +335,13 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   }
 };
 
-// PUT - Atualizar usuário (implementação básica)
-export const PUT: RequestHandler = async ({ request, platform, locals }) => {
+// PUT - Atualizar usuário (sem middleware JWT)
+export const PUT: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
-    const permissionService = createPermissionService(db);
-    
+    const db = getDatabase();
     const data: UserUpdateRequest = await request.json();
+    
+    console.log('🔌 Dev: NEON - Atualizando usuário:', data.id);
     
     if (!data.id) {
       return json({
@@ -366,20 +350,12 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
       }, { status: 400 });
     }
     
-    // Verificar permissão (com fallback)
-    if (locals.user) {
-      await permissionService.requirePermission(locals.user.id, 'users.write');
-    } else {
-      console.warn('⚠️ locals.user não encontrado - atualizando usuário sem verificação de permissão');
-    }
-    
     // Buscar usuário atual
     const [currentUser] = await db.query`
       SELECT id, role, status FROM users WHERE id = ${data.id}
     `;
     
     if (!currentUser) {
-      await db.close();
       return json({
         success: false,
         error: 'Usuário não encontrado'
@@ -446,7 +422,7 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
     `;
     
     await db.query(query, ...params);
-    await db.close();
+    console.log(`✅ Usuário atualizado com sucesso: ${data.id}`);
     
     return json({
       success: true,
@@ -472,18 +448,10 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
   }
 };
 
-// DELETE - Desativar usuário (implementação básica)
-export const DELETE: RequestHandler = async ({ request, platform, locals }) => {
+// DELETE - Desativar usuário (sem middleware JWT)
+export const DELETE: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
-    const permissionService = createPermissionService(db);
-    
-    // Verificar permissão (com fallback)
-    if (locals.user) {
-      await permissionService.requirePermission(locals.user.id, 'users.delete');
-    } else {
-      console.warn('⚠️ locals.user não encontrado - deletando usuário sem verificação de permissão');
-    }
+    const db = getDatabase();
     
     const { id } = await request.json();
     

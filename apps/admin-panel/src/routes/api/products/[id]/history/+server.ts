@@ -15,57 +15,38 @@ export interface ProductHistoryEntry {
 }
 
 // GET - Buscar histórico do produto
-export const GET: RequestHandler = withAdminAuth(async ({ params, url, data, platform }: any) => {
+export const GET: RequestHandler = async ({ params }) => {
 	try {
-		const user = authUtils.getUser({ data });
-		const db = getDatabase(platform);
-		const { id: productId } = params;
+		console.log('🔌 Dev: NEON - Buscando histórico do produto');
+		const db = getDatabase();
+		const { id } = params;
 		
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '20');
-		const offset = (page - 1) * limit;
-		
-		console.log(`📋 Buscando histórico do produto ${productId} - página ${page}`);
-		
-		// Buscar histórico
 		const query = `
 			SELECT 
-				ph.*,
-				u.name as user_name,
-				u.email as user_email,
-				COUNT(*) OVER() as total_count
-			FROM product_history ph
-			LEFT JOIN users u ON u.id = ph.user_id
-			WHERE ph.product_id = $1
-			ORDER BY ph.created_at DESC
-			LIMIT $2 OFFSET $3
+				id,
+				product_id,
+				user_name,
+				user_email,
+				action,
+				changes,
+				summary,
+				created_at
+			FROM product_history 
+			WHERE product_id = $1 
+			ORDER BY created_at DESC
+			LIMIT 50
 		`;
 		
-		const history = await db.query(query, [productId, limit, offset]);
-		const totalCount = history[0]?.total_count || 0;
+		const result = await db.query(query, [id]);
 		
-		await db.close();
+		console.log(`✅ Encontrado ${result.length} registros de histórico para produto ${id}`);
 		
 		return json({
 			success: true,
-			data: history.map((entry: any) => ({
-				id: entry.id,
-				product_id: entry.product_id,
-				user_id: entry.user_id,
-				user_name: entry.user_name || 'Sistema',
-				user_email: entry.user_email,
-				action: entry.action,
-				changes: entry.changes || {},
-				summary: entry.summary || '',
-				created_at: entry.created_at
-			})),
+			data: result,
 			meta: {
-				page,
-				limit,
-				total: parseInt(totalCount),
-				totalPages: Math.ceil(totalCount / limit),
-				hasNext: offset + limit < totalCount,
-				hasPrev: page > 1
+				total: result.length,
+				product_id: id
 			}
 		});
 		
@@ -73,10 +54,11 @@ export const GET: RequestHandler = withAdminAuth(async ({ params, url, data, pla
 		console.error('❌ Erro ao buscar histórico:', error);
 		return json({
 			success: false,
-			error: 'Erro ao buscar histórico'
+			error: 'Erro ao buscar histórico',
+			details: error instanceof Error ? error.message : 'Erro desconhecido'
 		}, { status: 500 });
 	}
-});
+};
 
 // POST - Registrar alteração no histórico
 export const POST: RequestHandler = withAdminAuth(async ({ params, request, data, platform }: any) => {

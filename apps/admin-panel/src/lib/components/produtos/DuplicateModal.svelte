@@ -246,11 +246,11 @@
 							</div>
 						</label>
 						
-						<label class="flex items-start gap-3 p-4 border border-blue-200 bg-blue-50 rounded-lg cursor-pointer">
-							<input type="checkbox" bind:checked={setAsDraft} class="mt-1 rounded text-blue-600 focus:ring-blue-500" />
+						<label class="flex items-start gap-3 p-4 border border-[#00BFB3]/30 bg-[#00BFB3]/5 rounded-lg cursor-pointer">
+							<input type="checkbox" bind:checked={setAsDraft} class="mt-1 rounded text-[#00BFB3] focus:ring-[#00BFB3]" />
 							<div>
-								<span class="text-sm font-medium text-blue-800">Definir como Rascunho</span>
-								<p class="text-xs text-blue-700">Recomendado: O produto duplicado não ficará visível na loja.</p>
+								<span class="text-sm font-medium text-[#00BFB3]">Definir como Rascunho</span>
+								<p class="text-xs text-gray-600">Recomendado: O produto duplicado não ficará visível na loja.</p>
 							</div>
 						</label>
 					</div>

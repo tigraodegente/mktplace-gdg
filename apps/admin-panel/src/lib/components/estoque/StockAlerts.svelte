@@ -34,7 +34,7 @@
 		overstock: {
 			label: 'Excesso de Estoque',
 			icon: '🔵',
-			color: 'blue',
+			color: '[#00BFB3]',
 			priority: 'medium'
 		}
 	};
@@ -183,7 +183,7 @@
 				type="button"
 				onclick={markAsSent}
 				disabled={selectedAlerts.length === 0}
-				class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+				class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
 			>
 				<ModernIcon name="Mail" size="sm" />
 				Marcar como Enviado
@@ -192,7 +192,7 @@
 				type="button"
 				onclick={resolveAlerts}
 				disabled={selectedAlerts.length === 0}
-				class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+				class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
 			>
 				<ModernIcon name="Check" size="sm" />
 				Resolver Alertas
@@ -204,8 +204,8 @@
 	<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
 		<div class="bg-white border border-gray-200 rounded-lg p-6">
 			<div class="flex items-center gap-3">
-				<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-					<ModernIcon name="AlertTriangle" size="md" class="text-blue-600" />
+				<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+					<ModernIcon name="AlertTriangle" size="md" class="text-[#00BFB3]" />
 				</div>
 				<div>
 					<p class="text-sm font-medium text-gray-600">Total de Alertas</p>
@@ -268,8 +268,8 @@
 		<h4 class="font-medium text-gray-900 mb-4">Filtros</h4>
 		<div class="flex items-center gap-4">
 			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Alerta</label>
-				<select bind:value={filters.alert_type} onchange={applyFilters} class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3]">
+				<label for="alert-type-filter" class="block text-sm font-medium text-gray-700 mb-2">Tipo de Alerta</label>
+				<select id="alert-type-filter" bind:value={filters.alert_type} onchange={applyFilters} class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3]">
 					<option value="">Todos os tipos</option>
 					<option value="out_of_stock">🔴 Sem Estoque</option>
 					<option value="low_stock">🟡 Estoque Baixo</option>
@@ -278,17 +278,19 @@
 			</div>
 			
 			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-				<div class="flex items-center gap-4">
-					<label class="flex items-center gap-2">
-						<input type="radio" bind:group={filters.active} value={true} onchange={applyFilters} class="text-[#00BFB3] focus:ring-[#00BFB3]" />
-						<span class="text-sm">Apenas Ativos</span>
-					</label>
-					<label class="flex items-center gap-2">
-						<input type="radio" bind:group={filters.active} value={false} onchange={applyFilters} class="text-[#00BFB3] focus:ring-[#00BFB3]" />
-						<span class="text-sm">Resolvidos</span>
-					</label>
-				</div>
+				<fieldset>
+					<legend class="block text-sm font-medium text-gray-700 mb-2">Status</legend>
+					<div class="flex items-center gap-4">
+						<label class="flex items-center gap-2">
+							<input type="radio" bind:group={filters.active} value={true} onchange={applyFilters} class="text-[#00BFB3] focus:ring-[#00BFB3]" />
+							<span class="text-sm">Apenas Ativos</span>
+						</label>
+						<label class="flex items-center gap-2">
+							<input type="radio" bind:group={filters.active} value={false} onchange={applyFilters} class="text-[#00BFB3] focus:ring-[#00BFB3]" />
+							<span class="text-sm">Resolvidos</span>
+						</label>
+					</div>
+				</fieldset>
 			</div>
 		</div>
 	</div>

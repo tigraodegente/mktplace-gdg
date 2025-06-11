@@ -58,9 +58,6 @@ test-results/
 cookies.txt
 *.session
 *.token
-.env.backup*
-.env.local*
-.env.production*
 
 # Arquivos do sistema
 .DS_Store

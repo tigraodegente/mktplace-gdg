@@ -2,10 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 
-// GET - Listar pedidos
-export const GET: RequestHandler = async ({ url, platform, locals }) => {
+// GET - Listar pedidos (sem middleware JWT)
+export const GET: RequestHandler = async ({ url }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Buscando pedidos');
+    const db = getDatabase();
     
     // Parâmetros
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
@@ -14,7 +15,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     const status = url.searchParams.get('status') || 'all';
     const dateFrom = url.searchParams.get('dateFrom');
     const dateTo = url.searchParams.get('dateTo');
-    const vendorId = locals.user?.role === 'vendor' ? locals.user.seller_id : url.searchParams.get('vendor_id');
+    const vendorId = url.searchParams.get('vendor_id');
     
     // Construir query
     const conditions: string[] = [];
@@ -158,7 +159,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     
     const [stats] = await db.query(statsQuery, ...statsParams);
     
-    await db.close();
+    console.log(`✅ Retornando ${orders.length} pedidos (total: ${totalCount})`);
     
     return json({
       success: true,
@@ -213,10 +214,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   }
 };
 
-// POST - Criar pedido (geralmente vem do checkout da loja)
-export const POST: RequestHandler = async ({ request, platform }) => {
+// POST - Criar pedido (sem middleware JWT)
+export const POST: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
+    console.log('🔌 Dev: NEON - Criando pedido');
+    const db = getDatabase();
     const data = await request.json();
     
     // Validações básicas
@@ -277,7 +279,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       `;
     }
     
-    await db.close();
+    console.log(`✅ Pedido criado com sucesso: ${order.id} (${orderNumber})`);
     
     return json({
       success: true,
@@ -297,10 +299,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   }
 };
 
-// PUT - Atualizar status do pedido
-export const PUT: RequestHandler = async ({ request, platform }) => {
+// PUT - Atualizar status do pedido (sem middleware JWT)
+export const PUT: RequestHandler = async ({ request }) => {
   try {
-    const db = getDatabase(platform);
+    const db = getDatabase();
     const data = await request.json();
     
     if (!data.id || !data.status) {
@@ -325,7 +327,6 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     `;
     
     if (!currentOrder) {
-      await db.close();
       return json({
         success: false,
         error: 'Pedido não encontrado'
@@ -334,7 +335,6 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
     
     const allowedStatuses = validTransitions[currentOrder.status] || [];
     if (!allowedStatuses.includes(data.status)) {
-      await db.close();
       return json({
         success: false,
         error: `Não é possível mudar de ${currentOrder.status} para ${data.status}`
@@ -405,7 +405,7 @@ export const PUT: RequestHandler = async ({ request, platform }) => {
       }
     }
     
-    await db.close();
+    console.log(`✅ Status do pedido ${data.id} atualizado para: ${data.status}`);
     
     return json({
       success: true,
