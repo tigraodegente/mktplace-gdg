@@ -636,22 +636,23 @@
 
 	// Subscrever às sugestões da categoria 'basic'
 	aiSuggestionsByCategory.subscribe(suggestions => {
-		// DEBUG: Mostrar todas as sugestões temporariamente
-		console.log('🔍 BasicTab: Todas as sugestões recebidas:', suggestions);
-		
-		// Pegar sugestões da categoria basic OU todas se não houver basic
+		// Pegar sugestões da categoria basic
 		aiSuggestions = suggestions.basic || [];
-		
-		// DEBUG: Se não há sugestões basic, mostrar total de outras categorias
-		if (aiSuggestions.length === 0) {
-			const allSuggestions = Object.values(suggestions).flat();
-			console.log('⚠️ Nenhuma sugestão "basic", mas temos', allSuggestions.length, 'no total:', suggestions);
-			
-			// Temporariamente mostrar todas as sugestões para debug
-			aiSuggestions = allSuggestions;
+		console.log('📋 BasicTab: Sugestões recebidas:', aiSuggestions.length);
+	});
+
+	// Garantir reatividade do dropdown de marcas
+	let brandReactiveKey = $state(0);
+	
+	$effect(() => {
+		// Forçar re-render quando brand_id mudar
+		if (formData.brand_id && brands.length > 0) {
+			const selectedBrand = brands.find(b => b.id === formData.brand_id);
+			if (selectedBrand) {
+				console.log('✅ Marca selecionada:', selectedBrand.name);
+				brandReactiveKey++; // Força re-render do dropdown
+			}
 		}
-		
-		console.log('📋 BasicTab: Sugestões filtradas para mostrar:', aiSuggestions);
 	});
 </script>
 
@@ -1194,15 +1195,17 @@
 					<div class="space-y-3">
 						<div class="flex gap-2">
 							<div class="flex-1 relative">
-								<select
-									bind:value={formData.brand_id}
-									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.brand === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
-								>
-									<option value="">Selecione uma marca</option>
-									{#each brands as brand}
-										<option value={brand.id}>{brand.name}</option>
-									{/each}
-								</select>
+								{#key brandReactiveKey}
+									<select
+										bind:value={formData.brand_id}
+										class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.brand === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+									>
+										<option value="">Selecione uma marca</option>
+										{#each brands as brand}
+											<option value={brand.id}>{brand.name}</option>
+										{/each}
+									</select>
+								{/key}
 								{#if getStatusInfo('brand')}
 									<div class="absolute right-3 top-3">
 										<ModernIcon name="Check" size="xs" />
