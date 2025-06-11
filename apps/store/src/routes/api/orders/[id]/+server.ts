@@ -156,8 +156,6 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
           };
         }),
         statusHistory: result.statusHistory.map((history: any) => ({
-          status: history.status,
-          statusLabel: getStatusLabel(history.status),
           notes: history.notes,
           createdAt: history.created_at
         })),

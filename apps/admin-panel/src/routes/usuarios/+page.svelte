@@ -61,8 +61,8 @@
 			render: (value: string) => {
 				const badges = {
 					admin: 'bg-red-100 text-red-800',
-					seller: 'bg-blue-100 text-blue-800',
-					customer: 'bg-green-100 text-green-800'
+					seller: 'bg-[#00BFB3]/10 text-[#00BFB3]',
+					customer: 'bg-green-50 text-green-600'
 				};
 				const labels = {
 					admin: 'Admin',
@@ -79,7 +79,7 @@
 			align: 'center' as const,
 			render: (value: string) => {
 				const badges = {
-					active: 'bg-green-100 text-green-800',
+					active: 'bg-green-50 text-green-600',
 					inactive: 'bg-gray-100 text-gray-800',
 					pending: 'bg-yellow-100 text-yellow-800',
 					suspended: 'bg-red-100 text-red-800'

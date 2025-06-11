@@ -4,6 +4,7 @@
 	import { fly, fade, scale } from 'svelte/transition';
 	import { cubicOut, backOut } from 'svelte/easing';
 	import { authStore } from '$lib/stores/auth';
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	// Estado
 	let email = $state('admin@mktplace.com');
@@ -17,10 +18,10 @@
 	
 	// Features do sistema
 	const features = [
-		{ icon: '📊', title: 'Dashboard Intuitivo', desc: 'Visualize todas as métricas importantes' },
-		{ icon: '📦', title: 'Gestão de Produtos', desc: 'Gerencie seu catálogo facilmente' },
-		{ icon: '📈', title: 'Relatórios Detalhados', desc: 'Análises completas do seu negócio' },
-		{ icon: '🔒', title: '100% Seguro', desc: 'Seus dados protegidos sempre' }
+		{ icon: 'Analytics', title: 'Dashboard Intuitivo', desc: 'Visualize todas as métricas importantes' },
+		{ icon: 'Package', title: 'Gestão de Produtos', desc: 'Gerencie seu catálogo facilmente' },
+		{ icon: 'TrendingUp', title: 'Relatórios Detalhados', desc: 'Análises completas do seu negócio' },
+		{ icon: 'Lock', title: '100% Seguro', desc: 'Seus dados protegidos sempre' }
 	];
 	
 	onMount(async () => {
@@ -92,7 +93,7 @@
 					localStorage.removeItem('rememberedEmail');
 				}
 				
-				console.log('✅ Login realizado com sucesso!', result.data.user);
+				console.log('Login realizado com sucesso!', result.data.user);
 				
 				// Redirecionar para dashboard
 				await goto('/');
@@ -335,7 +336,9 @@
 						class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 transform hover:scale-105 transition-all"
 						in:scale={{ duration: 400, delay: 600 + i * 100, easing: cubicOut }}
 					>
-						<div class="text-3xl mb-3">{feature.icon}</div>
+						<div class="mb-3">
+							<ModernIcon name={feature.icon} size="xl" class="text-white" />
+						</div>
 						<h3 class="font-semibold mb-1">{feature.title}</h3>
 						<p class="text-sm text-cyan-100">{feature.desc}</p>
 					</div>
