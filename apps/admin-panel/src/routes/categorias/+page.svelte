@@ -66,7 +66,7 @@
 			width: '150px',
 			render: (value: string, row: CategoryWithLevel) => {
 				return row.parent_id ? `<span class="text-sm text-gray-600">${value || 'Carregando...'}</span>` : 
-					`<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">Principal</span>`;
+					`<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#00BFB3]/10 text-[#00BFB3]">Principal</span>`;
 			}
 		},
 		{
@@ -78,7 +78,7 @@
 			render: (value: number) => {
 				const count = value || 0;
 				return `
-					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
+					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${count > 0 ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'}">
 						<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
 							<path fill-rule="evenodd" d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5zM10 9a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
 						</svg>
@@ -96,7 +96,7 @@
 			render: (value: number) => {
 				const count = value || 0;
 				return `
-					<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${count > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}">
+					<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${count > 0 ? 'bg-[#00BFB3]/10 text-[#00BFB3]' : 'bg-gray-100 text-gray-600'}">
 						<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
 							<path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"/>
 						</svg>
@@ -113,7 +113,7 @@
 			width: '100px',
 			render: (value: boolean) => {
 				return value 
-					? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+					? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600">
 						<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
 							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
 						</svg>

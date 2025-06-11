@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
           SELECT id, order_number, status, total, shipping_cost, discount_amount,
                  payment_method, shipping_address, notes, created_at, updated_at, user_id
           FROM orders
-          WHERE id = ${orderId} AND user_id = ${userId}
+          WHERE order_number = ${orderId} AND user_id = ${userId}
         LIMIT 1
       `;
       
@@ -45,22 +45,47 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
       
         // STEP 2: Buscar itens do pedido (query separada)
         const items = await db.query`
-          SELECT oi.id, oi.product_id, oi.quantity, oi.price, oi.total, oi.created_at,
-                 p.name as product_name
-        FROM order_items oi
-        LEFT JOIN products p ON oi.product_id = p.id
-          WHERE oi.order_id = ${orderId}
-        ORDER BY oi.created_at
+          SELECT 
+            oi.id, 
+            oi.product_id, 
+            oi.quantity, 
+            oi.price, 
+            oi.total, 
+            oi.created_at,
+            oi.selected_color,
+            oi.selected_size,
+            oi.seller_id,
+            -- Dados do produto (JOIN)
+            p.name as product_name,
+            p.slug as product_slug,
+            p.is_active as product_active,
+            -- Primeira imagem do produto (JOIN com product_images)
+            pi.url as product_image_url,
+            -- Dados do vendedor (JOIN)
+            s.company_name as seller_name,
+            s.slug as seller_slug
+          FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
+          LEFT JOIN sellers s ON oi.seller_id = s.id
+          LEFT JOIN LATERAL (
+            SELECT url 
+            FROM product_images 
+            WHERE product_id = oi.product_id 
+            ORDER BY position ASC 
+            LIMIT 1
+          ) pi ON true
+          WHERE oi.order_id = ${order.id}
+          ORDER BY oi.created_at
           LIMIT 20
-      `;
+        `;
       
         // STEP 3: Buscar histórico de status (opcional)
       let statusHistory = [];
       try {
           statusHistory = await db.query`
-            SELECT status, notes, created_at
+            SELECT notes, created_at
           FROM order_status_history
-            WHERE order_id = ${orderId}
+            WHERE order_id = ${order.id}
           ORDER BY created_at ASC
             LIMIT 10
         `;
@@ -108,16 +133,28 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
         notes: result.order.notes,
         createdAt: result.order.created_at,
         updatedAt: result.order.updated_at,
-        items: result.items.map((item: any) => ({
-          id: item.id,
-          productId: item.product_id,
-          productName: item.product_name || 'Produto',
-          productImage: `/api/placeholder/300/300?text=${encodeURIComponent(item.product_name || 'Produto')}`,
-          quantity: item.quantity,
-          price: Number(item.price),
-          total: Number(item.total),
-          createdAt: item.created_at
-        })),
+        items: result.items.map((item: any) => {
+          // Usar imagem da query ou placeholder
+          const productImage = item.product_image_url || '/api/placeholder/300/300';
+          
+          return {
+            id: item.id,
+            productId: item.product_id,
+            productName: item.product_name || 'Produto',
+            productImage,
+            productSlug: item.product_slug,
+            productActive: item.product_active,
+            quantity: item.quantity,
+            price: Number(item.price),
+            total: Number(item.total),
+            selectedColor: item.selected_color,
+            selectedSize: item.selected_size,
+            sellerId: item.seller_id,
+            sellerName: item.seller_name || 'Marketplace GDG',
+            sellerSlug: item.seller_slug,
+            createdAt: item.created_at
+          };
+        }),
         statusHistory: result.statusHistory.map((history: any) => ({
           status: history.status,
           statusLabel: getStatusLabel(history.status),

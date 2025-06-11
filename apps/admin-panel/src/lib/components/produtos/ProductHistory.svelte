@@ -178,9 +178,12 @@
 											<div class="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
 												<ModernIcon name="User" size="xs" />
 											</div>
-											<span class="text-sm text-gray-600">
-												{entry.user_name}
-											</span>
+											<div class="text-sm text-gray-600">
+												<span class="font-medium">{entry.user_name}</span>
+												{#if entry.user_email && entry.user_email !== 'system@marketplace.com'}
+													<span class="text-gray-500">({entry.user_email})</span>
+												{/if}
+											</div>
 										</div>
 										
 										<!-- Changes Details -->

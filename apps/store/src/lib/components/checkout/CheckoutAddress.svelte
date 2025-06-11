@@ -518,14 +518,14 @@
   <!-- ============================================ -->
   
   {#if selectedAddress}
-    <div class="bg-green-50 border border-green-200 rounded-xl p-6">
-      <h4 class="font-semibold text-green-800 mb-3 flex items-center">
+    <div class="bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-xl p-6 mb-6">
+      <h4 class="font-semibold text-[#00BFB3] mb-3 flex items-center">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
         Endereço Selecionado: {selectedAddress.label || 'Endereço principal'}
       </h4>
-      <div class="text-sm text-green-700 space-y-1">
+      <div class="text-sm text-[#00BFB3] space-y-1">
         <p class="font-semibold">{selectedAddress.name}</p>
         <p>{selectedAddress.street}, {selectedAddress.number}</p>
         {#if selectedAddress.complement}

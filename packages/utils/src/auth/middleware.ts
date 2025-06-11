@@ -8,24 +8,20 @@ export interface AuthContext {
 }
 
 export interface Env extends DatabaseEnv {
-  JWT_SECRET?: string;
-  AUTH_SECRET?: string;
-  [key: string]: any;
+  JWT_SECRET: string;
+  DATABASE_URL: string;
 }
 
-export interface RequestContext {
-  request: Request;
-  env: Env;
-  platform?: any; // Cloudflare platform object
-  data?: AuthContext;
-  [key: string]: any; // Para preservar outras propriedades do contexto original
+export interface AuthHandler {
+  (context: {
+    request: Request;
+    platform: { env: Env };
+    params: any;
+    url: URL;
+    data: AuthContext;
+  }): Promise<Response>;
 }
 
-export type AuthHandler = (context: RequestContext) => Promise<Response> | Response;
-
-/**
- * Middleware de autenticação para Cloudflare Pages Functions
- */
 export function withAuth(
   handler: AuthHandler,
   options: {
@@ -35,211 +31,181 @@ export function withAuth(
   } = {}
 ) {
   return async (context: any): Promise<Response> => {
-    const { request, env, platform } = context;
+    const { request, platform } = context;
+    const env = platform?.env as Env;
     
-    try {
-      // Criar authService com JWT_SECRET (usar fixo durante desenvolvimento)
-      const jwtSecret = env?.JWT_SECRET || env?.AUTH_SECRET || process.env.JWT_SECRET || 
-                       '4ce58f06bf47d72a061bf67c7d3304e998bf0d27c292dfbbe37dcc56c305aba88adf7b26dc22523401f51e3401a35dd9947be810af0cf62b2e24f11b4551c4c3';
-      
-      if (!jwtSecret) {
-        console.warn('JWT_SECRET não configurado - autenticação desabilitada');
-        return new Response(JSON.stringify({
-          success: false,
-          error: {
-            code: 'AUTH_NOT_CONFIGURED',
-            message: 'Sistema de autenticação não configurado'
-          }
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
+    if (!env?.JWT_SECRET) {
+      console.error('❌ [MIDDLEWARE] JWT_SECRET não configurado no ambiente');
+      if (options.required) {
+        return authUtils.unauthorizedResponse('Configuração de autenticação inválida');
       }
+    }
 
-      const authService = createAuthService({ jwtSecret });
+    const authService = createAuthService({ jwtSecret: env.JWT_SECRET });
+    
+    let user: User | undefined;
+    let token: string | undefined;
+    let isAuthenticated = false;
 
-      // Extrair token do header
-      const authHeader = request.headers.get('Authorization');
-      console.log('🔐 [MIDDLEWARE] Auth header:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NENHUM');
-      
-      let token = authService.extractTokenFromHeader(authHeader);
-      
-      // Se não há token no header, tentar extrair da URL (para dev/debug)
-      if (!token) {
-        const url = new URL(request.url);
-        token = url.searchParams.get('token');
+    // Extrair token do header Authorization
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+      console.log('🔍 [MIDDLEWARE] Token encontrado no header Authorization');
+    } else {
+      console.log('❌ [MIDDLEWARE] Auth header:', authHeader || 'NENHUM');
+    }
+
+    // Tentar extrair token de cookies se não estiver no header
+    if (!token) {
+      const cookieHeader = request.headers.get('Cookie');
+      if (cookieHeader) {
+        const cookies = Object.fromEntries(
+          cookieHeader.split('; ').map((c: string) => {
+            const [key, ...rest] = c.split('=');
+            return [key, rest.join('=')];
+          })
+        );
+        token = cookies.access_token || cookies.token;
+        if (token) {
+          console.log('🔍 [MIDDLEWARE] Token encontrado em cookies');
+        }
       }
-      
-      console.log('🔐 [MIDDLEWARE] Token extraído:', token ? `${token.substring(0, 20)}...` : 'NENHUM');
-      
-      let user: User | undefined;
-      let isAuthenticated = false;
+    }
 
-      if (token) {
-        console.log('🔐 [MIDDLEWARE] Verificando token...');
-        console.log('🔍 [MIDDLEWARE] Token preview:', token.substring(0, 50) + '...');
-        try {
-          const payload = authService.verifyToken(token) as any;
-          console.log('🔐 [MIDDLEWARE] Payload do token:', payload);
+    if (token) {
+      console.log('🔐 [MIDDLEWARE] Verificando token...');
+      console.log('🔍 [MIDDLEWARE] Token preview:', token.substring(0, 50) + '...');
+      try {
+        const payload = authService.verifyToken(token) as any;
+        console.log('🔐 [MIDDLEWARE] Payload do token:', payload);
+        
+        if (payload && payload.userId) {
+          // 🚀 BUSCAR USUÁRIO REAL DO BANCO DE DADOS
+          console.log('🔍 [MIDDLEWARE] Buscando usuário no banco:', payload.userId);
           
-          if (payload && payload.userId) {
-            // Para desenvolvimento, usar dados do payload diretamente
-            // Em produção, buscar no banco: const dbUser = await getUserById(payload.userId, env);
+          try {
+            const dbUser = await getUserById(payload.userId, env);
+            if (dbUser) {
+              user = dbUser;
+              isAuthenticated = true;
+              console.log(`✅ [MIDDLEWARE] Usuário encontrado no banco: ${user.name} (${user.email}) - ${user.role}`);
+            } else {
+              console.log('❌ [MIDDLEWARE] Usuário não encontrado no banco:', payload.userId);
+              // Fallback para dados do payload (para manter compatibilidade)
+              user = {
+                id: payload.userId,
+                email: payload.email,
+                name: payload.name || payload.email?.split('@')[0] || 'Usuário',
+                role: payload.role,
+                is_active: true
+              };
+              isAuthenticated = true;
+              console.log(`⚠️ [MIDDLEWARE] Usando dados do payload como fallback: ${user.name}`);
+            }
+          } catch (dbError) {
+            console.error('❌ [MIDDLEWARE] Erro ao buscar usuário no banco:', dbError);
+            // Fallback para dados do payload
             user = {
               id: payload.userId,
               email: payload.email,
-              name: payload.name || payload.email?.split('@')[0] || 'Usuário', // Nome do payload ou temporário
+              name: payload.name || payload.email?.split('@')[0] || 'Usuário',
               role: payload.role,
               is_active: true
             };
-            isAuthenticated = !!user;
-            console.log(`✅ [MIDDLEWARE] Usuário autenticado: ${user.email} (${user.role})`);
-          } else {
-            console.log('❌ [MIDDLEWARE] Token inválido - payload vazio ou sem userId');
-            console.log('🔍 [MIDDLEWARE] Payload recebido:', payload);
+            isAuthenticated = true;
+            console.log(`⚠️ [MIDDLEWARE] Usando dados do payload devido a erro no banco: ${user.name}`);
           }
-        } catch (tokenError) {
-          console.error('❌ [MIDDLEWARE] Erro ao verificar token:', tokenError);
-          console.error('🔍 [MIDDLEWARE] Token que causou erro:', token.substring(0, 100) + '...');
+        } else {
+          console.log('❌ [MIDDLEWARE] Token inválido - payload vazio ou sem userId');
+          console.log('🔍 [MIDDLEWARE] Payload recebido:', payload);
         }
-      } else {
-        console.log('❌ [MIDDLEWARE] Nenhum token fornecido');
+      } catch (tokenError) {
+        console.error('❌ [MIDDLEWARE] Erro ao verificar token:', tokenError);
+        console.error('🔍 [MIDDLEWARE] Token que causou erro:', token.substring(0, 100) + '...');
       }
-
-      console.log('🔐 [MIDDLEWARE] isAuthenticated:', isAuthenticated);
-      console.log('🔐 [MIDDLEWARE] options.required:', options.required);
-
-      // Verificar se autenticação é obrigatória
-      if (options.required && !isAuthenticated) {
-        console.log('❌ [MIDDLEWARE] Autenticação obrigatória mas usuário não autenticado');
-        console.log('🔍 [MIDDLEWARE] Debug auth:', {
-          authHeader: authHeader ? 'presente' : 'ausente',
-          token: token ? 'presente' : 'ausente',
-          tokenLength: token?.length || 0,
-          isAuthenticated,
-          user: user ? 'presente' : 'ausente'
-        });
-        return new Response(JSON.stringify({
-          success: false,
-          error: {
-            code: 'UNAUTHENTICATED',
-            message: 'Usuário não autenticado',
-            debug: {
-              hasAuthHeader: !!authHeader,
-              hasToken: !!token,
-              isAuthenticated,
-              hasUser: !!user
-            }
-          }
-        }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Verificar roles
-      if (isAuthenticated && user && options.roles && !authService.checkRole(user.role, options.roles)) {
-        console.log(`❌ [MIDDLEWARE] Role '${user.role}' não permitido. Roles aceitos:`, options.roles);
-        return new Response(JSON.stringify({
-          success: false,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Acesso negado'
-          }
-        }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      } else if (isAuthenticated && user && options.roles) {
-        console.log(`✅ [MIDDLEWARE] Role '${user.role}' permitido`);
-      }
-
-      // Verificar permissões específicas
-      if (isAuthenticated && user && options.permissions) {
-        const { resource, action } = options.permissions;
-        if (!authService.checkPermission(user.role, resource, action)) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: {
-              code: 'FORBIDDEN',
-              message: `Sem permissão para ${action} em ${resource}`
-            }
-          }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-      }
-
-      // Adicionar contexto de auth
-      const authContext: AuthContext = {
-        user,
-        token: token || undefined,
-        isAuthenticated
-      };
-
-      // Chamar handler com contexto completo (preservando todas as propriedades originais)
-      return handler({
-        ...context, // Preserva request, env, platform, etc.
-        data: authContext
-      });
-
-    } catch (error) {
-      console.error('Erro no middleware de auth:', error);
-      
-      return new Response(JSON.stringify({
-        success: false,
-        error: {
-          code: 'AUTH_ERROR',
-          message: 'Erro interno de autenticação'
-        }
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    } else {
+      console.log('❌ [MIDDLEWARE] Nenhum token fornecido');
     }
+
+    console.log('🔐 [MIDDLEWARE] isAuthenticated:', isAuthenticated);
+    console.log('🔐 [MIDDLEWARE] options.required:', options.required);
+
+    // Verificar se a autenticação é obrigatória
+    if (options.required && !isAuthenticated) {
+      console.log('❌ [MIDDLEWARE] Autenticação obrigatória - não autenticado');
+      return authUtils.unauthorizedResponse('Token de acesso necessário');
+    }
+
+    // Verificar roles se especificados
+    if (options.roles && options.roles.length > 0) {
+      if (!user || !options.roles.includes(user.role)) {
+        console.log(`❌ [MIDDLEWARE] Role inválido. Requerido: ${options.roles.join(', ')}, Usuário: ${user?.role || 'nenhum'}`);
+        return authUtils.forbiddenResponse('Permissões insuficientes');
+      }
+    }
+
+    // Verificar permissões se especificadas
+    if (options.permissions && user) {
+      // TODO: Implementar verificação de permissões específicas
+      console.log('📋 [MIDDLEWARE] Verificação de permissões específicas não implementada');
+    }
+
+    const authContext: AuthContext = {
+      user,
+      token,
+      isAuthenticated
+    };
+
+    console.log('✅ [MIDDLEWARE] Contexto de autenticação criado:', {
+      isAuthenticated,
+      userId: user?.id,
+      userRole: user?.role,
+      userName: user?.name
+    });
+
+    // Chamar handler original com contexto de autenticação
+    return handler({
+      ...context,
+      data: authContext
+    });
   };
 }
 
-/**
- * Middleware específico para admin
- */
-export function withAdminAuth(handler: AuthHandler) {
+// Middleware específico para administradores
+export const withAdminAuth = (handler: AuthHandler) => {
   return withAuth(handler, {
     required: true,
     roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
   });
-}
+};
 
-/**
- * Middleware específico para vendedor
- */
-export function withVendorAuth(handler: AuthHandler) {
+// Middleware específico para vendedores
+export const withVendorAuth = (handler: AuthHandler) => {
   return withAuth(handler, {
     required: true,
     roles: [UserRole.VENDOR, UserRole.ADMIN, UserRole.SUPER_ADMIN]
   });
-}
+};
 
-/**
- * Middleware específico para cliente
- */
-export function withCustomerAuth(handler: AuthHandler) {
+// Middleware específico para clientes
+export const withCustomerAuth = (handler: AuthHandler) => {
   return withAuth(handler, {
     required: true,
-    roles: [UserRole.CUSTOMER, UserRole.ADMIN, UserRole.SUPER_ADMIN]
+    roles: [UserRole.CUSTOMER, UserRole.VENDOR, UserRole.ADMIN, UserRole.SUPER_ADMIN]
   });
-}
+};
 
-/**
- * Middleware para verificar permissão específica
- */
-export function withPermission(resource: string, action: string, handler: AuthHandler) {
+// Middleware opcional (não obrigatório)
+export const withOptionalAuth = (handler: AuthHandler) => {
   return withAuth(handler, {
-    required: true,
-    permissions: { resource, action }
+    required: false
   });
-}
+};
+
+// ============================
+// DATABASE HELPERS
+// ============================
 
 /**
  * Busca usuário no banco de dados

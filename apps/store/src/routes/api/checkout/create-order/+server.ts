@@ -12,6 +12,8 @@ interface CreateOrderRequest {
     productId: string;
     quantity: number;
     variantId?: string;
+    selectedColor?: string;
+    selectedSize?: string;
   }>;
   shippingAddress: {
     street: string;
@@ -267,9 +269,20 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               // Usar fallback silenciosamente
             }
             
+            // Buscar dados originais do request para cores/tamanhos
+            const originalItem = orderData.items.find(reqItem => reqItem.productId === item.productId);
+            
             await sql`
-              INSERT INTO order_items (order_id, product_id, seller_id, quantity, price, total, status)
-              VALUES (${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, ${item.unitPrice}, ${item.totalPrice}, 'pending')
+              INSERT INTO order_items (
+                order_id, product_id, seller_id, quantity, price, total, 
+                selected_color, selected_size, status
+              ) VALUES (
+                ${order.id}, ${item.productId}, ${sellerId}, ${item.quantity}, 
+                ${item.unitPrice}, ${item.totalPrice},
+                ${originalItem?.selectedColor || null},
+                ${originalItem?.selectedSize || null}, 
+                'pending'
+              )
             `;
 
             // Atualizar estoque - REABILITADO com abordagem compatível

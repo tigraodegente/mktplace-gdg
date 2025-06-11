@@ -15,6 +15,7 @@
 	let dragOver = $state(false);
 	let dragOverVideo = $state(false);
 	let removing = $state(false);
+	let newVideoInput: HTMLInputElement;
 	
 	// Estados do modal de confirmação
 	let showConfirmDialog = $state(false);
@@ -604,4 +605,104 @@
 			</p>
 		</div>
 	</div>
-</div> 
+
+	<!-- VÍDEOS DO PRODUTO -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			🎬 Vídeos do Produto
+		</h4>
+		
+		<div class="space-y-4">
+			<!-- Lista de Vídeos -->
+			{#if formData.videos && Array.isArray(formData.videos) && formData.videos.length > 0}
+				<div class="space-y-3">
+					{#each formData.videos as video, index}
+						<div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+							<div class="flex-1">
+								<input
+									type="url"
+									bind:value={formData.videos[index]}
+									class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent text-sm"
+									placeholder="https://www.youtube.com/watch?v=..."
+								/>
+							</div>
+							<button
+								type="button"
+								onclick={() => {
+									formData.videos = formData.videos.filter((_, i) => i !== index);
+								}}
+								class="px-3 py-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+							>
+								🗑️
+							</button>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<div class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+					<p class="text-gray-500 mb-2">🎬 Nenhum vídeo adicionado</p>
+					<p class="text-sm text-gray-400">Adicione URLs de vídeos do YouTube, Vimeo ou outros</p>
+				</div>
+			{/if}
+
+			<!-- Adicionar Novo Vídeo -->
+			<div class="flex gap-3">
+				<input
+					type="url"
+					bind:this={newVideoInput}
+					class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
+					placeholder="Cole a URL do vídeo (YouTube, Vimeo, etc.)"
+				/>
+				<button
+					type="button"
+					onclick={() => {
+						const input = newVideoInput;
+						if (input?.value?.trim()) {
+							if (!Array.isArray(formData.videos)) {
+								formData.videos = [];
+							}
+							formData.videos = [...formData.videos, input.value.trim()];
+							input.value = '';
+						}
+					}}
+					class="px-6 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors"
+				>
+					➕ Adicionar
+				</button>
+			</div>
+
+			<div class="text-xs text-gray-500 space-y-1">
+				<p>💡 <strong>Suportado:</strong> YouTube, Vimeo, MP4 direto</p>
+				<p>📱 <strong>Exemplo:</strong> https://www.youtube.com/watch?v=dQw4w9WgXcQ</p>
+			</div>
+		</div>
+	</div>
+
+	<!-- LINKS E DOCUMENTAÇÃO -->
+	<div class="bg-white border border-gray-200 rounded-lg p-6">
+		<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+			📖 Documentação e Links
+		</h4>
+		
+		<div class="space-y-6">
+			<!-- Link do Manual -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					📖 Link do Manual/Documentação
+					<span class="text-xs text-gray-500 ml-2">PDF, site ou página de instruções</span>
+				</label>
+				<input
+					type="url"
+					bind:value={formData.manual_link}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
+					placeholder="https://exemplo.com/manual.pdf"
+				/>
+				<p class="text-xs text-gray-500 mt-1">
+					Link para manual de instruções, guia de uso ou documentação técnica
+				</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+ 

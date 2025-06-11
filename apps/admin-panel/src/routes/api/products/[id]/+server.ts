@@ -4,7 +4,87 @@ import { getDatabase } from '$lib/db';
 import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
 
 /**
- * Compara dois estados de produto e registra histórico das alterações
+ * Normaliza um produto completo para comparação consistente
+ * Garante que tanto o estado original quanto o final tenham o mesmo formato
+ */
+function normalizeProductForComparison(product: any): any {
+  if (!product) return {};
+  
+  const normalized = { ...product };
+  
+  // 1. NORMALIZAÇÃO DE CAMPOS JSON
+  // Garantir que objetos JSON sejam sempre objetos, nunca strings
+  ['attributes', 'specifications'].forEach(field => {
+    if (typeof normalized[field] === 'string') {
+      try {
+        normalized[field] = JSON.parse(normalized[field]);
+      } catch {
+        normalized[field] = {};
+      }
+    }
+    if (!normalized[field] || typeof normalized[field] !== 'object' || Array.isArray(normalized[field])) {
+      normalized[field] = {};
+    }
+  });
+  
+  // 2. NORMALIZAÇÃO DE CAMPOS DE PREÇO
+  // Para preços opcionais: null, 0, "0", "" → null
+  ['original_price', 'regular_price'].forEach(field => {
+    const value = normalized[field];
+    const numValue = parseFloat(String(value || '0')) || 0;
+    normalized[field] = numValue > 0 ? numValue : null;
+  });
+  
+  // Para preços obrigatórios: garantir que sejam números
+  ['price', 'cost'].forEach(field => {
+    normalized[field] = parseFloat(String(normalized[field] || '0')) || 0;
+  });
+  
+  // 3. NORMALIZAÇÃO DE ARRAYS
+  ['tags', 'meta_keywords', 'images', 'videos'].forEach(field => {
+    if (!Array.isArray(normalized[field])) {
+      normalized[field] = [];
+    }
+  });
+  
+  // 4. NORMALIZAÇÃO DE CAMPOS NUMÉRICOS
+  ['quantity', 'weight', 'height', 'width', 'length', 'low_stock_alert'].forEach(field => {
+    const value = normalized[field];
+    normalized[field] = value !== null && value !== undefined && value !== '' 
+      ? (parseFloat(String(value)) || 0) 
+      : null;
+  });
+  
+  // 5. NORMALIZAÇÃO DE CAMPOS BOOLEANOS
+  ['is_active', 'featured', 'track_inventory', 'allow_backorder', 'has_free_shipping', 
+   'requires_shipping', 'is_digital', 'allow_reviews', 'age_restricted', 'is_customizable'].forEach(field => {
+    normalized[field] = Boolean(normalized[field]);
+  });
+  
+  // 6. NORMALIZAÇÃO DE STRINGS
+  ['name', 'sku', 'description', 'short_description', 'slug', 'model', 'barcode',
+   'condition', 'status', 'ncm_code', 'gtin', 'origin', 'care_instructions', 'manual_link'].forEach(field => {
+    normalized[field] = normalized[field] ? String(normalized[field]).trim() : null;
+  });
+  
+  // 7. REMOVER CAMPOS TEMPORÁRIOS E CALCULADOS
+  const fieldsToRemove = [
+    'created_at', 'updated_at', 'category_name', 'brand_name', 'seller_name',
+    'cost_price', 'sale_price', 'regular_price', 'tags_input', 'meta_keywords_input',
+    '_selected_categories', '_related_categories', 'custom_fields', 'has_variants',
+    'categories', 'category_ids', 'related_products', 'upsell_products', 'download_files',
+    'product_options', 'product_variants', 'variant_type', 'related_product_ids', 'upsell_product_ids'
+  ];
+  
+  fieldsToRemove.forEach(field => {
+    delete normalized[field];
+  });
+  
+  return normalized;
+}
+
+/**
+ * Compara dois produtos normalizados e registra histórico das alterações
  */
 async function compareAndLogHistory(
   originalProduct: any, 
@@ -13,16 +93,29 @@ async function compareAndLogHistory(
   db: any,
   user?: any
 ): Promise<{ totalChanges: number; summary: string }> {
-  const changes: Record<string, { old: any; new: any; label: string }> = {};
   
-  // Campos que devem ser ignorados na comparação
-  const ignoredFields = new Set([
-    'created_at', 'updated_at', 'id',
-    'images', // Ignorar imagens por enquanto (tem lógica específica)
-    'related_products', 'upsell_products', 'download_files',
-    'product_options', 'product_variants', 'variant_type',
-    'categories', 'category_ids', 'related_product_ids', 'upsell_product_ids'
-  ]);
+  console.log('🔄 Normalizando produtos para comparação...');
+  
+  // NORMALIZAR AMBOS OS PRODUTOS NO MESMO FORMATO
+  const normalizedOriginal = normalizeProductForComparison(originalProduct);
+  const normalizedFinal = normalizeProductForComparison(finalProduct);
+  
+  console.log('📊 Produtos normalizados:', {
+    original_fields: Object.keys(normalizedOriginal).length,
+    final_fields: Object.keys(normalizedFinal).length,
+    sample_original: {
+      original_price: normalizedOriginal.original_price,
+      attributes: normalizedOriginal.attributes,
+      specifications: normalizedOriginal.specifications
+    },
+    sample_final: {
+      original_price: normalizedFinal.original_price,
+      attributes: normalizedFinal.attributes,
+      specifications: normalizedFinal.specifications
+    }
+  });
+  
+  const changes: Record<string, { old: any; new: any; label: string }> = {};
   
   // Mapeamento de campos para nomes amigáveis
   const fieldLabels: Record<string, string> = {
@@ -39,11 +132,8 @@ async function compareAndLogHistory(
     width: 'Largura',
     length: 'Comprimento',
     category_id: 'Categoria',
-    category_name: 'Nome da Categoria',
     brand_id: 'Marca',
-    brand_name: 'Nome da Marca',
     seller_id: 'Vendedor',
-    seller_name: 'Nome do Vendedor',
     is_active: 'Status Ativo',
     featured: 'Em Destaque',
     status: 'Status',
@@ -54,32 +144,39 @@ async function compareAndLogHistory(
     meta_keywords: 'Palavras-chave SEO',
     attributes: 'Atributos para Filtros',
     specifications: 'Especificações Técnicas',
-    images: 'Imagens',
     track_inventory: 'Controlar Estoque',
     allow_backorder: 'Permitir Pré-venda',
+    low_stock_alert: 'Alerta de Estoque Baixo',
     has_free_shipping: 'Frete Grátis',
     requires_shipping: 'Requer Frete',
-    is_digital: 'Produto Digital'
+    is_digital: 'Produto Digital',
+    published_at: 'Data de Publicação',
+    age_restricted: 'Restrito por Idade',
+    videos: 'Vídeos do Produto',
+    manual_link: 'Link do Manual',
+    ncm_code: 'Código NCM',
+    gtin: 'Código GTIN',
+    origin: 'Origem do Produto',
+    allow_reviews: 'Permitir Avaliações',
+    is_customizable: 'Produto Customizável',
+    care_instructions: 'Instruções de Cuidado',
+    manufacturing_country: 'País de Fabricação',
+    warranty_period: 'Período de Garantia',
+    tax_class: 'Classe Tributária'
   };
   
-  // Combinar todas as chaves de ambos os objetos
+  // Combinar todas as chaves de ambos os objetos normalizados
   const allKeys = new Set([
-    ...Object.keys(originalProduct || {}),
-    ...Object.keys(finalProduct || {})
+    ...Object.keys(normalizedOriginal),
+    ...Object.keys(normalizedFinal)
   ]);
   
   for (const key of allKeys) {
-    if (ignoredFields.has(key)) continue;
+    const oldValue = normalizedOriginal[key];
+    const newValue = normalizedFinal[key];
     
-    const oldValue = originalProduct?.[key];
-    const newValue = finalProduct?.[key];
-    
-    // Normalizar valores para comparação
-    const normalizedOld = normalizeValueForComparison(oldValue);
-    const normalizedNew = normalizeValueForComparison(newValue);
-    
-    // Comparar valores normalizados
-    if (!deepEqual(normalizedOld, normalizedNew)) {
+    // Comparação simples e direta (ambos já normalizados)
+    if (!deepEqual(oldValue, newValue)) {
       const label = fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       
       changes[key] = {
@@ -88,27 +185,24 @@ async function compareAndLogHistory(
         label
       };
       
+      console.log(`🔍 Alteração detectada em "${key}": "${oldValue}" → "${newValue}"`);
     }
   }
   
   const totalChanges = Object.keys(changes).length;
   
-  // Log resumido das alterações reais
   if (totalChanges > 0) {
-    console.log(`🔍 ${totalChanges} campo(s) alterado(s):`);
-    Object.entries(changes).forEach(([field, change]) => {
-      console.log(`  - ${change.label}: "${change.old}" → "${change.new}"`);
-    });
+    console.log(`✅ ${totalChanges} alteração(ões) real(is) detectada(s)`);
   } else {
-    console.log('ℹ️ Nenhuma alteração detectada');
+    console.log('✅ NENHUMA ALTERAÇÃO DETECTADA - produtos são idênticos após normalização');
   }
   
   const summary = generateSmartSummary(changes, totalChanges);
   
-  // Registrar no banco se há alterações
+  // Registrar no banco apenas se há alterações reais
   if (totalChanges > 0) {
     try {
-              await db.query(`
+      await db.query(`
         INSERT INTO product_history (
           product_id, user_id, user_name, user_email, action, changes, summary, created_at
         ) VALUES (
@@ -124,9 +218,9 @@ async function compareAndLogHistory(
         summary
       ]);
       
-      console.log(`📝 Histórico salvo no banco: ${summary}`);
+      console.log(`📝 Histórico salvo: ${summary}`);
     } catch (dbError) {
-      console.error('❌ Erro ao salvar histórico no banco:', dbError);
+      console.error('❌ Erro ao salvar histórico:', dbError);
     }
   }
   
@@ -134,51 +228,14 @@ async function compareAndLogHistory(
 }
 
 /**
- * Normaliza valores para comparação consistente
- */
-function normalizeValueForComparison(value: any): any {
-  // null, undefined, string vazia → null
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-  
-  // Arrays vazios → null
-  if (Array.isArray(value) && value.length === 0) {
-    return null;
-  }
-  
-  // Objetos vazios → null
-  if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-    return null;
-  }
-  
-  // Converter strings numéricas para números
-  if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value.trim())) {
-    return Number(value);
-  }
-  
-  // Converter strings booleanas
-  if (typeof value === 'string') {
-    if (value.toLowerCase() === 'true') return true;
-    if (value.toLowerCase() === 'false') return false;
-  }
-  
-  // Para números, garantir que sejam do mesmo tipo
-  if (typeof value === 'number') {
-    return Number(value);
-  }
-  
-  return value;
-}
-
-/**
- * Comparação profunda de valores
+ * Comparação profunda de valores normalizados
  */
 function deepEqual(a: any, b: any): boolean {
   if (a === b) return true;
   
-  if ((a == null) !== (b == null)) return false;
+  // Tratar casos especiais de null/undefined
   if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
   
   if (typeof a !== typeof b) return false;
   
@@ -188,8 +245,8 @@ function deepEqual(a: any, b: any): boolean {
   }
   
   if (typeof a === 'object' && typeof b === 'object') {
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
+    const keysA = Object.keys(a).sort();
+    const keysB = Object.keys(b).sort();
     
     if (keysA.length !== keysB.length) return false;
     
@@ -565,9 +622,22 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
     const { id } = params;
     const requestData = await request.json();
     
-    console.log('Atualizando produto:', id);
+    console.log('🔍 DEBUG - Atualizando produto:', id);
     
-    // 🎯 CAPTURAR ESTADO ORIGINAL SIMPLES PARA HISTÓRICO (SEM JOINS PESADOS)
+    // 🚨 DEBUG CRÍTICO - MOSTRAR EXATAMENTE O QUE ESTÁ SENDO ENVIADO
+    console.log('📦 DEBUG - Payload completo recebido:', {
+      temNome: !!requestData.name,
+      temAttributes: !!requestData.attributes,
+      typeAttributes: typeof requestData.attributes,
+      attributes: requestData.attributes,
+      temSpecifications: !!requestData.specifications,
+      typeSpecifications: typeof requestData.specifications,
+      specifications: requestData.specifications,
+      keysEnviadas: Object.keys(requestData),
+      totalFields: Object.keys(requestData).length
+    });
+    
+    // 🎯 CAPTURAR ESTADO ORIGINAL E PRESERVAR DADOS EM UMA ÚNICA QUERY
     const originalProductQuery = `
       SELECT 
         p.*,
@@ -582,6 +652,36 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
     `;
     
     const originalResult = await db.query(originalProductQuery, [id]);
+    
+    // Preservar attributes e specifications se não vieram na requisição
+    const needsPreservation = (!requestData.attributes || typeof requestData.attributes !== 'object') ||
+                             (!requestData.specifications || typeof requestData.specifications !== 'object');
+    
+    if (needsPreservation && originalResult[0]) {
+      console.log('⚠️ PRESERVANDO DADOS - Usando dados já carregados...');
+      
+      // Preservar attributes se não vieram na requisição
+      if (!requestData.attributes || typeof requestData.attributes !== 'object') {
+        requestData.attributes = originalResult[0].attributes || {};
+        console.log('✅ Attributes preservados:', Object.keys(requestData.attributes).length > 0 ? `${Object.keys(requestData.attributes).length} itens` : 'vazio');
+      }
+      
+      // Preservar specifications se não vieram na requisição
+      if (!requestData.specifications || typeof requestData.specifications !== 'object') {
+        const originalSpecs = originalResult[0].specifications;
+        requestData.specifications = originalSpecs;
+        
+        if (originalSpecs === null || originalSpecs === undefined) {
+          console.log('✅ Specifications preservados: NULL (sem especificações)');
+        } else if (typeof originalSpecs === 'object' && Object.keys(originalSpecs).length === 0) {
+          console.log('✅ Specifications preservados: {} (objeto vazio)');
+        } else if (typeof originalSpecs === 'object') {
+          console.log('✅ Specifications preservados:', `${Object.keys(originalSpecs).length} itens`);
+        } else {
+          console.log('✅ Specifications preservados:', originalSpecs);
+        }
+      }
+    }
     const originalProduct = originalResult[0];
     
     if (!originalProduct) {
@@ -601,6 +701,21 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
       category_id: originalProduct.category_id,
       total_fields: Object.keys(originalProduct).length
     });
+
+    // 🚀 DEFINIR CONTEXTO DO USUÁRIO PARA A TRIGGER AUTOMÁTICA
+    if (user) {
+      console.log('👤 Definindo contexto do usuário para trigger:', {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      });
+      
+      await db.query(`SELECT set_user_context($1, $2, $3)`, [
+        user.id,
+        user.name,
+        user.email
+      ]);
+    }
     
     // 🔧 NORMALIZAR ATTRIBUTES ANTES DE SALVAR
     let normalizedAttributes: Record<string, string[]> = {};
@@ -617,6 +732,19 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
       console.log('🔧 Attributes normalizados antes de salvar:', normalizedAttributes);
     }
     
+    // 🔧 NORMALIZAR SPECIFICATIONS PRESERVANDO NULL
+    let finalSpecifications = null;
+    if (requestData.specifications && typeof requestData.specifications === 'object' && Object.keys(requestData.specifications).length > 0) {
+      finalSpecifications = JSON.stringify(requestData.specifications);
+      console.log('✅ Specifications válidos encontrados, salvando JSON');
+    } else if (requestData.specifications === null || requestData.specifications === undefined) {
+      finalSpecifications = null;
+      console.log('✅ Specifications são null/undefined, mantendo null no banco');
+    } else {
+      finalSpecifications = null;
+      console.log('✅ Specifications vazios ou inválidos, salvando null');
+    }
+    
     // Atualizar produto - apenas campos básicos existentes
     const result = await db.query`
       UPDATE products SET
@@ -626,7 +754,7 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
         description = ${requestData.description || ''},
         short_description = ${requestData.short_description || null},
         price = ${requestData.price},
-        original_price = ${requestData.original_price || null},
+        original_price = ${requestData.original_price && parseFloat(requestData.original_price) > 0 ? parseFloat(requestData.original_price) : null},
         cost = ${requestData.cost || 0},
         quantity = ${requestData.quantity || 0},
         model = ${requestData.model || null},
@@ -659,13 +787,14 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
         age_restricted = ${requestData.age_restricted || false},
         is_customizable = ${requestData.is_customizable || false},
         attributes = ${JSON.stringify(normalizedAttributes)},
-        specifications = ${JSON.stringify(requestData.specifications || {})},
+        specifications = ${finalSpecifications},
         manufacturing_country = ${getCountryCode(requestData.manufacturing_country)},
         tax_class = ${requestData.tax_class || 'standard'},
         requires_shipping = ${requestData.requires_shipping !== false},
         is_digital = ${requestData.is_digital || false},
         care_instructions = ${requestData.care_instructions || null},
         manual_link = ${requestData.manual_link || null},
+        videos = ${JSON.stringify(requestData.videos || [])},
         internal_notes = ${requestData.internal_notes || null},
         delivery_days = ${requestData.delivery_days_min || requestData.delivery_days_max || null},
         seller_state = ${requestData.seller_state || null},
@@ -893,19 +1022,16 @@ export const PUT: RequestHandler = withAdminAuth(async ({ params, request, platf
       const finalProduct = finalResult[0];
       
       if (finalProduct && originalProduct) {
-        // Comparar apenas campos da tabela products (mais eficiente)
-        const changes = await compareAndLogHistory(originalProduct, finalProduct, id, db, user);
-        
-        if (changes.totalChanges > 0) {
-          console.log(`✅ Histórico registrado: ${changes.summary}`);
-        } else {
-          console.log('ℹ️ Nenhuma alteração detectada');
-        }
+        // ✅ HISTÓRICO AGORA É REGISTRADO AUTOMATICAMENTE PELA TRIGGER POSTGRESQL
+        console.log('📝 Histórico registrado automaticamente pela trigger PostgreSQL');
       }
     } catch (historyError) {
       console.error('⚠️ Erro ao registrar histórico:', historyError);
       // Não falhar a operação por causa do histórico
     }
+    
+    // 🧹 LIMPAR CONTEXTO DO USUÁRIO
+    await db.query(`SELECT clear_user_context()`);
     
     await db.close();
     return json({ 

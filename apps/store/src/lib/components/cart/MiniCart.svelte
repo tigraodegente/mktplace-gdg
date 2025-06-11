@@ -3,7 +3,7 @@
 	import { formatCurrency } from '$lib/utils';
 	import { cartStore } from '$lib/stores/cartStore';
 	import { fade, scale, fly, slide } from 'svelte/transition';
-	import { cubicOut, elasticOut } from 'svelte/easing';
+	import { cubicOut, elasticOut, backOut } from 'svelte/easing';
 	import { goto } from '$app/navigation';
 	
 	const dispatch = createEventDispatcher<{
@@ -148,8 +148,8 @@
 
 {#if isVisible}
 	<div 
-		class="absolute top-full right-0 mt-3 w-96 bg-white rounded-lg shadow-sm border border-gray-200 z-50 overflow-hidden"
-		transition:scale={{ duration: 300, start: 0.92, easing: elasticOut }}
+		class="absolute top-full right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
+		transition:fly={{ y: -20, duration: 400, easing: backOut }}
 		role="dialog"
 		tabindex="-1"
 		aria-label="Prévia do carrinho"
@@ -180,34 +180,36 @@
 					Continuar Comprando
 				</button>
 			</div>
-		{:else}
-			<!-- Header Padrão seguindo identidade das outras páginas -->
-			<div class="bg-white shadow-sm border-b border-gray-200">
-				<div class="px-6 py-4">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<svg class="h-6 w-6 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		{:else}		
+			<!-- Header igual ao Chat -->
+			<div class="bg-[#00BFB3] p-4 text-white relative">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5-6m0 0h15M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
 							</svg>
-							<div>
-								<h2 class="text-lg font-medium text-gray-900" style="font-family: 'Lato', sans-serif;">
-									Meu Carrinho
-								</h2>
-								<p class="text-sm text-gray-600" style="font-family: 'Lato', sans-serif;">
-									{itemCount} {itemCount === 1 ? 'item adicionado' : 'itens adicionados'}
+						</div>
+						<div>
+							<h3 class="font-medium text-sm" style="font-family: 'Lato', sans-serif;">Meu Carrinho</h3>
+							<div class="flex items-center gap-1 text-xs">
+								<div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+								<span class="opacity-90">
+									{itemCount} {itemCount === 1 ? 'item' : 'itens'}
 									{#if $sellerGroups.length > 1}
 										• {$sellerGroups.length} vendedores
 									{/if}
-								</p>
+								</span>
 							</div>
 						</div>
-						
+					</div>
+					<div class="flex items-center gap-1">
 						<button 
 							onclick={onClose}
-							class="p-2 hover:bg-gray-100 rounded-md transition-colors"
+							class="p-1 hover:bg-white/20 rounded-lg transition-colors"
 							aria-label="Fechar carrinho"
 						>
-							<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 							</svg>
 						</button>
@@ -220,16 +222,16 @@
 			{#if !freeShippingProgress.hasFreeship}
 				<div class="bg-blue-50 border-b border-gray-200 p-4">
 					<div class="flex items-center gap-2 mb-2">
-						<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-4 h-4 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 						</svg>
 						<span class="text-sm font-medium text-gray-700" style="font-family: 'Lato', sans-serif;">
-							Faltam apenas <span class="text-green-600 font-bold">{formatCurrency(freeShippingProgress.remaining)}</span> para frete grátis!
+							Faltam apenas <span class="text-[#00BFB3] font-bold">{formatCurrency(freeShippingProgress.remaining)}</span> para frete grátis!
 						</span>
 					</div>
 					<div class="w-full bg-gray-200 rounded-full h-2">
 						<div 
-							class="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
+							class="bg-[#00BFB3] h-2 rounded-full transition-all duration-500 ease-out"
 							style="width: {freeShippingProgress.percentage}%"
 						></div>
 					</div>
@@ -238,20 +240,20 @@
 				<div class="bg-green-50 border-b border-green-200 p-4">
 					<div class="flex items-center gap-3">
 						<div class="flex items-center gap-2">
-							<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+							<div class="w-8 h-8 bg-[#00BFB3] rounded-full flex items-center justify-center">
 								<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 								</svg>
 							</div>
-							<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 							</svg>
 						</div>
 						<div class="flex-1">
-							<p class="text-sm font-semibold text-green-700" style="font-family: 'Lato', sans-serif;">
+							<p class="text-sm font-semibold text-[#00BFB3]" style="font-family: 'Lato', sans-serif;">
 								Parabéns! Você ganhou frete grátis
 							</p>
-							<p class="text-xs text-green-600" style="font-family: 'Lato', sans-serif;">
+							<p class="text-xs text-[#00BFB3]" style="font-family: 'Lato', sans-serif;">
 								Economia garantida na sua compra
 							</p>
 						</div>
@@ -260,7 +262,7 @@
 			{/if}
 			
 			<!-- Lista de Produtos seguindo padrão das outras páginas -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+			<div class="bg-white">
 				<div class="px-6 py-4 border-b border-gray-200">
 					<div class="flex items-center gap-3">
 						<svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -388,7 +390,7 @@
 			</div>
 			
 			<!-- Footer com totais seguindo padrão das outras páginas -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+			<div class="bg-white p-6">
 				<div class="flex items-center gap-3 mb-4">
 					<svg class="h-5 w-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -406,7 +408,7 @@
 					</div>
 					
 					{#if totalSavings > 0}
-						<div class="flex justify-between text-sm text-green-600" style="font-family: 'Lato', sans-serif;">
+						<div class="flex justify-between text-sm text-[#00BFB3]" style="font-family: 'Lato', sans-serif;">
 							<span>Economia:</span>
 							<span class="font-semibold">-{formatCurrency(totalSavings)}</span>
 						</div>

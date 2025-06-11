@@ -455,6 +455,112 @@
 				</select>
 				<p class="text-xs text-gray-500 mt-1">Estado atual do produto</p>
 			</div>
+
+			<!-- Código NCM -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					📋 Código NCM
+					<span class="text-xs text-gray-500 ml-2">Nomenclatura Comum do Mercosul</span>
+				</label>
+				<input
+					type="text"
+					bind:value={formData.ncm_code}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="Ex: 8517.12.31"
+					pattern="[0-9]{4}\.[0-9]{2}\.[0-9]{2}"
+					maxlength="10"
+				/>
+				<p class="text-xs text-gray-500 mt-1">
+					Código fiscal obrigatório para produtos físicos no Brasil
+				</p>
+			</div>
+
+			<!-- Código GTIN -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					🔢 Código GTIN
+					<span class="text-xs text-gray-500 ml-2">Global Trade Item Number</span>
+				</label>
+				<input
+					type="text"
+					bind:value={formData.gtin}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="Ex: 7891234567890"
+					pattern="[0-9]{8,14}"
+					maxlength="14"
+				/>
+				<p class="text-xs text-gray-500 mt-1">
+					Código de barras internacional (EAN, UPC, etc.)
+				</p>
+			</div>
+
+			<!-- Origem -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					🌍 Origem do Produto
+				</label>
+				<input
+					type="text"
+					bind:value={formData.origin}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="Ex: Nacional, Importado, China, etc."
+				/>
+				<p class="text-xs text-gray-500 mt-1">
+					Origem de fabricação ou procedência
+				</p>
+			</div>
+		</div>
+
+		<!-- CONFIGURAÇÕES ADICIONAIS -->
+		<div class="mt-6 space-y-4">
+			<h5 class="font-medium text-gray-900">Configurações de Produto</h5>
+			
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div>
+					<label class="flex items-center gap-3 cursor-pointer">
+						<input
+							type="checkbox"
+							bind:checked={formData.allow_reviews}
+							class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+						/>
+						<div>
+							<span class="text-sm font-medium text-gray-900">⭐ Permitir Avaliações</span>
+							<p class="text-xs text-gray-500">Clientes podem avaliar este produto</p>
+						</div>
+					</label>
+				</div>
+				
+				<div>
+					<label class="flex items-center gap-3 cursor-pointer">
+						<input
+							type="checkbox"
+							bind:checked={formData.is_customizable}
+							class="w-5 h-5 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
+						/>
+						<div>
+							<span class="text-sm font-medium text-gray-900">🎨 Produto Customizável</span>
+							<p class="text-xs text-gray-500">Permite personalização pelo cliente</p>
+						</div>
+					</label>
+				</div>
+			</div>
+		</div>
+
+		<!-- INSTRUÇÕES DE CUIDADO -->
+		<div class="mt-6">
+			<label class="block text-sm font-medium text-gray-700 mb-2">
+				🧼 Instruções de Cuidado
+				<span class="text-xs text-gray-500 ml-2">Como cuidar, limpar ou manter o produto</span>
+			</label>
+			<textarea
+				bind:value={formData.care_instructions}
+				rows="4"
+				class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors resize-none"
+				placeholder="Ex: Lavar à mão em água fria. Não usar alvejante. Secar à sombra. Não passar ferro em alta temperatura."
+			></textarea>
+			<p class="text-xs text-gray-500 mt-1">
+				Instruções importantes para conservação e uso adequado do produto
+			</p>
 		</div>
 	</div>
 

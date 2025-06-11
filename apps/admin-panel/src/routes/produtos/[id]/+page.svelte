@@ -313,6 +313,29 @@
 					formData.track_inventory = formData.track_inventory ?? true;
 					formData.allow_backorder = formData.allow_backorder ?? false;
 					
+					// ✅ INICIALIZAR TODOS OS NOVOS CAMPOS IMPLEMENTADOS
+					// BasicTab - Novos campos
+					formData.age_restricted = formData.age_restricted ?? false;
+					formData.published_at = formData.published_at || null;
+					
+					// MediaTab - Novos campos
+					formData.videos = formData.videos || [];
+					formData.manual_link = formData.manual_link || '';
+					
+					// InventoryTab - Novos campos
+					formData.low_stock_alert = formData.low_stock_alert || null;
+					
+					// SeoTab - Campo existente que precisa ser garantido
+					formData.meta_keywords = formData.meta_keywords || [];
+					
+					// AdvancedTab - Novos campos
+					formData.ncm_code = formData.ncm_code || '';
+					formData.gtin = formData.gtin || '';
+					formData.origin = formData.origin || '';
+					formData.allow_reviews = formData.allow_reviews ?? true;
+					formData.is_customizable = formData.is_customizable ?? false;
+					formData.care_instructions = formData.care_instructions || '';
+					
 					// ===== MAPEAR CAMPOS DE PREÇO PARA O PricingTab =====
 					// O PricingTab espera: cost_price, sale_price, regular_price
 					// Mas o banco envia: cost, price, original_price
@@ -364,7 +387,7 @@
 				// PricingTab usa: cost_price, sale_price, regular_price
 				// Banco espera: cost, price, original_price
 				price: parseFloat(formData.sale_price || formData.price) || 0,
-				original_price: formData.regular_price ? parseFloat(formData.regular_price) : (formData.original_price ? parseFloat(formData.original_price) : null),
+				original_price: formData.regular_price ? parseFloat(formData.regular_price) : (formData.original_price && parseFloat(formData.original_price) > 0 ? parseFloat(formData.original_price) : null),
 				cost: parseFloat(formData.cost_price || formData.cost) || 0,
 				quantity: parseInt(formData.quantity) || 0,
 				weight: formData.weight ? parseFloat(formData.weight) : null,

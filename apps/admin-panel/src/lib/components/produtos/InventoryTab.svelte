@@ -88,6 +88,22 @@
 				<p class="text-xs text-gray-500 mt-1">Alerta de estoque baixo</p>
 			</div>
 
+			<!-- Alerta de Estoque Baixo -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					⚠️ Limite para Alerta
+				</label>
+				<input
+					type="number"
+					min="0"
+					step="1"
+					bind:value={formData.low_stock_alert}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+					placeholder="10"
+				/>
+				<p class="text-xs text-gray-500 mt-1">Quantidade para disparar alertas</p>
+			</div>
+
 			<!-- Status Visual -->
 			<div class="md:col-span-2">
 				<label class="block text-sm font-medium text-gray-700 mb-2">
@@ -115,7 +131,7 @@
 				<label class="flex items-center gap-3 cursor-pointer">
 					<input
 						type="checkbox"
-						bind:checked={formData.track_stock}
+						bind:checked={formData.track_inventory}
 						class="w-6 h-6 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
 					/>
 					<div>
@@ -130,7 +146,7 @@
 				<label class="flex items-center gap-3 cursor-pointer">
 					<input
 						type="checkbox"
-						bind:checked={formData.allow_backorders}
+						bind:checked={formData.allow_backorder}
 						class="w-6 h-6 rounded border-gray-300 text-[#00BFB3] focus:ring-[#00BFB3]"
 					/>
 					<div>

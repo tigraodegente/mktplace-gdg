@@ -102,7 +102,10 @@
         productName: item.product.name,
         quantity: item.quantity,
         price: item.product.price,
-        image: item.product.images?.[0] || '/placeholder.jpg'
+        image: item.product.images?.[0] || '/placeholder.jpg',
+        selectedColor: item.selectedColor || null,
+        selectedSize: item.selectedSize || null,
+        sellerName: group.sellerName || 'Marketplace GDG'
       }))
     );
     
@@ -420,19 +423,51 @@
         throw new Error(paymentResult.error.message);
       }
 
+      // Preparar dados completos para a página de sucesso
       orderResult = {
-        order: orderData.data.order,
-        payment: paymentResult.data.payment
+        order: {
+          ...orderData.data.order,
+          items: cartItems.map((item: any) => ({
+            product: {
+              id: item.productId,
+              name: item.productName,
+              price: item.price,
+              images: [item.image]
+            },
+            quantity: item.quantity,
+            selectedColor: item.selectedColor || null,
+            selectedSize: item.selectedSize || null,
+            sellerName: item.sellerName || 'Marketplace GDG'
+          })),
+          address: addressForm,
+          shipping: {
+            option: 'Entrega Padrão',
+            deliveryDays: 5
+          },
+          totals: {
+            subtotal: calculateSubtotal(),
+            shipping: getShippingCost(),
+            discount: getDiscount(),
+            total: calculateTotal()
+          }
+        },
+        payment: {
+          ...paymentResult.data.payment,
+          method: selectedPaymentMethod,
+          paymentData: paymentData
+        }
       };
       
       // Limpar dados e redirecionar para confirmação
       clearCart();
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('checkoutData');
+        console.log('💾 Salvando orderResult no sessionStorage:', orderResult);
         sessionStorage.setItem('orderResult', JSON.stringify(orderResult));
+        console.log('✅ orderResult salvo com sucesso!');
       }
       
-      await goto('/checkout/success');
+      await goto(`/pedido/sucesso?order=${orderData.data.order.orderNumber}`);
       
     } catch (err) {
       error = err instanceof Error ? err.message : 'Erro desconhecido';

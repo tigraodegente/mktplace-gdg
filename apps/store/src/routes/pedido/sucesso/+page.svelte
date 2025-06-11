@@ -9,36 +9,81 @@
   let orderDetails: any = null;
   
   onMount(async () => {
+    console.log('🎉 PÁGINA DE SUCESSO CARREGADA!');
+    console.log('🌐 URL atual:', window.location.href);
+    
     orderNumber = $page.url.searchParams.get('order') || '';
+    console.log('📋 Número do pedido da URL:', orderNumber);
     
     if (!orderNumber) {
-      // Se não tem número do pedido, redirecionar para home
+      console.log('❌ Nenhum número de pedido encontrado na URL');
       goto('/');
       return;
     }
     
-    // Buscar detalhes do pedido se o usuário estiver logado
-    if ($isAuthenticated && orderNumber) {
-      try {
-        const response = await fetch(`/api/orders?limit=1`);
-        const result = await response.json();
-        
-        if (result.success && result.data.orders.length > 0) {
-          // Buscar o pedido mais recente que corresponde ao número
-          const recentOrder = result.data.orders.find((order: any) => 
-            order.orderNumber === orderNumber
-          );
+    // Primeiro tentar buscar do sessionStorage
+    if (typeof window !== 'undefined') {
+      const savedResult = sessionStorage.getItem('orderResult');
+      console.log('💾 Dados do sessionStorage:', savedResult ? 'ENCONTRADOS' : 'NÃO ENCONTRADOS');
+      
+      if (savedResult) {
+        try {
+          const sessionData = JSON.parse(savedResult);
+          console.log('📋 Dados do sessionStorage parseados:', sessionData);
           
-          if (recentOrder) {
-            orderDetails = recentOrder;
+          // Usar dados do sessionStorage se disponíveis
+          if (sessionData.order) {
+            orderDetails = sessionData.order;
+            console.log('✅ Usando dados do sessionStorage');
+          }
+        } catch (e) {
+          console.log('⚠️ Erro ao parsear sessionStorage:', e);
+        }
+      }
+    }
+    
+    // Se não tem dados do sessionStorage ou usuário logado, buscar da API
+    if (!orderDetails && $isAuthenticated && orderNumber) {
+      console.log('🔄 Buscando dados da API para pedido:', orderNumber);
+      
+      try {
+        // Tentar buscar direto pelo ID do pedido
+        const response = await fetch(`/api/orders/${orderNumber}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            console.log('✅ Dados da API carregados:', result.data);
+            orderDetails = result.data;
+          } else {
+            console.log('⚠️ API não retornou dados válidos, tentando busca geral');
+            
+            // Fallback: buscar lista de pedidos e encontrar o correto
+            const listResponse = await fetch(`/api/orders?limit=10`);
+            const listResult = await listResponse.json();
+            
+            if (listResult.success && listResult.data.orders.length > 0) {
+              const recentOrder = listResult.data.orders.find((order: any) => 
+                order.orderNumber === orderNumber
+              );
+              
+              if (recentOrder) {
+                console.log('✅ Pedido encontrado na lista:', recentOrder);
+                orderDetails = recentOrder;
+              }
+            }
           }
         }
       } catch (error) {
-        console.error('Erro ao buscar detalhes do pedido:', error);
+        console.error('❌ Erro ao buscar detalhes do pedido:', error);
       }
     }
     
     loading = false;
+    console.log('✅ Carregamento concluído. OrderDetails:', !!orderDetails);
   });
   
   function formatCurrency(value: number): string {
@@ -56,6 +101,76 @@
       hour: '2-digit',
       minute: '2-digit'
     }).format(new Date(dateString));
+  }
+  
+  function getProductImage(item: any): string {
+    console.log('🖼️ ========== FUNÇÃO getProductImage CHAMADA ==========');
+    console.log('🖼️ Item recebido:', item);
+    console.log('🖼️ Tipo do item:', typeof item);
+    console.log('🖼️ Item.productImage:', item?.productImage);
+    
+    // 1. Novo formato da API: productImage (string única)
+    if (item?.productImage && typeof item.productImage === 'string') {
+      const imageUrl = item.productImage;
+      console.log('✅ Usando item.productImage:', imageUrl);
+      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
+      return imageUrl;
+    }
+    
+    // 2. Formato antigo: item.product.images (array)
+    if (item?.product?.images && Array.isArray(item.product.images) && item.product.images.length > 0) {
+      const imageUrl = item.product.images[0];
+      console.log('✅ Usando item.product.images[0]:', imageUrl);
+      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
+      return imageUrl;
+    }
+    
+    // 3. Formato alternativo: item.product.image (string única)
+    if (item?.product?.image && typeof item.product.image === 'string') {
+      const imageUrl = item.product.image;
+      console.log('✅ Usando item.product.image:', imageUrl);
+      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
+      return imageUrl;
+    }
+    
+    // 4. Tentar imagem do produto no formato JSON
+    if (item?.product?.images && typeof item.product.images === 'string') {
+      try {
+        const parsedImages = JSON.parse(item.product.images);
+        if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+          const imageUrl = parsedImages[0];
+          console.log('✅ Usando item.product.images (JSON parsed):', imageUrl);
+          console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
+          return imageUrl;
+        }
+      } catch (e) {
+        console.log('⚠️ Erro ao fazer parse de item.product.images como JSON');
+      }
+    }
+    
+    // 5. Tentar construir URL baseada no slug ou ID
+    const productSlug = item?.productSlug || item?.product?.slug;
+    const productId = item?.productId || item?.product?.id;
+    
+    if (productSlug) {
+      const constructedUrl = `/api/products/${productSlug}/image`;
+      console.log('🔧 Usando URL construída com slug:', constructedUrl);
+      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + constructedUrl + ' ==========');
+      return constructedUrl;
+    }
+    
+    if (productId) {
+      const constructedUrl = `/api/products/${productId}/image`;
+      console.log('🔧 Usando URL construída com ID:', constructedUrl);
+      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + constructedUrl + ' ==========');
+      return constructedUrl;
+    }
+    
+    // 6. Fallback para placeholder
+    console.log('❌ Nenhuma imagem encontrada, usando placeholder');
+    const fallbackUrl = `/api/placeholder/80/80`;
+    console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + fallbackUrl + ' ==========');
+    return fallbackUrl;
   }
 </script>
 
@@ -207,25 +322,62 @@
               
               <div class="divide-y divide-gray-200">
                 {#each orderDetails.items as item}
+                  {console.log('🎨 RENDERIZANDO ITEM:', item)}
                   <div class="p-4 flex items-center space-x-4">
                     <div class="flex-shrink-0">
                       <img 
-                        src={item.productImage} 
-                        alt={item.productName}
+                        src={item.productImage || item.product?.images?.[0] || item.product?.image || `/api/placeholder/80/80`} 
+                        alt={item.productName || item.product?.name || 'Produto'}
                         class="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                        onerror={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          console.log('❌ Erro ao carregar imagem:', img.src);
+                          
+                          // Primeiro fallback: tentar placeholder do produto
+                          if (!img.src.includes('placeholder')) {
+                            console.log('🔄 Tentando placeholder...');
+                            img.src = '/api/placeholder/80/80';
+                            return;
+                          }
+                          
+                          // Segundo fallback: imagem padrão
+                          console.log('🔄 Usando imagem padrão...');
+                          img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAzMkM0Ni41MDk3IDMyIDUwIDI4LjUwOTcgNTAgMjZDNTAgMjMuNDkwMyA0Ni41MDk3IDIwIDQ0IDIwQzQxLjQ5MDMgMjAgMzggMjMuNDkwMzM4IDM4IDIyNkMzOCAyOC41MDk3IDQxLjQ5MDMgMzIgNDQgMzJaIiBmaWxsPSIjOUIxMDE3Ii8+CjxwYXRoIGQ9Ik0yNCA1MEgyNFY0NkgyNFY1MFoiIGZpbGw9IiM5QjEwMTciLz4KPC9zdmc+Cg==';
+                        }}
                       />
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                      <h4 class="font-medium text-gray-900 truncate">{item.productName}</h4>
+                      <h4 class="font-medium text-gray-900 truncate">{item.productName || item.product?.name || 'Produto'}</h4>
                       <div class="flex items-center space-x-4 mt-1">
                         <span class="text-sm text-gray-600">Qtd: {item.quantity}</span>
-                        <span class="text-sm text-gray-600">Unit: {formatCurrency(item.price)}</span>
+                        <span class="text-sm text-gray-600">Unit: {formatCurrency(item.price || item.product?.price || 0)}</span>
                       </div>
+                      
+                      {#if item.selectedColor || item.selectedSize}
+                        <div class="flex gap-2 mt-2">
+                          {#if item.selectedColor}
+                            <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              {item.selectedColor}
+                            </span>
+                          {/if}
+                          {#if item.selectedSize}
+                            <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              {item.selectedSize}
+                            </span>
+                          {/if}
+                        </div>
+                      {/if}
+                      
+                      {#if item.sellerName}
+                        <p class="text-xs text-gray-500 mt-1">
+                          Vendido por: {item.sellerName}
+                        </p>
+                      {/if}
                     </div>
                     
                     <div class="text-right">
-                      <p class="font-semibold text-gray-900">{formatCurrency(item.total)}</p>
+                      <p class="font-semibold text-gray-900">{formatCurrency(item.total || (item.price * item.quantity) || 0)}</p>
                     </div>
                   </div>
                 {/each}

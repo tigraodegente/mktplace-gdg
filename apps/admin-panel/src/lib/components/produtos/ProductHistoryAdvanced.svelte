@@ -313,7 +313,11 @@
 										<div>
 											<h4 class="font-medium text-gray-900">{actionConfig.label}</h4>
 											<p class="text-sm text-gray-500">
-												por {entry.user_name || 'Sistema'} em {formatDate(entry.created_at)}
+												por <span class="font-medium">{entry.user_name || 'Sistema'}</span>
+												{#if entry.user_email && entry.user_email !== 'system@marketplace.com'}
+													<span class="text-gray-400">({entry.user_email})</span>
+												{/if}
+												em {formatDate(entry.created_at)}
 											</p>
 										</div>
 									</div>

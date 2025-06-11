@@ -1275,6 +1275,20 @@
 			</div>
 		</div>
 		
+		<!-- Data de Publicação -->
+		<div class="mt-6">
+			<label class="block text-sm font-medium text-gray-700 mb-2">
+				Data de Publicação
+				<span class="text-xs text-gray-500 ml-2">Deixe vazio para publicar imediatamente</span>
+			</label>
+			<input
+				type="datetime-local"
+				bind:value={formData.published_at}
+				class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent"
+				placeholder="Selecione data e hora"
+			/>
+		</div>
+
 		<!-- Checkboxes -->
 		<div class="mt-6 space-y-4">
 			<label class="flex items-center gap-3">
@@ -1292,25 +1306,18 @@
 					bind:checked={formData.featured}
 					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
 				/>
-				<span class="text-sm font-medium text-gray-700">Produto em destaque</span>
+				<span class="text-sm font-medium text-gray-700">⭐ Produto em destaque</span>
+				<span class="text-xs text-gray-500">Aparece na homepage e banners</span>
 			</label>
 			
 			<label class="flex items-center gap-3">
 				<input
 					type="checkbox"
-					bind:checked={formData.track_inventory}
+					bind:checked={formData.age_restricted}
 					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
 				/>
-				<span class="text-sm font-medium text-gray-700">Controlar estoque</span>
-			</label>
-			
-			<label class="flex items-center gap-3">
-				<input
-					type="checkbox"
-					bind:checked={formData.allow_backorder}
-					class="w-5 h-5 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
-				/>
-				<span class="text-sm font-medium text-gray-700">Permitir backorder</span>
+				<span class="text-sm font-medium text-gray-700">🔞 Restrito por idade</span>
+				<span class="text-xs text-gray-500">Requer verificação de idade</span>
 			</label>
 		</div>
 	</div>

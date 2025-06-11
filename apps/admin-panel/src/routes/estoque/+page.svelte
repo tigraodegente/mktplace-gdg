@@ -115,11 +115,11 @@
 						}"
 					>
 						<span class="text-sm">
-							{#if tab.id === 'overview'}📊
-							{:else if tab.id === 'movements'}📋
-							{:else if tab.id === 'alerts'}🚨
-							{:else if tab.id === 'reports'}📈
-							{:else}📦{/if}
+							{#if tab.id === 'overview'}<ModernIcon name="Analytics" size="sm" />
+							{:else if tab.id === 'movements'}<ModernIcon name="FileText" size="sm" />
+							{:else if tab.id === 'alerts'}<ModernIcon name="AlertTriangle" size="sm" />
+							{:else if tab.id === 'reports'}<ModernIcon name="TrendingUp" size="sm" />
+							{:else}<ModernIcon name="Package" size="sm" />{/if}
 						</span>
 						{tab.label}
 					</button>
@@ -328,7 +328,7 @@
 							type="button"
 							class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
 						>
-							<div class="text-2xl mb-2">📊</div>
+							<div class="mb-2"><ModernIcon name="Analytics" size="lg" class="text-gray-600" /></div>
 							<h4 class="font-medium text-gray-900">Relatório de Valorização</h4>
 							<p class="text-sm text-gray-500 mt-1">Valor total do estoque por produto</p>
 						</button>
@@ -337,7 +337,7 @@
 							type="button"
 							class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
 						>
-							<div class="text-2xl mb-2">🔄</div>
+							<div class="mb-2"><ModernIcon name="RotateCcw" size="lg" class="text-gray-600" /></div>
 							<h4 class="font-medium text-gray-900">Giro de Estoque</h4>
 							<p class="text-sm text-gray-500 mt-1">Análise de rotatividade dos produtos</p>
 						</button>
@@ -346,7 +346,7 @@
 							type="button"
 							class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
 						>
-							<div class="text-2xl mb-2">📈</div>
+							<div class="mb-2"><ModernIcon name="TrendingUp" size="lg" class="text-gray-600" /></div>
 							<h4 class="font-medium text-gray-900">Previsão de Reposição</h4>
 							<p class="text-sm text-gray-500 mt-1">Estimativas baseadas no histórico</p>
 						</button>

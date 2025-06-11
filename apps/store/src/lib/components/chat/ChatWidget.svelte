@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { isAuthenticated } from '$lib/stores/authStore';
-  import { fly, scale, fade } from 'svelte/transition';
-  import { elasticOut, backOut } from 'svelte/easing';
+  import { fly } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
+
+
 
   // Estados do widget
   let isOpen = $state(false);
@@ -12,9 +13,6 @@
   let isTyping = $state(false);
   let messages: any[] = $state([]);
   let newMessage = $state('');
-  let widgetPosition = $state({ x: 0, y: 0 });
-  let isDragging = $state(false);
-  let dragOffset = $state({ x: 0, y: 0 });
   
   // Auto-refresh
   let refreshInterval: any;
@@ -26,7 +24,6 @@
 
   // Configurações do widget
   const widgetConfig = {
-    position: 'bottom-right', // bottom-right, bottom-left, top-right, top-left
     enableSound: true,
     enableNotifications: true,
     autoHide: false
@@ -65,13 +62,19 @@
   }
 
   function closeWidget() {
+    // Force a clean state reset
+    showQuickActions = false;
+    isTyping = false;
     isOpen = false;
     isMinimized = false;
   }
 
   function minimizeWidget() {
-    isMinimized = true;
+    // Force a clean state reset
+    showQuickActions = false;
+    isTyping = false;
     isOpen = false;
+    isMinimized = true;
   }
 
   function startWelcomeFlow() {
@@ -169,28 +172,7 @@
     goto('/chat');
   }
 
-  // Drag and drop functionality
-  function startDrag(event: MouseEvent) {
-    isDragging = true;
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    dragOffset = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
-  }
 
-  function onDrag(event: MouseEvent) {
-    if (isDragging) {
-      widgetPosition = {
-        x: event.clientX - dragOffset.x,
-        y: event.clientY - dragOffset.y
-      };
-    }
-  }
-
-  function stopDrag() {
-    isDragging = false;
-  }
 
   onMount(() => {
     // Simular notificações não lidas
@@ -204,15 +186,6 @@
         unreadCount++;
       }
     }, 10000);
-
-    // Event listeners for dragging
-    document.addEventListener('mousemove', onDrag);
-    document.addEventListener('mouseup', stopDrag);
-
-    return () => {
-      document.removeEventListener('mousemove', onDrag);
-      document.removeEventListener('mouseup', stopDrag);
-    };
   });
 
   onDestroy(() => {
@@ -221,12 +194,7 @@
 </script>
 
 <!-- Widget Container -->
-<div class="fixed z-50 transition-all duration-300 ease-out"
-     class:bottom-4={widgetConfig.position.includes('bottom')}
-     class:top-4={widgetConfig.position.includes('top')}
-     class:right-4={widgetConfig.position.includes('right')}
-     class:left-4={widgetConfig.position.includes('left')}
-     style={isDragging ? `left: ${widgetPosition.x}px; top: ${widgetPosition.y}px;` : ''}>
+<div style="position: fixed !important; bottom: 1rem !important; right: 1rem !important; z-index: 50 !important;">
   
   {#if isOpen}
     <!-- Chat Window -->
@@ -237,11 +205,10 @@
       aria-label="Chat de suporte"
     >
       <!-- Header -->
-      <div class="bg-[#00BFB3] p-4 text-white relative cursor-move" 
-           role="banner"
-           onmousedown={startDrag}>
+      <div class="bg-[#00BFB3] p-4 text-white relative" 
+           role="banner">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-1">
             <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html getIconSVG('message')}
@@ -279,7 +246,6 @@
         {#each messages as message, index}
           <div 
             class="flex {message.isBot ? 'justify-start' : 'justify-end'}"
-            transition:fly={{ y: 20, duration: 300, delay: index * 50 }}
           >
             <div class="flex items-end gap-2 max-w-xs">
               {#if message.isBot}
@@ -311,7 +277,6 @@
         {#if isTyping}
           <div 
             class="flex justify-start"
-            transition:fade={{ duration: 200 }}
           >
             <div class="flex items-end gap-2">
               <div class="w-6 h-6 bg-[#00BFB3] rounded-full flex items-center justify-center text-white text-xs">
@@ -333,15 +298,13 @@
       {#if showQuickActions}
         <div 
           class="p-3 bg-white border-t border-gray-100"
-          transition:fly={{ y: 10, duration: 300 }}
         >
           <div class="text-xs text-gray-600 mb-2">Respostas rápidas:</div>
           <div class="grid grid-cols-2 gap-2">
             {#each quickActions as action, index}
               <button 
                 onclick={() => handleQuickAction(action)}
-                class="p-2 text-xs bg-gray-50 hover:bg-[#00BFB3] hover:text-white rounded-lg transition-colors text-left"
-                transition:scale={{ duration: 200, delay: index * 50 }}
+                class="p-2 text-xs bg-gray-50 hover:bg-[#00BFB3] hover:text-white rounded-lg text-left"
               >
                 <div class="flex items-center gap-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,9 +347,8 @@
   {:else if isMinimized}
     <!-- Minimized State -->
     <button 
-      class="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 cursor-pointer hover:shadow-xl transition-all w-full text-left"
+      class="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 cursor-pointer hover:shadow-xl w-full text-left"
       onclick={openWidget}
-      transition:scale={{ duration: 300, easing: elasticOut }}
       role="button"
       aria-label="Abrir chat minimizado"
     >
@@ -414,9 +376,8 @@
     <!-- Floating Button -->
     <button 
       onclick={openWidget}
-      class="group relative w-14 h-14 bg-[#00BFB3] text-white rounded-full shadow-lg hover:bg-[#00A89D] hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out flex items-center justify-center"
+      class="group relative w-14 h-14 bg-[#00BFB3] text-white rounded-full shadow-lg hover:bg-[#00A89D] hover:shadow-xl flex items-center justify-center"
       aria-label="Abrir chat de suporte"
-      transition:scale={{ duration: 400, easing: elasticOut }}
     >
       <!-- Pulse animation -->
       <div class="absolute inset-0 bg-[#00BFB3] rounded-full animate-ping opacity-25"></div>
@@ -430,7 +391,6 @@
       {#if unreadCount > 0}
         <div 
           class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold"
-          transition:scale={{ duration: 300, delay: 100 }}
         >
           {unreadCount}
         </div>

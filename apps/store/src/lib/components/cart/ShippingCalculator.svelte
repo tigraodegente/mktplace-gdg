@@ -380,9 +380,9 @@
 	
 	<!-- Status de cálculo -->
 	{#if hasCalculated && shippingQuotes.length > 0}
-		<div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+		<div class="p-3 bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-lg">
 			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2 text-green-800">
+				<div class="flex items-center gap-2 text-[#00BFB3]">
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
@@ -390,7 +390,7 @@
 				</div>
 				<button
 					onclick={clearResults}
-					class="text-xs text-green-700 hover:text-green-800 underline flex items-center gap-1"
+					class="text-xs text-[#00BFB3] hover:text-[#00A89D] underline flex items-center gap-1"
 				>
 					Calcular outro CEP
 					<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,7 +398,7 @@
 					</svg>
 				</button>
 			</div>
-			<p class="text-xs text-green-700 mt-1">
+			<p class="text-xs text-[#00BFB3] mt-1">
 				Veja as opções de entrega abaixo e selecione a melhor para você.
 			</p>
 		</div>

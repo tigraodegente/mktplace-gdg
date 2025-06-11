@@ -305,31 +305,31 @@
     
   {:else if selectedPaymentMethod === 'pix'}
     <div class="border-t pt-6">
-      <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+      <div class="bg-[#00BFB3]/10 border border-[#00BFB3]/20 rounded-lg p-4">
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-10 h-10 bg-[#00BFB3]/20 rounded-full flex items-center justify-center">
+            <svg class="w-5 h-5 text-[#00BFB3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div>
-            <h3 class="font-medium text-green-800">PIX - Pagamento Instantâneo</h3>
-            <p class="text-sm text-green-700">
+            <h3 class="font-medium text-[#00BFB3]">PIX - Pagamento Instantâneo</h3>
+            <p class="text-sm text-[#00BFB3]">
               Após confirmar o pedido, você receberá o código PIX para pagamento.
               O código tem validade de 30 minutos.
             </p>
           </div>
         </div>
         
-        <div class="mt-4 p-3 bg-green-100 rounded-lg">
+        <div class="mt-4 p-3 bg-[#00BFB3]/20 rounded-lg">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-green-800">💰 Você está economizando:</p>
-              <p class="text-lg font-bold text-green-700">{formatCurrency(getDiscountAmount())}</p>
+              <p class="text-sm font-medium text-[#00BFB3]">💰 Você está economizando:</p>
+              <p class="text-lg font-bold text-[#00BFB3]">{formatCurrency(getDiscountAmount())}</p>
             </div>
             <div class="text-right">
-              <p class="text-sm text-green-700">Total final:</p>
-              <p class="text-xl font-bold text-green-800">{formatCurrency(calculateFinalAmount())}</p>
+              <p class="text-sm text-[#00BFB3]">Total final:</p>
+              <p class="text-xl font-bold text-[#00BFB3]">{formatCurrency(calculateFinalAmount())}</p>
             </div>
           </div>
         </div>
