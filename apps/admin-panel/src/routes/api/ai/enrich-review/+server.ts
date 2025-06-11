@@ -384,6 +384,16 @@ RETORNE APENAS JSON:
       "category": "attributes"
     },
     {
+      "field": "specifications",
+      "label": "Especificações Técnicas",
+      "currentValue": {},
+      "suggestedValue": {"Dimensões": "20x30x10 cm", "Material": "Algodão 100%", "Peso": "500g"},
+      "confidence": 90,
+      "reasoning": "Especificações técnicas detalhadas para informar o consumidor",
+      "source": "ai",
+      "category": "attributes"
+    },
+    {
       "field": "custom_fields",
       "label": "Campos Personalizados",
       "currentValue": {},

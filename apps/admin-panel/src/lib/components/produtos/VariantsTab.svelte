@@ -3,6 +3,8 @@
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import { DataTable } from '$lib/components/ui';
+	import AISuggestionCard from '$lib/components/shared/AISuggestionCard.svelte';
+	import { aiReviewMode, aiSuggestionsByCategory } from '$lib/stores/aiReview';
 	
 	let { formData = $bindable() } = $props();
 
@@ -111,6 +113,21 @@
 	let editingVariant = $state<ProductVariant | null>(null);
 	let showVariantForm = $state(false);
 	let aiLoading = $state(false);
+
+	// Estados para revisão IA em lote
+	let isAIReviewMode = $state(false);
+	let aiSuggestions = $state<any[]>([]);
+
+	// Subscrever ao modo IA
+	aiReviewMode.subscribe(mode => {
+		isAIReviewMode = mode;
+	});
+
+	// Subscrever às sugestões da categoria 'variants'
+	aiSuggestionsByCategory.subscribe(suggestions => {
+		aiSuggestions = suggestions.variants || [];
+		console.log('🎨 VariantsTab: Sugestões recebidas:', aiSuggestions);
+	});
 
 	// Estados do modal de confirmação
 	let showConfirmDialog = $state(false);
@@ -1030,6 +1047,25 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- SUGESTÕES IA EM LOTE (quando modo revisão ativado) -->
+	{#if isAIReviewMode && aiSuggestions.length > 0}
+		<div class="bg-[#00BFB3]/5 border border-[#00BFB3]/20 rounded-lg p-6">
+			<h3 class="text-lg font-semibold text-[#00BFB3] mb-4 flex items-center gap-2">
+				<ModernIcon name="robot" size="md" />
+				Sugestões IA para Variações do Produto
+				<span class="px-2 py-1 bg-[#00BFB3] text-white rounded-full text-sm">
+					{aiSuggestions.length}
+				</span>
+			</h3>
+			
+			<div class="space-y-4">
+				{#each aiSuggestions as suggestion}
+					<AISuggestionCard {suggestion} {formData} />
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- ATIVAR VARIAÇÕES -->
 	<div class="bg-white border border-gray-200 rounded-lg p-6">
