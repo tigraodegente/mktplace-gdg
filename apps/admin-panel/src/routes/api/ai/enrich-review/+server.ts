@@ -151,16 +151,7 @@ RETORNE APENAS JSON:
       "source": "ai",
       "category": "basic"
     },
-    {
-      "field": "sku",
-      "label": "SKU do Produto",
-      "currentValue": "${currentData.sku || ''}",
-      "suggestedValue": "SKU-INTELIGENTE",
-      "confidence": 85,
-      "reasoning": "SKU profissional baseado na marca e categoria",
-      "source": "ai",
-      "category": "basic"
-    },
+
     {
       "field": "model",
       "label": "Modelo do Produto",
@@ -563,50 +554,7 @@ RETORNE APENAS JSON:
 	}
 }
 
-// 🖼️ 8. ENRIQUECIMENTO DE MÍDIA
-async function enrichMedia(currentData: any, openai: OpenAI): Promise<Suggestion[]> {
-	try {
-		const prompt = `Você é um especialista em fotografia de produtos para e-commerce. Sugira tipos de fotos para este produto:
-
-PRODUTO: ${currentData.name}
-DESCRIÇÃO: ${currentData.description || 'Não informado'}
-
-INSTRUÇÕES:
-1. Sugira tipos específicos de fotos necessárias
-2. Sugira ângulos e contextos importantes
-3. Baseie-se no tipo de produto
-
-RETORNE APENAS JSON:
-{
-  "suggestions": [
-    {
-      "field": "photo_suggestions",
-      "label": "Sugestões de Fotos",
-      "currentValue": "",
-      "suggestedValue": ["Foto principal com fundo branco", "Foto em contexto de uso", "Detalhe do material"],
-      "confidence": 85,
-      "reasoning": "Tipos de foto essenciais para conversão",
-      "source": "ai",
-      "category": "media"
-    }
-  ]
-}`;
-
-		const response = await openai.chat.completions.create({
-			model: 'gpt-4-1106-preview',
-			max_tokens: 1000,
-			temperature: 0.7,
-			messages: [{ role: 'user', content: prompt }]
-		});
-
-		const result = parseAIResponse(response.choices[0].message.content);
-		console.log(`🖼️ Mídia: ${result.length} sugestões`);
-		return result;
-	} catch (error) {
-		console.error('❌ Erro na mídia:', error);
-		return [];
-	}
-}
+// 🖼️ 8. MÍDIA NÃO UTILIZA IA - REMOVIDA INTENCIONALMENTE
 
 // 🎨 9. VARIAÇÕES INTELIGENTES
 async function suggestProductVariations(currentData: any, openai: OpenAI): Promise<Suggestion[]> {
@@ -845,17 +793,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		]);
 		await db.close();
 		
-		// ✅ EXECUTAR TODAS AS ANÁLISES EM PARALELO (EXCETO PREÇOS E ESTOQUE)
+		// ✅ EXECUTAR TODAS AS ANÁLISES EM PARALELO
 		const [
 			basicSuggestions,
 			seoSuggestions,
 			categorySuggestions,
 			attributesSuggestions,
 			dimensionsSuggestions,
-			mediaSuggestions,
 			variationsSuggestions,
-			// 🚫 REMOVIDO: pricingSuggestions,
-			// 🚫 REMOVIDO: inventorySuggestions,
 			similarProductsSuggestions
 		] = await Promise.all([
 			enrichBasicContent(currentData, openai),
@@ -863,10 +808,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			suggestCategoriesIntelligent(currentData, categories, brands, openai),
 			enrichAttributes(currentData, openai),
 			enrichDimensionsAndAdvanced(currentData, openai),
-			enrichMedia(currentData, openai),
 			suggestProductVariations(currentData, openai),
-			// 🚫 enrichPricing(currentData, openai), // REMOVIDO
-			// 🚫 enrichInventory(currentData, openai), // REMOVIDO
 			suggestVariationsFromSimilarProducts(currentData, platform)
 		]);
 
@@ -877,7 +819,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			...categorySuggestions,
 			...attributesSuggestions,
 			...dimensionsSuggestions,
-			...mediaSuggestions,
 			...variationsSuggestions,
 			...similarProductsSuggestions
 		];
