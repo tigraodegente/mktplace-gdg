@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { fade, fly, scale, slide, blur, crossfade } from 'svelte/transition';
 	import { cubicOut, backOut, elasticOut } from 'svelte/easing';
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	// Crossfade para transições entre views
 	const [send, receive] = crossfade({
@@ -125,7 +126,7 @@
 					title: 'Receita Bruta',
 					value: formatPrice(summary.gross_revenue),
 					change: 23.5,
-					icon: '💰',
+					icon: 'DollarSign',
 					color: 'success',
 					trend: 'up'
 				},
@@ -133,7 +134,7 @@
 					title: 'Receita Líquida',
 					value: formatPrice(summary.net_revenue),
 					change: 18.2,
-					icon: '💵',
+					icon: 'DollarSign',
 					color: 'primary',
 					trend: 'up'
 				},
@@ -141,7 +142,7 @@
 					title: 'Pagamentos Pendentes',
 					value: formatPrice(summary.pending_payouts),
 					change: -12.3,
-					icon: '⏳',
+					icon: 'Clock',
 					color: 'warning',
 					trend: 'down'
 				},
@@ -245,12 +246,12 @@
 	
 	function getTransactionIcon(type: string) {
 		const icons = {
-			income: '💵',
-			expense: '💸',
-			refund: '↩️',
-			payout: '🏦'
+			income: 'DollarSign',
+			expense: 'TrendingDown',
+			refund: 'RotateCcw',
+			payout: 'Building'
 		};
-		return icons[type as keyof typeof icons] || '💰';
+		return icons[type as keyof typeof icons] || 'DollarSign';
 	}
 	
 	function getTransactionColor(type: string) {
@@ -258,7 +259,7 @@
 			income: 'text-green-600',
 			expense: 'text-red-600',
 			refund: 'text-orange-600',
-			payout: 'text-blue-600'
+			payout: 'text-[#00BFB3]'
 		};
 		return colors[type as keyof typeof colors] || 'text-gray-600';
 	}
@@ -289,12 +290,12 @@
 	
 	function getPaymentMethodIcon(method: string) {
 		const icons = {
-			credit_card: '💳',
-			debit_card: '💳',
-			pix: '📱',
-			boleto: '📄'
+			credit_card: 'CreditCard',
+			debit_card: 'CreditCard',
+			pix: 'Smartphone',
+			boleto: 'FileText'
 		};
-		return icons[method as keyof typeof icons] || '💰';
+		return icons[method as keyof typeof icons] || 'DollarSign';
 	}
 	
 	function getPaymentMethodLabel(method: string) {
@@ -430,7 +431,9 @@
 				>
 					<div class="relative z-10">
 						<div class="flex items-center justify-between mb-4">
-							<div class="text-2xl transform group-hover:scale-110 transition-transform duration-300">{stat.icon}</div>
+							<div class="transform group-hover:scale-110 transition-transform duration-300">
+								<ModernIcon name={stat.icon} size="xl" class="text-gray-600" />
+							</div>
 							{#if stat.change}
 								<div class="flex items-center gap-1" in:fade={{ duration: 300, delay: 400 + i * 100 }}>
 									{#if stat.trend === 'up'}
@@ -536,8 +539,8 @@
 									in:fly={{ x: -20, duration: 400, delay: i * 50 }}
 								>
 									<div class="flex items-center gap-3">
-										<div class="text-2xl {getTransactionColor(transaction.type)}">
-											{getTransactionIcon(transaction.type)}
+										<div class="{getTransactionColor(transaction.type)}">
+											<ModernIcon name={getTransactionIcon(transaction.type)} size="lg" />
 										</div>
 										<div>
 											<p class="font-medium text-gray-900">{transaction.description}</p>
@@ -652,8 +655,8 @@
 										</td>
 										<td>
 											<div class="flex items-center gap-2">
-												<span class="text-xl {getTransactionColor(transaction.type)}">
-													{getTransactionIcon(transaction.type)}
+												<span class="{getTransactionColor(transaction.type)}">
+													<ModernIcon name={getTransactionIcon(transaction.type)} size="md" />
 												</span>
 												<span class="text-sm capitalize">{transaction.type}</span>
 											</div>

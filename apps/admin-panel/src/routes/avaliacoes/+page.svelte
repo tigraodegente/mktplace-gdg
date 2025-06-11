@@ -316,7 +316,7 @@
 			success: 'from-green-500 to-green-600',
 			warning: 'from-yellow-500 to-yellow-600',
 			danger: 'from-red-500 to-red-600',
-			info: 'from-blue-500 to-blue-600'
+							info: 'from-[#00BFB3] to-[#00A89D]'
 		};
 		return colors[color as keyof typeof colors] || colors.primary;
 	}
@@ -1046,7 +1046,7 @@
 			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Header -->
-			<div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+			<div class="bg-gradient-to-r from-[#00BFB3] to-[#00A89D] p-6 text-white">
 				<div class="flex items-center justify-between">
 					<h2 class="text-2xl font-bold flex items-center gap-3">
 						⭐ Detalhes da Avaliação
@@ -1130,11 +1130,11 @@
 				
 				<!-- Current Response -->
 				{#if selectedReview.response}
-					<div class="bg-blue-50 rounded-xl p-6">
-						<div class="flex items-start gap-3">
-							<div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-								R
-							</div>
+									<div class="bg-[#00BFB3]/5 rounded-xl p-6">
+					<div class="flex items-start gap-3">
+						<div class="w-10 h-10 bg-[#00BFB3] rounded-full flex items-center justify-center text-white font-bold">
+							R
+						</div>
 							<div class="flex-1">
 								<div class="flex items-center gap-2 mb-2">
 									<span class="font-medium text-gray-900">{selectedReview.response.author}</span>
@@ -1271,7 +1271,7 @@
 						{#if !selectedReview.response && replyText.trim()}
 							<button
 								onclick={saveReply}
-								class="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+								class="px-6 py-2 bg-gradient-to-r from-[#00BFB3] to-[#00A89D] text-white rounded-lg hover:shadow-lg transition-all duration-200"
 							>
 								💬 Enviar Resposta
 							</button>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	let paymentMethods: any[] = [];
 	let loading = true;
@@ -183,7 +184,10 @@
 	<div class="mb-8">
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<h1 class="text-3xl font-bold text-gray-900">💳 Métodos de Pagamento</h1>
+				<h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+					<ModernIcon name="CreditCard" size="lg" />
+					Métodos de Pagamento
+				</h1>
 				<p class="mt-2 text-sm text-gray-600">Gerencie os métodos de pagamento aceitos</p>
 			</div>
 			<div class="mt-4 sm:mt-0">
@@ -253,9 +257,9 @@
 									{#if method.icon_url}
 										<img src={method.icon_url} alt={method.name} class="h-8 w-8 rounded mr-3">
 									{:else}
-										<div class="h-8 w-8 rounded bg-blue-100 flex items-center justify-center mr-3">
-											<span class="text-blue-600 text-sm">💳</span>
-										</div>
+																			<div class="h-8 w-8 rounded bg-[#00BFB3]/10 flex items-center justify-center mr-3">
+										<ModernIcon name="CreditCard" size="sm" class="text-[#00BFB3]" />
+									</div>
 									{/if}
 									<div>
 										<div class="text-sm font-medium text-gray-900">{method.name}</div>

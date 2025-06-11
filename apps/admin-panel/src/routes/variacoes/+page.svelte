@@ -266,8 +266,8 @@
 						<p class="text-sm font-medium text-gray-600">Total de Variações</p>
 						<p class="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
 					</div>
-					<div class="p-3 bg-blue-100 rounded-lg">
-						<ModernIcon name="layers" size={24} color="#3B82F6" />
+					<div class="p-3 bg-[#00BFB3]/10 rounded-lg">
+						<ModernIcon name="layers" size={24} color="#00BFB3" />
 					</div>
 				</div>
 			</div>
