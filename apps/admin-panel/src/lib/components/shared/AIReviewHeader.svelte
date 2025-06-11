@@ -1,4 +1,3 @@
-<!-- @ts-nocheck -->
 <script lang="ts">
 	import { aiReviewStore, aiTotalChanges, aiAppliedChanges, aiPendingChanges, aiReviewActions } from '$lib/stores/aiReview';
 	import ModernIcon from './ModernIcon.svelte';
