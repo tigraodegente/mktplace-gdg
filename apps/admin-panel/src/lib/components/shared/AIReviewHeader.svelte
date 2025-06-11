@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { aiReviewStore, aiTotalChanges, aiReviewActions } from '$lib/stores/aiReview';
+	import { aiReviewStore, aiTotalChanges, aiAppliedChanges, aiPendingChanges, aiReviewActions } from '$lib/stores/aiReview';
 	import ModernIcon from './ModernIcon.svelte';
 	import { toast } from '$lib/stores/toast';
 
@@ -9,15 +9,16 @@
 
 	let { formData }: Props = $props();
 
-	// Estado da loja IA
+	// Estados da loja IA usando stores reativas
 	let aiState = $state({
 		isActive: false,
 		isLoading: false,
 		totalChanges: 0,
-		appliedChanges: 0
+		appliedChanges: 0,
+		pendingChanges: 0
 	});
 
-	// Subscrever ao store
+	// Subscrever aos stores
 	aiReviewStore.subscribe(state => {
 		aiState.isActive = state.isActive;
 		aiState.isLoading = state.isLoading;
@@ -25,6 +26,14 @@
 
 	aiTotalChanges.subscribe(count => {
 		aiState.totalChanges = count;
+	});
+
+	aiAppliedChanges.subscribe(count => {
+		aiState.appliedChanges = count;
+	});
+
+	aiPendingChanges.subscribe(count => {
+		aiState.pendingChanges = count;
 	});
 
 	// Função para finalizar revisão
@@ -44,20 +53,24 @@
 	// Função para aplicar todas as sugestões
 	function applyAllSuggestions() {
 		aiReviewActions.applyAllSuggestions(formData);
-		aiState.appliedChanges = aiState.totalChanges;
 		toast.success('Todas as sugestões foram aplicadas!');
 	}
 
 	// Função para rejeitar todas as sugestões
 	function rejectAllSuggestions() {
 		aiReviewActions.rejectAllSuggestions();
-		aiState.appliedChanges = 0;
 		toast.info('Todas as sugestões foram rejeitadas');
 	}
 
-	// Calcular progresso
-	let percentage = $derived(aiState.totalChanges > 0 ? (aiState.appliedChanges / aiState.totalChanges) * 100 : 0);
-	let remainingChanges = $derived(aiState.totalChanges - aiState.appliedChanges);
+	// Calcular progresso baseado nas sugestões realmente processadas
+	let percentage = $derived.by(() => {
+		const total = aiState.totalChanges + aiState.appliedChanges;
+		if (total === 0) return 0;
+		const processed = aiState.appliedChanges + (total - aiState.pendingChanges - aiState.appliedChanges);
+		return Math.round((processed / total) * 100);
+	});
+
+	let totalSuggestions = $derived(aiState.totalChanges + aiState.appliedChanges);
 </script>
 
 {#if aiState.isActive}
@@ -70,7 +83,7 @@
 				<div class="ai-review-text">
 					<h3>Modo Revisão IA Ativo</h3>
 					<p>
-						{aiState.totalChanges} sugestões encontradas | Revise as sugestões nas abas e clique em "Aplicar" nas que desejar usar
+						{totalSuggestions} sugestões encontradas | Revise as sugestões nas abas e clique em "Aplicar" nas que desejar usar
 					</p>
 				</div>
 			</div>
@@ -78,7 +91,7 @@
 			<div class="ai-review-actions">
 				<div class="ai-review-stats">
 					<div class="ai-review-count">{aiState.appliedChanges}</div>
-					<div class="ai-review-label">de {aiState.totalChanges} aplicadas</div>
+					<div class="ai-review-label">de {totalSuggestions} aplicadas</div>
 				</div>
 				
 				<div class="ai-review-progress">
@@ -98,25 +111,35 @@
 						/>
 					</svg>
 					<div class="ai-progress-text">
-						<span>{Math.round(percentage)}%</span>
+						<span>{percentage}%</span>
 					</div>
 				</div>
 				
-				<button
-					onclick={applyAllSuggestions}
-					class="ai-btn ai-btn-apply"
-					title="Aplicar todas as sugestões"
-				>
-					✓ Aplicar Todas
-				</button>
-				
-				<button
-					onclick={rejectAllSuggestions}
-					class="ai-btn ai-btn-reject"
-					title="Rejeitar todas as sugestões"
-				>
-					✗ Rejeitar Todas
-				</button>
+				{#if aiState.pendingChanges > 0}
+					<button
+						onclick={applyAllSuggestions}
+						class="ai-btn ai-btn-apply"
+						title="Aplicar todas as sugestões restantes"
+					>
+						✓ Aplicar Todas ({aiState.pendingChanges})
+					</button>
+					
+					<button
+						onclick={rejectAllSuggestions}
+						class="ai-btn ai-btn-reject"
+						title="Rejeitar todas as sugestões restantes"
+					>
+						✗ Rejeitar Todas
+					</button>
+				{:else}
+					<button
+						onclick={finishReview}
+						class="ai-btn ai-btn-finish"
+						title="Finalizar revisão IA"
+					>
+						🎉 Finalizar Revisão
+					</button>
+				{/if}
 				
 				<button
 					onclick={cancelReview}
@@ -131,7 +154,13 @@
 		<div class="ai-review-footer">
 			<div class="ai-review-progress-info">
 				<span>Progresso da Revisão</span>
-				<span>Restam {remainingChanges} sugestões</span>
+				<span>
+					{#if aiState.pendingChanges > 0}
+						Restam {aiState.pendingChanges} sugestões
+					{:else}
+						Todas as sugestões foram processadas!
+					{/if}
+				</span>
 			</div>
 			<div class="ai-progress-bar">
 				<div 
@@ -271,6 +300,19 @@
 		background: rgba(255, 255, 255, 0.25);
 		transform: translateY(-1px);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.ai-btn-finish {
+		background: rgba(76, 175, 80, 0.8);
+		color: white;
+		backdrop-filter: blur(10px);
+		border-color: rgba(76, 175, 80, 0.5);
+	}
+
+	.ai-btn-finish:hover {
+		background: rgba(76, 175, 80, 0.9);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 	}
 
 	.ai-btn-cancel {
