@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { fade, fly, scale, slide, blur, crossfade } from 'svelte/transition';
 	import { cubicOut, backOut, elasticOut } from 'svelte/easing';
+	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	// Crossfade para transições entre views
 	const [send, receive] = crossfade({
@@ -95,21 +96,21 @@
       title: 'Vendas Este Mês', 
       value: 'R$ 124,5K', 
 					change: 26.8,
-					icon: '💰',
+					icon: 'DollarSign',
 					color: 'primary'
     },
     { 
       title: 'Pedidos Totais', 
       value: '1,543', 
 					change: 18,
-					icon: '📋',
+					icon: 'FileText',
 					color: 'info'
     },
     { 
       title: 'Produtos Ativos', 
       value: '2,234', 
 					change: 12,
-					icon: '📦',
+					icon: 'Package',
 					color: 'success'
     },
     { 
@@ -224,7 +225,9 @@
 				>
 					<div class="relative z-10">
       <div class="flex items-center justify-between mb-4">
-							<div class="text-2xl transform group-hover:scale-110 transition-transform duration-300">{stat.icon}</div>
+							<div class="transform group-hover:scale-110 transition-transform duration-300">
+								<ModernIcon name={stat.icon} size="xl" class="text-gray-600" />
+							</div>
 							{#if stat.change}
 								<div class="flex items-center gap-1" in:fade={{ duration: 300, delay: 400 + i * 100 }}>
 									{#if stat.change > 0}
@@ -429,7 +432,9 @@
 		<div class="card-body">
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				<button class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all group">
-					<div class="text-2xl mb-2 group-hover:scale-110 transition-transform">📊</div>
+					<div class="mb-2 group-hover:scale-110 transition-transform">
+						<ModernIcon name="Analytics" size="lg" class="text-gray-600 mx-auto" />
+					</div>
 					<p class="text-sm font-medium text-gray-700">Dashboard</p>
 				</button>
 				<button class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all group">

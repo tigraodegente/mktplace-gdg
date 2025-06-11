@@ -268,8 +268,8 @@
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
 			<div class="bg-white rounded-lg border border-gray-200 p-6">
 				<div class="flex items-center gap-3">
-					<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-						<ModernIcon name="robot" size="md" color="blue" />
+					<div class="w-12 h-12 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+						<ModernIcon name="robot" size="md" color="#00BFB3" />
 					</div>
 					<div>
 						<p class="text-sm text-gray-600">Total de Prompts</p>
@@ -280,7 +280,7 @@
 			
 			<div class="bg-white rounded-lg border border-gray-200 p-6">
 				<div class="flex items-center gap-3">
-					<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+					<div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
 						<ModernIcon name="Check" size="md" color="green" />
 					</div>
 					<div>
@@ -292,7 +292,7 @@
 			
 			<div class="bg-white rounded-lg border border-gray-200 p-6">
 				<div class="flex items-center gap-3">
-					<div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+					<div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
 						<ModernIcon name="X" size="md" color="red" />
 					</div>
 					<div>
@@ -304,7 +304,7 @@
 			
 			<div class="bg-white rounded-lg border border-gray-200 p-6">
 				<div class="flex items-center gap-3">
-					<div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+					<div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
 						<ModernIcon name="Settings" size="md" color="purple" />
 					</div>
 					<div>
@@ -398,19 +398,19 @@
 										</div>
 									</td>
 									<td class="px-6 py-4">
-										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#00BFB3]/10 text-[#00BFB3]">
 											{categories.find(c => c.value === prompt.category)?.label || prompt.category}
 										</span>
 									</td>
 									<td class="px-6 py-4">
-										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600">
 											{promptTypes.find(t => t.value === prompt.name)?.label || prompt.name}
 										</span>
 									</td>
 									<td class="px-6 py-4">
 										<button
 											onclick={() => togglePrompt(prompt)}
-											class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors {prompt.is_active ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}"
+											class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors {prompt.is_active ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}"
 										>
 											{prompt.is_active ? '✅ Ativo' : '❌ Inativo'}
 										</button>
@@ -515,7 +515,7 @@
 						</label>
 						<button
 							onclick={testPrompt}
-							class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+							class="px-3 py-1 bg-[#00BFB3] hover:bg-[#00A89D] text-white text-sm rounded-lg transition-colors"
 						>
 							🧪 Testar
 						</button>
