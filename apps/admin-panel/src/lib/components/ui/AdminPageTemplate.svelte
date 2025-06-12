@@ -127,6 +127,11 @@
 	const hasBrands = !!brandsEndpoint;
 	const hasStats = !!statsEndpoint && !!statsConfig;
 	
+	// Cache para evitar requests duplicados
+	let lastLoadParams: string | null = null;
+	let isLoadingData = $state(false);
+	let isLoadingStats = $state(false);
+	
 	// Função para obter opções de status baseadas no tipo de página
 	function getStatusOptionsForPage() {
 		// Produtos têm mais opções de status
@@ -182,14 +187,23 @@
 		};
 	}
 	
-	// Função genérica para carregar dados
+	// Função genérica para carregar dados com cache
 	async function loadData() {
+		// Evitar carregamentos duplicados
+		const currentParams = JSON.stringify({ page, pageSize, search, statusFilter, categoryFilter, brandFilter, priceRange, customFilterValues });
+		
+		if (isLoadingData || lastLoadParams === currentParams) {
+			return;
+		}
+		
+		isLoadingData = true;
 		loading = true;
+		
 		try {
 			const params = new URLSearchParams({
 				page: page.toString(),
 				limit: pageSize.toString(),
-				search,
+				search: search.trim(),
 				status: statusFilter,
 				sortBy,
 				sortOrder
@@ -231,8 +245,14 @@
 				'Content-Type': 'application/json'
 			};
 			
+			// Usar AbortController para cancelar requests anteriores
+			const controller = new AbortController();
+			
 			// Usar fetch diretamente para evitar duplicação de /api/
-			const response = await fetch(`${apiEndpoint}?${params}`, { headers });
+			const response = await fetch(`${apiEndpoint}?${params}`, { 
+				headers,
+				signal: controller.signal
+			});
 			
 			const result = await response.json();
 			
@@ -246,6 +266,7 @@
 				
 				data = rawData;
 				totalItems = result.meta?.total || 0;
+				lastLoadParams = currentParams; // Cache do último request
 			} else {
 				console.error('❌ [AdminPageTemplate] Erro na resposta:', result);
 				
@@ -259,7 +280,13 @@
 				const errorMessage = result.error?.message || result.error || `Erro ao carregar ${entityNamePlural}`;
 				console.error('❌ [AdminPageTemplate] Mensagem de erro:', errorMessage);
 			}
-		} catch (error) {
+		} catch (error: any) {
+			// Ignorar erros de abort
+			if (error.name === 'AbortError') {
+				console.log('🚫 Request cancelado');
+				return;
+			}
+			
 			console.error(`❌ [AdminPageTemplate] Erro ao carregar ${entityNamePlural}:`, error);
 			
 			// Se erro de rede/autenticação, tentar redirecionar
@@ -270,12 +297,15 @@
 			}
 		} finally {
 			loading = false;
+			isLoadingData = false;
 		}
 	}
 	
-	// Função genérica para carregar estatísticas
+	// Função genérica para carregar estatísticas com cache
 	async function loadStats() {
-		if (!statsEndpoint || !statsConfig) return;
+		if (!statsEndpoint || !statsConfig || isLoadingStats) return;
+		
+		isLoadingStats = true;
 		
 		try {
 			// Usar fetch diretamente para evitar duplicação de /api/
@@ -305,6 +335,8 @@
 			}
 		} catch (error) {
 			console.error('Erro ao carregar estatísticas:', error);
+		} finally {
+			isLoadingStats = false;
 		}
 	}
 	
@@ -457,7 +489,29 @@
 		showConfirmDialog = true;
 	}
 	
-	// Verificação de autenticação padrão
+	// Preload da próxima página para melhor UX
+	function preloadNextPage() {
+		if (page < Math.ceil(totalItems / pageSize) && !isLoadingData) {
+			const nextPageParams = new URLSearchParams({
+				page: (page + 1).toString(),
+				limit: pageSize.toString(),
+				search: search.trim(),
+				status: statusFilter,
+				sortBy,
+				sortOrder
+			});
+			
+			// Preload silencioso da próxima página
+			fetch(`${apiEndpoint}?${nextPageParams}`, {
+				headers: {
+					'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+					'Content-Type': 'application/json'
+				}
+			}).catch(() => {}); // Ignorar erros do preload
+		}
+	}
+	
+	// Verificação de autenticação padrão com preload
 	async function checkAuthAndLoad() {
 		if (typeof window === 'undefined') return;
 		
@@ -470,6 +524,9 @@
 				loadStats(),
 				loadFilters()
 			]);
+			
+			// Preload da próxima página após carregar a atual
+			setTimeout(preloadNextPage, 1000);
 		} else {
 			goto('/login');
 		}
@@ -502,7 +559,7 @@
 				<Button 
 					icon="plus" 
 					onclick={() => goto(newItemRoute)}
-					class="w-full sm:w-auto text-sm sm:text-base"
+					class="w-full sm:w-auto text-sm sm:text-base bg-[#00BFB3] hover:bg-[#00A89D] text-white border-[#00BFB3] hover:border-[#00A89D] transition-all duration-200"
 				>
 					<span class="sm:hidden">Novo</span>
 					<span class="hidden sm:inline">Novo {entityName}</span>
@@ -560,11 +617,11 @@
 			<div class="p-3 sm:p-6">
 				<!-- Ações em lote -->
 				{#if selectedIds.length > 0}
-					<div class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+					<div class="mb-4 p-4 bg-[#00BFB3]/10 rounded-lg border border-[#00BFB3]/20">
 						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
 							<div class="flex items-center gap-2">
-								<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-								<span class="text-sm font-medium text-blue-800">
+								<div class="w-2 h-2 bg-[#00BFB3] rounded-full"></div>
+								<span class="text-sm font-medium text-[#00BFB3]">
 								{selectedIds.length} {entityName}(s) selecionado(s)
 							</span>
 							</div>
@@ -573,7 +630,7 @@
 									size="sm"
 									variant="danger"
 									onclick={deleteSelected}
-									class="flex-1 sm:flex-initial text-xs sm:text-sm"
+									class="flex-1 sm:flex-initial text-xs sm:text-sm bg-gray-600 hover:bg-gray-700 border-gray-600 hover:border-gray-700 transition-all duration-200"
 								>
 									<span class="sm:hidden">Excluir</span>
 									<span class="hidden sm:inline">Excluir ({selectedIds.length})</span>
@@ -648,7 +705,7 @@
 													selectedIds = selectedIds.filter(id => id !== item.id);
 												}
 											}}
-											class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+											class="mt-1 h-4 w-4 text-[#00BFB3] focus:ring-[#00BFB3] border-gray-300 rounded transition-all duration-200"
 										/>
 										
 										<!-- Image -->
@@ -656,11 +713,12 @@
 											<img 
 												src={item.image || item.images[0]} 
 												alt={item.name}
-												class="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+												class="w-16 h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+												loading="lazy"
 											/>
 										{:else}
-											<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-												<svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<div class="w-16 h-16 bg-gradient-to-br from-[#00BFB3]/20 to-[#00A89D]/30 rounded-lg flex items-center justify-center flex-shrink-0">
+												<svg class="w-8 h-8 text-[#00BFB3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
 												</svg>
 											</div>
@@ -682,7 +740,7 @@
 													{#each getTableActions(item) as action}
 														<button
 															onclick={action.onclick}
-															class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+															class="px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 text-[#00BFB3] hover:text-white hover:bg-[#00BFB3] border border-[#00BFB3]/20 hover:border-[#00BFB3]"
 														>
 															{action.label}
 														</button>
@@ -721,19 +779,19 @@
 								<button
 									onclick={() => handlePageChange(page - 1)}
 									disabled={page <= 1}
-									class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+									class="inline-flex items-center px-4 py-2 border border-[#00BFB3]/30 text-sm font-medium rounded-md text-[#00BFB3] bg-white hover:bg-[#00BFB3] hover:text-white hover:border-[#00BFB3] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-[#00BFB3] transition-all duration-200"
 								>
 									Anterior
 								</button>
 								
-								<span class="text-sm text-gray-700">
+								<span class="text-sm text-gray-700 font-medium">
 									Página {page} de {Math.ceil(totalItems / pageSize)}
 								</span>
 								
 								<button
 									onclick={() => handlePageChange(page + 1)}
 									disabled={page >= Math.ceil(totalItems / pageSize)}
-									class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+									class="inline-flex items-center px-4 py-2 border border-[#00BFB3]/30 text-sm font-medium rounded-md text-[#00BFB3] bg-white hover:bg-[#00BFB3] hover:text-white hover:border-[#00BFB3] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-[#00BFB3] transition-all duration-200"
 								>
 									Próxima
 								</button>

@@ -3420,163 +3420,339 @@ export const PageConfigs: Record<string, PageConfig> = {
     newItemRoute: '/variacoes/nova',
     editItemRoute: (id: string) => `/variacoes/${id}`,
     
-    // API endpoints
+    // API endpoints - mesmos dos produtos
     apiEndpoint: '/api/variations',
     deleteEndpoint: '/api/variations',
     statsEndpoint: '/api/variations/stats',
+    categoriesEndpoint: '/api/categories',
+    brandsEndpoint: '/api/brands',
     
-    // Colunas específicas de variações
+    // Colunas herdadas dos produtos + específicas das variações
     columns: [
       {
-        key: 'name',
-        label: 'Nome da Variação',
-        sortable: true,
-        render: (value: string, row: any) => `
-          <div>
-            <div class="font-medium text-gray-900">${row.name}</div>
-            <div class="text-sm text-gray-500">Tipo: ${row.type}</div>
-          </div>
-        `
-      },
-      {
-        key: 'values',
-        label: 'Valores',
-        render: (value: string[], row: any) => {
-          const values = Array.isArray(value) ? value : [];
-          const displayValues = values.slice(0, 3);
-          const remaining = values.length - 3;
-          
+        key: 'image',
+        label: 'Variação',
+        width: '250px',
+        render: (value: string, row: any) => {
+          const imageUrl = row.product?.images?.[0] || row.product?.image || row.images?.[0] || row.image || `/api/placeholder/80/80?text=${encodeURIComponent(row.name || row.sku)}`;
           return `
-            <div class="flex flex-wrap gap-1">
-              ${displayValues.map(v => `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${v}</span>`).join('')}
-              ${remaining > 0 ? `<span class="px-2 py-1 bg-[#00BFB3]/10 text-[#00BFB3] text-xs rounded">+${remaining}</span>` : ''}
+            <div class="flex items-center space-x-3">
+              <img src="${imageUrl}" 
+                alt="${row.name || row.sku}" 
+                class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                onerror="this.src='/api/placeholder/80/80?text=${encodeURIComponent(row.name || row.sku)}'"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="font-medium text-gray-900 text-sm lg:text-base truncate">${row.name || `${row.product?.name || 'Produto'} - ${row.sku}`}</div>
+                <div class="text-xs lg:text-sm text-gray-500 mt-1">SKU: ${row.sku}</div>
+                <div class="text-xs text-gray-400 lg:hidden">${row.product?.name || 'Produto'}</div>
+              </div>
             </div>
           `;
         }
       },
       {
-        key: 'products_count',
-        label: 'Produtos',
+        key: 'product_base',
+        label: 'Produto Base',
+        sortable: true,
+        hideOnMobile: true,
+        render: (value: string, row: any) => {
+          const productName = row.product?.name || row.product_name || 'Produto não encontrado';
+          const categoryName = row.product?.category || row.category || 'Sem categoria';
+          return `
+            <div>
+              <div class="font-medium text-gray-900 text-sm">${productName}</div>
+              <div class="text-xs text-gray-500">${categoryName}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'options',
+        label: 'Opções',
+        render: (value: any[], row: any) => {
+          const options = Array.isArray(value) ? value : [];
+          if (options.length === 0) {
+            return '<span class="text-xs text-gray-500 italic">Sem opções</span>';
+          }
+          
+          const displayOptions = options.slice(0, 2);
+          const remaining = options.length - 2;
+          
+          return `
+            <div class="flex flex-wrap gap-1">
+              ${displayOptions.map(opt => {
+                const optionName = opt.option_name || opt.name || 'Opção';
+                const optionValue = opt.display_value || opt.option_value || opt.value || 'Valor';
+                return `<span class="px-2 py-1 bg-[#00BFB3]/10 text-[#00BFB3] text-xs rounded border border-[#00BFB3]/20 font-medium transition-all duration-200 hover:bg-[#00BFB3]/20" title="${optionName}: ${optionValue}">${optionValue}</span>`;
+              }).join('')}
+              ${remaining > 0 ? `<span class="px-2 py-1 bg-[#00BFB3] text-white text-xs rounded font-medium transition-all duration-200 hover:bg-[#00A89D]">+${remaining}</span>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'price',
+        label: 'Preço',
+        sortable: true,
+        align: 'right',
+        render: (value: number, row: any) => {
+          const price = Number(value || 0);
+          const hasDiscount = row.original_price && row.original_price > price;
+          return `
+            <div class="text-right">
+              <div class="font-semibold text-gray-900 text-sm lg:text-base">R$ ${price.toFixed(2)}</div>
+              ${hasDiscount ? `<div class="text-xs text-gray-500 line-through">R$ ${Number(row.original_price).toFixed(2)}</div>` : ''}
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'quantity',
+        label: 'Estoque',
         sortable: true,
         align: 'center',
-        render: (value: number) => `
-          <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-            ${value || 0} produtos
-          </span>
-        `
+        render: (value: number) => {
+          const stock = Number(value || 0);
+          const bgColor = stock === 0 ? 'bg-gray-100 text-gray-600 border-gray-200' : stock < 10 ? 'bg-[#00BFB3]/20 text-[#00A89D] border-[#00BFB3]/30' : 'bg-[#00BFB3]/10 text-[#00BFB3] border-[#00BFB3]/20';
+          return `
+            <div class="text-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all duration-200 ${bgColor}">
+                ${stock}
+              </span>
+            </div>
+          `;
+        }
       },
       {
         key: 'is_active',
         label: 'Status',
         sortable: true,
         align: 'center',
-        render: (value: boolean) => {
-          const status = value ? 'Ativa' : 'Inativa';
-          const bgClass = value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${bgClass}">${status}</span>`;
-        }
-      },
-      {
-        key: 'created_at',
-        label: 'Criado em',
-        sortable: true,
-        render: (value: string) => {
-          const date = new Date(value);
-          return `<span class="text-sm text-gray-500">${date.toLocaleDateString('pt-BR')}</span>`;
+        render: (value: any, row: any) => {
+          const isActive = Boolean(row.is_active);
+          const bgClass = isActive ? 'bg-[#00BFB3]/10 text-[#00BFB3] border-[#00BFB3]/20' : 'bg-gray-100 text-gray-800 border-gray-200';
+          const status = isActive ? 'Ativa' : 'Inativa';
+          const icon = isActive ? '✓' : '⏸';
+          return `
+            <div class="text-center">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all duration-200 ${bgClass}">
+                <span class="text-[10px]">${icon}</span>
+                ${status}
+              </span>
+            </div>
+          `;
         }
       }
     ],
     
-    // Estatísticas de variações
+    // Estatísticas herdadas dos produtos
     statsConfig: {
-      total: 'total_variations',
-      active: 'active_variations',
-      pending: 'inactive_variations',
-      lowStock: 'types_count'
+      total: 'total',
+      active: 'active',
+      pending: 'inactive',
+      lowStock: 'low_stock'
     },
     
-    searchPlaceholder: 'Buscar variações...',
-    searchFields: ['name', 'type', 'values'],
+    searchPlaceholder: 'Buscar variações, SKUs, produtos...',
+    searchFields: ['name', 'sku', 'product_name'],
     
-    // Filtros customizados específicos para variações
+    // Filtros customizados herdados dos produtos + específicos
     customFilters: [
       {
-        key: 'type',
-        label: 'Tipo',
+        key: 'featured',
+        label: 'Variações em Destaque',
         type: 'select',
         options: [
-          { value: '', label: 'Todos os Tipos' },
-          { value: 'color', label: 'Cor' },
-          { value: 'size', label: 'Tamanho' },
-          { value: 'material', label: 'Material' },
-          { value: 'style', label: 'Estilo' },
-          { value: 'weight', label: 'Peso' },
-          { value: 'voltage', label: 'Voltagem' },
-          { value: 'capacity', label: 'Capacidade' },
-          { value: 'flavor', label: 'Sabor' }
+          { value: '', label: 'Todas as variações' },
+          { value: 'true', label: 'Em destaque' },
+          { value: 'false', label: 'Não destacadas' }
         ]
       },
       {
-        key: 'status',
-        label: 'Status',
+        key: 'stock_status',
+        label: 'Status do Estoque',
         type: 'select',
         options: [
-          { value: '', label: 'Todos' },
-          { value: 'active', label: 'Ativas' },
-          { value: 'inactive', label: 'Inativas' }
+          { value: '', label: 'Todos os estoques' },
+          { value: 'in_stock', label: 'Em estoque' },
+          { value: 'low_stock', label: 'Estoque baixo' },
+          { value: 'out_of_stock', label: 'Sem estoque' }
+        ]
+      },
+      {
+        key: 'has_images',
+        label: 'Variações com Imagens',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todas as variações' },
+          { value: 'true', label: 'Com imagens' },
+          { value: 'false', label: 'Sem imagens' }
         ]
       }
     ],
     
-    // Ações customizadas para variações
-    customActions: (row: any) => [
-      {
-        label: 'Editar',
-        icon: 'Edit',
-        onclick: () => window.location.href = `/variacoes/${row.id}`
-      },
-      {
-        label: 'Ver Produtos',
-        icon: 'Package',
-        onclick: () => window.location.href = `/produtos?variation=${row.id}`
-      },
-      {
-        label: 'Excluir',
-        icon: 'Trash',
-        onclick: () => {
-          if (confirm(`Tem certeza que deseja excluir a variação "${row.name}"?`)) {
-            // Implementar exclusão via API
-            window.location.reload();
-          }
-        }
-      }
-    ],
-    
-    // Transformação de dados
+    // Transformação de dados recebidos da API
     onDataLoad: (data: any[]) => {
       if (!data || !Array.isArray(data)) return [];
       
       return data.map((variation: any) => ({
         id: variation.id,
-        name: variation.name,
-        type: variation.type,
-        values: variation.values || [],
-        products_count: Number(variation.products_count || 0),
-        is_active: Boolean(variation.is_active),
-        created_at: variation.created_at
+        name: variation.name || `${variation.product?.name || 'Produto'} - ${variation.sku}`,
+        sku: variation.sku,
+        price: Number(variation.price || 0),
+        original_price: variation.original_price ? Number(variation.original_price) : undefined,
+        cost: variation.cost ? Number(variation.cost) : undefined,
+        quantity: Number(variation.quantity || 0),
+        product: variation.product,
+        product_id: variation.product?.id || variation.product_id,
+        product_name: variation.product?.name || variation.product_name,
+        category: variation.product?.category || variation.category,
+        brand: variation.product?.brand || variation.brand,
+        images: variation.product?.images || variation.images || [],
+        image: variation.product?.image || variation.image,
+        options: variation.options || [],
+        is_active: variation.is_active !== false,
+        featured: variation.featured || false,
+        created_at: variation.created_at,
+        updated_at: variation.updated_at
       }));
     },
     
-    // Transformação de estatísticas
+    // Transformação de estatísticas da API
     onStatsLoad: (rawStats: any) => {
       return {
         total: rawStats.total_variations || rawStats.total || 0,
         active: rawStats.active_variations || rawStats.active || 0,
         inactive: rawStats.inactive_variations || rawStats.inactive || 0,
-        types_count: rawStats.types_count || rawStats.types || 0
-             };
-     }
-   },
+        low_stock: rawStats.low_stock_variations || rawStats.low_stock || 0
+      };
+    },
+    
+    // Ações customizadas herdadas dos produtos + específicas
+    customActions: (row: any) => {
+      return [
+        {
+          label: 'Editar',
+          icon: 'edit',
+          onclick: () => {
+            if (typeof window !== 'undefined') {
+              window.location.href = `/variacoes/${row.id}`;
+            }
+          }
+        },
+        {
+          label: 'Ver Produto Base',
+          icon: 'package',
+          onclick: () => {
+            if (typeof window !== 'undefined') {
+              window.location.href = `/produtos/${row.product?.id || row.product_id}`;
+            }
+          }
+        },
+        {
+          label: 'Duplicar',
+          icon: 'copy',
+          onclick: async () => {
+            if (typeof window === 'undefined') return;
+            
+            const confirmed = confirm(`Deseja duplicar a variação "${row.name}"?`);
+            if (!confirmed) return;
+            
+            try {
+              const response = await fetch(`/api/variations/${row.id}/duplicate`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  sku: `${row.sku}-COPY-${Date.now()}`
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok && result.success) {
+                alert(result.message || 'Variação duplicada com sucesso!');
+                window.location.href = `/variacoes/${result.data.id}`;
+              } else {
+                throw new Error(result.error || 'Erro ao duplicar variação');
+              }
+            } catch (error) {
+              console.error('Erro ao duplicar variação:', error);
+              alert('Erro ao duplicar variação. Tente novamente.');
+            }
+          }
+        },
+        {
+          label: 'Ver na Loja',
+          icon: 'preview',
+          onclick: () => {
+            if (typeof window !== 'undefined') {
+              const storeUrl = window.location.origin.replace(':5174', ':5173');
+              window.open(`${storeUrl}/produtos/${row.product?.id || row.product_id}?variant=${row.sku}`, '_blank');
+            }
+          }
+        },
+        {
+          label: 'Excluir',
+          icon: 'trash',
+          onclick: async () => {
+            if (typeof window === 'undefined') return;
+            
+            const confirmed = confirm(`Tem certeza que deseja EXCLUIR a variação "${row.name}"? Esta ação é irreversível!`);
+            if (!confirmed) return;
+            
+            try {
+              const response = await fetch(`/api/variations/${row.id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error('Erro ao excluir variação');
+              }
+              
+              window.location.reload();
+            } catch (error) {
+              console.error('Erro ao excluir variação:', error);
+              alert('Erro ao excluir variação. Tente novamente.');
+            }
+          }
+        }
+      ];
+    },
+    
+    // Ação em lote herdada dos produtos
+    onBulkDelete: async (ids: string[]) => {
+      if (typeof window === 'undefined') return;
+      
+      const confirmed = confirm(`Tem certeza que deseja EXCLUIR ${ids.length} variação(ões)? Esta ação é irreversível!`);
+      if (!confirmed) return;
+      
+      try {
+        const response = await fetch('/api/variations/bulk-delete', {
+          method: 'DELETE',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          },
+          body: JSON.stringify({ ids })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao excluir variações');
+        }
+      } catch (error) {
+        console.error('Erro na ação em lote:', error);
+        throw error;
+      }
+    }
+  },
 
      // ============ CUPONS ============
   cupons: {

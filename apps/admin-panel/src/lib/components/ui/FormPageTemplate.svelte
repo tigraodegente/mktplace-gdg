@@ -23,6 +23,12 @@
 	import ProductHistoryAdvanced from '$lib/components/produtos/ProductHistoryAdvanced.svelte';
 	import DuplicateModal from '$lib/components/produtos/DuplicateModal.svelte';
 	import AIAnalysisModal from '$lib/components/ui/AIAnalysisModal.svelte';
+
+	// Componentes de Variações
+	import VariationBasicTab from '$lib/components/form-tabs/VariationBasicTab.svelte';
+	import VariationPricingTab from '$lib/components/form-tabs/VariationPricingTab.svelte';
+	import VariationInventoryTab from '$lib/components/form-tabs/VariationInventoryTab.svelte';
+	import VariationOptionsTab from '$lib/components/form-tabs/VariationOptionsTab.svelte';
 	
 	// Props
 	interface Props {
@@ -73,7 +79,12 @@
 		SeoTab,
 		AdvancedTab,
 		VariantsTab,
-		InventoryTab
+		InventoryTab,
+		// Componentes de Variações
+		VariationBasicTab,
+		VariationPricingTab,
+		VariationInventoryTab,
+		VariationOptionsTab
 	};
 	
 	// Função para iniciar análise IA
@@ -484,6 +495,14 @@ ${JSON.stringify(allResponses, null, 2)}
 							<SeoTab bind:formData />
 						{:else if tab.component === 'AdvancedTab'}
 							<AdvancedTab bind:formData />
+						{:else if tab.component === 'VariationBasicTab'}
+							<VariationBasicTab data={formData} errors={validationErrors} on:change={(e) => { formData[e.detail.field] = e.detail.value; }} />
+						{:else if tab.component === 'VariationPricingTab'}
+							<VariationPricingTab data={formData} errors={validationErrors} on:change={(e) => { formData[e.detail.field] = e.detail.value; }} />
+						{:else if tab.component === 'VariationInventoryTab'}
+							<VariationInventoryTab data={formData} errors={validationErrors} on:change={(e) => { formData[e.detail.field] = e.detail.value; }} />
+						{:else if tab.component === 'VariationOptionsTab'}
+							<VariationOptionsTab data={formData} errors={validationErrors} on:change={(e) => { formData[e.detail.field] = e.detail.value; }} />
 						{/if}
 					</div>
 				{/if}
