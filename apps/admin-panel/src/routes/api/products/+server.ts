@@ -114,7 +114,7 @@ export const GET: RequestHandler = async ({ request }) => {
     // Mapear campos para os nomes corretos na query
     if (validSortFields.includes(sortBy)) {
       const sortFieldMap: Record<string, string> = {
-        'name': 'TRIM(REGEXP_REPLACE(p.name, \'[\\t\\n\\r\\f]\', \'\', \'g\'))', // ✅ Limpar caracteres especiais
+        'name': 'p.name', // Simplificado para evitar problemas de sintaxe
         'price': 'p.price', 
         'quantity': 'p.quantity', // ✅ Campo correto (não renomeado)
         'status': 'p.is_active',   // ✅ Usar is_active para status
@@ -202,7 +202,7 @@ export const GET: RequestHandler = async ({ request }) => {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
     
-    // Query com contagem
+    // Query com contagem simplificada para evitar erros
     const query = `
       SELECT 
         p.id,
@@ -224,32 +224,17 @@ export const GET: RequestHandler = async ({ request }) => {
         p.sales_count,
         p.created_at,
         p.updated_at,
-        b.name as brand_name,
-        c.name as category_name,
+        COALESCE(b.name, 'Sem marca') as brand_name,
+        COALESCE(c.name, 'Sem categoria') as category_name,
         c.id as category_id,
-        COALESCE(
-          json_agg(
-            pi.url ORDER BY pi.position
-          ) FILTER (WHERE pi.url IS NOT NULL),
-          '[]'::json
-        ) as images,
+        '[]'::json as images,
         COUNT(*) OVER() as total_count
       FROM products p
       LEFT JOIN brands b ON b.id = p.brand_id
       LEFT JOIN product_categories pc ON pc.product_id = p.id AND pc.is_primary = true
       LEFT JOIN categories c ON c.id = pc.category_id
-      LEFT JOIN product_images pi ON pi.product_id = p.id
       ${whereClause}
-      GROUP BY p.id, p.name, p.slug, p.sku, p.price, p.original_price, p.cost, p.quantity, 
-               p.brand_id, p.seller_id, p.description, p.is_active, p.featured, p.status,
-               p.rating_average, p.rating_count, p.sales_count, p.created_at, p.updated_at,
-               b.name, c.name, c.id
-      ORDER BY 
-        CASE WHEN '${sortBy}' = 'name' THEN 
-          TRIM(REGEXP_REPLACE(${orderBy}, '[\t\n\r\f]', '', 'g'))
-        ELSE 
-          ${orderBy}
-        END ${safeSortOrder}
+      ORDER BY ${orderBy} ${safeSortOrder}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     
@@ -259,21 +244,38 @@ export const GET: RequestHandler = async ({ request }) => {
     const products = await db.query(query, params);
     const totalCount = products[0]?.total_count || 0;
     
+    // Buscar imagens dos produtos se necessário
+    const productIds = products.map(p => p.id);
+    let productImages: Record<string, string[]> = {};
+    
+    if (productIds.length > 0) {
+      try {
+        const imagePlaceholders = productIds.map((_, index) => `$${index + 1}`).join(',');
+        const imageQuery = `
+          SELECT product_id, url 
+          FROM product_images 
+          WHERE product_id IN (${imagePlaceholders})
+          ORDER BY position
+        `;
+        const imageResults = await db.query(imageQuery, productIds);
+        
+        // Organizar imagens por produto
+        imageResults.forEach((img: any) => {
+          if (!productImages[img.product_id]) {
+            productImages[img.product_id] = [];
+          }
+          productImages[img.product_id].push(img.url);
+        });
+      } catch (imageError) {
+        console.warn('Erro ao buscar imagens dos produtos:', imageError);
+      }
+    }
+    
     const response = {
       success: true,
       data: products.map((p: any) => {
-        // Parse das imagens (vem como JSON string do PostgreSQL)
-        let productImages: string[] = [];
-        try {
-          if (p.images && typeof p.images === 'string') {
-            productImages = JSON.parse(p.images);
-          } else if (Array.isArray(p.images)) {
-            productImages = p.images;
-          }
-        } catch (error) {
-          console.warn('Erro ao parsear imagens do produto:', p.id, error);
-          productImages = [];
-        }
+        // Usar imagens carregadas separadamente
+        const productImageUrls = productImages[p.id] || [];
         
         return {
           id: p.id,
@@ -289,8 +291,8 @@ export const GET: RequestHandler = async ({ request }) => {
           brand: p.brand_name || 'Sem marca',
           brand_id: p.brand_id,
           vendor: 'Loja',
-          image: productImages.length > 0 ? productImages[0] : `/api/placeholder/200/200?text=${encodeURIComponent(p.name)}`,
-          images: productImages,
+          image: productImageUrls.length > 0 ? productImageUrls[0] : `/api/placeholder/200/200?text=${encodeURIComponent(p.name)}`,
+          images: productImageUrls,
           is_active: Boolean(p.is_active),
           status: p.is_active ? (p.stock > 0 ? 'active' : 'out_of_stock') : (p.status || 'inactive'),
           rating: p.rating_average ? Number(p.rating_average) : undefined,

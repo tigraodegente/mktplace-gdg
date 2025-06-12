@@ -64,7 +64,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				sr.base_price,
 				sr.price_per_kg
 			FROM shipping_rates sr
-			LEFT JOIN shipping_carriers sc ON sc.id = sr.carrier_id
+			LEFT JOIN shipping_carriers sc ON sc.id::text = sr.carrier_id
 			LEFT JOIN shipping_zones sz ON sz.id = sr.zone_id
 			${whereClause}
 			ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
@@ -79,7 +79,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const countQuery = `
 			SELECT COUNT(*) as total
 			FROM shipping_rates sr
-			LEFT JOIN shipping_carriers sc ON sc.id = sr.carrier_id
+			LEFT JOIN shipping_carriers sc ON sc.id::text = sr.carrier_id
 			LEFT JOIN shipping_zones sz ON sz.id = sr.zone_id
 			${whereClause}
 		`;

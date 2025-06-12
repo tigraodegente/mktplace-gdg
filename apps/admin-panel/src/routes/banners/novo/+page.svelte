@@ -1,15 +1,12 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import UniversalFormPageTemplate from '$lib/components/universal/UniversalFormPageTemplate.svelte';
 	import { FormConfigs } from '$lib/config/formConfigs';
 	
-	const config = FormConfigs.produtos;
-	const entityId = $page.params.id;
+	const config = FormConfigs.banners;
 </script>
 
-<!-- Página de edição migrada para sistema universal -->
+<!-- Página de criação de banners usando sistema universal -->
 <UniversalFormPageTemplate 
 	{config} 
-	{entityId} 
-	isEdit={true} 
+	isEdit={false} 
 /> 

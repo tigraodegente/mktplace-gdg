@@ -1,12 +1,12 @@
 <script lang="ts">
-	import FormPageTemplate from '$lib/components/ui/FormPageTemplate.svelte';
+	import UniversalFormPageTemplate from '$lib/components/universal/UniversalFormPageTemplate.svelte';
 	import { FormConfigs } from '$lib/config/formConfigs';
 	
 	const config = FormConfigs.produtos;
 </script>
 
-<!-- Página de criação de produtos migrada para FormPageTemplate -->
-<FormPageTemplate 
+<!-- Página de criação migrada para sistema universal -->
+<UniversalFormPageTemplate 
 	{config} 
 	isEdit={false} 
 />

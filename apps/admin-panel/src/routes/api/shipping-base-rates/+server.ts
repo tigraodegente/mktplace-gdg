@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 				COUNT(*) OVER() as total_count
 			FROM shipping_base_rates sbr
 			LEFT JOIN shipping_zones z ON sbr.zone_id = z.id
-			LEFT JOIN shipping_carriers c ON sbr.carrier_id = c.id
+			LEFT JOIN shipping_carriers c ON sbr.carrier_id = c.id::text
 			LEFT JOIN shipping_methods sm ON sbr.shipping_method_id = sm.id
 			${whereClause}
 			ORDER BY ${sortField} ${sortDirection}

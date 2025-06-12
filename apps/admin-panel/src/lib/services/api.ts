@@ -108,7 +108,7 @@ class ApiService {
 	}
 	
 	// DELETE
-	async delete<T = any>(endpoint: string, options?: ApiOptions): Promise<T> {
+	async delete<T = any>(endpoint: string, options?: ApiOptions & { body?: string }): Promise<T> {
 		return this.request<T>(endpoint, { ...options, method: 'DELETE' });
 	}
 }

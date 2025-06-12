@@ -1,8 +1,31 @@
+export interface FormField {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'multiselect' | 'boolean' | 'number' | 'date' | 'image' | 'file' | 'rich-text' | 'color' | 'url' | 'email' | 'password' | 'json';
+  required?: boolean;
+  placeholder?: string;
+  help?: string;
+  fullWidth?: boolean;
+  options?: Array<{ value: string | number; label: string }>;
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+    custom?: (value: any) => string | null;
+  };
+  conditional?: {
+    field: string;
+    value: any;
+    operator?: 'equals' | 'not-equals' | 'contains' | 'greater' | 'less';
+  };
+}
+
 export interface FormTab {
   id: string;
   label: string;
   icon: string;
-  component: string;
+  component?: string;
+  fields?: FormField[];
   description?: string;
   badge?: () => number;
 }
@@ -41,6 +64,7 @@ export interface FormConfig {
   showHistory?: boolean;
   showDuplicate?: boolean;
   showPreview?: boolean;
+  previewUrl?: (id: string) => string;
   
   // Rotas de navegação
   listRoute: string;
@@ -60,9 +84,9 @@ export const FormConfigs: Record<string, FormConfig> = {
     entityName: 'produto',
     
     // API endpoints
-    createEndpoint: '/api/products',
-    updateEndpoint: (id: string) => `/api/products/${id}`,
-    loadEndpoint: (id: string) => `/api/products/${id}`,
+    createEndpoint: '/products',
+    updateEndpoint: (id: string) => `/products/${id}`,
+    loadEndpoint: (id: string) => `/products/${id}`,
     
     // Configurações de abas
     tabs: [
@@ -161,7 +185,7 @@ export const FormConfigs: Record<string, FormConfig> = {
     
     // IA habilitada
     aiEnabled: true,
-    aiEndpoint: '/api/ai/enrich',
+    aiEndpoint: '/ai/enrich',
     
     // Interface
     showHistory: true,
@@ -251,6 +275,114 @@ export const FormConfigs: Record<string, FormConfig> = {
     }
   },
 
+  // ============ BANNERS ============
+  banners: {
+    entityName: 'banner',
+    title: 'Banner',
+    subtitle: 'Gerencie banners promocionais da loja',
+    
+    listRoute: '/banners',
+    createEndpoint: '/banners',
+    updateEndpoint: (id: string) => `/banners/${id}`,
+    loadEndpoint: (id: string) => `/banners/${id}`,
+    
+    defaultTab: 'basic',
+    requiredFields: ['title', 'image'],
+    
+    defaultFormData: {
+      title: '',
+      subtitle: '',
+      image: '',
+      link: '',
+      order: 0,
+      is_active: true,
+      start_date: '',
+      end_date: '',
+      target: '_self'
+    },
+    
+    tabs: [
+      {
+        id: 'basic',
+        label: 'Informações Básicas',
+        icon: 'Image',
+        fields: [
+          {
+            name: 'title',
+            label: 'Título',
+            type: 'text',
+            required: true,
+            placeholder: 'Título do banner'
+          },
+          {
+            name: 'subtitle',
+            label: 'Subtítulo',
+            type: 'text',
+            placeholder: 'Subtítulo opcional'
+          },
+          {
+            name: 'image',
+            label: 'Imagem',
+            type: 'image',
+            required: true,
+            help: 'Tamanho recomendado: 1920x600px'
+          },
+          {
+            name: 'link',
+            label: 'Link',
+            type: 'url',
+            placeholder: 'https://exemplo.com'
+          },
+          {
+            name: 'target',
+            label: 'Abrir link em',
+            type: 'select',
+            options: [
+              { value: '_self', label: 'Mesma janela' },
+              { value: '_blank', label: 'Nova janela' }
+            ]
+          },
+          {
+            name: 'is_active',
+            label: 'Status',
+            type: 'boolean'
+          }
+        ]
+      },
+      {
+        id: 'scheduling',
+        label: 'Agendamento',
+        icon: 'Calendar',
+        fields: [
+          {
+            name: 'start_date',
+            label: 'Data de início',
+            type: 'date',
+            help: 'Deixe vazio para ativar imediatamente'
+          },
+          {
+            name: 'end_date',
+            label: 'Data de fim',
+            type: 'date',
+            help: 'Deixe vazio para não ter fim'
+          },
+          {
+            name: 'order',
+            label: 'Ordem de exibição',
+            type: 'number',
+            help: 'Menor número aparece primeiro',
+            validation: { min: 0 }
+          }
+        ]
+      }
+    ],
+    
+    showHistory: true,
+    showDuplicate: true,
+    showPreview: true,
+    previewUrl: (id: string) => `/preview/banner/${id}`
+  },
+
   // ============ VENDEDORES ============
   vendedores: {
     entityName: 'vendedor',
@@ -261,9 +393,9 @@ export const FormConfigs: Record<string, FormConfig> = {
     aiEnabled: true,
     
     listRoute: '/vendedores',
-    createEndpoint: '/api/sellers',
-    updateEndpoint: (id: string) => `/api/sellers/${id}`,
-    loadEndpoint: (id: string) => `/api/sellers/${id}`,
+    createEndpoint: '/sellers',
+    updateEndpoint: (id: string) => `/sellers/${id}`,
+    loadEndpoint: (id: string) => `/sellers/${id}`,
     
     defaultTab: 'basic',
     requiredFields: ['company_name', 'email'],
@@ -308,27 +440,79 @@ export const FormConfigs: Record<string, FormConfig> = {
     tabs: [
       {
         id: 'basic',
-        label: 'Informações Básicas', 
+        label: 'Informações Básicas',
         icon: 'User',
-        component: 'BasicTab'
+        fields: [
+          {
+            name: 'company_name',
+            label: 'Nome da Empresa',
+            type: 'text',
+            required: true
+          },
+          {
+            name: 'trading_name',
+            label: 'Nome Fantasia',
+            type: 'text'
+          },
+          {
+            name: 'cnpj',
+            label: 'CNPJ',
+            type: 'text',
+            validation: {
+              pattern: '\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}',
+              custom: (value: string) => {
+                // Aqui poderia chamar validationService.validateCNPJ(value)
+                return null;
+              }
+            }
+          },
+          {
+            name: 'email',
+            label: 'Email',
+            type: 'email',
+            required: true
+          },
+          {
+            name: 'phone',
+            label: 'Telefone',
+            type: 'text'
+          },
+          {
+            name: 'is_active',
+            label: 'Status',
+            type: 'boolean'
+          }
+        ]
       },
       {
-        id: 'address',
-        label: 'Endereço',
-        icon: 'MapPin', 
-        component: 'AddressTab'
-      },
-      {
-        id: 'financial',
-        label: 'Dados Financeiros',
-        icon: 'CreditCard',
-        component: 'FinancialTab'
-      },
-      {
-        id: 'documents',
-        label: 'Documentos',
+        id: 'description',
+        label: 'Descrição',
         icon: 'FileText',
-        component: 'DocumentsTab'
+        fields: [
+          {
+            name: 'description',
+            label: 'Descrição da Empresa',
+            type: 'rich-text',
+            fullWidth: true,
+            help: 'Descreva os produtos e serviços oferecidos'
+          },
+          {
+            name: 'category',
+            label: 'Categoria',
+            type: 'select',
+            options: [
+              { value: 'eletronicos', label: 'Eletrônicos' },
+              { value: 'moda', label: 'Moda e Beleza' },
+              { value: 'casa', label: 'Casa e Jardim' },
+              { value: 'esportes', label: 'Esportes' }
+            ]
+          },
+          {
+            name: 'website',
+            label: 'Website',
+            type: 'url'
+          }
+        ]
       }
     ],
     

@@ -48,7 +48,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				settings,
 				created_at,
 				updated_at,
-				(SELECT COUNT(*) FROM seller_shipping_configs WHERE carrier_id = sc.id) as total_sellers
+				(SELECT COUNT(*) FROM seller_shipping_configs WHERE carrier_id = sc.id::text) as total_sellers
 			FROM shipping_carriers sc
 			${whereClause}
 			ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
