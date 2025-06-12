@@ -1,0 +1,385 @@
+{
+  "column_name": "id",
+  "data_type": "uuid",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "sku",
+  "data_type": "character varying",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "name",
+  "data_type": "character varying",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "slug",
+  "data_type": "character varying",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "description",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "brand_id",
+  "data_type": "uuid",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "seller_id",
+  "data_type": "uuid",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "status",
+  "data_type": "character varying",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "is_active",
+  "data_type": "boolean",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "price",
+  "data_type": "numeric",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "original_price",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "cost",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "currency",
+  "data_type": "character varying",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "quantity",
+  "data_type": "integer",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "stock_location",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "track_inventory",
+  "data_type": "boolean",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "allow_backorder",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "weight",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "height",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "width",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "length",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "meta_title",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "meta_description",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "meta_keywords",
+  "data_type": "ARRAY",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "tags",
+  "data_type": "ARRAY",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "attributes",
+  "data_type": "jsonb",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "specifications",
+  "data_type": "jsonb",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "view_count",
+  "data_type": "integer",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "sales_count",
+  "data_type": "integer",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "rating_average",
+  "data_type": "numeric",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "rating_count",
+  "data_type": "integer",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "featured",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "barcode",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "created_at",
+  "data_type": "timestamp without time zone",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "updated_at",
+  "data_type": "timestamp without time zone",
+  "is_nullable": "NO"
+}
+{
+  "column_name": "published_at",
+  "data_type": "timestamp without time zone",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "condition",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "delivery_days",
+  "data_type": "integer",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "has_free_shipping",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "seller_state",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "seller_city",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "model",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "delivery_days_min",
+  "data_type": "integer",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "delivery_days_max",
+  "data_type": "integer",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "short_description",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "brand",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "is_digital",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "requires_shipping",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "tax_class",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "ncm_code",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "gtin",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "origin",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "manufacturing_country",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "low_stock_alert",
+  "data_type": "integer",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "care_instructions",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "manual_link",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "allow_reviews",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "age_restricted",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "is_customizable",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "internal_notes",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "videos",
+  "data_type": "jsonb",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "shipping_pac",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "shipping_sedex",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "shipping_carrier",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "shipping_pickup",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "canonical_url",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "robots_meta",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "schema_type",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "og_title",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "og_description",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "og_image",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "seo_index",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "seo_follow",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "warranty_period",
+  "data_type": "character varying",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "is_variant",
+  "data_type": "boolean",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "search_vector",
+  "data_type": "tsvector",
+  "is_nullable": "YES"
+}
+{
+  "column_name": "search_terms",
+  "data_type": "text",
+  "is_nullable": "YES"
+}
