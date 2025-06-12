@@ -81,8 +81,8 @@
 					<ModernIcon name="robot" size="lg" />
 				</div>
 				<div class="ai-review-text">
-					<h3>Modo Revisão IA Ativo</h3>
-					<p>
+					<h3 class="ai-title">Modo Revisão IA Ativo</h3>
+					<p class="ai-description">
 						{totalSuggestions} sugestões encontradas | Revise as sugestões nas abas e clique em "Aplicar" nas que desejar usar
 					</p>
 				</div>

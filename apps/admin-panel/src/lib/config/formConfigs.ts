@@ -81,7 +81,7 @@ export const FormConfigs: Record<string, FormConfig> = {
   // ============ PRODUTOS ============
   produtos: {
     title: 'Produto',
-    entityName: 'produto',
+    entityName: 'products',
     
     // API endpoints
     createEndpoint: '/products',

@@ -760,11 +760,19 @@ async function suggestVariationsFromSimilarProducts(currentData: any, platform: 
 
 // 🔧 FUNÇÃO AUXILIAR: Parse das respostas da IA
 function parseAIResponse(content: string | null): Suggestion[] {
-	if (!content) return [];
+	if (!content) {
+		console.log('⚠️ Resposta vazia do ChatGPT');
+		return [];
+	}
+	
+	console.log('📝 Resposta bruta do ChatGPT:', content.substring(0, 500) + '...');
 	
 	try {
-		// Limpar markdown
-		let cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+		// Limpar markdown e caracteres extras
+		let cleaned = content
+			.replace(/```json\n?|\n?```/g, '')
+			.replace(/```\n?|\n?```/g, '')
+			.trim();
 		
 		// Remover caracteres de controle
 		cleaned = cleaned
@@ -773,17 +781,25 @@ function parseAIResponse(content: string | null): Suggestion[] {
 			.replace(/\r/g, '\n')
 			.replace(/\t/g, ' ');
 		
-		// Encontrar JSON válido
-		const lastBraceIndex = cleaned.lastIndexOf('}');
-		if (lastBraceIndex !== -1) {
-			cleaned = cleaned.substring(0, lastBraceIndex + 1);
+		// Procurar por JSON válido na resposta
+		let jsonStart = cleaned.indexOf('{');
+		let jsonEnd = cleaned.lastIndexOf('}');
+		
+		if (jsonStart === -1 || jsonEnd === -1) {
+			console.log('❌ JSON não encontrado na resposta');
+			return [];
 		}
+		
+		cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+		console.log('🔧 JSON limpo:', cleaned.substring(0, 300) + '...');
 		
 		const parsed = JSON.parse(cleaned);
 		const suggestions = parsed.suggestions || [];
 		
+		console.log(`✅ Parse realizado: ${suggestions.length} sugestões encontradas`);
+		
 		// 🔧 MAPEAR CATEGORIAS PARA AS ABAS CORRETAS
-		return suggestions.map((suggestion: any) => {
+		const mappedSuggestions = suggestions.map((suggestion: any) => {
 			// Mapear categorias incorretas para as abas existentes
 			let category = suggestion.category;
 			
@@ -794,7 +810,8 @@ function parseAIResponse(content: string | null): Suggestion[] {
 				'manufacturing': 'advanced',
 				'product_info': 'advanced', 
 				'tax': 'advanced',
-				'category': 'basic'
+				'category': 'basic',
+				'advanced': 'advanced'
 			};
 			
 			if (categoryMap[category]) {
@@ -804,16 +821,31 @@ function parseAIResponse(content: string | null): Suggestion[] {
 			// Garantir que só existem categorias válidas
 			const validCategories = ['basic', 'pricing', 'attributes', 'variants', 'media', 'shipping', 'seo', 'inventory', 'advanced'];
 			if (!validCategories.includes(category)) {
+				console.log(`⚠️ Categoria inválida "${category}" - usando "advanced"`);
 				category = 'advanced'; // Default fallback
 			}
 			
 			return {
 				...suggestion,
-				category
+				category,
+				source: 'ai'
 			};
 		});
+		
+		console.log('📊 Sugestões por categoria:', {
+			basic: mappedSuggestions.filter((s: Suggestion) => s.category === 'basic').length,
+			seo: mappedSuggestions.filter((s: Suggestion) => s.category === 'seo').length,
+			pricing: mappedSuggestions.filter((s: Suggestion) => s.category === 'pricing').length,
+			attributes: mappedSuggestions.filter((s: Suggestion) => s.category === 'attributes').length,
+			shipping: mappedSuggestions.filter((s: Suggestion) => s.category === 'shipping').length,
+			inventory: mappedSuggestions.filter((s: Suggestion) => s.category === 'inventory').length,
+			advanced: mappedSuggestions.filter((s: Suggestion) => s.category === 'advanced').length
+		});
+		
+		return mappedSuggestions;
 	} catch (error) {
-		console.error('❌ Erro ao fazer parse:', error);
+		console.error('❌ Erro ao fazer parse da resposta IA:', error);
+		console.error('📝 Conteúdo que causou erro:', content.substring(0, 1000));
 		return [];
 	}
 }
@@ -862,105 +894,517 @@ async function findSimilarProductsOptimized(currentProduct: any, db: any) {
 	}
 }
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
+		console.log('🤖 Iniciando análise com IA...');
 		const { currentData } = await request.json();
 		
-		if (!currentData) {
-			return Response.json({ 
-				success: false, 
-				error: 'Dados do produto não fornecidos' 
-			});
-		}
-
-		console.log('🤖 Iniciando análise IA completa...');
+		// Buscar dados necessários do banco
+		const db = getDatabase();
 		
-		// Carregar dados necessários
-		const db = getDatabase(platform);
-		const [categories, brands] = await Promise.all([
-			db.query`SELECT id, name, slug FROM categories WHERE is_active = true`,
-			db.query`SELECT id, name, slug FROM brands WHERE is_active = true`
+		// Buscar categorias e marcas para enriquecimento
+		const [categoriesResult, brandsResult] = await Promise.all([
+			db.query('SELECT id, name, slug FROM categories WHERE is_active = true ORDER BY name LIMIT 100'),
+			db.query('SELECT id, name, slug FROM brands WHERE is_active = true ORDER BY name LIMIT 50')
 		]);
-		await db.close();
 		
-		// ✅ EXECUTAR TODAS AS ANÁLISES EM PARALELO
-		const [
-			basicSuggestions,
-			seoSuggestions,
-			categorySuggestions,
-			attributesSuggestions,
-			dimensionsSuggestions,
-			variationsSuggestions,
-			similarProductsSuggestions
-		] = await Promise.all([
+		const categories = categoriesResult || [];
+		const brands = brandsResult || [];
+		
+		console.log(`📊 Dados carregados: ${categories.length} categorias, ${brands.length} marcas`);
+		
+		// FAZER CHAMADAS REAIS PARA O CHATGPT
+		console.log('🔄 Fazendo chamadas para ChatGPT...');
+		
+		const allSuggestions = await Promise.all([
 			enrichBasicContent(currentData, openai),
 			enrichSEOContent(currentData, openai),
 			suggestCategoriesIntelligent(currentData, categories, brands, openai),
 			enrichAttributes(currentData, openai),
 			enrichDimensionsAndAdvanced(currentData, openai),
-			suggestProductVariations(currentData, openai),
-			suggestVariationsFromSimilarProducts(currentData, platform)
+			enrichPricing(currentData, openai),
+			enrichInventory(currentData, openai)
 		]);
-
+		
 		// Combinar todas as sugestões
-		const allSuggestions = [
-			...basicSuggestions,
-			...seoSuggestions,
-			...categorySuggestions,
-			...attributesSuggestions,
-			...dimensionsSuggestions,
-			...variationsSuggestions,
-			...similarProductsSuggestions
-		];
-
-		// 🔧 ENRIQUECER AS SUGESTÕES COM NOMES
-		allSuggestions.forEach((suggestion: any) => {
-			if (suggestion.field === 'category_id' && suggestion.suggestedValue) {
-				const category = categories.find((c: any) => c.id === suggestion.suggestedValue);
-				if (category) {
-					suggestion.displayValue = `✅ ${category.name}`;
-					suggestion.extra_info = {
-						category_name: category.name,
-						category_id: category.id
-					};
-				}
-			}
-			
-			if (suggestion.field === 'brand_id' && suggestion.suggestedValue) {
-				const brand = brands.find((b: any) => b.id === suggestion.suggestedValue);
-				if (brand) {
-					suggestion.displayValue = `✅ ${brand.name}`;
-					suggestion.extra_info = {
-						brand_name: brand.name,
-						brand_id: brand.id
-					};
-					console.log(`🏷️ Marca identificada pela IA: ${brand.name}`);
-				}
-			}
+		const suggestions = allSuggestions.flat();
+		
+		console.log(`✅ Análise IA concluída: ${suggestions.length} sugestões geradas`);
+		console.log(`📝 Distribuição por categoria:`, {
+			basic: suggestions.filter((s: Suggestion) => s.category === 'basic').length,
+			seo: suggestions.filter((s: Suggestion) => s.category === 'seo').length,
+			pricing: suggestions.filter((s: Suggestion) => s.category === 'pricing').length,
+			attributes: suggestions.filter((s: Suggestion) => s.category === 'attributes').length,
+			shipping: suggestions.filter((s: Suggestion) => s.category === 'shipping').length,
+			inventory: suggestions.filter((s: Suggestion) => s.category === 'inventory').length
 		});
-
-		console.log(`✅ Análise completa: ${allSuggestions.length} sugestões geradas`);
-
-		return Response.json({
+		
+		return json({
 			success: true,
-			suggestions: allSuggestions,
-			metadata: {
-				totalSuggestions: allSuggestions.length,
-				categoriesByType: allSuggestions.reduce((acc: any, s: any) => {
-					acc[s.category] = (acc[s.category] || 0) + 1;
-					return acc;
-				}, {}),
-				processingTime: Date.now(),
-				// 🚫 REMOVIDAS as análises de preço e estoque
-				excludedAnalysis: ['pricing', 'inventory']
-			}
+			suggestions
 		});
-
-	} catch (error: any) {
+		
+	} catch (error) {
 		console.error('❌ Erro na análise IA:', error);
-		return Response.json({ 
-			success: false, 
-			error: error.message || 'Erro interno na análise IA' 
+		return json({
+			success: false,
+			error: 'Erro interno do servidor'
+		}, { status: 500 });
+	}
+};
+
+async function generateAISuggestions(data: any) {
+	// Simular delay da IA
+	await new Promise(resolve => setTimeout(resolve, 1000));
+	
+	const suggestions = [];
+	
+	// 1. SUGESTÕES BÁSICAS (basic)
+	if (data.name) {
+		// Otimizar nome
+		const optimizedName = `${data.name} - Premium Quality`;
+		suggestions.push({
+			field: 'name',
+			label: 'Nome do Produto',
+			currentValue: data.name,
+			suggestedValue: optimizedName,
+			confidence: 85,
+			reasoning: 'Adicionado "Premium Quality" para melhorar percepção de valor',
+			category: 'basic'
+		});
+		
+		// SKU profissional
+		const sku = generateSKU(data.name);
+		suggestions.push({
+			field: 'sku',
+			label: 'SKU do Produto',
+			currentValue: data.sku || '',
+			suggestedValue: sku,
+			confidence: 80,
+			reasoning: 'SKU gerado baseado no nome do produto para organização do estoque',
+			category: 'basic'
+		});
+		
+		// Modelo específico
+		const model = extractModel(data.name);
+		if (model) {
+			suggestions.push({
+				field: 'model',
+				label: 'Modelo do Produto',
+				currentValue: data.model || '',
+				suggestedValue: model,
+				confidence: 75,
+				reasoning: 'Modelo específico extraído do nome do produto',
+				category: 'basic'
+			});
+		}
+	}
+	
+	// Sugestões de descrição expandida
+	if (data.description && data.description.length < 200) {
+		const enhancedDescription = `${data.description}\n\n✅ Produto de alta qualidade\n✅ Entrega rápida e segura\n✅ Garantia estendida\n✅ Suporte técnico especializado\n✅ Satisfação garantida ou dinheiro de volta`;
+		suggestions.push({
+			field: 'description',
+			label: 'Descrição Completa',
+			currentValue: data.description,
+			suggestedValue: enhancedDescription,
+			confidence: 85,
+			reasoning: 'Descrição expandida com benefícios e características destacadas para aumentar conversão',
+			category: 'basic'
 		});
 	}
-}; 
+	
+	// Descrição curta comercial
+	if (!data.short_description || data.short_description.length < 50) {
+		const shortDesc = generateShortDescription(data.name);
+		suggestions.push({
+			field: 'short_description',
+			label: 'Descrição Resumida',
+			currentValue: data.short_description || '',
+			suggestedValue: shortDesc,
+			confidence: 80,
+			reasoning: 'Descrição resumida comercial para listagens de produtos',
+			category: 'basic'
+		});
+	}
+	
+	// Tags para busca
+	const suggestedTags = generateTags(data.name);
+	suggestions.push({
+		field: 'tags',
+		label: 'Tags de Busca',
+		currentValue: data.tags || '',
+		suggestedValue: suggestedTags,
+		confidence: 75,
+		reasoning: 'Tags estratégicas para melhorar encontrabilidade do produto',
+		category: 'basic'
+	});
+	
+	// 2. SUGESTÕES SEO (seo)
+	if (data.name) {
+		// Meta title
+		const metaTitle = `${data.name} | Compre Online com Frete Grátis - Grão de Gente`;
+		suggestions.push({
+			field: 'meta_title',
+			label: 'Título SEO',
+			currentValue: data.meta_title || '',
+			suggestedValue: metaTitle,
+			confidence: 90,
+			reasoning: 'Título otimizado para SEO com palavras-chave relevantes e marca',
+			category: 'seo'
+		});
+		
+		// Meta description
+		const metaDescription = `Compre ${data.name} com os melhores preços e frete grátis. Qualidade garantida, entrega rápida e atendimento especializado. Aproveite!`;
+		suggestions.push({
+			field: 'meta_description',
+			label: 'Descrição SEO',
+			currentValue: data.meta_description || '',
+			suggestedValue: metaDescription,
+			confidence: 88,
+			reasoning: 'Descrição otimizada para mecanismos de busca com call-to-action',
+			category: 'seo'
+		});
+		
+		// Meta keywords
+		const keywords = generateMetaKeywords(data.name);
+		suggestions.push({
+			field: 'meta_keywords',
+			label: 'Palavras-chave SEO',
+			currentValue: data.meta_keywords || '',
+			suggestedValue: keywords,
+			confidence: 75,
+			reasoning: 'Palavras-chave estratégicas para SEO e busca orgânica',
+			category: 'seo'
+		});
+		
+		// Robots meta
+		suggestions.push({
+			field: 'robots_meta',
+			label: 'Robots Meta',
+			currentValue: data.robots_meta || '',
+			suggestedValue: 'index,follow',
+			confidence: 95,
+			reasoning: 'Permitir indexação do produto pelos mecanismos de busca',
+			category: 'seo'
+		});
+		
+		// Open Graph title
+		const ogTitle = `${data.name} - Grão de Gente`;
+		suggestions.push({
+			field: 'og_title',
+			label: 'Open Graph Título',
+			currentValue: data.og_title || '',
+			suggestedValue: ogTitle,
+			confidence: 85,
+			reasoning: 'Título otimizado para compartilhamento em redes sociais',
+			category: 'seo'
+		});
+		
+		// Open Graph description
+		const ogDescription = `Descubra o ${data.name} na Grão de Gente. Qualidade premium, preços justos e entrega garantida.`;
+		suggestions.push({
+			field: 'og_description',
+			label: 'Open Graph Descrição',
+			currentValue: data.og_description || '',
+			suggestedValue: ogDescription,
+			confidence: 85,
+			reasoning: 'Descrição otimizada para compartilhamento em redes sociais',
+			category: 'seo'
+		});
+	}
+	
+	// 3. SUGESTÕES DE PREÇOS (pricing)
+	if (data.price && !data.sale_price) {
+		const salePrice = Math.round(data.price * 0.9 * 100) / 100;
+		suggestions.push({
+			field: 'sale_price',
+			label: 'Preço Promocional',
+			currentValue: data.sale_price || null,
+			suggestedValue: salePrice,
+			confidence: 70,
+			reasoning: 'Preço promocional de 10% de desconto para aumentar conversões',
+			category: 'pricing'
+		});
+	}
+	
+	if (data.price && !data.cost_price) {
+		const costPrice = Math.round(data.price * 0.6 * 100) / 100;
+		suggestions.push({
+			field: 'cost_price',
+			label: 'Preço de Custo',
+			currentValue: data.cost_price || null,
+			suggestedValue: costPrice,
+			confidence: 60,
+			reasoning: 'Preço de custo estimado em 60% do preço de venda para controle de margem',
+			category: 'pricing'
+		});
+	}
+	
+	// 4. SUGESTÕES DE ATRIBUTOS (attributes)
+	if (!data.attributes || Object.keys(data.attributes).length < 3) {
+		const suggestedAttributes = generateAttributes(data.name);
+		suggestions.push({
+			field: 'attributes',
+			label: 'Atributos para Filtros',
+			currentValue: data.attributes || {},
+			suggestedValue: { ...data.attributes, ...suggestedAttributes },
+			confidence: 80,
+			reasoning: 'Atributos essenciais para melhorar filtros da loja e informações do produto',
+			category: 'attributes'
+		});
+	}
+	
+	// Especificações técnicas
+	const specifications = generateSpecifications(data.name);
+	suggestions.push({
+		field: 'specifications',
+		label: 'Especificações Técnicas',
+		currentValue: data.specifications || {},
+		suggestedValue: specifications,
+		confidence: 75,
+		reasoning: 'Especificações técnicas detalhadas para informar melhor o consumidor',
+		category: 'attributes'
+	});
+	
+	// 5. SUGESTÕES DE ESTOQUE (inventory)
+	if (!data.quantity || data.quantity === 0) {
+		suggestions.push({
+			field: 'quantity',
+			label: 'Quantidade em Estoque',
+			currentValue: data.quantity || 0,
+			suggestedValue: 50,
+			confidence: 60,
+			reasoning: 'Quantidade inicial recomendada para novos produtos',
+			category: 'inventory'
+		});
+	}
+	
+	if (!data.low_stock_alert) {
+		suggestions.push({
+			field: 'low_stock_alert',
+			label: 'Alerta de Estoque Baixo',
+			currentValue: data.low_stock_alert || 0,
+			suggestedValue: 5,
+			confidence: 80,
+			reasoning: 'Alerta quando o estoque atingir 5 unidades para evitar falta de produto',
+			category: 'inventory'
+		});
+	}
+	
+	// 6. SUGESTÕES DE FRETE (shipping)
+	if (!data.weight || data.weight === 0) {
+		const estimatedWeight = estimateWeight(data.name);
+		suggestions.push({
+			field: 'weight',
+			label: 'Peso do Produto',
+			currentValue: data.weight || 0,
+			suggestedValue: estimatedWeight,
+			confidence: 60,
+			reasoning: 'Peso estimado baseado no tipo de produto para cálculo de frete',
+			category: 'shipping'
+		});
+	}
+	
+	if (!data.height || data.height === 0) {
+		const dimensions = estimateDimensions(data.name);
+		suggestions.push({
+			field: 'height',
+			label: 'Altura da Embalagem',
+			currentValue: data.height || 0,
+			suggestedValue: dimensions.height,
+			confidence: 55,
+			reasoning: 'Altura estimada da embalagem para cálculo de frete',
+			category: 'shipping'
+		});
+		
+		suggestions.push({
+			field: 'width',
+			label: 'Largura da Embalagem',
+			currentValue: data.width || 0,
+			suggestedValue: dimensions.width,
+			confidence: 55,
+			reasoning: 'Largura estimada da embalagem para cálculo de frete',
+			category: 'shipping'
+		});
+		
+		suggestions.push({
+			field: 'length',
+			label: 'Comprimento da Embalagem',
+			currentValue: data.length || 0,
+			suggestedValue: dimensions.length,
+			confidence: 55,
+			reasoning: 'Comprimento estimado da embalagem para cálculo de frete',
+			category: 'shipping'
+		});
+	}
+	
+	// 7. SUGESTÕES DE CATEGORIA (basic)
+	if (!data.category_id && data.name) {
+		const categoryGuess = guessCategory(data.name);
+		if (categoryGuess) {
+			suggestions.push({
+				field: 'category_id',
+				label: 'Categoria Principal',
+				currentValue: data.category_id || null,
+				suggestedValue: categoryGuess.id,
+				confidence: 65,
+				reasoning: `Categoria sugerida baseada no nome do produto: ${categoryGuess.name}`,
+				category: 'basic'
+			});
+		}
+	}
+	
+	return suggestions;
+}
+
+// Funções auxiliares para geração de sugestões
+function generateSKU(productName: string): string {
+	const cleanName = productName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+	const prefix = cleanName.substring(0, 3);
+	const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+	return `${prefix}-${suffix}`;
+}
+
+function extractModel(productName: string): string | null {
+	const name = productName.toLowerCase();
+	
+	// Padrões comuns de modelos
+	const patterns = [
+		/(\w+\s+\w+\s+\w+)(?:\s|$)/,  // Três palavras
+		/(\w+\s+\w+)(?:\s|$)/,        // Duas palavras
+		/(galaxy\s+s\d+)/i,           // Galaxy S24, etc.
+		/(iphone\s+\d+)/i,            // iPhone 13, etc.
+		/(air\s+max\s+\d+)/i          // Air Max 90, etc.
+	];
+	
+	for (const pattern of patterns) {
+		const match = name.match(pattern);
+		if (match) {
+			return match[1].trim();
+		}
+	}
+	
+	return null;
+}
+
+function generateShortDescription(productName: string): string {
+	return `${productName} com qualidade premium e entrega garantida. Aproveite!`;
+}
+
+function generateTags(productName: string): string {
+	const name = productName.toLowerCase();
+	const tags = [];
+	
+	// Tags baseadas no nome
+	const words = name.split(' ').filter(word => word.length > 2);
+	tags.push(...words.slice(0, 3));
+	
+	// Tags genéricas
+	tags.push('qualidade', 'premium', 'oferta', 'entrega rápida');
+	
+	return tags.join(', ');
+}
+
+function generateMetaKeywords(productName: string): string {
+	const name = productName.toLowerCase();
+	const keywords = [];
+	
+	// Palavras do produto
+	const words = name.split(' ').filter(word => word.length > 2);
+	keywords.push(...words.slice(0, 4));
+	
+	// Keywords SEO
+	keywords.push('comprar', 'online', 'frete grátis', 'promoção', 'desconto', 'qualidade');
+	
+	return keywords.join(', ');
+}
+
+function generateAttributes(productName: string): any {
+	const name = productName.toLowerCase();
+	const attributes: any = {};
+	
+	// Atributos baseados no tipo de produto
+	if (name.includes('notebook') || name.includes('computador')) {
+		attributes['Tipo'] = 'Eletrônico';
+		attributes['Categoria'] = 'Informática';
+		attributes['Garantia'] = '12 meses';
+	} else if (name.includes('roupa') || name.includes('camisa')) {
+		attributes['Tipo'] = 'Vestuário';
+		attributes['Material'] = 'Algodão';
+		attributes['Tamanho'] = 'Único';
+	} else {
+		attributes['Material'] = 'Premium';
+		attributes['Garantia'] = '12 meses';
+		attributes['Origem'] = 'Nacional';
+	}
+	
+	return attributes;
+}
+
+function generateSpecifications(productName: string): any {
+	const name = productName.toLowerCase();
+	const specs: any = {};
+	
+	// Especificações baseadas no tipo
+	if (name.includes('notebook')) {
+		specs['Processador'] = 'Intel Core i5';
+		specs['Memória RAM'] = '8GB';
+		specs['Armazenamento'] = '256GB SSD';
+		specs['Tela'] = '15.6 polegadas';
+	} else {
+		specs['Dimensões'] = '30 x 20 x 10 cm';
+		specs['Peso'] = '500g';
+		specs['Material'] = 'Material premium';
+		specs['Cor'] = 'Variada';
+	}
+	
+	return specs;
+}
+
+function estimateWeight(productName: string): number {
+	const name = productName.toLowerCase();
+	
+	if (name.includes('notebook') || name.includes('laptop')) return 2.5;
+	if (name.includes('livro')) return 0.3;
+	if (name.includes('roupa') || name.includes('camisa')) return 0.2;
+	if (name.includes('brinquedo')) return 0.8;
+	
+	return 0.5; // Peso padrão
+}
+
+function estimateDimensions(productName: string): { height: number, width: number, length: number } {
+	const name = productName.toLowerCase();
+	
+	if (name.includes('notebook') || name.includes('laptop')) {
+		return { height: 5, width: 35, length: 25 };
+	}
+	if (name.includes('livro')) {
+		return { height: 2, width: 15, length: 20 };
+	}
+	if (name.includes('roupa')) {
+		return { height: 3, width: 30, length: 20 };
+	}
+	
+	return { height: 10, width: 20, length: 15 }; // Dimensões padrão
+}
+
+function guessCategory(productName: string) {
+	const name = productName.toLowerCase();
+	
+	const categoryMapping = [
+		{ keywords: ['notebook', 'laptop', 'computador'], id: 'electronics', name: 'Eletrônicos' },
+		{ keywords: ['camisa', 'camiseta', 'blusa', 'roupa'], id: 'clothing', name: 'Roupas' },
+		{ keywords: ['livro', 'revista', 'literatura'], id: 'books', name: 'Livros' },
+		{ keywords: ['jogo', 'brinquedo', 'toy'], id: 'toys', name: 'Brinquedos' },
+		{ keywords: ['casa', 'decoração', 'móvel'], id: 'home', name: 'Casa e Decoração' }
+	];
+	
+	for (const category of categoryMapping) {
+		if (category.keywords.some(keyword => name.includes(keyword))) {
+			return category;
+		}
+	}
+	
+	return null;
+} 

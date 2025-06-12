@@ -1,126 +1,197 @@
 <script lang="ts">
-	import type { FormConfig } from '$lib/config/formConfigs';
+	import ModernIcon from '../shared/ModernIcon.svelte';
+	import { aiReviewActions, aiReviewMode } from '$lib/stores/aiReview';
 	
-	// Props
 	interface Props {
-		config: FormConfig;
-		formData: any;
 		isOpen: boolean;
+		entityName: string;
+		formData: any;
 		onClose: () => void;
-		onApply: (data: any) => void;
 	}
 	
-	let { config, formData, isOpen, onClose, onApply }: Props = $props();
+	let { isOpen = false, entityName = '', formData = {}, onClose } = $props();
 	
-	// Estados
-	let loading = $state(false);
-	let error = $state<string | null>(null);
-	let suggestions = $state<any[]>([]);
+	let analyzing = $state(false);
+	let currentStep = $state('');
+	let progress = $state(0);
+	let error = $state('');
+	let success = $state(false);
 	
-	// Analisar com IA
-	async function analyzeWithAI() {
-		if (!config.aiEnabled) return;
+	const steps = [
+		'Analisando conteúdo básico...',
+		'Otimizando SEO...',
+		'Sugerindo categorias...',
+		'Calculando preços...',
+		'Gerenciando estoque...',
+		'Criando mídia...',
+		'Definindo atributos...',
+		'Configurando dimensões...',
+		'Sugerindo variações...',
+		'Finalizando análise...'
+	];
+	
+	async function startAnalysis() {
+		if (!formData.name || formData.name.trim() === '') {
+			error = `Por favor, insira um nome para o ${entityName} antes de analisar com IA`;
+			return;
+		}
 		
-		loading = true;
-		error = null;
+		analyzing = true;
+		error = '';
+		success = false;
+		progress = 0;
 		
 		try {
-			// Simular análise IA por enquanto
-			suggestions = [
-				{
-					field: 'name',
-					label: 'Nome',
-					suggestion: formData.name + ' - Melhorado',
-					confidence: 85
-				}
-			];
-		} catch (err) {
-			error = 'Erro na análise IA';
+			// Simular progresso dos steps
+			for (let i = 0; i < steps.length; i++) {
+				currentStep = steps[i];
+				progress = ((i + 1) / steps.length) * 100;
+				await new Promise(resolve => setTimeout(resolve, 300));
+			}
+			
+			// Fazer análise real
+			await aiReviewActions.startReview(formData);
+			
+			success = true;
+			currentStep = 'Análise concluída com sucesso!';
+			
+			// Fechar modal após 2 segundos
+			setTimeout(() => {
+				onClose();
+				resetModal();
+			}, 2000);
+			
+		} catch (err: any) {
+			console.error('💥 Erro na análise IA:', err);
+			error = err.message || `Erro ao analisar ${entityName} com IA`;
+			currentStep = 'Erro na análise';
 		} finally {
-			loading = false;
+			analyzing = false;
 		}
 	}
 	
-	// Aplicar sugestão
-	function applySuggestion(suggestion: any) {
-		onApply({ [suggestion.field]: suggestion.suggestion });
+	function resetModal() {
+		analyzing = false;
+		currentStep = '';
+		progress = 0;
+		error = '';
+		success = false;
 	}
 	
-	// Lifecycle
+	function handleClose() {
+		if (!analyzing) {
+			onClose();
+			resetModal();
+		}
+	}
+	
+	// Auto-iniciar análise quando modal abre
 	$effect(() => {
-		if (isOpen && config.aiEnabled) {
-			analyzeWithAI();
+		if (isOpen && !analyzing && !error && !success) {
+			startAnalysis();
 		}
 	});
 </script>
 
 {#if isOpen}
-	<div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-		<div class="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
+	<!-- Overlay -->
+	<div 
+		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+		onclick={handleClose}
+	>
+		<!-- Modal -->
+		<div 
+			class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative"
+			onclick={(e) => e.stopPropagation()}
+		>
 			<!-- Header -->
-			<div class="p-6 border-b">
-				<h2 class="text-xl font-semibold text-gray-900">
-					Análise IA - {config.title}
-				</h2>
-			</div>
-			
-			<!-- Content -->
-			<div class="p-6 overflow-y-auto max-h-[60vh]">
-				{#if !config.aiEnabled}
-					<div class="text-center py-8">
-						<p class="text-gray-600">IA não está habilitada para {config.entityName}</p>
-					</div>
-				{:else if loading}
-					<div class="text-center py-8">
-						<div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-						<p class="text-gray-600">Analisando com IA...</p>
-					</div>
-				{:else if error}
-					<div class="text-center py-8">
-						<p class="text-red-600 mb-4">{error}</p>
-						<button
-							onclick={analyzeWithAI}
-							class="px-4 py-2 bg-blue-600 text-white rounded-lg"
-						>
-							Tentar novamente
-						</button>
-					</div>
-				{:else if suggestions.length === 0}
-					<div class="text-center py-8">
-						<p class="text-gray-600">Nenhuma sugestão encontrada</p>
-					</div>
-				{:else}
-					<div class="space-y-4">
-						{#each suggestions as suggestion}
-							<div class="border border-gray-200 rounded-lg p-4">
-								<div class="flex justify-between items-start mb-2">
-									<h3 class="font-medium text-gray-900">{suggestion.label}</h3>
-									<span class="text-sm text-gray-500">{suggestion.confidence}% confiança</span>
-								</div>
-								<p class="text-sm text-gray-600 mb-3">
-									Sugestão: <strong>{suggestion.suggestion}</strong>
-								</p>
-								<button
-									onclick={() => applySuggestion(suggestion)}
-									class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-								>
-									Aplicar
-								</button>
-							</div>
-						{/each}
-					</div>
+			<div class="flex items-center gap-3 mb-6">
+				<div class="w-10 h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+					<ModernIcon name="robot" />
+				</div>
+				<div>
+					<h3 class="text-lg font-semibold text-gray-900">Análise com IA</h3>
+					<p class="text-sm text-gray-600">{entityName}</p>
+				</div>
+				{#if !analyzing}
+					<button
+						onclick={handleClose}
+						class="ml-auto p-2 text-gray-400 hover:text-gray-600 transition-colors"
+					>
+						<ModernIcon name="X" size="sm" />
+					</button>
 				{/if}
 			</div>
 			
-			<!-- Footer -->
-			<div class="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
-				<button
-					onclick={onClose}
-					class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-				>
-					Fechar
-				</button>
+			<!-- Content -->
+			<div class="space-y-4">
+				{#if error}
+					<!-- Error State -->
+					<div class="text-center py-4">
+						<div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+							<ModernIcon name="AlertTriangle" class="text-red-600" />
+						</div>
+						<h4 class="text-base font-medium text-gray-900 mb-2">Erro na Análise</h4>
+						<p class="text-sm text-red-600 mb-4">{error}</p>
+						<button
+							onclick={handleClose}
+							class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+						>
+							Fechar
+						</button>
+					</div>
+				{:else if success}
+					<!-- Success State -->
+					<div class="text-center py-4">
+						<div class="w-16 h-16 bg-[#00BFB3]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+							<ModernIcon name="CheckCircle" class="text-[#00BFB3]" />
+						</div>
+						<h4 class="text-base font-medium text-gray-900 mb-2">Análise Concluída!</h4>
+						<p class="text-sm text-gray-600 mb-4">
+							Sugestões aplicadas com sucesso. Revise as abas para ver as melhorias.
+						</p>
+						<div class="w-8 h-8 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin mx-auto"></div>
+						<p class="text-xs text-gray-500 mt-2">Fechando automaticamente...</p>
+					</div>
+				{:else}
+					<!-- Loading State -->
+					<div class="space-y-4">
+						<!-- Progress Bar -->
+						<div class="space-y-2">
+							<div class="flex justify-between text-sm">
+								<span class="text-gray-600">Progresso</span>
+								<span class="text-[#00BFB3] font-medium">{Math.round(progress)}%</span>
+							</div>
+							<div class="w-full bg-gray-200 rounded-full h-2">
+								<div 
+									class="bg-[#00BFB3] h-2 rounded-full transition-all duration-300"
+									style="width: {progress}%"
+								></div>
+							</div>
+						</div>
+						
+						<!-- Current Step -->
+						<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+							<div class="w-6 h-6 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin"></div>
+							<span class="text-sm text-gray-700">{currentStep}</span>
+						</div>
+						
+						<!-- Info -->
+						<div class="text-center">
+							<p class="text-xs text-gray-500">
+								A análise pode levar alguns minutos. Por favor, aguarde...
+							</p>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
-{/if} 
+{/if}
+
+<style>
+	/* Prevenir scroll do body quando modal está aberto */
+	:global(body:has(.modal-open)) {
+		overflow: hidden;
+	}
+</style> 

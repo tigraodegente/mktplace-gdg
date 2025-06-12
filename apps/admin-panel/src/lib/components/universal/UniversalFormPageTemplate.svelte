@@ -11,6 +11,8 @@
 	import UniversalHistoryModal from './UniversalHistoryModal.svelte';
 	import UniversalDuplicateModal from './UniversalDuplicateModal.svelte';
 	import UniversalAIModal from './UniversalAIModal.svelte';
+	import AIReviewHeader from '../shared/AIReviewHeader.svelte';
+	import { aiReviewStore, aiReviewActions, aiChangesCount } from '$lib/stores/aiReview';
 	
 	// Props
 	interface Props {
@@ -34,6 +36,21 @@
 	let showAIModal = $state(false);
 	let validationErrors = $state<Record<string, string>>({});
 	let hasUnsavedChanges = $state(false);
+	
+	// Estados da IA
+	let analyzingWithAI = $state(false);
+	let showAllAIResponses = $state(false);
+	let aiCounts = $state<Record<string, number>>({});
+	let isAIReviewMode = $state(false);
+	
+	// Subscriptions para IA
+	aiChangesCount.subscribe(counts => {
+		aiCounts = counts;
+	});
+	
+	aiReviewStore.subscribe(state => {
+		isAIReviewMode = state.isActive;
+	});
 	
 	// Computed
 	const entityDisplayName = config.title || config.entityName;
@@ -163,10 +180,25 @@
 		validationErrors = { ...validationErrors };
 	}
 	
-	// Ações específicas
-	function startAIAnalysis() {
+	// Função para iniciar análise IA (igual à main)
+	async function startAIAnalysis() {
 		if (!config.aiEnabled) return;
-		showAIModal = true;
+		
+		if (!formData.name || formData.name.trim() === '') {
+			toast.error('Por favor, insira um nome para o produto antes de analisar com IA');
+			return;
+		}
+		
+		analyzingWithAI = true;
+		try {
+			// Chamar o aiReviewActions diretamente (sem modal de loading)
+			await aiReviewActions.startReview(formData);
+		} catch (error) {
+			console.error('❌ Erro na análise IA:', error);
+			toast.error('Erro ao analisar produto com IA');
+		} finally {
+			analyzingWithAI = false;
+		}
 	}
 	
 	function openHistory() {
@@ -258,12 +290,17 @@
 						<button
 							type="button"
 							onclick={startAIAnalysis}
-							disabled={saving}
-							class="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg transition-all flex items-center gap-2 disabled:opacity-50"
+							disabled={saving || analyzingWithAI}
+							class="px-4 py-2 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
 							title="Analisar com IA"
 						>
-							<ModernIcon name="Sparkles" />
-							<span class="hidden sm:inline">IA</span>
+							{#if analyzingWithAI}
+								<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+								<span>Analisando...</span>
+							{:else}
+								<ModernIcon name="robot" />
+								<span>Analisar com IA</span>
+							{/if}
 						</button>
 					{/if}
 					
@@ -362,7 +399,11 @@
 							>
 								<ModernIcon name={tab.icon} />
 								{tab.label}
-								{#if tab.badge && tab.badge() > 0}
+								{#if isAIReviewMode && aiCounts[tab.id] > 0}
+									<span class="bg-[#00BFB3] text-white text-xs px-2 py-1 rounded-full">
+										{aiCounts[tab.id]}
+									</span>
+								{:else if tab.badge && tab.badge() > 0}
 									<span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
 										{tab.badge()}
 									</span>
@@ -376,6 +417,9 @@
 		
 		<!-- Conteúdo Principal -->
 		<div class="max-w-[calc(100vw-100px)] mx-auto p-6">
+			<!-- Header de Revisão IA -->
+			<AIReviewHeader {formData} />
+			
 			<!-- Erros de Validação Globais -->
 			{#if Object.keys(validationErrors).length > 0}
 				<div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -435,15 +479,7 @@
 	/>
 {/if}
 
-{#if showAIModal}
-	<UniversalAIModal
-		{config}
-		{formData}
-		isOpen={showAIModal}
-		onClose={() => showAIModal = false}
-		onApply={handleDataChange}
-	/>
-{/if}
+<!-- Modal de IA não usado - sistema direto via aiReviewActions -->
 
 <style>
 	.tab-content {

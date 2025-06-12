@@ -88,14 +88,14 @@ class UniversalApiService {
   // Obter histórico da entidade
   async getEntityHistory(config: FormConfig, entityId: string, page = 1, limit = 10): Promise<ApiResponse> {
     try {
-      // Tentar endpoint específico primeiro
-      const historyEndpoint = `/${config.entityName}s/${entityId}/history`;
+      // Tentar endpoint específico primeiro (sem duplicar /api)
+      const historyEndpoint = `${config.entityName}s/${entityId}/history`;
       
       try {
         return await api.get(`${historyEndpoint}?page=${page}&limit=${limit}`);
       } catch {
-        // Fallback: usar endpoint universal
-        return await api.get(`/universal/${config.entityName}/history/${entityId}?page=${page}&limit=${limit}`);
+        // Fallback: usar endpoint universal (sem duplicar /api)
+        return await api.get(`universal/${config.entityName}s/history?entity_id=${entityId}&page=${page}&limit=${limit}`);
       }
     } catch (error) {
       console.error(`Erro ao carregar histórico:`, error);

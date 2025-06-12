@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { FormConfig } from '$lib/config/formConfigs';
-	import { universalApiService } from '$lib/services/universalApiService';
 	import ModernIcon from '$lib/components/shared/ModernIcon.svelte';
 	
 	// Props
@@ -19,60 +18,99 @@
 	let history = $state<any[]>([]);
 	let error = $state<string | null>(null);
 	let page = $state(1);
-	let totalPages = $state(1);
+	let hasMore = $state(false);
 	
 	// Carregar histórico
-	async function loadHistory() {
+	async function loadHistory(pageNum = 1) {
 		if (!entityId) return;
 		
 		loading = true;
 		error = null;
 		
 		try {
-			const result = await universalApiService.getEntityHistory(config, entityId, page, 10);
+			// Usar endpoint direto que funciona (como mostram os logs)
+			const response = await fetch(`/api/${config.entityName}/${entityId}/history?page=${pageNum}&limit=10`);
+			const result = await response.json();
 			
 			if (result.success) {
-				history = result.data || [];
-				totalPages = result.meta?.totalPages || 1;
+				if (pageNum === 1) {
+					history = result.data || [];
+				} else {
+					history = [...history, ...(result.data || [])];
+				}
+				
+				page = result.meta?.page || pageNum;
+				hasMore = result.meta?.hasNext || false;
 			} else {
 				error = result.error || 'Erro ao carregar histórico';
 			}
 		} catch (err) {
+			console.error('Erro ao carregar histórico:', err);
 			error = 'Erro ao carregar histórico';
 		} finally {
 			loading = false;
 		}
 	}
 	
-	// Formatar data
-	function formatDate(dateString: string) {
-		return new Date(dateString).toLocaleString('pt-BR');
+	// Carregar mais itens
+	function loadMore() {
+		if (!loading && hasMore) {
+			loadHistory(page + 1);
+		}
 	}
 	
-	// Formatar alterações
-	function formatChanges(changes: any) {
-		if (!changes) return 'Nenhuma alteração detalhada';
-		
-		if (typeof changes === 'string') return changes;
-		
-		if (typeof changes === 'object') {
-			return Object.entries(changes)
-				.map(([field, change]: [string, any]) => {
-					if (change.from !== undefined && change.to !== undefined) {
-						return `${field}: "${change.from}" → "${change.to}"`;
-					}
-					return `${field}: ${JSON.stringify(change)}`;
-				})
-				.join(', ');
+	// Formatar data
+	function formatDate(dateString: string) {
+		const date = new Date(dateString);
+		return new Intl.DateTimeFormat('pt-BR', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		}).format(date);
+	}
+	
+	// Obter ícone da ação
+	function getActionIcon(action: string) {
+		switch (action) {
+			case 'created': case 'create': return 'Plus';
+			case 'updated': case 'update': return 'Edit';
+			case 'deleted': case 'delete': return 'Trash2';
+			case 'published': return 'Eye';
+			case 'unpublished': return 'EyeOff';
+			default: return 'Clock';
 		}
-		
-		return JSON.stringify(changes);
+	}
+	
+	// Obter cor da ação
+	function getActionColor(action: string) {
+		switch (action) {
+			case 'created': case 'create': return 'text-green-600 bg-green-50 border-green-200';
+			case 'updated': case 'update': return 'text-blue-600 bg-blue-50 border-blue-200';
+			case 'deleted': case 'delete': return 'text-red-600 bg-red-50 border-red-200';
+			case 'published': return 'text-green-600 bg-green-50 border-green-200';
+			case 'unpublished': return 'text-gray-600 bg-gray-50 border-gray-200';
+			default: return 'text-gray-600 bg-gray-50 border-gray-200';
+		}
+	}
+	
+	// Obter label da ação
+	function getActionLabel(action: string) {
+		switch (action) {
+			case 'created': case 'create': return 'Criado';
+			case 'updated': case 'update': return 'Atualizado';
+			case 'deleted': case 'delete': return 'Excluído';
+			case 'published': return 'Publicado';
+			case 'unpublished': return 'Despublicado';
+			default: return action;
+		}
 	}
 	
 	// Lifecycle
 	$effect(() => {
 		if (isOpen && entityId) {
-			loadHistory();
+			loadHistory(1);
 		}
 	});
 	
@@ -87,150 +125,169 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if isOpen}
-	<div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-		<div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+	<!-- Modal Overlay -->
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+		<div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
 			<!-- Header -->
-			<div class="flex items-center justify-between p-6 border-b border-gray-200">
-				<h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
-					<ModernIcon name="History" />
-					Histórico de {config.title}
-				</h2>
+			<div class="flex items-center justify-between p-6 border-b">
+				<div class="flex items-center gap-3">
+					<div class="w-10 h-10 bg-[#00BFB3]/10 rounded-lg flex items-center justify-center">
+						<ModernIcon name="Clock" size="md" />
+					</div>
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900">Histórico de Alterações</h3>
+						<p class="text-sm text-gray-500">Acompanhe todas as mudanças feitas no {config.title}</p>
+					</div>
+				</div>
+
 				<button
 					type="button"
 					onclick={onClose}
-					class="text-gray-400 hover:text-gray-600 transition-colors"
+					class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
 				>
-					<ModernIcon name="X" />
+					<ModernIcon name="X" size="md" />
 				</button>
 			</div>
-			
+
 			<!-- Content -->
-			<div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-				{#if loading}
-					<!-- Loading -->
-					<div class="text-center py-12">
-						<div class="w-8 h-8 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-						<p class="text-gray-600">Carregando histórico...</p>
-					</div>
-				{:else if error}
-					<!-- Error -->
-					<div class="text-center py-12">
-						<div class="text-red-500 mb-4">
-							<ModernIcon name="AlertCircle" size="48" />
-						</div>
-						<h3 class="text-lg font-medium text-gray-900 mb-2">Erro ao carregar histórico</h3>
-						<p class="text-gray-600 mb-4">{error}</p>
-						<button
-							type="button"
-							onclick={loadHistory}
-							class="px-4 py-2 bg-[#00BFB3] text-white rounded-lg hover:bg-[#00A89D] transition-colors"
-						>
-							Tentar novamente
-						</button>
+			<div class="flex-1 overflow-y-auto p-6">
+				{#if loading && history.length === 0}
+					<div class="flex items-center justify-center py-12">
+						<div class="w-8 h-8 border-4 border-[#00BFB3] border-t-transparent rounded-full animate-spin"></div>
 					</div>
 				{:else if history.length === 0}
-					<!-- Empty -->
-					<div class="text-center py-12">
-						<div class="text-gray-400 mb-4">
-							<ModernIcon name="FileX" size="48" />
+					<div class="flex flex-col items-center justify-center py-12">
+						<div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+							<ModernIcon name="Clock" size="lg" />
 						</div>
-						<h3 class="text-lg font-medium text-gray-900 mb-2">Nenhum histórico encontrado</h3>
-						<p class="text-gray-600">Este {config.entityName} ainda não possui histórico de alterações.</p>
+						<h4 class="text-lg font-medium text-gray-900 mb-2">Nenhum histórico encontrado</h4>
+						<p class="text-gray-500 text-center">
+							Este {config.title} ainda não possui histórico de alterações.
+						</p>
 					</div>
 				{:else}
-					<!-- História -->
-					<div class="space-y-4">
-						{#each history as entry}
-							<div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-								<div class="flex items-start justify-between mb-3">
-									<div class="flex items-center gap-3">
-										<div class="w-8 h-8 bg-[#00BFB3] rounded-full flex items-center justify-center">
-											<ModernIcon 
-												name={entry.action === 'create' ? 'Plus' : entry.action === 'update' ? 'Edit' : 'Trash'} 
-												size="16" 
-												class="text-white" 
-											/>
-										</div>
-										<div>
-											<h4 class="font-medium text-gray-900">
-												{entry.action === 'create' ? 'Criado' : 
-												 entry.action === 'update' ? 'Atualizado' : 
-												 entry.action === 'delete' ? 'Excluído' : 
-												 entry.action || 'Alteração'}
-											</h4>
-											<p class="text-sm text-gray-600">{formatDate(entry.created_at || entry.timestamp)}</p>
-										</div>
+					<!-- Timeline -->
+					<div class="space-y-6">
+						{#each history as entry, index}
+							<div class="flex gap-4">
+								<!-- Timeline Line -->
+								<div class="flex flex-col items-center">
+									<div class="w-10 h-10 rounded-lg border-2 flex items-center justify-center {getActionColor(entry.action)}">
+										<ModernIcon name={getActionIcon(entry.action)} size="sm" />
 									</div>
-									
-									{#if entry.user_name || entry.user_email}
-										<div class="text-right">
-											<p class="text-sm font-medium text-gray-900">
-												{entry.user_name || entry.user_email}
-											</p>
-											{#if entry.user_role}
-												<p class="text-xs text-gray-500">{entry.user_role}</p>
-											{/if}
-										</div>
+									{#if index < history.length - 1}
+										<div class="w-px h-6 bg-gray-200 mt-2"></div>
 									{/if}
 								</div>
-								
-								{#if entry.changes || entry.description}
-									<div class="bg-white border border-gray-200 rounded p-3">
-										<h5 class="text-sm font-medium text-gray-700 mb-2">Alterações:</h5>
-										<p class="text-sm text-gray-600 font-mono break-all">
-											{entry.description || formatChanges(entry.changes)}
-										</p>
+
+								<!-- Content -->
+								<div class="flex-1 min-w-0">
+									<div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+										<!-- Header -->
+										<div class="flex items-start justify-between mb-3">
+											<div class="flex items-center gap-2">
+												<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {getActionColor(entry.action)}">
+													{getActionLabel(entry.action)}
+												</span>
+												<span class="text-sm font-medium text-gray-900">
+													{entry.summary || 'Alteração realizada'}
+												</span>
+											</div>
+											<span class="text-xs text-gray-500 whitespace-nowrap">
+												{formatDate(entry.created_at)}
+											</span>
+										</div>
+
+										<!-- User Info -->
+										<div class="flex items-center gap-2 mb-3">
+											<div class="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+												<ModernIcon name="User" size="xs" />
+											</div>
+											<div class="text-sm text-gray-600">
+												<span class="font-medium">{entry.user_name || 'Sistema'}</span>
+												{#if entry.user_email && entry.user_email !== 'system@marketplace.com'}
+													<span class="text-gray-500">({entry.user_email})</span>
+												{/if}
+											</div>
+										</div>
+
+										<!-- Changes Details -->
+										{#if entry.changes && Object.keys(entry.changes).length > 0}
+											<div class="border-t border-gray-100 pt-3">
+												<details class="group">
+													<summary class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:text-gray-900">
+														<ModernIcon name="ChevronRight" size="xs" class="group-open:rotate-90 transition-transform" />
+														Ver detalhes das alterações ({Object.keys(entry.changes).length} campos)
+													</summary>
+
+													<div class="mt-3 space-y-2">
+														{#each Object.entries(entry.changes) as [field, change]}
+															<div class="bg-gray-50 rounded-lg p-3">
+																<div class="flex items-center gap-2 mb-2">
+																	<ModernIcon name="Edit" size="xs" />
+																	<span class="text-sm font-medium text-gray-900">
+																		{change.label || field}
+																	</span>
+																</div>
+
+																<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+																	<div>
+																		<span class="text-gray-500 text-xs uppercase tracking-wide">Antes</span>
+																		<div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-800 font-mono text-xs">
+																			{typeof change.old === 'object' ? JSON.stringify(change.old, null, 2) : (change.old || change.from || '(vazio)')}
+																		</div>
+																	</div>
+																	<div>
+																		<span class="text-gray-500 text-xs uppercase tracking-wide">Depois</span>
+																		<div class="mt-1 p-2 bg-green-50 border border-green-200 rounded text-green-800 font-mono text-xs">
+																			{typeof change.new === 'object' ? JSON.stringify(change.new, null, 2) : (change.new || change.to || '(vazio)')}
+																		</div>
+																	</div>
+																</div>
+															</div>
+														{/each}
+													</div>
+												</details>
+											</div>
+										{/if}
 									</div>
-								{/if}
-								
-								{#if entry.ip_address}
-									<div class="mt-2 text-xs text-gray-500">
-										IP: {entry.ip_address}
-									</div>
-								{/if}
+								</div>
 							</div>
 						{/each}
 					</div>
-					
-					<!-- Paginação -->
-					{#if totalPages > 1}
-						<div class="flex items-center justify-center gap-2 mt-6 pt-6 border-t border-gray-200">
+
+					<!-- Load More -->
+					{#if hasMore}
+						<div class="flex justify-center mt-8">
 							<button
 								type="button"
-								onclick={() => { page = Math.max(1, page - 1); loadHistory(); }}
-								disabled={page <= 1}
-								class="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+								onclick={loadMore}
+								disabled={loading}
+								class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
 							>
-								<ModernIcon name="ChevronLeft" size="16" />
-							</button>
-							
-							<span class="text-sm text-gray-600">
-								Página {page} de {totalPages}
-							</span>
-							
-							<button
-								type="button"
-								onclick={() => { page = Math.min(totalPages, page + 1); loadHistory(); }}
-								disabled={page >= totalPages}
-								class="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-							>
-								<ModernIcon name="ChevronRight" size="16" />
+								{#if loading}
+									<div class="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+									Carregando...
+								{:else}
+									<ModernIcon name="ChevronDown" size="sm" />
+									Carregar mais
+								{/if}
 							</button>
 						</div>
 					{/if}
 				{/if}
 			</div>
-			
-			<!-- Footer -->
-			<div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-				<button
-					type="button"
-					onclick={onClose}
-					class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-				>
-					Fechar
-				</button>
-			</div>
 		</div>
 	</div>
-{/if} 
+{/if}
+
+<style>
+	/* Estilo customizado para os detalhes */
+	details summary::-webkit-details-marker {
+		display: none;
+	}
+
+	details summary {
+		list-style: none;
+	}
+</style> 

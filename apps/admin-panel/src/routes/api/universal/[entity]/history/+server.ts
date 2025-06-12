@@ -5,7 +5,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { universalCrudService } from '$lib/services/universalCrudService';
+import { auditService } from '$lib/services/auditService';
 
 export const GET: RequestHandler = async ({ params, url, platform }) => {
   try {
@@ -13,6 +13,7 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
     const entityId = url.searchParams.get('entity_id');
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
+    const page = parseInt(url.searchParams.get('page') || '1');
 
     if (!entityType || !entityId) {
       return json({
@@ -22,13 +23,30 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
       }, { status: 400 });
     }
 
-    const result = await universalCrudService.getEntityHistory(
+    const history = await auditService.getEntityHistory(
       entityType,
       entityId,
-      { limit, offset, platform }
+      { 
+        limit, 
+        offset: page > 1 ? (page - 1) * limit : offset, 
+        platform 
+      }
     );
 
-    return json(result);
+    const totalPages = Math.ceil((history.length || 0) / limit);
+
+    return json({
+      success: true,
+      data: history,
+      meta: {
+        page,
+        limit,
+        total: history.length,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (error) {
     console.error('Error fetching entity history:', error);
     return json({

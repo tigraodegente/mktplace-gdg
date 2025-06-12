@@ -3,8 +3,7 @@
  * Handles audit logging for all entities across the system
  */
 
-import { withDatabase } from '$lib/db';
-import type { Database } from '$lib/db/database.types';
+import { getDatabase } from '$lib/db';
 
 // Types for audit system
 export interface AuditLogEntry {
@@ -67,7 +66,7 @@ class AuditService {
     const clientAddress = headers.get('cf-connecting-ip') || 
                          headers.get('x-forwarded-for') || 
                          headers.get('x-real-ip') ||
-                         'unknown';
+                         undefined; // Use undefined instead of 'unknown' for invalid IPs
     
     return {
       ip_address: clientAddress,
@@ -95,6 +94,8 @@ class AuditService {
     } = {}
   ): Promise<void> {
     try {
+      console.log('🔍 logAudit iniciado:', { entityType, entityId, action });
+      
       let context: AuditContext = options.context || {};
       
       // Extract context from headers if provided
@@ -103,34 +104,48 @@ class AuditService {
         context = { ...context, ...headerContext };
       }
 
-      await withDatabase(options.platform, async (db: Database) => {
-        await db.query(`
-          INSERT INTO audit_logs (
-            entity_type, entity_id, action, changes, old_values, new_values,
-            user_id, user_name, user_email, ip_address, user_agent, 
-            session_id, metadata, source
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        `, [
-          entityType,
-          entityId.toString(),
-          action,
-          JSON.stringify(options.changes),
-          JSON.stringify(options.old_values),
-          JSON.stringify(options.new_values),
-          context.user_id,
-          context.user_name,
-          context.user_email,
-          context.ip_address,
-          context.user_agent,
-          context.session_id,
-          JSON.stringify(options.metadata),
-          context.source || 'admin_panel'
-        ]);
-      });
+      console.log('🔍 Context preparado:', context);
+
+      const db = getDatabase(options.platform);
+      
+      console.log('🔍 Database obtido, preparando query...');
+      
+      const queryParams = [
+        entityType,
+        entityId.toString(),
+        action,
+        JSON.stringify(options.changes),
+        JSON.stringify(options.old_values),
+        JSON.stringify(options.new_values),
+        context.user_id,
+        context.user_name,
+        context.user_email,
+        context.ip_address,
+        context.user_agent,
+        context.session_id,
+        JSON.stringify(options.metadata),
+        context.source || 'admin_panel'
+      ];
+      
+      console.log('🔍 Parâmetros da query:', queryParams);
+      
+      const result = await db.query(`
+        INSERT INTO audit_logs (
+          entity_type, entity_id, action, changes, old_values, new_values,
+          user_id, user_name, user_email, ip_address, user_agent, 
+          session_id, metadata, source
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING id
+      `, queryParams);
+
+      console.log('🔍 Query executada, resultado:', result);
+
+      await db.close();
 
       console.log(`✅ Audit logged: ${entityType}/${entityId} - ${action}`);
     } catch (error) {
       console.error('❌ Error logging audit:', error);
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
       // Don't throw - audit failures shouldn't break the main operation
     }
   }
@@ -152,7 +167,11 @@ class AuditService {
   ): Promise<AuditLogEntry[]> {
     const { limit = 50, offset = 0, actions, startDate, endDate } = options;
 
-    return withDatabase(options.platform, async (db: Database) => {
+    console.log('🔍 getEntityHistory chamado com:', { entityType, entityId, limit, offset });
+
+    const db = getDatabase(options.platform);
+    
+    try {
       let query = `
         SELECT 
           id, entity_type, entity_id, action, changes, old_values, new_values,
@@ -186,26 +205,45 @@ class AuditService {
       query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
+      console.log('🔍 Query a ser executada:', query);
+      console.log('🔍 Parâmetros:', params);
+
       const result = await db.query(query, params);
       
-      return result.map((row: any) => ({
+      console.log('🔍 Resultado da query:', result.length, 'registros encontrados');
+      
+      await db.close();
+      
+      const processedResult = result.map((row: any) => ({
         ...row,
         changes: row.changes ? JSON.parse(row.changes) : null,
         old_values: row.old_values ? JSON.parse(row.old_values) : null,
         new_values: row.new_values ? JSON.parse(row.new_values) : null,
         metadata: row.metadata ? JSON.parse(row.metadata) : null
       }));
-    });
+
+      console.log('🔍 Resultado processado:', processedResult);
+
+      return processedResult;
+    } catch (error) {
+      await db.close();
+      console.error('❌ Error getting entity history:', error);
+      return [];
+    }
   }
 
   /**
    * Get entity configuration
    */
   async getEntityConfig(entityType: string, platform?: App.Platform): Promise<EntityConfig | null> {
-    return withDatabase(platform, async (db: Database) => {
+    const db = getDatabase(platform);
+    
+    try {
       const result = await db.query(`
         SELECT * FROM entity_configs WHERE entity_type = $1
       `, [entityType]);
+
+      await db.close();
 
       if (result.length === 0) return null;
 
@@ -217,7 +255,11 @@ class AuditService {
         field_mappings: JSON.parse(row.field_mappings || '{}'),
         ui_config: JSON.parse(row.ui_config || '{}')
       };
-    });
+    } catch (error) {
+      await db.close();
+      console.error('❌ Error getting entity config:', error);
+      return null;
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
+import { auditService } from '$lib/services/auditService';
 
 /**
  * Normaliza um produto completo para comparação consistente
@@ -382,7 +383,7 @@ function decodeJWT(token: string): any {
   }
 }
 
-// GET - Buscar produto por ID (sem middleware JWT)
+// GET - Buscar produto por ID
 export const GET: RequestHandler = async ({ params }) => {
   try {
     console.log('🔌 Dev: NEON - Buscando produto por ID');
@@ -535,57 +536,30 @@ async function logProductHistory(originalProduct: any, updatedProduct: any, prod
   }
 }
 
-// PUT - Atualizar produto por ID (sem middleware JWT + com histórico)
-export const PUT: RequestHandler = async ({ params, request }) => {
+// PUT - Atualizar produto (temporariamente sem middleware)
+export const PUT: RequestHandler = async ({ params, request, platform }: any) => {
+  const { id } = params;
+  
+  if (!id) {
+    return json({ 
+      success: false, 
+      error: 'ID é obrigatório',
+      message: 'ID é obrigatório' 
+    }, { status: 400 });
+  }
+
   try {
-    console.log('🔌 Dev: NEON - Atualizando produto');
-    const db = getDatabase();
-    const { id } = params;
     const requestData = await request.json();
+    const currentUser = { name: 'Admin', email: 'admin@marketplace.com', id: '8c951015-3184-45ad-9e37-1c827028ee38' }; // UUID do admin do sistema
+    const db = getDatabase(platform);
     
-    console.log('🔍 DEBUG - Atualizando produto:', id);
+    console.log(`🔄 Admin ${currentUser?.name} atualizando produto ${id}`);
     
-    // 👤 CAPTURAR USUÁRIO LOGADO DO HEADER AUTHORIZATION
-    let currentUser = null;
-    try {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7); // Remove "Bearer "
-        
-        console.log('🔐 Token encontrado:', token.substring(0, 20) + '...');
-        
-        // Decodificar token JWT para extrair informações do usuário
-        const decodedToken = decodeJWT(token);
-        
-        if (decodedToken) {
-          currentUser = {
-            id: decodedToken.id || decodedToken.sub || 'unknown-id',
-            name: decodedToken.name || decodedToken.username || 'Usuário',
-            email: decodedToken.email || 'usuario@sistema.com'
-          };
-          console.log('👤 Usuário decodificado do JWT:', currentUser);
-          console.log('🔍 Payload completo do JWT:', decodedToken);
-        } else {
-          console.log('⚠️ Não foi possível decodificar o JWT, usando dados padrão');
-          currentUser = {
-            id: 'admin-id',
-            name: 'Administrador',
-            email: 'admin@mktplace.com'
-          };
-        }
-      } else {
-        console.log('⚠️ Header Authorization não encontrado ou inválido');
-      }
-    } catch (error) {
-      console.log('⚠️ Erro ao processar header Authorization:', error);
-    }
+    // Buscar produto original para auditoria
+    const originalResult = await db.query('SELECT * FROM products WHERE id = $1', [id]);
     
-    // 🎯 CAPTURAR ESTADO ORIGINAL PARA HISTÓRICO
-    const originalQuery = `SELECT * FROM products WHERE id = $1`;
-    const originalResult = await db.query(originalQuery, [id]);
-    const originalProduct = originalResult[0];
-    
-    if (!originalProduct) {
+    if (!originalResult[0]) {
+      await db.close();
       return json({ 
         success: false, 
         error: 'Produto não encontrado',
@@ -593,9 +567,10 @@ export const PUT: RequestHandler = async ({ params, request }) => {
       }, { status: 404 });
     }
     
-    console.log('📋 Estado original capturado para histórico');
+    const originalProduct = originalResult[0];
+    console.log('📋 Estado original capturado para auditoria');
     
-    // Atualizar produto - versão simplificada
+    // Atualizar produto
     const result = await db.query(`
       UPDATE products SET
         name = $1,
@@ -628,6 +603,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
     ]);
     
     if (!result[0]) {
+      await db.close();
       return json({ 
         success: false, 
         error: 'Produto não encontrado',
@@ -637,8 +613,36 @@ export const PUT: RequestHandler = async ({ params, request }) => {
     
     const updatedProduct = result[0];
     
-    // 📝 REGISTRAR HISTÓRICO DAS ALTERAÇÕES (com usuário)
-    const historyResult = await logProductHistory(originalProduct, updatedProduct, id, db, currentUser);
+    // Registrar auditoria usando o sistema universal
+    const changes = auditService.calculateChanges(originalProduct, updatedProduct);
+    
+    if (Object.keys(changes).length > 0) {
+      await auditService.logAudit(
+        'products',
+        id,
+        'update',
+        {
+          changes,
+          old_values: originalProduct,
+          new_values: updatedProduct,
+                      context: {
+              user_id: currentUser?.id,
+              user_name: currentUser?.name,
+              user_email: currentUser?.email,
+              ip_address: undefined, // Will be extracted from headers instead
+              source: 'admin_panel'
+            },
+          headers: request.headers,
+          platform
+        }
+      );
+      
+      console.log(`📝 Auditoria registrada: ${Object.keys(changes).length} alterações`);
+    } else {
+      console.log('✅ Nenhuma alteração detectada');
+    }
+    
+    await db.close();
     
     console.log(`✅ Produto ${id} atualizado com sucesso`);
     
@@ -646,14 +650,15 @@ export const PUT: RequestHandler = async ({ params, request }) => {
       success: true, 
       data: updatedProduct,
       message: 'Produto atualizado com sucesso',
-      history: historyResult
+      changes: Object.keys(changes).length
     });
+    
   } catch (error) {
     console.error('❌ Erro ao atualizar produto:', error);
     return json({ 
       success: false, 
-      error: 'Erro ao atualizar produto',
-      message: error instanceof Error ? error.message : 'Erro desconhecido'
+      error: 'Erro interno do servidor',
+      message: 'Erro ao atualizar produto'
     }, { status: 500 });
   }
 };
