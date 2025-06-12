@@ -642,18 +642,8 @@
 	});
 
 	// Garantir reatividade do dropdown de marcas
-	let brandReactiveKey = $state(0);
-	
-	$effect(() => {
-		// Forçar re-render quando brand_id mudar
-		if (formData.brand_id && brands.length > 0) {
-			const selectedBrand = brands.find(b => b.id === formData.brand_id);
-			if (selectedBrand) {
-				console.log('✅ Marca selecionada:', selectedBrand.name);
-				brandReactiveKey++; // Força re-render do dropdown
-			}
-		}
-	});
+	// ✅ REMOVIDO: Effect problemático que causava loop infinito
+	// A reatividade do Svelte 5 já cuida automaticamente do re-render dos dropdowns
 </script>
 
 <style>
@@ -1195,7 +1185,6 @@
 					<div class="space-y-3">
 						<div class="flex gap-2">
 							<div class="flex-1 relative">
-								{#key brandReactiveKey}
 								<select
 									bind:value={formData.brand_id}
 									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.brand === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
@@ -1205,7 +1194,6 @@
 										<option value={brand.id}>{brand.name}</option>
 									{/each}
 								</select>
-								{/key}
 								{#if getStatusInfo('brand')}
 									<div class="absolute right-3 top-3">
 										<ModernIcon name="Check" size="xs" />

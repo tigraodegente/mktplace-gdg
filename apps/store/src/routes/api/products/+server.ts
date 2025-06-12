@@ -134,78 +134,14 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     // Extrair tempo de entrega
     const deliveryTime = url.searchParams.get('entrega') || '';
     
-          // 🚀 CACHE PARA CONSULTAS DE PRODUTOS
-      const productCacheKey = `products:${searchQuery || 'all'}:${JSON.stringify({
-        categories, brands, priceMin, priceMax, hasDiscount, inStock, sortBy, page, limit,
-        freeShipping, rating, sellers, conditions, deliveryTime, dynamicFilters
-      })}`;
-      
-      console.log('💾 VERIFICANDO CACHE:');
-      console.log('  🔑 Cache Key:', productCacheKey);
-      
-      const cachedProducts = productsCache[productCacheKey];
-      if (cachedProducts && (Date.now() - cachedProducts.timestamp) < CACHE_DURATION) {
-        console.log('✅ CACHE HIT! Usando dados em cache');
-        console.log('  ⏰ Cache Age:', Math.round((Date.now() - cachedProducts.timestamp) / 1000), 'seconds');
-        console.log('  🎯 Cache Hits:', cachedProducts.hits);
-        cachedProducts.hits++;
-        
-        // 🚨 FACETS DIRETOS (SEM CACHE) - TEMPORÁRIO
-        const db = getDatabase(platform);
-        console.log('🔍 Buscando facets DIRETOS para resposta em cache...');
-        
-        // CATEGORIAS DIRETAS (sabemos que funciona)
-        const directCategoriesQuery = `
-          SELECT 
-            c.id, c.name, c.slug, c.parent_id, c.image_url,
-            COUNT(DISTINCT p.id) as count
-          FROM categories c
-          INNER JOIN product_categories pc ON pc.category_id = c.id
-          INNER JOIN products p ON p.id = pc.product_id
-          WHERE p.is_active = true AND c.is_active = true
-          GROUP BY c.id, c.name, c.slug, c.parent_id, c.image_url
-          HAVING COUNT(DISTINCT p.id) > 0
-          ORDER BY count DESC, c.name ASC
-          LIMIT 50
-        `;
-        
-        const directCategories = await db.query(directCategoriesQuery);
-        const categoriesFacet = directCategories.map((cat: any) => ({
-          id: cat.id,
-          name: cat.name,
-          slug: cat.slug,
-          count: parseInt(cat.count),
-          parent_id: cat.parent_id,
-          icon: cat.image_url,
-          subcategories: []
-        }));
-        
-        console.log('✅ CATEGORIAS DIRETAS em cache:', categoriesFacet.length);
-        
-        // Buscar outros facets normalmente
-        const facets = await getFacets(db, searchQuery, {
-          categories, brands, priceMin, priceMax, hasDiscount, inStock, dynamicFilters,
-          freeShipping, rating, sellers, conditions, deliveryTime
-        });
-        
-        // Sobrescrever categorias com as diretas
-        facets.categories = categoriesFacet;
-        
-        console.log('✅ RETORNANDO RESPOSTA DO CACHE');
-        return json({
-          success: true,
-          data: {
-            ...cachedProducts.data,
-            facets
-          },
-          source: 'cache'
-        });
-      } else {
-        console.log('❌ CACHE MISS! Executando nova consulta');
-        if (cachedProducts) {
-          console.log('  ⏰ Cache Expired Age:', Math.round((Date.now() - cachedProducts.timestamp) / 1000), 'seconds');
-        }
-      }
+          // ✅ CORRIGIDO: Cache desabilitado para ordenação para evitar conflitos
+      // A ordenação é crítica para UX e deve sempre refletir a escolha do usuário
+      console.log('🔄 CACHE TEMPORARIAMENTE DESABILITADO para garantir ordenação correta');
+      console.log('🔄 sortBy solicitado:', sortBy);
+      console.log('🔄 Parâmetros de ordenação:');
+      console.log('  📋 sortBy:', sortBy);
+      console.log('  📄 page:', page);
+      console.log('  📊 limit:', limit);
       
       // Executar busca com timeout otimizado
       try {
@@ -568,6 +504,13 @@ export const GET: RequestHandler = async ({ url, platform }) => {
             break;
         }
         
+        console.log('🔄 ========================================');
+        console.log('🔄 ORDENAÇÃO APLICADA:');
+        console.log('🔄 ========================================');
+        console.log('  📋 sortBy:', sortBy);
+        console.log('  🎯 ORDER BY:', orderBy);
+        console.log('🔄 ========================================');
+        
         const offset = (page - 1) * limit;
         
         // Query principal otimizada
@@ -812,25 +755,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         });
       }
       
-      if (responseData.filters.hasDiscount) {
-        console.log(`🎁 FILTRO DESCONTO: prometia ${facets.benefits?.discount || 0} produtos`);
-      }
-      
       console.log('⚖️ ========================================');
       
-      // 🚀 SALVAR PRODUTOS NO CACHE
-      if (formattedProducts.length > 0) {
-        productsCache[productCacheKey] = {
-          data: {
-            products: formattedProducts,
-            pagination: responseData.pagination,
-            filters: responseData.filters
-          },
-          timestamp: Date.now(),
-          hits: 1
-        };
-        console.log('💾 PRODUTOS SALVOS NO CACHE:', productCacheKey.substring(0, 50) + '...');
-      }
+      // ✅ CACHE DESABILITADO para garantir ordenação correta
+      console.log('💾 Cache desabilitado - produtos sempre buscados fresh do banco');
       
       console.log('🚀 ========================================');
       console.log('🚀 PRODUCTS API - RESPOSTA ENVIADA');
@@ -1213,7 +1141,7 @@ async function getCategoriesFacet(db: any, searchQuery: string, filters: any) {
     console.log(`📊 TESTE 4 - Categorias encontradas: ${categoryResults.length}`);
     if (categoryResults.length > 0) {
       console.log('✅ TESTE 4 - Primeiras categorias:');
-      categoryResults.slice(0, 3).forEach((cat, index) => {
+      categoryResults.slice(0, 3).forEach((cat: any, index: number) => {
         console.log(`   ${index + 1}. ${cat.name} (${cat.slug}) - ${cat.count} produtos`);
       });
     } else {

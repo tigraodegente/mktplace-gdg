@@ -107,10 +107,26 @@ export const GET: RequestHandler = async ({ request }) => {
     
     console.log(`📊 Listando produtos - page: ${page}, limit: ${limit}, search: "${search}", status: "${status}"`);
     
-    // Validar campos de ordenação
-    const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at'];
-    const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+    // ✅ CORREÇÃO: Mapeamento correto dos campos de ordenação
+    const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at', 'is_active'];
+    let orderBy = 'p.created_at';
+    
+    // Mapear campos para os nomes corretos na query
+    if (validSortFields.includes(sortBy)) {
+      const sortFieldMap: Record<string, string> = {
+        'name': 'TRIM(REGEXP_REPLACE(p.name, \'[\\t\\n\\r\\f]\', \'\', \'g\'))', // ✅ Limpar caracteres especiais
+        'price': 'p.price', 
+        'quantity': 'p.quantity', // ✅ Campo correto (não renomeado)
+        'status': 'p.is_active',   // ✅ Usar is_active para status
+        'created_at': 'p.created_at',
+        'is_active': 'p.is_active'
+      };
+      orderBy = sortFieldMap[sortBy] || 'p.created_at';
+    }
+    
     const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
+    
+    // ✅ Ordenação aplicada com sucesso
     
     // Construir query com filtros
     const conditions: string[] = [];
@@ -228,7 +244,12 @@ export const GET: RequestHandler = async ({ request }) => {
                p.brand_id, p.seller_id, p.description, p.is_active, p.featured, p.status,
                p.rating_average, p.rating_count, p.sales_count, p.created_at, p.updated_at,
                b.name, c.name, c.id
-      ORDER BY p.${safeSortBy} ${safeSortOrder}
+      ORDER BY 
+        CASE WHEN '${sortBy}' = 'name' THEN 
+          TRIM(REGEXP_REPLACE(${orderBy}, '[\t\n\r\f]', '', 'g'))
+        ELSE 
+          ${orderBy}
+        END ${safeSortOrder}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     

@@ -83,8 +83,9 @@ export const PageConfigs: Record<string, PageConfig> = {
     // Colunas específicas de produtos com renders complexos
     columns: [
       {
-        key: 'image',
+        key: 'name',
         label: 'Produto',
+        sortable: true,
         width: '250px',
         render: (value: string, row: any) => {
           const imageUrl = row.images?.[0] || row.image || `/api/placeholder/80/80?text=${encodeURIComponent(row.name)}`;

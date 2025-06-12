@@ -151,27 +151,8 @@
 		console.log('🌐 ========================================');
 	}
 
-	// ✅ FUNÇÃO SIMPLES: Ordenar produtos
-	function sortProducts(productsToSort: any[], sortBy: string): any[] {
-		const sorted = [...productsToSort];
-		
-		switch (sortBy) {
-			case 'menor-preco':
-				return sorted.sort((a, b) => a.price - b.price);
-			case 'maior-preco':
-				return sorted.sort((a, b) => b.price - a.price);
-			case 'mais-vendidos':
-				return sorted.sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0));
-			case 'melhor-avaliados':
-				return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-			case 'lancamentos':
-				return sorted.sort((a, b) => 
-					new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-				);
-			default:
-				return sorted;
-		}
-	}
+	// ✅ REMOVIDO: sortProducts - ordenação agora é feita apenas no backend
+	// Isso evita conflitos e garante consistência na ordenação
 	
 	// 🚀 FUNÇÃO OTIMIZADA: Executar busca com cache e performance
 	async function executeSearch(forceRefresh = false, overrideParams?: any) {
@@ -290,7 +271,7 @@
 				console.log('📦 ========================================');
 
 				const searchResult = {
-					products: sortProducts(result.data?.products || [], urlParams.ordenar),
+					products: result.data?.products || [], // ✅ REMOVIDO: sortProducts - backend já ordena
 					totalCount: result.data?.pagination?.total || 0,
 					facets: {
 						categories: result.data.facets?.categories || [],
@@ -683,11 +664,8 @@
 		optimisticFilters = { ...optimisticFilters, ...newFilters };
 		hasOptimisticUpdates = true;
 		
-		// Simular ordenação local se possível (sem filtros muito específicos)
-		if (products.length > 0 && !newFilters.categoria && !newFilters.marca) {
-			const currentSort = newFilters.ordenar || getUrlParams().ordenar;
-			optimisticProducts = sortProducts([...products], currentSort);
-		}
+		// ✅ REMOVIDO: Simulação de ordenação local - deixar o backend ordenar
+		// Isso garante consistência entre frontend e backend
 	}
 
 	// 🚀 FUNÇÃO: Resetar optimistic updates

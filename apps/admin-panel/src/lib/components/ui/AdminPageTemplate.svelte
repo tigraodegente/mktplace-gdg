@@ -190,7 +190,7 @@
 	// Função genérica para carregar dados com cache
 	async function loadData() {
 		// Evitar carregamentos duplicados
-		const currentParams = JSON.stringify({ page, pageSize, search, statusFilter, categoryFilter, brandFilter, priceRange, customFilterValues });
+		const currentParams = JSON.stringify({ page, pageSize, search, statusFilter, categoryFilter, brandFilter, priceRange, customFilterValues, sortBy, sortOrder });
 		
 		if (isLoadingData || lastLoadParams === currentParams) {
 			return;
@@ -405,6 +405,7 @@
 			sortBy = column;
 			sortOrder = 'asc';
 		}
+		
 		page = 1;
 		loadData();
 	}
@@ -642,6 +643,7 @@
 				
 				<!-- Desktop Table / Mobile Cards -->
 				<div class="hidden lg:block">
+				<!-- 🔄 DEBUG: TABELA DESKTOP ATIVA (tela >= 1024px) -->
 				<DataTable
 					{columns}
 					{data}
@@ -664,6 +666,7 @@
 
 				<!-- Mobile Cards -->
 				<div class="lg:hidden">
+				<!-- 🔄 DEBUG: CARDS MOBILE ATIVAS (tela < 1024px) - SEM ORDENAÇÃO -->
 					{#if loading}
 						<div class="space-y-4">
 							{#each Array(5) as _, i}
