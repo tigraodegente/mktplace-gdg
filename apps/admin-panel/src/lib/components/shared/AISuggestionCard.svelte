@@ -47,7 +47,7 @@
 			}).join('\n');
 			return formatted || '[Sem atributos]';
 		}
-
+		
 		// 🎯 FORMATAR VARIANTES DE PRODUTO DE FORMA LEGÍVEL  
 		if (suggestion.field === 'product_variants' && Array.isArray(value)) {
 			if (value.length === 0) return '[Nenhuma variante]';

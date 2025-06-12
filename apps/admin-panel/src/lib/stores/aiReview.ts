@@ -89,10 +89,10 @@ export const aiChangesCount: Readable<Record<string, number>> = derived(
 		Object.entries($grouped).forEach(([category, suggestions]) => {
 			const tabId = categoryToTabMap[category];
 			if (tabId) { // Só processar se a categoria está no mapeamento
-				const pendingSuggestions = suggestions.filter(s => !s.applied && !s.rejected).length;
-				
-				// Só adicionar ao contador se há sugestões pendentes
-				if (pendingSuggestions > 0) {
+			const pendingSuggestions = suggestions.filter(s => !s.applied && !s.rejected).length;
+			
+			// Só adicionar ao contador se há sugestões pendentes
+			if (pendingSuggestions > 0) {
 					counts[tabId] = (counts[tabId] || 0) + pendingSuggestions;
 				}
 			}

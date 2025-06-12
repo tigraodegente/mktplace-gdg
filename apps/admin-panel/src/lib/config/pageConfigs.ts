@@ -2326,6 +2326,47 @@ export const PageConfigs: Record<string, PageConfig> = {
         }
       },
       {
+        key: 'countdown_info',
+        label: 'Countdown',
+        width: '180px',
+        render: (value: any, row: any) => {
+          if (!row.countdown_text || !row.countdown_end_time) {
+            return '<span class="text-gray-400 text-xs">Sem countdown</span>';
+          }
+          
+          const endTime = new Date(row.countdown_end_time);
+          const isActive = endTime > new Date();
+          const statusColor = isActive ? 'text-green-600' : 'text-red-600';
+          const statusText = isActive ? 'Ativo' : 'Expirado';
+          
+          return `
+            <div class="text-xs">
+              <div class="font-medium ${statusColor}">${statusText}</div>
+              <div class="text-gray-600 truncate">${row.countdown_text || 'Sem texto'}</div>
+              <div class="text-gray-500">${endTime.toLocaleDateString('pt-BR')} ${endTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'display_duration_minutes',
+        label: 'Duração',
+        sortable: true,
+        align: 'center',
+        render: (value: number) => {
+          const duration = value || 60;
+          const hours = Math.floor(duration / 60);
+          const minutes = duration % 60;
+          const color = duration >= 120 ? 'text-blue-600' : duration >= 60 ? 'text-green-600' : 'text-yellow-600';
+          
+          if (hours > 0) {
+            return `<span class="font-medium ${color}">${hours}h${minutes > 0 ? ` ${minutes}m` : ''}</span>`;
+          } else {
+            return `<span class="font-medium ${color}">${minutes}m</span>`;
+          }
+        }
+      },
+      {
         key: 'clicks',
         label: 'Cliques',
         sortable: true,
@@ -2393,6 +2434,28 @@ export const PageConfigs: Record<string, PageConfig> = {
           { value: '', label: 'Todos' },
           { value: 'active', label: 'Ativo' },
           { value: 'inactive', label: 'Inativo' }
+        ]
+      },
+      {
+        key: 'countdown_status',
+        label: 'Countdown',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'with_countdown', label: 'Com Countdown' },
+          { value: 'without_countdown', label: 'Sem Countdown' },
+          { value: 'active_countdown', label: 'Countdown Ativo' },
+          { value: 'expired_countdown', label: 'Countdown Expirado' }
+        ]
+      },
+      {
+        key: 'auto_rotate',
+        label: 'Rotação',
+        type: 'select',
+        options: [
+          { value: '', label: 'Todos' },
+          { value: 'true', label: 'Auto-rotação' },
+          { value: 'false', label: 'Fixo' }
         ]
       }
     ]

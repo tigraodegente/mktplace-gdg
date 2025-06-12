@@ -1196,15 +1196,15 @@
 						<div class="flex gap-2">
 							<div class="flex-1 relative">
 								{#key brandReactiveKey}
-									<select
-										bind:value={formData.brand_id}
-										class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.brand === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
-									>
-										<option value="">Selecione uma marca</option>
-										{#each brands as brand}
-											<option value={brand.id}>{brand.name}</option>
-										{/each}
-									</select>
+								<select
+									bind:value={formData.brand_id}
+									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {aiStatus.brand === 'success' ? 'bg-gray-50 border-gray-300' : ''}"
+								>
+									<option value="">Selecione uma marca</option>
+									{#each brands as brand}
+										<option value={brand.id}>{brand.name}</option>
+									{/each}
+								</select>
 								{/key}
 								{#if getStatusInfo('brand')}
 									<div class="absolute right-3 top-3">

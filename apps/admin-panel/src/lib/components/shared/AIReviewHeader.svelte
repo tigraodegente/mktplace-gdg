@@ -116,21 +116,21 @@
 				</div>
 				
 				{#if aiState.pendingChanges > 0}
-					<button
-						onclick={applyAllSuggestions}
-						class="ai-btn ai-btn-apply"
+				<button
+					onclick={applyAllSuggestions}
+					class="ai-btn ai-btn-apply"
 						title="Aplicar todas as sugestões restantes"
-					>
+				>
 						✓ Aplicar Todas ({aiState.pendingChanges})
-					</button>
-					
-					<button
-						onclick={rejectAllSuggestions}
-						class="ai-btn ai-btn-reject"
+				</button>
+				
+				<button
+					onclick={rejectAllSuggestions}
+					class="ai-btn ai-btn-reject"
 						title="Rejeitar todas as sugestões restantes"
-					>
-						✗ Rejeitar Todas
-					</button>
+				>
+					✗ Rejeitar Todas
+				</button>
 				{:else}
 					<button
 						onclick={finishReview}
