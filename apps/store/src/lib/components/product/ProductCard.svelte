@@ -3,6 +3,7 @@
 	import { cartStore } from '$lib/stores/cartStore';
 	import { wishlistStore } from '$lib/stores/wishlistStore';
 	import { toastStore } from '$lib/stores/toastStore';
+	import { usePricing } from '$lib/stores/pricingStore';
 	import Rating from '$lib/components/ui/Rating.svelte';
 	
 	// Props tipadas adequadamente
@@ -40,9 +41,12 @@
 		lazy = true
 	}: Props = $props();
 	
-	// Configuração
-	const INSTALLMENTS = 5;
-	const PIX_DISCOUNT = 0.95; // 5% desconto PIX
+	// Sistema de pricing dinâmico
+	const pricing = usePricing();
+	
+	// Estados reativos para pricing
+	let pixPrice = $state(0);
+	let installmentInfo = $state({ number: 5, value: 0, hasInterest: false });
 	
 	// Estados reativos otimizados
 	let isFavorite = $state(false);
@@ -81,8 +85,7 @@
 		return null;
 	});
 	
-	const installmentPrice = $derived(() => finalPrice() / INSTALLMENTS);
-	const pixPrice = $derived(() => finalPrice() * PIX_DISCOUNT);
+	// Pricing dinâmico será calculado no effect abaixo
 	
 	const productImages = $derived(() => {
 		if (product.images?.length) return product.images;
@@ -167,6 +170,36 @@
 	// Inicializar estado do wishlist
 	$effect(() => {
 		isFavorite = wishlistStore.hasItem(product.id);
+	});
+	
+	// Função para calcular preços dinamicamente
+	async function updatePricing() {
+		try {
+			const price = finalPrice();
+			
+			// Calcular PIX
+			const calculatedPixPrice = await pricing.calculatePixPrice(price);
+			pixPrice = calculatedPixPrice;
+			
+			// Calcular parcelamento padrão
+			const calculatedInstallment = await pricing.calculateDefaultInstallment(price);
+			installmentInfo = calculatedInstallment;
+			
+		} catch (error) {
+			console.warn('Erro ao calcular preços dinâmicos, usando fallback:', error);
+			// Fallback para valores originais
+			pixPrice = finalPrice() * 0.95; // 5% desconto PIX
+			installmentInfo = { 
+				number: 5, 
+				value: finalPrice() / 5, 
+				hasInterest: false 
+			};
+		}
+	}
+	
+	// Recalcular preços quando finalPrice mudar
+	$effect(() => {
+		updatePricing();
 	});
 	
 	// Cleanup
@@ -300,14 +333,14 @@
 			<!-- Segundo: Parcelamento - "por 5x de R$ XX,XX" -->
 			<div class="installment-price">
 				<span class="label">por</span>
-				<span class="count">{INSTALLMENTS}x</span>
+				<span class="count">{installmentInfo.number}x</span>
 				<span class="label">de</span>
-				<span class="value">{formatCurrency(installmentPrice())}</span>
+				<span class="value">{formatCurrency(installmentInfo.value)}</span>
 			</div>
 			
 			<!-- Terceiro: Preço PIX - "R$ 48,24 no pix ou boleto" -->
 			<p class="pix-price">
-				<strong>{formatCurrency(pixPrice())}</strong> 
+				<strong>{formatCurrency(pixPrice)}</strong> 
 				<span class="pix-label">no pix ou boleto</span>
 			</p>
 		</div>

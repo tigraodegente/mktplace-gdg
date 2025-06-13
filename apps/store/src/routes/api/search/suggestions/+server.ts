@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDatabase } from '$lib/db/neon';
+import { getDatabase } from '$lib/db';
 
 // ✅ CACHE para sugestões populares (5 minutos)
 interface SuggestionCache {

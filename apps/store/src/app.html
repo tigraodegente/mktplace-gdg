@@ -201,6 +201,21 @@
 				}, 100);
 			}
 		</script>
+		
+		<!-- Inicializar sistemas dinâmicos -->
+		<script type="module">
+			// Inicializar pricingStore quando a aplicação carregar
+			window.addEventListener('DOMContentLoaded', async () => {
+				try {
+					// Importar dinamicamente para evitar SSR issues
+					const { pricingStore } = await import('./src/lib/stores/pricingStore.js');
+					await pricingStore.initialize();
+					console.log('✅ PricingStore inicializado no app.html');
+				} catch (error) {
+					console.warn('⚠️ Erro ao inicializar PricingStore:', error);
+				}
+			});
+		</script>
 	</body>
 </html>
 <!-- Deploy automático funcionando -->
