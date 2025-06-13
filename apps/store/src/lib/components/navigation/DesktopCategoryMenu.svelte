@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, afterUpdate } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { menuService } from '$lib/services/menuService';
 	import type { FeaturedItem, CategoryTree, MenuFeaturedProduct } from '$lib/types/menu';
@@ -14,6 +14,10 @@
 	let hoverTimeout: NodeJS.Timeout;
 	let isMenuOpen = false;
 	let expandedCategories = new Set<string>();
+	let megaMenuElement: HTMLElement | undefined;
+	let megaMenuCategoryElement: HTMLElement | undefined;
+	let hasScrollableContent = false;
+	let hasScrollableContentCategory = false;
 
 	// Calcular total de produtos
 	$: totalProducts = allCategoriesTree.reduce((total: number, category: CategoryTree) => {
@@ -125,6 +129,13 @@
 		};
 	});
 
+	afterUpdate(() => {
+		// Verificar scroll sempre que o DOM for atualizado
+		if (isMenuOpen) {
+			setTimeout(checkScrollableContent, 50);
+		}
+	});
+
 	function handleMouseEnter(categoryId: string) {
 		clearTimeout(hoverTimeout);
 		hoverTimeout = setTimeout(() => {
@@ -175,6 +186,23 @@
 			expandedCategories.add(categoryId);
 		}
 		expandedCategories = expandedCategories; // trigger reactivity
+		// Verificar scroll após mudança
+		setTimeout(checkScrollableContent, 100);
+	}
+
+	// Verificar se o mega menu tem conteúdo rolável
+	function checkScrollableContent() {
+		if (megaMenuElement && megaMenuElement.scrollHeight && megaMenuElement.clientHeight) {
+			hasScrollableContent = megaMenuElement.scrollHeight > megaMenuElement.clientHeight;
+		}
+		if (
+			megaMenuCategoryElement &&
+			megaMenuCategoryElement.scrollHeight &&
+			megaMenuCategoryElement.clientHeight
+		) {
+			hasScrollableContentCategory =
+				megaMenuCategoryElement.scrollHeight > megaMenuCategoryElement.clientHeight;
+		}
 	}
 
 	// Formatar preço em moeda brasileira
@@ -322,6 +350,7 @@
 		{#if activeCategory === 'ver-todas'}
 			<!-- Mega Menu para Ver Todas - Mostra todas as categorias principais -->
 			<div
+				bind:this={megaMenuElement}
 				class="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-200 z-50 max-h-[70vh] md:max-h-[75vh] lg:max-h-[80vh] xl:max-h-[85vh] overflow-y-auto"
 				onmouseenter={() => clearTimeout(hoverTimeout)}
 				onmouseleave={handleMouseLeave}
@@ -330,23 +359,26 @@
 				tabindex="0"
 				aria-label="Todas as categorias"
 				style="scrollbar-width: thin; scrollbar-color: #00BFB3 #f1f1f1;"
+				onscroll={checkScrollableContent}
 			>
-				<!-- Indicador de scroll no topo -->
-				<div
-					class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
-				>
-					<span class="text-xs text-gray-500 flex items-center justify-center gap-2">
-						<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 14l-7 7m0 0l-7-7m7 7V3"
-							/>
-						</svg>
-						Role para ver mais conteúdo
-					</span>
-				</div>
+				<!-- Indicador de scroll no topo - só aparece quando há conteúdo rolável -->
+				{#if hasScrollableContent}
+					<div
+						class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
+					>
+						<span class="text-xs text-gray-500 flex items-center justify-center gap-2">
+							<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 14l-7 7m0 0l-7-7m7 7V3"
+								/>
+							</svg>
+							Role para ver mais conteúdo
+						</span>
+					</div>
+				{/if}
 
 				<div
 					class="w-full max-w-[1440px] mx-auto px-3 md:px-4 lg:px-6 xl:px-8 py-3 md:py-4 lg:py-6"
@@ -532,6 +564,7 @@
 			{@const activecat = findCategoryById(activeCategory)}
 			{#if activecat && activecat.children && activecat.children.length > 0}
 				<div
+					bind:this={megaMenuCategoryElement}
 					class="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-200 z-50 max-h-[60vh] md:max-h-[70vh] lg:max-h-[75vh] xl:max-h-[80vh] overflow-y-auto"
 					onmouseenter={() => clearTimeout(hoverTimeout)}
 					onmouseleave={handleMouseLeave}
@@ -540,23 +573,26 @@
 					tabindex="0"
 					aria-label="Submenu de {activecat.name}"
 					style="scrollbar-width: thin; scrollbar-color: #00BFB3 #f1f1f1;"
+					onscroll={checkScrollableContent}
 				>
-					<!-- Indicador de scroll no topo -->
-					<div
-						class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
-					>
-						<span class="text-xs text-gray-500 flex items-center justify-center gap-2">
-							<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 14l-7 7m0 0l-7-7m7 7V3"
-								/>
-							</svg>
-							Role para ver mais conteúdo
-						</span>
-					</div>
+					<!-- Indicador de scroll no topo - só aparece quando há conteúdo rolável -->
+					{#if hasScrollableContentCategory}
+						<div
+							class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
+						>
+							<span class="text-xs text-gray-500 flex items-center justify-center gap-2">
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 14l-7 7m0 0l-7-7m7 7V3"
+									/>
+								</svg>
+								Role para ver mais conteúdo
+							</span>
+						</div>
+					{/if}
 
 					<div
 						class="w-full max-w-[1440px] mx-auto px-3 md:px-4 lg:px-6 xl:px-8 py-3 md:py-4 lg:py-6"
