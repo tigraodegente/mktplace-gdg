@@ -30,6 +30,15 @@
   let checkoutData: any = null;
   let orderResult: any = null;
   
+  // Dados do convidado
+  let guestData = {
+    email: '',
+    phone: '',
+    acceptsMarketing: false,
+    sessionId: ''
+  };
+  let guestErrors: Record<string, string> = {};
+  
   // Estado de endereços
   let addressMode: 'select' | 'new' = 'select';
   let selectedAddress: Address | null = null;
@@ -90,6 +99,11 @@
   ]);
 
   onMount(async () => {
+    // Gerar sessionId para guest tracking
+    if (typeof window !== 'undefined') {
+      guestData.sessionId = crypto.randomUUID();
+    }
+    
     // Carregar configurações de pricing
     pricing.getConfig().then(config => {
       if (config) {
@@ -315,6 +329,20 @@
   function maskExpiry(value: string): string {
     return value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').substring(0, 5);
   }
+
+  function maskPhone(value: string): string {
+    return value.replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4,5})(\d{4})/, '$1-$2')
+      .substring(0, 15);
+  }
+
+  function handlePhoneInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const masked = maskPhone(target.value);
+    guestData.phone = masked;
+    target.value = masked;
+  }
   
   function handleCardNumberInput(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -330,6 +358,26 @@
     target.value = masked;
   }
   
+  function validateGuestData(): boolean {
+    guestErrors = {};
+    
+    if (!isGuest) return true; // Não precisa validar se é usuário logado
+    
+    if (!guestData.email.trim()) {
+      guestErrors.email = 'Email é obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestData.email)) {
+      guestErrors.email = 'Email deve ter um formato válido';
+    }
+    
+    if (!guestData.phone.trim()) {
+      guestErrors.phone = 'Telefone é obrigatório';
+    } else if (!/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(guestData.phone)) {
+      guestErrors.phone = 'Telefone deve ter formato (11) 99999-9999';
+    }
+    
+    return Object.keys(guestErrors).length === 0;
+  }
+
   function validateAddress(): boolean {
     addressErrors = {};
     
@@ -347,7 +395,7 @@
   }
   
   function proceedToPayment() {
-    if (validateAddress()) {
+    if (validateGuestData() && validateAddress()) {
       currentStep = 'payment';
     }
   }
@@ -389,7 +437,17 @@
           shippingAddress: addressForm,
           paymentMethod: selectedPaymentMethod,
           couponCode: checkoutData?.appliedCoupon?.code,
-          notes
+          notes,
+          // Adicionar dados de convidado se não estiver logado
+          ...(isGuest && {
+            guestData: {
+              email: guestData.email,
+              name: addressForm.name, // Nome vem do endereço
+              phone: guestData.phone,
+              acceptsMarketing: guestData.acceptsMarketing,
+              sessionId: guestData.sessionId
+            }
+          })
         })
       });
 
@@ -584,11 +642,20 @@
 
   // Funções para o fluxo de autenticação
   async function handleAuthNext(event: CustomEvent) {
-    const { user: authUser, isGuest: guestMode } = event.detail;
+    const { user: authUser, isGuest: guestMode, guestData: guestFormData } = event.detail;
     
     if (guestMode) {
       console.log('👤 Usuário escolheu checkout como convidado');
       isGuest = true;
+      
+      // Capturar dados de convidado se fornecidos
+      if (guestFormData) {
+        guestData.email = guestFormData.email;
+        guestData.phone = guestFormData.phone;
+        guestData.acceptsMarketing = guestFormData.acceptsMarketing;
+        console.log('📝 Dados de convidado capturados:', { email: guestData.email, phone: guestData.phone });
+      }
+      
       currentStep = 'address';
       addressMode = 'new';
     } else if (authUser) {

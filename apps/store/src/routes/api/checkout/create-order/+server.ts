@@ -5,8 +5,14 @@ import { getDatabase } from '$lib/db';
 import { optionalAuth } from '$lib/utils/auth';
 import ShippingIntegration from '$lib/services/shipping';
 
-// UUID fixo para pedidos de convidados (padrão da indústria)
-const GUEST_USER_ID = '00000000-0000-0000-0000-000000000000';
+// Tipos para checkout de convidado
+interface GuestData {
+  email: string;
+  name: string;
+  phone: string;
+  acceptsMarketing: boolean;
+  sessionId: string;
+}
 import { AppmaxService } from '$lib/services/integrations/appmax/service';
 import { logger } from '$lib/utils/logger';
 
@@ -31,6 +37,8 @@ interface CreateOrderRequest {
   paymentData?: any; // Dados do pagamento (cartão tokenizado, etc)
   couponCode?: string;
   notes?: string;
+  // Dados do convidado (obrigatórios quando não logado)
+  guestData?: GuestData;
 }
 
 // Função para decidir qual gateway usar
@@ -112,7 +120,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
     // Verificar autenticação (opcional - permite checkout como convidado)
     const authResult = await optionalAuth(cookies, platform);
 
-
     // Validar dados obrigatórios
     if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
       return json({
@@ -126,6 +133,25 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
         success: false,
         error: { message: 'Endereço de entrega e método de pagamento são obrigatórios' }
       }, { status: 400 });
+    }
+
+    // Validar dados de convidado se não estiver logado
+    if (!authResult.user && !orderData.guestData) {
+      return json({
+        success: false,
+        error: { message: 'Dados do convidado são obrigatórios para checkout sem login' }
+      }, { status: 400 });
+    }
+
+    // Validar campos obrigatórios do convidado
+    if (!authResult.user && orderData.guestData) {
+      const { email, name, phone, sessionId } = orderData.guestData;
+      if (!email || !name || !phone || !sessionId) {
+        return json({
+          success: false,
+          error: { message: 'Email, nome, telefone e sessionId são obrigatórios para convidados' }
+        }, { status: 400 });
+      }
     }
 
     // Tentar criar pedido com timeout
@@ -232,9 +258,14 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               total, 
               shipping_address,
               coupon_code, 
-              notes
+              notes,
+              guest_email,
+              guest_name,
+              guest_phone,
+              guest_accepts_marketing,
+              guest_session_id
             ) VALUES (
-              ${authResult.user?.id || GUEST_USER_ID}, 
+              ${authResult.user?.id || null}, 
               ${orderNumber}, 
               'pending', 
               'pending', 
@@ -245,7 +276,12 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               ${total}, 
               ${JSON.stringify(orderData.shippingAddress)}::jsonb,
               ${orderData.couponCode || null}, 
-              ${orderData.notes || null}
+              ${orderData.notes || null},
+              ${orderData.guestData?.email || null},
+              ${orderData.guestData?.name || null},
+              ${orderData.guestData?.phone || null},
+              ${orderData.guestData?.acceptsMarketing || false},
+              ${orderData.guestData?.sessionId || null}
             ) RETURNING id, order_number, total, created_at
           `;
           
@@ -324,7 +360,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                       'Venda',
                       ${order.id},
                       ${`Pedido ${order.order_number}`},
-                      ${authResult.user?.id || GUEST_USER_ID}
+                      ${authResult.user?.id || null}
                     )
                   `;
                   console.log(`[CREATE-ORDER] Movimento de estoque registrado para produto ${item.productId}`);
@@ -362,7 +398,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           try {
             await sql`
               INSERT INTO order_status_history (order_id, new_status, created_by, created_by_type, notes)
-              VALUES (${order.id}, 'pending', ${authResult.user?.id || GUEST_USER_ID}, ${authResult.user ? 'user' : 'guest'}, 'Pedido criado')
+              VALUES (${order.id}, 'pending', ${authResult.user?.id || null}, ${authResult.user ? 'user' : 'guest'}, 'Pedido criado')
             `;
           } catch (historyError) {
             // Não crítico
@@ -379,7 +415,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               paymentMethod: orderData.paymentMethod,
               createdAt: order.created_at,
               // Dados para integração
-              user_id: authResult.user?.id || GUEST_USER_ID,
+              user_id: authResult.user?.id || null,
               shipping_cost: shippingCost,
               payment_status: 'pending'
             },

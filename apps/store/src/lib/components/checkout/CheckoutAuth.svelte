@@ -6,7 +6,7 @@
   const dispatch = createEventDispatcher();
   
   // Estados locais
-  let authMode = $state<'choice' | 'login' | 'register'>('choice');
+  let authMode = $state<'choice' | 'login' | 'register' | 'guest'>('choice');
   let authLoading = $state(false);
   let authError = $state('');
   
@@ -99,7 +99,60 @@
   }
   
   function handleGuestCheckout() {
-    dispatch('next', { user: null, isGuest: true });
+    // Mudar para modo guest e mostrar formulário
+    authMode = 'guest';
+    resetForm();
+  }
+  
+  // Dados do formulário de convidado
+  let guestFormData = $state({
+    email: '',
+    phone: '',
+    acceptsMarketing: false
+  });
+  
+  let guestFormErrors = $state<Record<string, string>>({});
+  
+  function validateGuestForm(): boolean {
+    guestFormErrors = {};
+    
+    if (!guestFormData.email.trim()) {
+      guestFormErrors.email = 'Email é obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestFormData.email)) {
+      guestFormErrors.email = 'Email deve ter um formato válido';
+    }
+    
+    if (!guestFormData.phone.trim()) {
+      guestFormErrors.phone = 'Telefone é obrigatório';
+    } else if (!/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(guestFormData.phone)) {
+      guestFormErrors.phone = 'Telefone deve ter formato (11) 99999-9999';
+    }
+    
+    return Object.keys(guestFormErrors).length === 0;
+  }
+  
+  function handleGuestSubmit() {
+    if (validateGuestForm()) {
+      dispatch('next', { 
+        user: null, 
+        isGuest: true,
+        guestData: guestFormData
+      });
+    }
+  }
+  
+  function maskPhone(value: string): string {
+    return value.replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4,5})(\d{4})/, '$1-$2')
+      .substring(0, 15);
+  }
+  
+  function handlePhoneInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const masked = maskPhone(target.value);
+    guestFormData.phone = masked;
+    target.value = masked;
   }
   
   function resetForm() {
@@ -331,6 +384,113 @@
           >
             Já tenho conta? Entrar
           </button>
+        </div>
+      </form>
+    </div>
+    
+  {:else if authMode === 'guest'}
+    <!-- Formulário de Convidado -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold">Checkout como Convidado</h3>
+        <button
+          onclick={() => { authMode = 'choice'; resetForm(); }}
+          class="text-sm text-gray-500 hover:text-gray-700"
+        >
+          ← Voltar
+        </button>
+      </div>
+      
+      <p class="text-sm text-gray-600">
+        Precisamos de algumas informações para processar seu pedido e manter contato sobre a entrega.
+      </p>
+      
+      <form onsubmit={(e) => { e.preventDefault(); handleGuestSubmit(); }} class="space-y-4">
+        <div>
+          <label for="guest-email" class="block text-sm font-medium text-gray-700 mb-1">
+            E-mail *
+          </label>
+          <input
+            id="guest-email"
+            type="email"
+            bind:value={guestFormData.email}
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {guestFormErrors.email ? 'border-red-500' : ''}"
+            placeholder="seu@email.com"
+            disabled={authLoading}
+            required
+          />
+          {#if guestFormErrors.email}
+            <p class="text-red-500 text-xs mt-1">{guestFormErrors.email}</p>
+          {/if}
+        </div>
+        
+        <div>
+          <label for="guest-phone" class="block text-sm font-medium text-gray-700 mb-1">
+            Telefone *
+          </label>
+          <input
+            id="guest-phone"
+            type="tel"
+            bind:value={guestFormData.phone}
+            oninput={handlePhoneInput}
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {guestFormErrors.phone ? 'border-red-500' : ''}"
+            placeholder="(11) 99999-9999"
+            disabled={authLoading}
+            required
+          />
+          {#if guestFormErrors.phone}
+            <p class="text-red-500 text-xs mt-1">{guestFormErrors.phone}</p>
+          {/if}
+        </div>
+        
+        <div class="flex items-start space-x-3">
+          <input
+            id="guest-marketing"
+            type="checkbox"
+            bind:checked={guestFormData.acceptsMarketing}
+            class="mt-1 w-4 h-4 text-[#00BFB3] bg-gray-100 border-gray-300 rounded focus:ring-[#00BFB3] focus:ring-2"
+          />
+          <label for="guest-marketing" class="text-sm text-gray-700">
+            Aceito receber comunicações sobre ofertas e novidades por email e WhatsApp (opcional)
+          </label>
+        </div>
+        
+        <div class="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+          <div class="flex items-start space-x-2">
+            <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <p class="font-medium">Criação de conta opcional</p>
+              <p class="text-xs mt-1">Após finalizar a compra, você poderá criar uma conta com esses dados para acompanhar pedidos futuros.</p>
+            </div>
+          </div>
+        </div>
+        
+        <button
+          type="submit"
+          disabled={authLoading}
+          class="w-full py-3 px-4 bg-[#00BFB3] text-white font-semibold rounded-lg hover:bg-[#00A89D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+        >
+          {#if authLoading}
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <span>Processando...</span>
+          {:else}
+            <span>Continuar para Endereço</span>
+          {/if}
+        </button>
+        
+        <div class="text-center text-sm">
+          <p class="text-gray-600">
+            Já tem uma conta? 
+            <button 
+              type="button"
+              onclick={() => { authMode = 'login'; resetForm(); }}
+              class="text-[#00BFB3] hover:text-[#00A89D] font-medium"
+            >
+              Fazer login
+            </button>
+          </p>
         </div>
       </form>
     </div>
