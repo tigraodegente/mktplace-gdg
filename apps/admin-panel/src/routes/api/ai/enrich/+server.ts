@@ -65,8 +65,21 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		// Enriquecimento de campo específico
 		return await enrichSpecificField(field, prompt, currentData, category, platform, signal);
 		
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Erro no enriquecimento IA:', error);
+		
+		// Verificar se é erro de quota/saldo da IA
+		if (error.status === 429 || error.code === 'insufficient_quota' || error.type === 'insufficient_quota' ||
+			(error.message && error.message.includes('quota')) ||
+			(error.message && error.message.includes('billing'))) {
+			return json({
+				success: false,
+				error: 'Saldo insuficiente na IA',
+				message: 'Não há saldo suficiente na conta da IA para processar esta solicitação.',
+				userMessage: '💳 Não há saldo suficiente na conta da IA para processar esta solicitação. Entre em contato com o administrador para verificar o plano e dados de cobrança da OpenAI.'
+			}, { status: 429 });
+		}
+		
 		return json({
 			success: false,
 			error: 'Erro ao processar solicitação de IA'
@@ -204,6 +217,18 @@ async function enrichCompleteProduct(currentData: any, category?: string, platfo
 				error: 'Enriquecimento cancelado',
 				cancelled: true
 			}, { status: 499 });
+		}
+		
+		// Verificar se é erro de quota/saldo da IA
+		if (error.status === 429 || error.code === 'insufficient_quota' || error.type === 'insufficient_quota' ||
+			(error.message && error.message.includes('quota')) ||
+			(error.message && error.message.includes('billing'))) {
+			return json({
+				success: false,
+				error: 'Saldo insuficiente na IA',
+				message: 'Não há saldo suficiente na conta da IA para processar esta solicitação.',
+				userMessage: '💳 Não há saldo suficiente na conta da IA para processar esta solicitação. Entre em contato com o administrador para verificar o plano e dados de cobrança da OpenAI.'
+			}, { status: 429 });
 		}
 		
 		console.error('Erro no enriquecimento completo:', error);
@@ -569,6 +594,18 @@ async function enrichSpecificField(field: string, prompt: string, currentData: a
 				error: 'Erro da API da OpenAI. Tente novamente.',
 				error_type: 'openai_api'
 			}, { status: 502 });
+		}
+		
+		// Verificar se é erro de quota/saldo da IA
+		if (error.status === 429 || error.code === 'insufficient_quota' || error.type === 'insufficient_quota' ||
+			(error.message && error.message.includes('quota')) ||
+			(error.message && error.message.includes('billing'))) {
+			return json({
+				success: false,
+				error: 'Saldo insuficiente na IA',
+				message: 'Não há saldo suficiente na conta da IA para processar esta solicitação.',
+				userMessage: '💳 Não há saldo suficiente na conta da IA para processar esta solicitação. Entre em contato com o administrador para verificar o plano e dados de cobrança da OpenAI.'
+			}, { status: 429 });
 		}
 		
 		console.error(`Erro no enriquecimento do campo ${field}:`, error);

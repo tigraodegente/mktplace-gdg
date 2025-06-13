@@ -227,19 +227,19 @@ export const PageConfigs: Record<string, PageConfig> = {
         sku: product.sku,
         description: product.description,
         price: Number(product.price || 0),
-        original_price: product.originalPrice ? Number(product.originalPrice) : undefined,
+        original_price: product.original_price ? Number(product.original_price) : undefined,
         cost: product.cost ? Number(product.cost) : undefined,
-        quantity: Number(product.stock || product.quantity || 0),
-        category: product.category || product.category_name,
+        quantity: Number(product.stock || product.quantity || 0), // API retorna 'stock'
+        category: product.category_name || product.category || 'Sem categoria',
         category_id: product.category_id,
-        brand: product.brand || product.brand_name,
+        brand: product.brand_name || product.brand || 'Sem marca',
         brand_id: product.brand_id,
         images: product.images || (product.image ? [product.image] : []),
         image: product.image,
         is_active: product.is_active !== false,
         featured: product.featured || false,
-        created_at: product.createdAt || product.created_at,
-        updated_at: product.updatedAt || product.updated_at
+        created_at: product.created_at || product.createdAt,
+        updated_at: product.updated_at || product.updatedAt
       }));
     },
     

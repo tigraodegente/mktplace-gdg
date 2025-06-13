@@ -4,11 +4,30 @@ import OpenAI from 'openai';
 import { OPENAI_API_KEY } from '$env/static/private';
 import { getDatabase } from '$lib/db';
 import { getProcessedPrompt, getFallbackPrompt } from '$lib/services/aiPromptService';
+import { virtualFieldService } from '$lib/services/virtualFieldService';
+import { aiApprovalService } from '$lib/services/aiApprovalService';
 
 // Inicializar OpenAI com a chave do ambiente
 const openai = new OpenAI({
 	apiKey: OPENAI_API_KEY
 });
+
+// Classe de erro específica para quando não há saldo na IA
+class AIQuotaExceededError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'AIQuotaExceededError';
+	}
+}
+
+// Função para verificar se é erro de quota
+function isQuotaExceededError(error: any): boolean {
+	return error.status === 429 || 
+		   error.code === 'insufficient_quota' || 
+		   error.type === 'insufficient_quota' ||
+		   (error.message && error.message.includes('quota')) ||
+		   (error.message && error.message.includes('billing'));
+}
 
 interface Suggestion {
 	field: string;
@@ -18,7 +37,7 @@ interface Suggestion {
 	confidence: number;
 	reasoning: string;
 	source: 'ai' | 'similar_products' | 'category_template';
-	category: 'basic' | 'pricing' | 'attributes' | 'variants' | 'media' | 'shipping' | 'seo' | 'inventory' | 'advanced';
+	category: 'basic' | 'pricing' | 'attributes' | 'variants' | 'media' | 'shipping' | 'seo' | 'inventory' | 'advanced' | 'virtual';
 	displayValue?: string;
 	extra_info?: any;
 }
@@ -177,6 +196,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro no conteúdo básico:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -288,6 +313,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro no SEO:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -392,6 +423,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro na categorização:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -458,6 +495,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro nos atributos:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -546,6 +589,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro nas dimensões:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -594,6 +643,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro nos preços:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -666,6 +721,12 @@ RETORNE APENAS JSON:
 		return result;
 	} catch (error) {
 		console.error('❌ Erro nas variações:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -712,6 +773,128 @@ async function suggestVariationsFromSimilarProducts(currentData: any, platform: 
 		return [suggestion];
 	} catch (error) {
 		console.error('❌ Erro nas variações:', error);
+		return [];
+	}
+}
+
+// 🧮 8. ENRIQUECIMENTO DE CAMPOS VIRTUAIS
+async function enrichVirtualFields(currentData: any, openai: OpenAI): Promise<Suggestion[]> {
+	try {
+		// Buscar campos virtuais habilitados para IA
+		const virtualFields = await virtualFieldService.getVirtualFields({
+			entity_type: 'products',
+			ai_enabled: true,
+			is_active: true
+		});
+
+		if (virtualFields.length === 0) {
+			console.log('📊 Nenhum campo virtual com IA encontrado');
+			return [];
+		}
+
+		console.log(`📊 Analisando ${virtualFields.length} campos virtuais com IA`);
+		
+		const suggestions: Suggestion[] = [];
+		
+		// Processar cada campo virtual
+		for (const virtualField of virtualFields) {
+			try {
+				// Calcular valor atual do campo virtual
+				const currentResult = await virtualFieldService.calculateVirtualField(
+					virtualField.name,
+					currentData
+				);
+
+				// Se não conseguiu calcular ou prompt não existe, pular
+				if (!virtualField.ai_prompt || !virtualField.ai_prompt.trim()) {
+					continue;
+				}
+
+				// Criar prompt específico para este campo virtual
+				const prompt = `${virtualField.ai_prompt}
+
+PRODUTO ATUAL:
+Nome: ${currentData.name}
+Descrição: ${currentData.description || 'Não informado'}
+Preço: R$ ${currentData.price || 'Não informado'}
+Custo: R$ ${currentData.cost || 'Não informado'}
+Estoque: ${currentData.quantity || 'Não informado'}
+Categoria: ${currentData.category_name || 'Não informado'}
+
+DADOS PARA CÁLCULO:
+${Object.entries(currentData).map(([key, value]) => `${key}: ${value}`).join('\n')}
+
+VALOR ATUAL CALCULADO: ${currentResult.formatted_value || 'Erro no cálculo'}
+
+INSTRUÇÕES:
+1. Analise o produto e os dados disponíveis
+2. Sugira um valor otimizado para o campo "${virtualField.display_name}"
+3. Explique claramente o raciocínio da sugestão
+4. Considere as melhores práticas de e-commerce
+
+RETORNE APENAS JSON:
+{
+  "field": "${virtualField.name}",
+  "label": "${virtualField.display_name}",
+  "currentValue": "${currentResult.value || ''}",
+  "suggestedValue": "VALOR_SUGERIDO_AQUI",
+  "confidence": 85,
+  "reasoning": "Explicação detalhada da sugestão",
+  "source": "ai",
+  "category": "virtual"
+}`;
+
+				const response = await openai.chat.completions.create({
+					model: 'gpt-4-1106-preview',
+					max_tokens: 500,
+					temperature: 0.7,
+					messages: [{ role: 'user', content: prompt }]
+				});
+
+				const content = response.choices[0].message.content;
+				if (content) {
+					try {
+						const aiSuggestion = JSON.parse(content);
+						
+						// Validar e formatar a sugestão
+						if (aiSuggestion.field && aiSuggestion.suggestedValue !== undefined) {
+							suggestions.push({
+								field: aiSuggestion.field,
+								label: aiSuggestion.label || virtualField.display_name,
+								currentValue: currentResult.formatted_value || currentResult.value,
+								suggestedValue: aiSuggestion.suggestedValue,
+								confidence: aiSuggestion.confidence || 75,
+								reasoning: aiSuggestion.reasoning || 'Sugestão da IA para campo virtual',
+								source: 'ai',
+								category: 'virtual'
+							});
+						}
+					} catch (parseError) {
+						console.error(`❌ Erro ao parsear resposta IA para ${virtualField.name}:`, parseError);
+					}
+				}
+
+			} catch (fieldError) {
+				console.error(`❌ Erro ao processar campo virtual ${virtualField.name}:`, fieldError);
+				
+				// Verificar se é erro de quota/saldo
+				if (isQuotaExceededError(fieldError)) {
+					throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+				}
+			}
+		}
+
+		console.log(`📊 Campos virtuais: ${suggestions.length} sugestões geradas`);
+		return suggestions;
+
+	} catch (error) {
+		console.error('❌ Erro geral nos campos virtuais:', error);
+		
+		// Verificar se é erro de quota/saldo
+		if (isQuotaExceededError(error)) {
+			throw new AIQuotaExceededError('Não há saldo suficiente na conta da IA para processar esta solicitação. Verifique seu plano e dados de cobrança.');
+		}
+		
 		return [];
 	}
 }
@@ -882,10 +1065,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			enrichDimensionsAndAdvanced(currentData, openai),
 			enrichPricing(currentData, openai),
 			suggestProductVariations(currentData, openai),
-			suggestVariationsFromSimilarProducts(currentData, null)
+			suggestVariationsFromSimilarProducts(currentData, null),
+			enrichVirtualFields(currentData, openai)
 			// enrichInventory removido - campos de estoque não devem ter IA
 		]);
-		
+
 		// Combinar todas as sugestões
 		const suggestions = allSuggestions.flat();
 		
@@ -898,16 +1082,80 @@ export const POST: RequestHandler = async ({ request }) => {
 			shipping: suggestions.filter((s: Suggestion) => s.category === 'shipping').length,
 			variants: suggestions.filter((s: Suggestion) => s.category === 'variants').length,
 			inventory: suggestions.filter((s: Suggestion) => s.category === 'inventory').length,
-			advanced: suggestions.filter((s: Suggestion) => s.category === 'advanced').length
+			advanced: suggestions.filter((s: Suggestion) => s.category === 'advanced').length,
+			virtual: suggestions.filter((s: Suggestion) => s.category === 'virtual').length
 		});
 		
-		return json({
-			success: true,
-			suggestions
-		});
+		// 🆕 CRIAR SESSÃO DE APROVAÇÃO
+		console.log('📋 Criando sessão de aprovação...');
+		
+		try {
+			// Converter suggestions para formato de criação
+			const suggestionData = suggestions.map(s => ({
+				field_name: s.field,
+				field_label: s.label,
+				current_value: s.currentValue,
+				suggested_value: s.suggestedValue,
+				confidence: s.confidence,
+				reasoning: s.reasoning,
+				source: s.source,
+				category: s.category,
+				extra_info: s.extra_info || {}
+			}));
+			
+			// TODO: Buscar userId do contexto de autenticação
+			const userId = 'current-user-id'; // Placeholder
+			
+			const session = await aiApprovalService.createSession({
+				entity_type: 'products',
+				entity_id: currentData.id || 'unknown',
+				suggestions: suggestionData,
+				analysis_data: {
+					product_name: currentData.name,
+					analysis_timestamp: new Date().toISOString(),
+					total_suggestions: suggestions.length
+				}
+			}, userId);
+			
+			console.log(`✅ Sessão de aprovação criada: ${session.id}`);
+			
+			return json({
+				success: true,
+				suggestions,
+				approval_session: {
+					id: session.id,
+					status: session.status,
+					total_suggestions: session.total_suggestions,
+					pending_suggestions: session.pending_suggestions,
+					auto_approved: session.approved_suggestions
+				}
+			});
+			
+		} catch (approvalError) {
+			console.error('❌ Erro ao criar sessão de aprovação:', approvalError);
+			
+			// Retornar sugestões normalmente mesmo se aprovação falhar
+			return json({
+				success: true,
+				suggestions,
+				approval_session: null,
+				warning: 'Sugestões geradas mas sistema de aprovação falhou'
+			});
+		}
 		
 	} catch (error) {
 		console.error('❌ Erro na análise IA:', error);
+		
+		// Verificar se é erro de quota/saldo da IA
+		if (error instanceof AIQuotaExceededError) {
+			return json({
+				success: false,
+				error: 'Saldo insuficiente na IA',
+				message: error.message,
+				userMessage: '💳 Não há saldo suficiente na conta da IA para processar esta solicitação. Entre em contato com o administrador para verificar o plano e dados de cobrança da OpenAI.'
+			}, { status: 429 });
+		}
+		
 		return json({
 			success: false,
 			error: 'Erro interno do servidor'

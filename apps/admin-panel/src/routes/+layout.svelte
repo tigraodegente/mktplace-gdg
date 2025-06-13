@@ -66,7 +66,6 @@
 			
 			if (result.success) {
 				menuStats.set(result.data);
-				console.log('📊 Estatísticas do menu carregadas:', result.data);
 			} else {
 				console.error('❌ Erro ao carregar estatísticas:', result.error);
 			}
@@ -77,21 +76,17 @@
 	
 	// Lifecycle
 	onMount(() => {
-		console.log('🚀 onMount executado');
 		
 		// Inicializar o authStore primeiro
-		console.log('🔄 Inicializando authStore...');
 		authStore.init();
 		
 		// Verificar localStorage imediatamente
 		if (browser) {
 			const token = localStorage.getItem('access_token');
 			const userStr = localStorage.getItem('user');
-			console.log('💾 LocalStorage:', { token: !!token, user: !!userStr });
 			if (userStr) {
 				try {
 					const userData = JSON.parse(userStr);
-					console.log('👤 Dados do usuário no localStorage:', userData);
 				} catch (e) {
 					console.error('❌ Erro ao parsear user do localStorage:', e);
 				}
@@ -100,27 +95,19 @@
 		
 		// Usar dados reais do authStore
 		const unsubscribe = authStore.subscribe(($authState) => {
-			console.log('🔐 AuthStore state atualizado:', $authState);
-			console.log('🔐 isAuthenticated:', $authState.isAuthenticated);
-			console.log('🔐 user:', $authState.user);
-			console.log('🔐 loading:', $authState.loading);
 			
 			if ($authState.isAuthenticated && $authState.user) {
-				console.log('✅ Usuário autenticado, configurando state...');
 				user = {
 					...$authState.user,
 					avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${$authState.user.name}`
 				};
 				isLoading = false;
-				console.log('👤 User state local:', user);
 				
 				// Carregar estatísticas do menu após carregar usuário
 				loadMenuStats();
 			} else if (!$authState.loading) {
-				console.log('❌ Usuário não autenticado');
 				// Se não está autenticado e não está carregando, redirecionar para login
 				if (!isLoginPage) {
-					console.log('🔄 Redirecionando para login...');
 					goto('/login');
 				}
 				isLoading = false;
@@ -149,21 +136,6 @@
 		isUserMenuOpen = !isUserMenuOpen;
 	}
 	
-	// Debug para o menu
-	$effect(() => {
-		console.log('🔧 Debug Menu:', { showSideMenu, isMobile });
-	});
-	
-	// Debug para o SideMenu
-	$effect(() => {
-		console.log('🍔 Debug SideMenu render:', { 
-			isLoading, 
-			user: !!user, 
-			showSideMenu,
-			shouldRender: !isLoading && user
-		});
-	});
-	
 	// Força atualização do layout quando o menu muda
 	$effect(() => {
 		if (typeof window !== 'undefined') {
@@ -171,7 +143,6 @@
 			setTimeout(() => {
 				const mainElement = document.querySelector('main');
 				if (mainElement) {
-					console.log('🔄 Atualizando layout:', { showSideMenu, isMobile });
 					// Força a atualização forçando uma re-renderização
 					mainElement.style.transition = 'all 0.3s ease';
 					if (showSideMenu && !isMobile) {
@@ -313,7 +284,7 @@
 		<!-- Main Content (Tela Expandida) -->
 		<main 
 			class="pt-16 transition-all duration-300"
-			style="margin-left: {showSideMenu && !isMobile ? '288px' : '0px'}; width: {showSideMenu && !isMobile ? 'calc(100% - 288px)' : '100%'};"
+			style={{ marginLeft: showSideMenu && !isMobile ? '288px' : '0px', width: showSideMenu && !isMobile ? 'calc(100% - 288px)' : '100%' }}
 		>
 			<div class="p-2 lg:p-4 animate-fade-in">
 				{#if isLoading}

@@ -86,8 +86,6 @@ function getCountryCode(countryName: string | null): string | null {
 // GET - Listar produtos (sem middleware JWT)
 export const GET: RequestHandler = async ({ request }) => {
   try {
-    console.log('🔌 Dev: NEON - Buscando produtos');
-    
     const url = new URL(request.url);
     const db = getDatabase();
     
@@ -105,7 +103,7 @@ export const GET: RequestHandler = async ({ request }) => {
     const priceMin = url.searchParams.get('priceMin') || '';
     const priceMax = url.searchParams.get('priceMax') || '';
     
-    console.log(`📊 Listando produtos - page: ${page}, limit: ${limit}, search: "${search}", status: "${status}"`);
+
     
     // ✅ CORREÇÃO: Mapeamento correto dos campos de ordenação
     const validSortFields = ['name', 'price', 'quantity', 'status', 'created_at', 'is_active'];
@@ -138,9 +136,10 @@ export const GET: RequestHandler = async ({ request }) => {
       conditions.push(`p.status != 'archived'`);
     }
     
-    if (search) {
+    // Filtro de busca - CORRIGIDO para lidar com strings vazias
+    if (search && search.trim() !== '') {
       conditions.push(`(p.name ILIKE $${paramIndex} OR p.sku ILIKE $${paramIndex + 1} OR p.description ILIKE $${paramIndex + 2})`);
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
       paramIndex += 3;
     }
     
@@ -157,9 +156,9 @@ export const GET: RequestHandler = async ({ request }) => {
       }
     }
     
-    // Filtro de categorias
-    if (categories) {
-      const categoryIds = categories.split(',').filter(id => id.trim());
+    // Filtro de categorias - CORRIGIDO para lidar com 'all'
+    if (categories && categories !== 'all') {
+      const categoryIds = categories.split(',').filter(id => id.trim() && id !== 'all');
       if (categoryIds.length > 0) {
         const categoryPlaceholders = categoryIds.map((_, index) => `$${paramIndex + index}`).join(',');
         conditions.push(`p.id IN (
@@ -240,9 +239,21 @@ export const GET: RequestHandler = async ({ request }) => {
     
     params.push(limit, offset);
     
+    // 🔍 DEBUG: Log da query e parâmetros
+    console.log('🔍 DEBUG: Query SQL:', query);
+    console.log('🔍 DEBUG: Parâmetros SQL:', params);
+    console.log('🔍 DEBUG: Condições WHERE:', conditions);
+    
     // Executar query
     const products = await db.query(query, params);
     const totalCount = products[0]?.total_count || 0;
+    
+    // 🔍 DEBUG: Log dos resultados
+    console.log('🔍 DEBUG: Produtos encontrados:', products.length);
+    console.log('🔍 DEBUG: Total count:', totalCount);
+    if (products.length > 0) {
+      console.log('🔍 DEBUG: Primeiro produto:', products[0]);
+    }
     
     // Buscar imagens dos produtos se necessário
     const productIds = products.map(p => p.id);
@@ -315,7 +326,6 @@ export const GET: RequestHandler = async ({ request }) => {
       }
     };
     
-    console.log(`✅ Retornando ${products.length} produtos (total: ${totalCount})`);
     return json(response);
     
   } catch (error) {

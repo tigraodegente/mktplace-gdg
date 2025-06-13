@@ -149,6 +149,11 @@
 	let isLoadingData = $state(false);
 	let isLoadingStats = $state(false);
 	
+	// 🚀 NOVOS ESTADOS para scroll infinito perfeito
+	let isSearching = $state(false);
+	let hasSearchChanged = $state(false);
+	let searchLockTimeout: number | undefined;
+	
 	// Função para obter opções de status baseadas no tipo de página
 	function getStatusOptionsForPage() {
 		// Produtos têm mais opções de status
@@ -289,14 +294,20 @@
 					rawData = onDataLoad(rawData);
 				}
 				
-				// Para scroll infinito, append os novos dados aos existentes
-				if (useInfiniteScroll && append) {
+				// 🚀 CORREÇÃO: Lógica inteligente de reset/append
+				if (hasSearchChanged || (!append && useInfiniteScroll)) {
+					// Nova busca ou primeira página: substituir dados
+					data = rawData;
+					hasSearchChanged = false;
+					isSearching = false;
+					hasMore = result.meta?.hasNext || (page * pageSize < (result.meta?.total || 0));
+				} else if (useInfiniteScroll && append) {
+					// Scroll infinito: adicionar aos dados existentes
 					data = [...data, ...rawData];
-					// Verificar se há mais dados para carregar
 					hasMore = result.meta?.hasNext || (page * pageSize < (result.meta?.total || 0));
 				} else {
+					// Paginação normal: substituir dados
 					data = rawData;
-					// Reset dos estados quando não é append
 					if (useInfiniteScroll) {
 						hasMore = result.meta?.hasNext || (page * pageSize < (result.meta?.total || 0));
 					}
@@ -343,11 +354,16 @@
 			loading = false;
 			isLoadingData = false;
 			
-			// Para scroll infinito, também resetar o estado de loading more
+			// 🚀 CORREÇÃO: Retomar observer inteligentemente
 			if (useInfiniteScroll) {
 				isLoadingMore = false;
-				// Reconfigurar observer após carregar dados (com delay para DOM atualizar)
-				setTimeout(setupInfiniteScrollObserver, 100);
+				// Reconfigurar observer após carregar dados, com delay maior para estabilizar
+				setTimeout(() => {
+					// Se busca foi limpa ou não está mais buscando, sempre reativar observer
+					if (!isSearching || search.trim() === '') {
+						setupInfiniteScrollObserver();
+					}
+				}, 200);
 			}
 		}
 	}
@@ -434,14 +450,21 @@
 			return;
 		}
 		
+		// 🚀 CORREÇÃO: Detectar se busca foi limpa
+		const isSearchCleared = search.trim() === '';
+		
+		// 🚀 CORREÇÃO: Marcar que busca mudou sem resetar dados
+		hasSearchChanged = true;
+		isSearching = !isSearchCleared; // Se busca foi limpa, não está mais buscando
 		page = 1;
-		// Para scroll infinito, resetar os dados quando busca mudar
-		if (useInfiniteScroll) {
-			data = [];
-			hasMore = true;
+		
+		// Pausar observer durante busca (mas não quando limpa)
+		if (observer && !isSearchCleared) {
+			observer.disconnect();
 		}
+		
 		loadData();
-	}, 500);
+	}, 800);
 	
 	// Funções para controlar filtros sem $effect (evita loops infinitos)
 	function handleSearchChange() {
@@ -469,12 +492,16 @@
 			// Filtros mudaram realmente, prosseguir com reset
 			lastFiltersSnapshot = currentSnapshot;
 			
+			// 🚀 CORREÇÃO: Mesmo tratamento que busca
+			hasSearchChanged = true;
+			isSearching = true;
 			page = 1;
-			// Para scroll infinito, resetar os dados quando filtros mudarem
-			if (useInfiniteScroll) {
-				data = [];
-				hasMore = true;
+			
+			// Pausar observer durante mudança de filtros
+			if (observer) {
+				observer.disconnect();
 			}
+			
 			loadData();
 		}
 	

@@ -1,4 +1,5 @@
 import { writable, derived, type Writable, type Readable } from 'svelte/store';
+import { toast } from './toast';
 
 export interface AISuggestion {
 	field: string;
@@ -147,11 +148,27 @@ export const aiReviewActions = {
 				})
 			});
 
-			if (!response.ok) {
-				throw new Error('Erro ao analisar produto com IA');
-			}
-
 			const result = await response.json();
+			
+			// Verificar se é erro de quota da IA especificamente
+			if (!response.ok) {
+				if (response.status === 429 && result.error === 'Saldo insuficiente na IA') {
+					// Erro de quota - exibir mensagem amigável
+					toast.error(
+						'Saldo insuficiente na IA',
+						result.userMessage || 'Não há saldo suficiente na conta da IA para processar esta solicitação. Entre em contato com o administrador para verificar o plano e dados de cobrança da OpenAI.'
+					);
+					
+					aiReviewStore.update(state => ({
+						...state,
+						isLoading: false,
+						error: 'Saldo insuficiente na IA'
+					}));
+					return;
+				} else {
+					throw new Error(result.error || 'Erro ao analisar produto com IA');
+				}
+			}
 			
 			if (result.success && result.suggestions) {
 				const suggestions: AISuggestion[] = result.suggestions.map((s: any) => ({

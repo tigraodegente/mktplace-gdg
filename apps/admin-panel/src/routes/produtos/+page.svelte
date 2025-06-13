@@ -5,7 +5,7 @@
 	const config = PageConfigs.produtos;
 </script>
 
-<!-- Página de produtos migrada para arquitetura PageConfigs centralizada -->
+<!-- Página de produtos otimizada -->
 <AdminPageTemplate
 	title={config.title}
 	entityName={config.entityName}

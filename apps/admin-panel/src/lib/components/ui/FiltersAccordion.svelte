@@ -41,6 +41,16 @@
 	let categorySearchQuery = $state('');
 	let dropdownElement = $state<HTMLElement>();
 	
+	// Auto-expandir categorias com subcategorias para melhor UX
+	$effect(() => {
+		if (categories.length > 0) {
+			const categoriesWithSubs = categories.filter(cat => 
+				!cat.parentId && !cat.parent_id && (cat.subcategoryCount > 0 || subcategoriesMap[cat.id]?.length > 0)
+			);
+			expandedCategories = new Set(categoriesWithSubs.map(cat => cat.id));
+		}
+	});
+	
 	// Estado para controle avançado de seleção
 	let selectAllMode = $state(false);
 	let lastSelectedCategory = $state<string | null>(null);
@@ -142,6 +152,8 @@
 	function clearAllCategories() {
 		selectedCategories = [];
 		categoryFilter = 'all';
+		// Força a notificação de mudança
+		onFiltersChange();
 	}
 	
 	function selectAllVisible() {
@@ -265,32 +277,40 @@
 							<!-- Dropdown Content -->
 							{#if categoryDropdownOpen}
 								<div class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-									<!-- Header com busca e limpar -->
-									<div class="p-3 border-b bg-gray-50">
-										<div class="flex items-center justify-between mb-2">
-											<span class="text-sm font-medium text-gray-700">
-												Categorias 
-												<span class="text-xs text-gray-500">({rootCategories.length} disponíveis)</span>
-											</span>
-											<div class="flex gap-2">
-												{#if selectedCategories.length > 0}
-													<button 
-														type="button"
-														onclick={clearAllCategories}
-														class="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
-													>
-														🧹 Limpar ({selectedCategories.length})
-													</button>
-												{/if}
-												<button 
-													type="button"
-													onclick={selectAllVisible}
-													class="text-xs text-[#00BFB3] hover:text-[#00A89D] px-2 py-1 rounded hover:bg-[#00BFB3]/10"
-												>
-													✅ Todas Visíveis
-												</button>
-											</div>
-										</div>
+																<!-- Header com busca e limpar -->
+							<div class="p-3 border-b bg-gray-50">
+								<div class="flex items-center justify-between mb-2">
+									<span class="text-sm font-medium text-gray-700">
+										Categorias 
+										<span class="text-xs text-gray-500">({rootCategories.length} disponíveis)</span>
+									</span>
+									<div class="flex gap-2">
+										{#if selectedCategories.length > 0}
+											<button 
+												type="button"
+												onclick={() => {
+													selectedCategories = [];
+													categoryFilter = 'all';
+													onFiltersChange();
+												}}
+												class="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
+											>
+												🧹 Limpar ({selectedCategories.length})
+											</button>
+										{/if}
+										<button 
+											type="button"
+											onclick={() => {
+												selectedCategories = filteredRootCategories.map(c => c.id);
+												categoryFilter = selectedCategories.join(',');
+												onFiltersChange();
+											}}
+											class="text-xs text-[#00BFB3] hover:text-[#00A89D] px-2 py-1 rounded hover:bg-[#00BFB3]/10"
+										>
+											✅ Todas Visíveis
+										</button>
+									</div>
+								</div>
 										<input
 											type="text"
 											bind:value={categorySearchQuery}
@@ -351,11 +371,11 @@
 														{/if}
 													</div>
 													
-																										<!-- Subcategorias -->
-													{#if expandedCategories.has(category.id)}
+																										<!-- Subcategorias SEMPRE VISÍVEIS para melhor UX -->
+													{#if true}
 														{@const subcategories = subcategoriesMap[category.id] || categories.filter(c => c.parentId === category.id || c.parent_id === category.id)}
-														<div class="ml-6 space-y-1 border-l-2 border-gray-200 pl-4">
-															{#if subcategories.length > 0}
+														{#if subcategories.length > 0}
+															<div class="ml-6 space-y-1 border-l-2 border-gray-200 pl-4">
 																{#each subcategories as subcategory}
 																	<div class="flex items-center py-1 px-2 hover:bg-gray-50 rounded cursor-pointer" onclick={() => handleCategoryClick(subcategory.id)}>
 																		<input
@@ -366,20 +386,12 @@
 																			class="h-4 w-4 text-[#00BFB3] rounded border-gray-300 focus:ring-[#00BFB3]"
 																		/>
 																		<span class="ml-2 text-sm text-gray-600">
-																			{subcategory.name}
+																			↳ {subcategory.name}
 																		</span>
 																	</div>
 																{/each}
-															{:else if category.subcategoryCount > 0}
-																<div class="py-2 px-2 text-xs text-gray-500 italic">
-																	⚠️ Subcategorias não mapeadas (API reporta {category.subcategoryCount} filhos)
-																</div>
-															{:else}
-																<div class="py-2 px-2 text-xs text-gray-400 italic">
-																	📭 Nenhuma subcategoria encontrada
-																</div>
-															{/if}
-														</div>
+															</div>
+														{/if}
 													{/if}
 												</div>
 											{/each}

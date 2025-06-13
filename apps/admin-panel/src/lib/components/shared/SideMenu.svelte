@@ -74,6 +74,7 @@
 		financial: 'Financeiro',
 		analytics: 'Relatórios',
 		system: 'Sistema',
+		ai: 'Inteligência Artificial',
 		other: 'Outros'
 	};
 

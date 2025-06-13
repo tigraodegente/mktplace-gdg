@@ -30,6 +30,9 @@ export interface MenuStats {
 	financial: { transactions_pending: number; payouts_pending: number; disputes: number };
 	logs: { today: number; errors: number; warnings: number; critical: number };
 	system: { integrations_down: number; api_errors: number; performance_issues: number };
+	ai: { pending_approvals: number; providers_down: number; analysis_queue: number; failed_enrichments: number };
+	translations: { pending: number; failed: number; queued: number; completed_today: number };
+	webhooks: { failed: number; queued: number; active: number; errors_today: number };
 }
 
 export type MenuState = 'hidden' | 'floating' | 'overlay' | 'minimized';
@@ -116,7 +119,10 @@ export const mockStats: MenuStats = {
 	analytics: { alerts: 5, reports_pending: 3, insights: 12 },
 	financial: { transactions_pending: 67, payouts_pending: 23, disputes: 4 },
 	logs: { today: 2847, errors: 12, warnings: 45, critical: 2 },
-	system: { integrations_down: 1, api_errors: 8, performance_issues: 3 }
+	system: { integrations_down: 1, api_errors: 8, performance_issues: 3 },
+	ai: { pending_approvals: 15, providers_down: 0, analysis_queue: 43, failed_enrichments: 3 },
+	translations: { pending: 127, failed: 5, queued: 89, completed_today: 234 },
+	webhooks: { failed: 8, queued: 23, active: 156, errors_today: 12 }
 };
 
 menuStats.set(mockStats);
@@ -171,7 +177,15 @@ export const baseMenuItems: MenuItem[] = [
 	{ label: 'Páginas', href: '/paginas', icon: 'FileText', roles: ['admin'], badgeKey: 'pages.needs_review', category: 'system' },
 	{ label: 'Page Builder', href: '/paginas/builder', icon: 'Palette', roles: ['admin'], category: 'system' },
 	{ label: 'Logs & Auditoria', href: '/logs', icon: 'Search', roles: ['admin'], badgeKey: 'logs.critical', category: 'system' },
-	{ label: 'Configurações', href: '/configuracoes', icon: 'Settings', roles: ['admin'], badgeKey: 'system.performance_issues', category: 'system' }
+	{ label: 'Configurações', href: '/configuracoes', icon: 'Settings', roles: ['admin'], badgeKey: 'system.performance_issues', category: 'system' },
+	
+	// Funcionalidades IA
+	{ label: 'Campos Virtuais', href: '/campos-virtuais', icon: 'Cpu', roles: ['admin'], category: 'ai' },
+	{ label: 'Aprovação IA', href: '/aprovacao-ia', icon: 'CheckCircle', roles: ['admin'], badgeKey: 'ai.pending_approvals', category: 'ai' },
+	{ label: 'Multi-idiomas', href: '/multi-idiomas', icon: 'Globe', roles: ['admin'], badgeKey: 'translations.pending', category: 'ai' },
+	{ label: 'Webhooks', href: '/webhooks', icon: 'Webhook', roles: ['admin'], badgeKey: 'webhooks.failed', category: 'ai' },
+	{ label: 'Prompts Vendedores', href: '/prompts-vendedores', icon: 'MessageSquare', roles: ['admin'], category: 'ai' },
+	{ label: 'Provedores IA', href: '/provedores-ia', icon: 'Bot', roles: ['admin'], badgeKey: 'ai.providers_down', category: 'ai' }
 ];
 
 // Funções auxiliares
