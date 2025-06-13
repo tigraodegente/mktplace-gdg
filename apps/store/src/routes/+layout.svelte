@@ -130,7 +130,7 @@
 <!-- Indicador temporário de versão do cart -->
 {#if typeof window !== 'undefined' && window.location.hostname === 'localhost'}
   <div class="fixed bottom-4 right-4 z-50 bg-green-800 text-white px-3 py-2 rounded-lg text-xs font-mono animate-pulse">
-    Cart Store: 🆕 NEW v2.0 (Testing Mode)
+    Cart Store: 🆕 NEW v2.0 (Safe Testing)
   </div>
 {/if}
 
