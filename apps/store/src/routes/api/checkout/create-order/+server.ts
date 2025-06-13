@@ -178,11 +178,11 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           // STEP 3: Aplicar cupom se fornecido
           let discount = 0;
           if (orderData.couponCode) {
-            const coupons = await sql`
-              SELECT id, code, type, value, minimum_order_value, max_uses, used_count, is_active
-              FROM coupons 
-              WHERE code = ${orderData.couponCode} AND is_active = true
-            `;
+                    const coupons = await sql`
+          SELECT id, code, type, value, min_order_amount, max_uses, used_count, is_active
+          FROM coupons 
+          WHERE code = ${orderData.couponCode} AND is_active = true
+        `;
             
             const coupon = coupons[0];
             if (!coupon) {
@@ -193,8 +193,8 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               throw new Error('Cupom esgotado');
             }
 
-            if (coupon.minimum_order_value && subtotal < coupon.minimum_order_value) {
-              throw new Error(`Valor mínimo para este cupom: R$ ${parseFloat(coupon.minimum_order_value).toFixed(2)}`);
+            if (coupon.min_order_amount && subtotal < coupon.min_order_amount) {
+              throw new Error(`Valor mínimo para este cupom: R$ ${parseFloat(coupon.min_order_amount).toFixed(2)}`);
             }
 
             // Calcular desconto

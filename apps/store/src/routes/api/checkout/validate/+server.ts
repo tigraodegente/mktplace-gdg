@@ -132,7 +132,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
         // STEP 3: Validar cupom se fornecido
         if (couponCode && validation.isValid) {
           const coupons = await db.query`
-            SELECT id, code, type, value, minimum_order_value, max_uses, used_count, is_active
+            SELECT id, code, type, value, min_order_amount, max_uses, used_count, is_active
             FROM coupons 
             WHERE code = ${couponCode} AND is_active = true
             LIMIT 1
@@ -143,9 +143,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             validation.errors.push('Cupom inválido ou expirado');
           } else if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
             validation.errors.push('Cupom esgotado');
-          } else if (coupon.minimum_order_value && validation.totals.subtotal < coupon.minimum_order_value) {
+          } else if (coupon.min_order_amount && validation.totals.subtotal < coupon.min_order_amount) {
             validation.errors.push(
-              `Valor mínimo para este cupom: R$ ${parseFloat(coupon.minimum_order_value).toFixed(2)}`
+              `Valor mínimo para este cupom: R$ ${parseFloat(coupon.min_order_amount).toFixed(2)}`
             );
           } else {
             // Aplicar desconto
