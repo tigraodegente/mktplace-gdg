@@ -53,6 +53,9 @@
 		// Configurações de busca
 		searchPlaceholder?: string;
 		searchFields?: string[];
+		
+		// Infinite scroll
+		useInfiniteScroll?: boolean;
 	}
 	
 	let {
@@ -75,7 +78,8 @@
 		onDelete,
 		onBulkDelete,
 		searchPlaceholder = `Buscar ${entityNamePlural}...`,
-		searchFields = ['name']
+		searchFields = ['name'],
+		useInfiniteScroll = false
 	}: Props = $props();
 	
 	// Estados padrão - sempre os mesmos para qualquer página
@@ -93,6 +97,19 @@
 	let page = $state(1);
 	let pageSize = $state(20);
 	let totalItems = $state(0);
+	
+	// Estados para infinite scroll
+	let isLoadingMore = $state(false);
+	let hasMore = $state(true);
+	let sentinelElementDesktop = $state<HTMLDivElement>();
+	let sentinelElementMobile = $state<HTMLDivElement>();
+	let observer: IntersectionObserver;
+	
+	// Flag para evitar reset durante inicialização
+	let isInitialized = $state(false);
+	
+	// Cache dos filtros para detectar mudanças reais
+	let lastFiltersSnapshot = $state('');
 	
 	// Ordenação padrão
 	let sortBy = $state('created_at');
@@ -188,16 +205,24 @@
 	}
 	
 	// Função genérica para carregar dados com cache
-	async function loadData() {
+	async function loadData(append = false) {
 		// Evitar carregamentos duplicados
 		const currentParams = JSON.stringify({ page, pageSize, search, statusFilter, categoryFilter, brandFilter, priceRange, customFilterValues, sortBy, sortOrder });
 		
-		if (isLoadingData || lastLoadParams === currentParams) {
-			return;
+		// Para scroll infinito, não resetar se estamos carregando mais
+		if (useInfiniteScroll && append) {
+			if (isLoadingMore || !hasMore) {
+				return;
+			}
+			isLoadingMore = true;
+		} else {
+			if (isLoadingData || lastLoadParams === currentParams) {
+				return;
+			}
+			
+			isLoadingData = true;
+			loading = true;
 		}
-		
-		isLoadingData = true;
-		loading = true;
 		
 		try {
 			const params = new URLSearchParams({
@@ -264,15 +289,36 @@
 					rawData = onDataLoad(rawData);
 				}
 				
-				data = rawData;
+				// Para scroll infinito, append os novos dados aos existentes
+				if (useInfiniteScroll && append) {
+					data = [...data, ...rawData];
+					// Verificar se há mais dados para carregar
+					hasMore = result.meta?.hasNext || (page * pageSize < (result.meta?.total || 0));
+				} else {
+					data = rawData;
+					// Reset dos estados quando não é append
+					if (useInfiniteScroll) {
+						hasMore = result.meta?.hasNext || (page * pageSize < (result.meta?.total || 0));
+					}
+				}
+				
 				totalItems = result.meta?.total || 0;
 				lastLoadParams = currentParams; // Cache do último request
+				
+				// Marcar como inicializado após primeiro carregamento bem-sucedido
+				if (!isInitialized) {
+					isInitialized = true;
+					// Salvar snapshot inicial dos filtros
+					lastFiltersSnapshot = JSON.stringify({ 
+						search, statusFilter, categoryFilter, brandFilter, 
+						priceRange, customFilterValues, sortBy, sortOrder 
+					});
+				}
 			} else {
 				console.error('❌ [AdminPageTemplate] Erro na resposta:', result);
 				
 				// Se erro de autenticação, redirecionar para login
 				if (result.error?.code === 'UNAUTHENTICATED') {
-					console.log('🔒 [AdminPageTemplate] Erro de autenticação, redirecionando para login');
 					goto('/login');
 					return;
 				}
@@ -283,7 +329,6 @@
 		} catch (error: any) {
 			// Ignorar erros de abort
 			if (error.name === 'AbortError') {
-				console.log('🚫 Request cancelado');
 				return;
 			}
 			
@@ -291,13 +336,19 @@
 			
 			// Se erro de rede/autenticação, tentar redirecionar
 			if (error.message?.includes('Failed to fetch') || error.message?.includes('401')) {
-				console.log('🔒 [AdminPageTemplate] Problema de autenticação detectado, redirecionando...');
 				goto('/login');
 				return;
 			}
 		} finally {
 			loading = false;
 			isLoadingData = false;
+			
+			// Para scroll infinito, também resetar o estado de loading more
+			if (useInfiniteScroll) {
+				isLoadingMore = false;
+				// Reconfigurar observer após carregar dados (com delay para DOM atualizar)
+				setTimeout(setupInfiniteScrollObserver, 100);
+			}
 		}
 	}
 	
@@ -378,7 +429,17 @@
 	
 	// Debounce para busca
 	const debouncedSearch = useDebounce(() => {
+		// Se ainda não inicializou, não resetar dados
+		if (!isInitialized) {
+			return;
+		}
+		
 		page = 1;
+		// Para scroll infinito, resetar os dados quando busca mudar
+		if (useInfiniteScroll) {
+			data = [];
+			hasMore = true;
+		}
 		loadData();
 	}, 500);
 	
@@ -388,7 +449,32 @@
 	}
 	
 	function handleFiltersChange() {
+			// Criar snapshot atual dos filtros
+			const currentSnapshot = JSON.stringify({ 
+				search, statusFilter, categoryFilter, brandFilter, 
+				priceRange, customFilterValues, sortBy, sortOrder 
+			});
+			
+			// Se ainda não inicializou, apenas salvar o snapshot
+			if (!isInitialized) {
+				lastFiltersSnapshot = currentSnapshot;
+				return;
+			}
+			
+			// Se os filtros não mudaram realmente, ignorar
+			if (lastFiltersSnapshot === currentSnapshot) {
+				return;
+			}
+			
+			// Filtros mudaram realmente, prosseguir com reset
+			lastFiltersSnapshot = currentSnapshot;
+			
 			page = 1;
+			// Para scroll infinito, resetar os dados quando filtros mudarem
+			if (useInfiniteScroll) {
+				data = [];
+				hasMore = true;
+			}
 			loadData();
 		}
 	
@@ -512,7 +598,41 @@
 		}
 	}
 	
-	// Verificação de autenticação padrão com preload
+	// Função para configurar/reconfigurar o Intersection Observer
+	function setupInfiniteScrollObserver() {
+		if (!useInfiniteScroll || typeof window === 'undefined') return;
+		
+		// Desconectar observer anterior se existir
+		if (observer) {
+			observer.disconnect();
+		}
+		
+		// Determinar se estamos em desktop ou mobile
+		const isDesktop = window.innerWidth >= 1024;
+		const sentinelElement = isDesktop ? sentinelElementDesktop : sentinelElementMobile;
+		
+		if (sentinelElement) {
+			observer = new IntersectionObserver(
+				async (entries) => {
+					const entry = entries[0];
+					if (entry.isIntersecting && hasMore && !loading && !isLoadingMore) {
+						page = page + 1;
+						await loadData(true);
+					}
+				},
+				{
+					root: null,
+					rootMargin: '50px',
+					threshold: 0.1
+				}
+			);
+			observer.observe(sentinelElement);
+		} else {
+			setTimeout(setupInfiniteScrollObserver, 100);
+		}
+	}
+
+		// Verificação de autenticação padrão com preload
 	async function checkAuthAndLoad() {
 		if (typeof window === 'undefined') return;
 		
@@ -526,16 +646,25 @@
 				loadFilters()
 			]);
 			
+			// Configurar observer após carregar dados iniciais
+			setTimeout(setupInfiniteScrollObserver, 500);
+			
 			// Preload da próxima página após carregar a atual
 			setTimeout(preloadNextPage, 1000);
 		} else {
 			goto('/login');
 		}
 	}
-	
+
 	// Lifecycle
 	onMount(() => {
 		checkAuthAndLoad();
+		
+		return () => {
+			if (observer) {
+				observer.disconnect();
+			}
+		};
 	});
 </script>
 
@@ -641,9 +770,10 @@
 					</div>
 				{/if}
 				
+
+
 				<!-- Desktop Table / Mobile Cards -->
 				<div class="hidden lg:block">
-				<!-- 🔄 DEBUG: TABELA DESKTOP ATIVA (tela >= 1024px) -->
 				<DataTable
 					{columns}
 					{data}
@@ -655,18 +785,36 @@
 					{pageSize}
 					{totalItems}
 						onPageChange={handlePageChange}
-					showHeaderPagination={true}
+					showHeaderPagination={!useInfiniteScroll}
+					showFooterPagination={!useInfiniteScroll}
 					{sortBy}
 					{sortOrder}
 					onSort={handleSort}
 					actions={getTableActions}
 					emptyMessage={`Nenhum ${entityName} encontrado`}
 				/>
+				
+				<!-- Desktop Infinite Scroll Indicators -->
+				{#if useInfiniteScroll}
+					{#if isLoadingMore}
+						<div class="mt-6 flex items-center justify-center py-4">
+							<div class="flex items-center gap-3">
+								<div class="w-5 h-5 border-2 border-[#00BFB3] border-t-transparent rounded-full animate-spin"></div>
+								<span class="text-sm text-gray-600">Carregando mais produtos...</span>
+							</div>
+						</div>
+					{:else if hasMore && data.length > 0}
+						<div bind:this={sentinelElementDesktop} class="mt-6 h-1"></div>
+					{:else if !hasMore && data.length > 0}
+						<div class="mt-6 text-center py-4">
+							<span class="text-sm text-gray-500">✅ Todos os produtos foram carregados</span>
+						</div>
+					{/if}
+				{/if}
 				</div>
 
 				<!-- Mobile Cards -->
 				<div class="lg:hidden">
-				<!-- 🔄 DEBUG: CARDS MOBILE ATIVAS (tela < 1024px) - SEM ORDENAÇÃO -->
 					{#if loading}
 						<div class="space-y-4">
 							{#each Array(5) as _, i}
@@ -776,8 +924,26 @@
 							{/each}
 						</div>
 						
-						<!-- Mobile Pagination -->
-						{#if totalItems > pageSize}
+						<!-- Mobile Pagination ou Loading More -->
+						{#if useInfiniteScroll}
+							<!-- Infinite Scroll Indicator -->
+							{#if isLoadingMore}
+								<div class="mt-6 flex items-center justify-center py-4">
+									<div class="flex items-center gap-3">
+										<div class="w-5 h-5 border-2 border-[#00BFB3] border-t-transparent rounded-full animate-spin"></div>
+										<span class="text-sm text-gray-600">Carregando mais produtos...</span>
+									</div>
+								</div>
+							{:else if hasMore && data.length > 0}
+								<!-- Sentinel element for intersection observer -->
+								<div bind:this={sentinelElementMobile} class="mt-6 h-1"></div>
+							{:else if !hasMore && data.length > 0}
+								<div class="mt-6 text-center py-4">
+									<span class="text-sm text-gray-500">✅ Todos os produtos foram carregados</span>
+								</div>
+							{/if}
+						{:else if totalItems > pageSize}
+							<!-- Paginação tradicional -->
 							<div class="mt-6 flex items-center justify-between">
 								<button
 									onclick={() => handlePageChange(page - 1)}

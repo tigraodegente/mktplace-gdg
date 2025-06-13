@@ -211,8 +211,8 @@ async function compareAndLogHistory(
       `, [
         productId,
         user?.id || null,
-        user?.name || 'Sistema',
-        user?.email || 'system@marketplace.com',
+        user?.name || 'Usuário Desconhecido',
+        user?.email || 'unknown@system.com',
         'updated',
         JSON.stringify(changes),
         summary
@@ -505,7 +505,7 @@ async function logProductHistory(originalProduct: any, updatedProduct: any, prod
       console.log(`📝 Tentando salvar histórico: ${summary}`);
       console.log(`📝 Product ID: ${productId} (type: ${typeof productId})`);
       console.log(`📝 Changes: ${JSON.stringify(changes)}`);
-      console.log(`👤 Usuário: ${user?.name || 'Sistema'} (${user?.email || 'system@marketplace.com'})`);
+      console.log(`👤 Usuário: ${user?.name || 'Usuário Desconhecido'} (${user?.email || 'unknown@system.com'})`);
       
       const result = await db.query(`
         INSERT INTO product_history (
@@ -518,8 +518,8 @@ async function logProductHistory(originalProduct: any, updatedProduct: any, prod
         'updated',
         JSON.stringify(changes),
         summary,
-        user?.name || 'Sistema',
-        user?.email || 'system@marketplace.com'
+        user?.name || 'Usuário Desconhecido',
+        user?.email || 'unknown@system.com'
       ]);
       
       console.log(`📝 Histórico salvo com ID: ${result[0].id} - ${summary}`);
@@ -536,7 +536,7 @@ async function logProductHistory(originalProduct: any, updatedProduct: any, prod
   }
 }
 
-// PUT - Atualizar produto (temporariamente sem middleware)
+// PUT - Atualizar produto
 export const PUT: RequestHandler = async ({ params, request, platform }: any) => {
   const { id } = params;
   
@@ -550,10 +550,56 @@ export const PUT: RequestHandler = async ({ params, request, platform }: any) =>
 
   try {
     const requestData = await request.json();
-    const currentUser = { name: 'Admin', email: 'admin@marketplace.com', id: '8c951015-3184-45ad-9e37-1c827028ee38' }; // UUID do admin do sistema
     const db = getDatabase(platform);
     
-    console.log(`🔄 Admin ${currentUser?.name} atualizando produto ${id}`);
+    // 👤 EXTRAIR USUÁRIO DO TOKEN JWT
+    let currentUser = null;
+    const authHeader = request.headers.get('authorization');
+    
+    console.log('🔐 Header de autorização:', authHeader ? 'Presente' : 'Ausente');
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      console.log('🎫 Token extraído:', token.substring(0, 20) + '...');
+      
+      const payload = decodeJWT(token);
+      console.log('📦 Payload decodificado:', payload);
+      
+      if (payload && payload.userId) {
+        // Buscar nome do usuário no banco usando o userId
+        try {
+          const userResult = await db.query('SELECT name, email FROM users WHERE id = $1', [payload.userId]);
+          const userData = userResult[0];
+          
+          currentUser = {
+            id: payload.userId,
+            name: userData?.name || payload.email?.split('@')[0] || 'Usuário',
+            email: payload.email || userData?.email || 'unknown@system.com'
+          };
+          console.log('👤 Usuário extraído do token e banco:', currentUser);
+        } catch (dbError) {
+          console.error('❌ Erro ao buscar usuário no banco:', dbError);
+          // Fallback usando apenas dados do token
+          currentUser = {
+            id: payload.userId,
+            name: payload.email?.split('@')[0] || 'Usuário',
+            email: payload.email || 'unknown@system.com'
+          };
+        }
+      }
+    }
+    
+    // ⚠️ FALLBACK TEMPORÁRIO - deve ser removido em produção
+    if (!currentUser) {
+      console.log('⚠️ Token não encontrado ou inválido, usando usuário padrão');
+      currentUser = { 
+        name: 'Usuário Desconhecido', 
+        email: 'unknown@marketplace.com', 
+        id: 'fallback-user-id' 
+      };
+    }
+    
+    console.log(`🔄 Usuário ${currentUser?.name} atualizando produto ${id}`);
     
     // Buscar produto original para auditoria
     const originalResult = await db.query('SELECT * FROM products WHERE id = $1', [id]);
@@ -613,44 +659,43 @@ export const PUT: RequestHandler = async ({ params, request, platform }: any) =>
     
     const updatedProduct = result[0];
     
-    // Registrar auditoria usando o sistema universal
-    const changes = auditService.calculateChanges(originalProduct, updatedProduct);
+    // 📝 REGISTRAR HISTÓRICO USANDO A FUNÇÃO ESPECÍFICA
+    await logProductHistory(originalProduct, updatedProduct, id, db, currentUser);
     
-    if (Object.keys(changes).length > 0) {
+    // 📊 REGISTRAR NO SISTEMA DE AUDITORIA UNIVERSAL
+    try {
       await auditService.logAudit(
         'products',
         id,
         'update',
         {
-          changes,
+          changes: auditService.calculateChanges(originalProduct, updatedProduct),
           old_values: originalProduct,
           new_values: updatedProduct,
-                      context: {
-              user_id: currentUser?.id,
-              user_name: currentUser?.name,
-              user_email: currentUser?.email,
-              ip_address: undefined, // Will be extracted from headers instead
-              source: 'admin_panel'
-            },
+          context: {
+            user_id: currentUser?.id,
+            user_name: currentUser?.name,
+            user_email: currentUser?.email,
+            ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+            source: 'admin_panel'
+          },
           headers: request.headers,
           platform
         }
       );
-      
-      console.log(`📝 Auditoria registrada: ${Object.keys(changes).length} alterações`);
-    } else {
-      console.log('✅ Nenhuma alteração detectada');
+      console.log(`🎯 Auditoria universal registrada`);
+    } catch (auditError) {
+      console.error('❌ Erro na auditoria universal:', auditError);
     }
     
     await db.close();
     
-    console.log(`✅ Produto ${id} atualizado com sucesso`);
+    console.log(`✅ Produto ${id} atualizado com sucesso por ${currentUser?.name}`);
     
     return json({ 
       success: true, 
       data: updatedProduct,
-      message: 'Produto atualizado com sucesso',
-      changes: Object.keys(changes).length
+      message: 'Produto atualizado com sucesso'
     });
     
   } catch (error) {

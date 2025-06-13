@@ -26,4 +26,5 @@
 	onStatsLoad={config.onStatsLoad}
 	customActions={config.customActions}
 	onBulkDelete={config.onBulkDelete}
+	useInfiniteScroll={config.useInfiniteScroll}
 /> 

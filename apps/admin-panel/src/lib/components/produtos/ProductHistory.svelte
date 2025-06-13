@@ -74,7 +74,7 @@
 	function getActionColor(action: string) {
 		switch (action) {
 			case 'created': return 'text-green-600 bg-green-50 border-green-200';
-			case 'updated': return 'text-blue-600 bg-blue-50 border-blue-200';
+			case 'updated': return 'text-[#00BFB3] bg-[#00BFB3]/10 border-[#00BFB3]/20';
 			case 'deleted': return 'text-red-600 bg-red-50 border-red-200';
 			case 'published': return 'text-green-600 bg-green-50 border-green-200';
 			case 'unpublished': return 'text-gray-600 bg-gray-50 border-gray-200';

@@ -29,6 +29,7 @@
 		totalItems?: number;
 		onPageChange?: (page: number) => void;
 		showHeaderPagination?: boolean;
+		showFooterPagination?: boolean;
 		// Ordenação
 		sortBy?: string;
 		sortOrder?: 'asc' | 'desc';
@@ -56,6 +57,7 @@
 		totalItems = 0,
 		onPageChange,
 		showHeaderPagination = false,
+		showFooterPagination = true,
 		sortBy = '',
 		sortOrder = 'asc',
 		onSort,
@@ -312,7 +314,7 @@
 	</div>
 	
 	<!-- Paginação do Footer (sempre presente se houver páginas) -->
-	{#if totalPages > 1}
+	{#if showFooterPagination && totalPages > 1}
 		<div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
 			<div class="text-sm text-gray-700 text-center sm:text-left">
 				Mostrando {startItem} a {endItem} de {totalItems} resultados

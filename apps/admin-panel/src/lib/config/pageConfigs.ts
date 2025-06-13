@@ -59,6 +59,9 @@ export interface PageConfig {
     variant: string;
     action: string;
   }>;
+  
+  // Scroll infinito
+  useInfiniteScroll?: boolean;
 }
 
 /**
@@ -79,6 +82,9 @@ export const PageConfigs: Record<string, PageConfig> = {
     statsEndpoint: '/api/products/stats',
     categoriesEndpoint: '/api/categories',
     brandsEndpoint: '/api/brands',
+    
+    // Habilitar scroll infinito
+    useInfiniteScroll: true,
     
     // Colunas específicas de produtos com renders complexos
     columns: [
