@@ -7,7 +7,8 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@mktplace/shared-types': new URL('../../packages/shared-types/src/index.ts', import.meta.url).pathname,
-			'@mktplace/utils': new URL('../../packages/utils/src/index.ts', import.meta.url).pathname
+			'@mktplace/utils': new URL('../../packages/utils/src/index.ts', import.meta.url).pathname,
+			'@mktplace/shared-config': new URL('../../packages/shared-config/src/index.ts', import.meta.url).pathname
 		}
 	},
 	test: {
