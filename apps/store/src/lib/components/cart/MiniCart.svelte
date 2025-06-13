@@ -443,7 +443,11 @@
 					</div>
 					
 					<p class="text-xs text-gray-500 text-center" style="font-family: 'Lato', sans-serif;">
-						ou até {pricingConfig?.installments_default || 12}x de {formatCurrency($cartTotals.cartTotal / (pricingConfig?.installments_default || 12))}
+						ou até {pricingConfig?.installments_default || 12}x de {formatCurrency(
+							$cartTotals.cartTotal > 0 && (pricingConfig?.installments_default || 12) > 0
+								? $cartTotals.cartTotal / (pricingConfig?.installments_default || 12)
+								: 0
+						)}
 					</p>
 				</div>
 				

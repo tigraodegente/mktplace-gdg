@@ -32,6 +32,7 @@ class PricingService {
   private readonly MAX_CACHE_SIZE = 100;
   private fallbackConfig: PricingConfig;
   private isInitialized = false;
+  private initializationPromise: Promise<void> | null = null;
   
   constructor() {
     // Configurações padrão como fallback
@@ -56,21 +57,29 @@ class PricingService {
    * Inicializar o service (deve ser chamado no app startup)
    */
   async initialize(apiBaseUrl: string = '/api') {
-    try {
-      // Carregar configurações iniciais
-      await this.loadConfigs(apiBaseUrl);
-      this.isInitialized = true;
-      
-      // Auto-refresh a cada 5 minutos
-      setInterval(() => {
-        this.loadConfigs(apiBaseUrl).catch(console.error);
-      }, this.CACHE_TTL);
-      
-      console.log('✅ PricingService inicializado com sucesso');
-    } catch (error) {
-      console.warn('⚠️ Erro ao inicializar PricingService, usando fallback:', error);
-      this.isInitialized = true; // Permite uso com fallback
+    if (this.initializationPromise) {
+      return this.initializationPromise;
     }
+
+    this.initializationPromise = (async () => {
+      try {
+        // Carregar configurações iniciais
+        await this.loadConfigs(apiBaseUrl);
+        this.isInitialized = true;
+        
+        // Auto-refresh a cada 5 minutos
+        setInterval(() => {
+          this.loadConfigs(apiBaseUrl).catch(console.error);
+        }, this.CACHE_TTL);
+        
+        console.log('✅ PricingService inicializado com sucesso');
+      } catch (error) {
+        console.warn('⚠️ Erro ao inicializar PricingService, usando fallback:', error);
+        this.isInitialized = true; // Permite uso com fallback
+      }
+    })();
+
+    return this.initializationPromise;
   }
 
   /**
@@ -127,11 +136,12 @@ class PricingService {
    * Obter configurações (com cache inteligente)
    */
   async getConfigs(context?: PricingContext): Promise<PricingConfig> {
+    // Se ainda não inicializou mas tem Promise em progresso, aguardar
+    if (!this.isInitialized && this.initializationPromise) {
+      await this.initializationPromise;
+    }
+
     if (!this.isInitialized) {
-      // Só mostrar warning se não estiver em processo de inicialização
-      if (typeof window === 'undefined' || !(window as any).__pricingStoreInitialized) {
-        console.warn('⚠️ PricingService não inicializado, usando fallback');
-      }
       return this.fallbackConfig;
     }
 

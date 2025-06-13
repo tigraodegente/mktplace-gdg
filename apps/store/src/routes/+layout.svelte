@@ -23,13 +23,9 @@
 	import { toastStore } from '$lib/stores/toastStore';
 	import { unreadCount } from '$lib/stores/notificationStore';
 	import CartVersionIndicator from '$lib/features/cart/components/CartVersionIndicator.svelte';
+	import { pricingStore } from '$lib/stores/pricingStore';
 	
-	// Suite de validação completa (apenas em desenvolvimento)
-	if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-		import('$lib/features/cart/stores/validation-suite').catch(() => {
-			console.log('🧪 Suite de validação não disponível');
-		});
-	}
+	// Sistema de carrinho funcionando com store unificado
 
 	// Types
 	interface Product {
@@ -63,6 +59,11 @@
 
 	// Lifecycle
 	onMount(() => {
+		// Inicializar pricingStore
+		pricingStore.initialize().catch(error => {
+			console.warn('Erro ao inicializar pricingStore:', error);
+		});
+		
 		// Inicializar cache do frontend
 		frontendCache.init().then(() => {
 			frontendCache.preload();

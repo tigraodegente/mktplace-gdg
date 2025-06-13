@@ -15,6 +15,7 @@ interface GuestData {
 }
 import { AppmaxService } from '$lib/services/integrations/appmax/service';
 import { logger } from '$lib/utils/logger';
+import { sanitizeGuestData, sanitizeAddress, checkRateLimit } from '$lib/utils/security';
 
 interface CreateOrderRequest {
   items: Array<{
@@ -135,17 +136,23 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       }, { status: 400 });
     }
 
-    // Debug: log do estado de autenticação e dados recebidos
-    console.log('🔍 [CREATE-ORDER] Estado da requisição:', {
-      hasUser: !!authResult.user,
-      userId: authResult.user?.id || 'N/A',
-      hasGuestData: !!orderData.guestData,
-      guestEmail: orderData.guestData?.email || 'N/A'
-    });
+    // 🔒 APLICAR RATE LIMITING
+    const clientIP = request.headers.get('cf-connecting-ip') || 
+                     request.headers.get('x-forwarded-for') || 
+                     'unknown';
+    
+    if (!checkRateLimit(`checkout:${clientIP}`, 5, 300000)) { // 5 requests per 5 minutes
+      return json({
+        success: false,
+        error: { 
+          message: 'Muitas tentativas de checkout. Tente novamente em alguns minutos.',
+          code: 'RATE_LIMIT_EXCEEDED'
+        }
+      }, { status: 429 });
+    }
 
     // Validar dados de convidado se não estiver logado
     if (!authResult.user && !orderData.guestData) {
-      console.log('❌ [CREATE-ORDER] Usuário não logado e sem dados de convidado');
       return json({
         success: false,
         error: { 
@@ -155,20 +162,34 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       }, { status: 400 });
     }
 
-    // Validar campos obrigatórios do convidado
+    // 🔒 SANITIZAR E VALIDAR DADOS DE CONVIDADO
+    let sanitizedGuestData: any = null;
     if (!authResult.user && orderData.guestData) {
-      const { email, name, phone, sessionId } = orderData.guestData;
-      if (!email || !name || !phone || !sessionId) {
-        console.log('❌ [CREATE-ORDER] Dados de convidado incompletos:', { email: !!email, name: !!name, phone: !!phone, sessionId: !!sessionId });
+      try {
+        sanitizedGuestData = sanitizeGuestData(orderData.guestData);
+      } catch (error) {
         return json({
           success: false,
           error: { 
-            message: 'Email, nome, telefone e sessionId são obrigatórios para checkout de convidado.',
-            code: 'GUEST_DATA_INCOMPLETE',
-            details: { email: !!email, name: !!name, phone: !!phone, sessionId: !!sessionId }
+            message: error instanceof Error ? error.message : 'Dados de convidado inválidos',
+            code: 'GUEST_DATA_INVALID'
           }
         }, { status: 400 });
       }
+    }
+    
+    // 🔒 SANITIZAR ENDEREÇO
+    let sanitizedAddress: any;
+    try {
+      sanitizedAddress = sanitizeAddress(orderData.shippingAddress);
+    } catch (error) {
+      return json({
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : 'Dados de endereço inválidos',
+          code: 'ADDRESS_INVALID'
+        }
+      }, { status: 400 });
     }
 
     // Tentar criar pedido com timeout
@@ -179,14 +200,12 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       const queryPromise = (async () => {
         // Usar transação para manter integridade
         return await db.transaction(async (sql) => {
-          console.log('[CREATE-ORDER] Transação iniciada');
           
           // STEP 1: Validar produtos e calcular totais
           let subtotal = 0;
           const orderItems = [];
 
           for (const item of orderData.items) {
-            console.log(`[CREATE-ORDER] Validando produto: ${item.productId}`);
             
             const products = await sql`
               SELECT id, name, price, quantity, is_active
@@ -216,7 +235,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             });
           }
 
-          console.log('[CREATE-ORDER] Produtos validados, criando pedido...');
 
           // STEP 2: Calcular frete
           const shippingCost = subtotal > 100 ? 0 : 15.90;
@@ -291,19 +309,18 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               ${shippingCost}, 
               ${discount}, 
               ${total}, 
-              ${JSON.stringify(orderData.shippingAddress)}::jsonb,
+              ${JSON.stringify(sanitizedAddress)}::jsonb,
               ${orderData.couponCode || null}, 
               ${orderData.notes || null},
-              ${orderData.guestData?.email || null},
-              ${orderData.guestData?.name || null},
-              ${orderData.guestData?.phone || null},
-              ${orderData.guestData?.acceptsMarketing || false},
-              ${orderData.guestData?.sessionId || null}
+              ${sanitizedGuestData?.email || null},
+              ${sanitizedGuestData?.name || null},
+              ${sanitizedGuestData?.phone || null},
+              ${sanitizedGuestData?.acceptsMarketing || false},
+              ${sanitizedGuestData?.sessionId || null}
             ) RETURNING id, order_number, total, created_at
           `;
           
           const order = orders[0];
-          console.log(`[CREATE-ORDER] Pedido criado: ${order.order_number}`);
 
           // STEP 6: Adicionar itens e reduzir estoque
           for (const [index, item] of orderItems.entries()) {
@@ -357,7 +374,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                   WHERE id = ${item.productId}
                 `;
                 
-                console.log(`[CREATE-ORDER] Estoque atualizado: produto ${item.productId}, de ${currentQuantity} para ${newQuantity}`);
                 
                 // Criar movimento de estoque para rastreabilidade
                 try {
@@ -380,9 +396,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                       ${authResult.user?.id || null}
                     )
                   `;
-                  console.log(`[CREATE-ORDER] Movimento de estoque registrado para produto ${item.productId}`);
                 } catch (movementError) {
-                  console.log(`[CREATE-ORDER] Erro ao criar movimento de estoque (não crítico): ${movementError}`);
                   // Continuar sem falhar - o importante é que o estoque foi atualizado
                 }
               }
@@ -400,7 +414,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
             }
           }
 
-          console.log('[CREATE-ORDER] Itens criados com sucesso');
 
           // STEP 7: Incrementar uso do cupom
           if (orderData.couponCode) {
@@ -585,7 +598,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.log(`[CREATE-ORDER] Erro na transação: ${errorMessage}`, error);
       
       // Retornar erro específico se for validação
       if (errorMessage.includes('Produto') || errorMessage.includes('Cupom') || errorMessage.includes('Estoque') || errorMessage.includes('Timeout')) {

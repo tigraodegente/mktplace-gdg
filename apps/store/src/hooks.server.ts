@@ -1,7 +1,23 @@
 import type { Handle } from '@sveltejs/kit';
+import { checkRateLimit } from '$lib/utils/security';
 
 export const handle: Handle = async ({ event, resolve }) => {
-  // Headers de segurança e performance otimizados
+  // 🔒 APLICAR RATE LIMITING GLOBAL
+  const clientIP = event.request.headers.get('cf-connecting-ip') || 
+                   event.request.headers.get('x-forwarded-for') || 
+                   event.getClientAddress();
+  
+  // Rate limiting mais restritivo para APIs críticas
+  if (event.url.pathname.startsWith('/api/checkout/create-order')) {
+    if (!checkRateLimit(`api-checkout:${clientIP}`, 3, 300000)) { // 3 per 5 minutes
+      return new Response('Rate limit exceeded', { status: 429 });
+    }
+  } else if (event.url.pathname.startsWith('/api/')) {
+    if (!checkRateLimit(`api:${clientIP}`, 60, 60000)) { // 60 per minute
+      return new Response('Rate limit exceeded', { status: 429 });
+    }
+  }
+
   const response = await resolve(event, {
     preload: ({ type, path }) => {
       // Preload crítico para fonts, CSS e recursos essenciais
@@ -127,6 +143,29 @@ export const handle: Handle = async ({ event, resolve }) => {
       '<https://fonts.gstatic.com>; rel=preconnect; crossorigin'
     ].join(', '));
   }
+
+  // 🔒 HEADERS DE SEGURANÇA
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  
+  // CSP básico para produção
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "img-src 'self' data: https:; " +
+      "connect-src 'self' https:;"
+    );
+  }
+
+  // Remover headers que revelam informações do servidor
+  response.headers.delete('Server');
+  response.headers.delete('X-Powered-By');
 
   return response;
 };

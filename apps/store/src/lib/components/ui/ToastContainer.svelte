@@ -1,7 +1,7 @@
 <script lang="ts">
   import Toast from './Toast.svelte';
   import { toastStore } from '$lib/stores/toastStore';
-  import { flip } from 'svelte/animate';
+  import { fade } from 'svelte/transition';
   
   // Agrupar toasts por posição
   const toastsByPosition = $derived(() => {
@@ -23,7 +23,11 @@
 {#each Object.entries(toastsByPosition()) as [position, toasts]}
   <div class="toast-group toast-group--{position}" aria-live="polite">
     {#each toasts as toast (toast.id)}
-      <div animate:flip={{ duration: 300 }}>
+      <div 
+        in:fade={{ duration: 300, delay: 100 }}
+        out:fade={{ duration: 200 }}
+        class="toast-item"
+      >
         <Toast
           {...toast}
           onDismiss={() => toastStore.remove(toast.id)}
@@ -41,6 +45,10 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+  
+  .toast-item {
+    width: 100%;
   }
   
   .toast-group--top-right {

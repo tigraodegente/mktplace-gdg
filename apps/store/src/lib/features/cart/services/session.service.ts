@@ -244,7 +244,6 @@ export function cleanupExpiredSessions(maxAgeMinutes: number = 60 * 24 * 7): voi
     const sessionAge = sessionService.getSessionAge();
     
     if (sessionAge && sessionAge > maxAgeMinutes) {
-      console.log(`🧹 Limpando sessão expirada (${sessionAge}min)`);
       sessionService.clearSession();
     }
   } catch (error) {

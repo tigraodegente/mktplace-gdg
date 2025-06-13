@@ -273,8 +273,8 @@ function createCartStore() {
   const cartTotals = derived(
     [sellerGroups, appliedCoupon], 
     ([$groups, $appliedCoupon]) => {
-      const cartSubtotal = $groups.reduce((sum, group) => sum + group.subtotal, 0);
-      const totalDiscount = $groups.reduce((sum, group) => sum + group.discount, 0);
+      const cartSubtotal = $groups.reduce((sum, group) => sum + (group.subtotal || 0), 0);
+      const totalDiscount = $groups.reduce((sum, group) => sum + (group.discount || 0), 0);
       
       // Calcular desconto do cupom (apenas cupons normais, não frete grátis)
       let couponDiscount = 0;
@@ -283,7 +283,6 @@ function createCartStore() {
         if ($appliedCoupon.type === 'free_shipping') {
           // Para cupom de frete grátis, não calcular desconto aqui
           // O sistema da página do carrinho gerencia isso baseado no frete real
-          console.log(`🚚 CUPOM FRETE GRÁTIS DETECTADO - Gerenciado pelo sistema real da página`);
         } else {
           // Cupom de desconto normal
           couponDiscount = calculateDiscount(cartSubtotal, $appliedCoupon);
@@ -291,17 +290,23 @@ function createCartStore() {
       }
       
       const totalDiscountWithCoupon = totalDiscount + couponDiscount;
-      const finalTotal = cartSubtotal - totalDiscountWithCoupon;
+      const finalTotal = Math.max(0, cartSubtotal - totalDiscountWithCoupon);
+      
+      // Proteger contra NaN nos cálculos
+      const safeCartSubtotal = isNaN(cartSubtotal) ? 0 : cartSubtotal;
+      const safeTotalDiscount = isNaN(totalDiscountWithCoupon) ? 0 : totalDiscountWithCoupon;
+      const safeCouponDiscount = isNaN(couponDiscount) ? 0 : couponDiscount;
+      const safeCartTotal = isNaN(finalTotal) ? 0 : finalTotal;
       
       return {
-        cartSubtotal,
+        cartSubtotal: safeCartSubtotal,
         totalShipping: 0, // Sempre 0 aqui, calculado na página do carrinho
-        totalDiscount: totalDiscountWithCoupon,
-        couponDiscount,
+        totalDiscount: safeTotalDiscount,
+        couponDiscount: safeCouponDiscount,
         freeShippingSavings: 0, // Calculado na página do carrinho
         hasFreeShipping: $appliedCoupon?.type === 'free_shipping',
-        cartTotal: finalTotal,
-        installmentValue: finalTotal / 12
+        cartTotal: safeCartTotal,
+        installmentValue: safeCartTotal > 0 ? safeCartTotal / 12 : 0
       };
     }
   );
@@ -410,28 +415,16 @@ function createCartStore() {
   
   // Remover cupom
   function removeCoupon() {
-    console.log('🗑️ REMOVENDO CUPOM');
     const currentCoupon = get(appliedCoupon);
     if (currentCoupon) {
-      console.log('📋 Cupom removido:', currentCoupon.code);
       
       const beforeTotals = get(cartTotals);
-      console.log('💰 TOTAIS ANTES DA REMOÇÃO:');
-      console.log('├─ Subtotal:', beforeTotals.cartSubtotal.toFixed(2));
-      console.log('├─ Desconto:', beforeTotals.totalDiscount.toFixed(2));
-      console.log('└─ Total:', beforeTotals.cartTotal.toFixed(2));
     }
     
     appliedCoupon.set(null);
     
     setTimeout(() => {
       const afterTotals = get(cartTotals);
-      console.log('💰 TOTAIS APÓS REMOÇÃO:');
-      console.log('├─ Subtotal:', afterTotals.cartSubtotal.toFixed(2));
-      console.log('├─ Desconto:', afterTotals.totalDiscount.toFixed(2));
-      console.log('└─ Total:', afterTotals.cartTotal.toFixed(2));
-      console.log('🗑️ REMOÇÃO DE CUPOM - CONCLUÍDA');
-      console.log('=====================================');
     }, 100);
   }
   

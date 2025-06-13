@@ -50,11 +50,9 @@
     error = '';
     
     try {
-      console.log('🔐 AuthModal: Usando AuthService para login...');
       const result = await AuthService.login(loginData);
       
       if (result.success && result.data?.user) {
-        console.log('✅ AuthModal: Login bem-sucedido via AuthService');
         dispatch('login', result.data);
         closeModal();
       } else {
@@ -87,12 +85,10 @@
     error = '';
     
     try {
-      console.log('🔐 AuthModal: Usando AuthService para registro...');
       const { confirmPassword, ...userData } = registerData;
       const result = await AuthService.register(userData);
       
       if (result.success && result.data?.user) {
-        console.log('✅ AuthModal: Registro bem-sucedido via AuthService');
         dispatch('register', result.data);
         closeModal();
       } else {

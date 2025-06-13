@@ -188,10 +188,11 @@
 		} catch (error) {
 			console.warn('Erro ao calcular preços dinâmicos, usando fallback:', error);
 			// Fallback para valores originais
-			pixPrice = finalPrice() * 0.95; // 5% desconto PIX
+			const fallbackPrice = finalPrice();
+			pixPrice = fallbackPrice * 0.95; // 5% desconto PIX
 			installmentInfo = { 
 				number: 5, 
-				value: finalPrice() / 5, 
+				value: fallbackPrice > 0 ? fallbackPrice / 5 : 0, 
 				hasInterest: false 
 			};
 		}

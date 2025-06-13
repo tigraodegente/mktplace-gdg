@@ -26,7 +26,6 @@
   // Se já está autenticado ao carregar o componente, avançar automaticamente
   $effect(() => {
     if ($isAuthenticated && !authLoading) {
-      console.log('🔄 CheckoutAuth: Usuário já estava autenticado, avançando...');
       dispatch('next', { user: $user });
     }
   });
@@ -41,16 +40,13 @@
     authError = '';
     
     try {
-      console.log('🔐 CheckoutAuth: Usando AuthService para login...');
       const result = await AuthService.login(loginData);
       
       if (result.success && result.data?.user) {
-        console.log('✅ CheckoutAuth: Login bem-sucedido via AuthService');
         
         // ✅ Garantir que o evento seja disparado imediatamente
         dispatch('next', { user: result.data.user });
         
-        console.log('🔄 CheckoutAuth: Evento next disparado para prosseguir checkout');
       } else {
         authError = result.error?.message || 'Erro ao fazer login';
       }
@@ -81,12 +77,10 @@
     authError = '';
     
     try {
-      console.log('🔐 CheckoutAuth: Usando AuthService para registro...');
       const { confirmPassword, ...userData } = registerData;
       const result = await AuthService.register(userData);
       
       if (result.success && result.data?.user) {
-        console.log('✅ CheckoutAuth: Registro bem-sucedido via AuthService');
         dispatch('next', { user: result.data.user });
       } else {
         authError = result.error?.message || 'Erro ao criar conta';
@@ -106,6 +100,7 @@
   
   // Dados do formulário de convidado
   let guestFormData = $state({
+    name: '',
     email: '',
     phone: '',
     acceptsMarketing: false
@@ -115,6 +110,10 @@
   
   function validateGuestForm(): boolean {
     guestFormErrors = {};
+    
+    if (!guestFormData.name.trim()) {
+      guestFormErrors.name = 'Nome é obrigatório';
+    }
     
     if (!guestFormData.email.trim()) {
       guestFormErrors.email = 'Email é obrigatório';
@@ -159,6 +158,8 @@
     authError = '';
     loginData = { email: '', password: '' };
     registerData = { name: '', email: '', password: '', confirmPassword: '' };
+    guestFormData = { name: '', email: '', phone: '', acceptsMarketing: false };
+    guestFormErrors = {};
   }
 </script>
 
@@ -406,6 +407,24 @@
       </p>
       
       <form onsubmit={(e) => { e.preventDefault(); handleGuestSubmit(); }} class="space-y-4">
+        <div>
+          <label for="guest-name" class="block text-sm font-medium text-gray-700 mb-1">
+            Nome completo *
+          </label>
+          <input
+            id="guest-name"
+            type="text"
+            bind:value={guestFormData.name}
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00BFB3] focus:border-transparent {guestFormErrors.name ? 'border-red-500' : ''}"
+            placeholder="Seu nome completo"
+            disabled={authLoading}
+            required
+          />
+          {#if guestFormErrors.name}
+            <p class="text-red-500 text-xs mt-1">{guestFormErrors.name}</p>
+          {/if}
+        </div>
+        
         <div>
           <label for="guest-email" class="block text-sm font-medium text-gray-700 mb-1">
             E-mail *

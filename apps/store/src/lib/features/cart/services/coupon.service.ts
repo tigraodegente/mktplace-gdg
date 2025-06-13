@@ -293,7 +293,6 @@ export class CartCouponService {
    */
   private log(message: string, data?: any): void {
     if (this.debug) {
-      console.log(`[CouponService] ${message}`, data || '');
     }
   }
   

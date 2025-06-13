@@ -63,12 +63,10 @@
         // Se não tem nome, focar no nome primeiro
         if (!addressForm.name && nameInput) {
           nameInput.focus();
-          console.log('🎯 Foco no campo Nome');
         }
         // Senão, focar no CEP (campo mais importante)
         else if (cepInput) {
           cepInput.focus();
-          console.log('🎯 Foco no campo CEP');
         }
       }, isMobile ? 600 : 400);
       
@@ -123,18 +121,15 @@
     }
     
     if (currentUser || $isAuthenticated) {
-      console.log('🏠 Usuário autenticado - verificando endereços...');
       await loadUserAddresses();
       
       // NOVA LÓGICA SIMPLIFICADA
       if (userAddresses.length > 0) {
         // Tem endereços salvos - mostrar seleção
         addressMode = 'select';
-        console.log('✅ Endereços encontrados, modo seleção ativado');
       } else {
         // Não tem endereços - ir direto para formulário
         addressMode = 'form';
-        console.log('📝 Nenhum endereço encontrado, modo formulário ativado');
         scrollToFormAndFocus(500);
       }
     } else {
@@ -146,19 +141,16 @@
   
   async function loadUserAddresses() {
     if (!currentUser && !$isAuthenticated) {
-      console.log('❌ Usuário não autenticado');
       return;
     }
     
     if (loadingAddresses) {
-      console.log('🏠 Já carregando endereços...');
       return;
     }
     
     loadingAddresses = true;
     
     try {
-      console.log('🏠 Carregando endereços do usuário...');
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -171,7 +163,6 @@
       clearTimeout(timeoutId);
       
       if (response.status === 401) {
-        console.log('🔒 Sessão expirada - limpando dados');
         userAddresses = [];
         return;
       }
@@ -180,7 +171,6 @@
       
       if (data.success) {
         userAddresses = data.data || [];
-        console.log('✅ Endereços carregados:', userAddresses.length);
       } else {
         console.error('❌ Erro ao carregar endereços:', data.error);
         userAddresses = [];
@@ -190,7 +180,6 @@
       userAddresses = [];
       
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('⏰ Timeout na requisição de endereços (10s)');
       }
     } finally {
       loadingAddresses = false;
@@ -272,14 +261,12 @@
     if (!validateAndSetErrors()) return false;
     
     if (!currentUser && !$isAuthenticated) {
-      console.log('❌ Usuário não autenticado - não pode salvar');
       return false;
     }
     
     savingAddress = true;
     
     try {
-      console.log('💾 Salvando endereço...');
       const response = await fetch('/api/addresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -300,10 +287,8 @@
       });
       
       const result = await response.json();
-      console.log('📊 Resultado do salvamento:', result);
       
       if (result.success) {
-        console.log('✅ Endereço salvo com sucesso!');
         await loadUserAddresses(); // Recarregar lista
         return true;
       } else {
@@ -336,7 +321,6 @@
       label: address.label || ''
     };
     
-    console.log('✅ Endereço selecionado:', address.label);
     
     // Fechar modal
     showAddressModal = false;
@@ -391,7 +375,6 @@
                              addressForm.street;
     
     if (shouldSaveAddress) {
-      console.log('💾 Tentando salvar endereço automaticamente...');
       const saved = await saveNewAddress();
       if (!saved) {
         // Se falhou ao salvar, perguntar se quer continuar
@@ -414,7 +397,6 @@
       zipCode: addressForm.zipCode.replace(/\D/g, '')
     };
     
-    console.log('➡️ Prosseguindo para pagamento com endereço:', addressData);
     
     dispatch('next', { 
       address: selectedAddress,

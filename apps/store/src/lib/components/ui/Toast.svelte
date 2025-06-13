@@ -68,13 +68,23 @@
   };
   
   const flyDirection = {
-    'top-right': { x: 100 },
-    'top-left': { x: -100 },
-    'bottom-right': { x: 100 },
-    'bottom-left': { x: -100 },
-    'top-center': { y: -100 },
-    'bottom-center': { y: 100 }
+    'top-right': { x: 100, y: 0 },
+    'top-left': { x: -100, y: 0 },
+    'bottom-right': { x: 100, y: 0 },
+    'bottom-left': { x: -100, y: 0 },
+    'top-center': { x: 0, y: -100 },
+    'bottom-center': { x: 0, y: 100 }
   };
+  
+  // Função para garantir valores válidos na animação
+  function getSafeDirection(pos: keyof typeof flyDirection) {
+    const direction = flyDirection[pos];
+    return {
+      x: isNaN(direction.x) ? 0 : direction.x,
+      y: isNaN(direction.y) ? 0 : direction.y,
+      duration: 300
+    };
+  }
   
   function dismiss() {
     visible = false;
@@ -106,7 +116,7 @@
 {#if visible}
   <div
     class="toast-wrapper"
-    transition:fly={{ ...flyDirection[position], duration: 300 }}
+    transition:fly={{ ...getSafeDirection(position) }}
   >
     <div
       class="toast"

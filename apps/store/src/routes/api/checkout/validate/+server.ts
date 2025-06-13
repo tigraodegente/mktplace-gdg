@@ -32,14 +32,9 @@ interface ValidationResult {
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
-    console.log('✅ Checkout Validate - Estratégia híbrida iniciada');
     
     // Verificar autenticação (opcional - permite checkout de convidado)
     const authResult = await optionalAuth(cookies, platform);
-    console.log('🔍 [VALIDATE] Estado de autenticação:', {
-      hasUser: !!authResult.user,
-      userId: authResult.user?.id || 'N/A'
-    });
 
     const { items, zipCode, couponCode } = await request.json();
 
@@ -181,7 +176,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       
-      console.log(`✅ Validação OK: ${result.isValid ? 'Válido' : 'Inválido'} (${result.errors.length} erros)`);
       
       return json({
         success: true,
@@ -190,7 +184,6 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       });
       
     } catch (error) {
-      console.log(`⚠️ Erro na validação: ${error instanceof Error ? error.message : 'Erro'} - usando fallback`);
       
       // FALLBACK: Validação básica sem banco (menos rigorosa mas funcional)
       const fallbackValidation: ValidationResult = {

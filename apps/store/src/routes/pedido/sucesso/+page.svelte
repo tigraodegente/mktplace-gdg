@@ -7,16 +7,13 @@
   let orderNumber = '';
   let loading = true;
   let orderDetails: any = null;
+  let isGuestOrder = false;
   
   onMount(async () => {
-    console.log('🎉 PÁGINA DE SUCESSO CARREGADA!');
-    console.log('🌐 URL atual:', window.location.href);
     
     orderNumber = $page.url.searchParams.get('order') || '';
-    console.log('📋 Número do pedido da URL:', orderNumber);
     
     if (!orderNumber) {
-      console.log('❌ Nenhum número de pedido encontrado na URL');
       goto('/');
       return;
     }
@@ -24,31 +21,39 @@
     // Primeiro tentar buscar do sessionStorage
     if (typeof window !== 'undefined') {
       const savedResult = sessionStorage.getItem('orderResult');
-      console.log('💾 Dados do sessionStorage:', savedResult ? 'ENCONTRADOS' : 'NÃO ENCONTRADOS');
       
       if (savedResult) {
         try {
           const sessionData = JSON.parse(savedResult);
-          console.log('📋 Dados do sessionStorage parseados:', sessionData);
           
           // Usar dados do sessionStorage se disponíveis
           if (sessionData.order) {
             orderDetails = sessionData.order;
-            console.log('✅ Usando dados do sessionStorage');
           }
         } catch (e) {
-          console.log('⚠️ Erro ao parsear sessionStorage:', e);
         }
       }
     }
     
-    // Se não tem dados do sessionStorage ou usuário logado, buscar da API
-    if (!orderDetails && $isAuthenticated && orderNumber) {
-      console.log('🔄 Buscando dados da API para pedido:', orderNumber);
-      
+    // Função para tentar buscar pedido de convidado
+    async function tryLoadGuestOrder() {
       try {
-        // Tentar buscar direto pelo ID do pedido
-        const response = await fetch(`/api/orders/${orderNumber}`, {
+        // Verificar dados de checkout de convidado
+        const guestCheckoutData = sessionStorage.getItem('guest-checkout-data');
+        if (!guestCheckoutData) {
+          return false;
+        }
+        
+        const guestData = JSON.parse(guestCheckoutData);
+        const guestEmail = guestData.email;
+        
+        if (!guestEmail) {
+          return false;
+        }
+        
+        
+        // Buscar via nova API de convidados
+        const response = await fetch(`/api/orders/guest/${orderNumber}?email=${encodeURIComponent(guestEmail)}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -56,34 +61,66 @@
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {
-            console.log('✅ Dados da API carregados:', result.data);
             orderDetails = result.data;
-          } else {
-            console.log('⚠️ API não retornou dados válidos, tentando busca geral');
-            
-            // Fallback: buscar lista de pedidos e encontrar o correto
-            const listResponse = await fetch(`/api/orders?limit=10`);
-            const listResult = await listResponse.json();
-            
-            if (listResult.success && listResult.data.orders.length > 0) {
-              const recentOrder = listResult.data.orders.find((order: any) => 
-                order.orderNumber === orderNumber
-              );
+            isGuestOrder = true;
+            return true;
+          }
+        }
+        
+        return false;
+        
+      } catch (error) {
+        console.error('❌ Erro ao tentar buscar pedido de convidado:', error);
+        return false;
+      }
+    }
+    
+    // Se não tem dados do sessionStorage, tentar buscar da API
+    if (!orderDetails && orderNumber) {
+      
+      // STEP 1: Tentar como pedido de convidado primeiro
+      const guestSuccess = await tryLoadGuestOrder();
+      
+      // STEP 2: Se não conseguiu como convidado e usuário logado, tentar API normal
+      if (!guestSuccess && $isAuthenticated) {
+        
+        try {
+          // Tentar buscar direto pelo ID do pedido
+          const response = await fetch(`/api/orders/${orderNumber}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              orderDetails = result.data;
+              isGuestOrder = false;
+            } else {
               
-              if (recentOrder) {
-                console.log('✅ Pedido encontrado na lista:', recentOrder);
-                orderDetails = recentOrder;
+              // Fallback: buscar lista de pedidos e encontrar o correto
+              const listResponse = await fetch(`/api/orders?limit=10`);
+              const listResult = await listResponse.json();
+              
+              if (listResult.success && listResult.data.orders.length > 0) {
+                const recentOrder = listResult.data.orders.find((order: any) => 
+                  order.orderNumber === orderNumber
+                );
+                
+                if (recentOrder) {
+                  orderDetails = recentOrder;
+                  isGuestOrder = false;
+                }
               }
             }
           }
+        } catch (error) {
+          console.error('❌ Erro ao buscar detalhes do pedido (usuário logado):', error);
         }
-      } catch (error) {
-        console.error('❌ Erro ao buscar detalhes do pedido:', error);
       }
     }
     
     loading = false;
-    console.log('✅ Carregamento concluído. OrderDetails:', !!orderDetails);
   });
   
   function formatCurrency(value: number): string {
@@ -104,32 +141,22 @@
   }
   
   function getProductImage(item: any): string {
-    console.log('🖼️ ========== FUNÇÃO getProductImage CHAMADA ==========');
-    console.log('🖼️ Item recebido:', item);
-    console.log('🖼️ Tipo do item:', typeof item);
-    console.log('🖼️ Item.productImage:', item?.productImage);
     
     // 1. Novo formato da API: productImage (string única)
     if (item?.productImage && typeof item.productImage === 'string') {
       const imageUrl = item.productImage;
-      console.log('✅ Usando item.productImage:', imageUrl);
-      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
       return imageUrl;
     }
     
     // 2. Formato antigo: item.product.images (array)
     if (item?.product?.images && Array.isArray(item.product.images) && item.product.images.length > 0) {
       const imageUrl = item.product.images[0];
-      console.log('✅ Usando item.product.images[0]:', imageUrl);
-      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
       return imageUrl;
     }
     
     // 3. Formato alternativo: item.product.image (string única)
     if (item?.product?.image && typeof item.product.image === 'string') {
       const imageUrl = item.product.image;
-      console.log('✅ Usando item.product.image:', imageUrl);
-      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
       return imageUrl;
     }
     
@@ -139,12 +166,9 @@
         const parsedImages = JSON.parse(item.product.images);
         if (Array.isArray(parsedImages) && parsedImages.length > 0) {
           const imageUrl = parsedImages[0];
-          console.log('✅ Usando item.product.images (JSON parsed):', imageUrl);
-          console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + imageUrl + ' ==========');
           return imageUrl;
         }
       } catch (e) {
-        console.log('⚠️ Erro ao fazer parse de item.product.images como JSON');
       }
     }
     
@@ -154,22 +178,16 @@
     
     if (productSlug) {
       const constructedUrl = `/api/products/${productSlug}/image`;
-      console.log('🔧 Usando URL construída com slug:', constructedUrl);
-      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + constructedUrl + ' ==========');
       return constructedUrl;
     }
     
     if (productId) {
       const constructedUrl = `/api/products/${productId}/image`;
-      console.log('🔧 Usando URL construída com ID:', constructedUrl);
-      console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + constructedUrl + ' ==========');
       return constructedUrl;
     }
     
     // 6. Fallback para placeholder
-    console.log('❌ Nenhuma imagem encontrada, usando placeholder');
     const fallbackUrl = `/api/placeholder/80/80`;
-    console.log('🖼️ ========== URL FINAL DA IMAGEM: ' + fallbackUrl + ' ==========');
     return fallbackUrl;
   }
 </script>
@@ -322,7 +340,6 @@
               
               <div class="divide-y divide-gray-200">
                 {#each orderDetails.items as item}
-                  {console.log('🎨 RENDERIZANDO ITEM:', item)}
                   <div class="p-4 flex items-center space-x-4">
                     <div class="flex-shrink-0">
                       <img 
@@ -331,17 +348,14 @@
                         class="w-16 h-16 object-cover rounded-lg border border-gray-200"
                         onerror={(e) => {
                           const img = e.target as HTMLImageElement;
-                          console.log('❌ Erro ao carregar imagem:', img.src);
                           
                           // Primeiro fallback: tentar placeholder do produto
                           if (!img.src.includes('placeholder')) {
-                            console.log('🔄 Tentando placeholder...');
                             img.src = '/api/placeholder/80/80';
                             return;
                           }
                           
                           // Segundo fallback: imagem padrão
-                          console.log('🔄 Usando imagem padrão...');
                           img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAzMkM0Ni41MDk3IDMyIDUwIDI4LjUwOTcgNTAgMjZDNTAgMjMuNDkwMyA0Ni41MDk3IDIwIDQ0IDIwQzQxLjQ5MDMgMjAgMzggMjMuNDkwMzM4IDM4IDIyNkMzOCAyOC41MDk3IDQxLjQ5MDMgMzIgNDQgMzJaIiBmaWxsPSIjOUIxMDE3Ii8+CjxwYXRoIGQ9Ik0yNCA1MEgyNFY0NkgyNFY1MFoiIGZpbGw9IiM5QjEwMTciLz4KPC9zdmc+Cg==';
                         }}
                       />
@@ -431,7 +445,7 @@
         <!-- Ações Principais -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            {#if $isAuthenticated}
+            {#if $isAuthenticated && !isGuestOrder}
               <a
                 href="/meus-pedidos"
                 class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
@@ -441,6 +455,23 @@
                 </svg>
                 Acompanhar Pedido
               </a>
+            {/if}
+            
+            {#if isGuestOrder}
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <div class="flex items-start space-x-3">
+                  <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h4 class="text-sm font-medium text-yellow-800">Pedido como Convidado</h4>
+                    <p class="text-sm text-yellow-700 mt-1">
+                      Como você fez o pedido como convidado, você receberá todas as atualizações por e-mail. 
+                      Para acompanhar pedidos online, crie uma conta na próxima compra.
+                    </p>
+                  </div>
+                </div>
+              </div>
             {/if}
             
             <a
