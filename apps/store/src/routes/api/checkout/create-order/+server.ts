@@ -135,11 +135,23 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       }, { status: 400 });
     }
 
+    // Debug: log do estado de autenticação e dados recebidos
+    console.log('🔍 [CREATE-ORDER] Estado da requisição:', {
+      hasUser: !!authResult.user,
+      userId: authResult.user?.id || 'N/A',
+      hasGuestData: !!orderData.guestData,
+      guestEmail: orderData.guestData?.email || 'N/A'
+    });
+
     // Validar dados de convidado se não estiver logado
     if (!authResult.user && !orderData.guestData) {
+      console.log('❌ [CREATE-ORDER] Usuário não logado e sem dados de convidado');
       return json({
         success: false,
-        error: { message: 'Dados do convidado são obrigatórios para checkout sem login' }
+        error: { 
+          message: 'Para checkout sem login, é necessário fornecer dados de convidado (email, telefone).',
+          code: 'GUEST_DATA_REQUIRED'
+        }
       }, { status: 400 });
     }
 
@@ -147,9 +159,14 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
     if (!authResult.user && orderData.guestData) {
       const { email, name, phone, sessionId } = orderData.guestData;
       if (!email || !name || !phone || !sessionId) {
+        console.log('❌ [CREATE-ORDER] Dados de convidado incompletos:', { email: !!email, name: !!name, phone: !!phone, sessionId: !!sessionId });
         return json({
           success: false,
-          error: { message: 'Email, nome, telefone e sessionId são obrigatórios para convidados' }
+          error: { 
+            message: 'Email, nome, telefone e sessionId são obrigatórios para checkout de convidado.',
+            code: 'GUEST_DATA_INCOMPLETE',
+            details: { email: !!email, name: !!name, phone: !!phone, sessionId: !!sessionId }
+          }
         }, { status: 400 });
       }
     }

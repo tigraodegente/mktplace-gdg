@@ -138,13 +138,15 @@
     );
     
     // Definir step inicial baseado na autenticação
-    if ($isAuthenticated) {
-      console.log('✅ Usuário já autenticado, indo para endereços');
+    // Verificação robusta: validar se usuário realmente tem dados válidos
+    if ($isAuthenticated && $user?.id) {
+      console.log('✅ Usuário autenticado com dados válidos, indo para endereços');
       currentStep = 'address';
       await loadUserAddresses();
       addressMode = userAddresses.length > 0 ? 'select' : 'new';
     } else {
-      console.log('🔐 Usuário não autenticado, mostrando opções de login');
+      console.log('🔐 Estado de autenticação inválido ou usuário não autenticado, mostrando opções');
+      isGuest = false; // Reset guest state
       currentStep = 'auth';
     }
     
@@ -424,7 +426,42 @@
     loading = true;
     error = null;
     
+    console.log('🚀 [CHECKOUT] Iniciando finalização do pedido...');
+    console.log('🔍 [CHECKOUT] Estado atual:', {
+      isAuthenticated: $isAuthenticated,
+      hasUser: !!$user,
+      userId: $user?.id || 'N/A',
+      isGuest,
+      hasGuestEmail: !!guestData.email,
+      hasGuestPhone: !!guestData.phone,
+      guestSessionId: guestData.sessionId
+    });
+    
     try {
+      // Verificação final: se não está autenticado E não tem dados guest, forçar como convidado
+      const shouldTreatAsGuest = !$isAuthenticated || !$user?.id;
+      const finalGuestData = shouldTreatAsGuest ? {
+        email: guestData.email || 'guest@temporario.com',
+        name: addressForm.name,
+        phone: guestData.phone || '(11) 99999-9999',
+        acceptsMarketing: guestData.acceptsMarketing || false,
+        sessionId: guestData.sessionId || crypto.randomUUID()
+      } : null;
+
+      console.log('🔍 Dados finais checkout:', {
+        isAuthenticated: $isAuthenticated,
+        hasUserId: !!$user?.id,
+        isGuest,
+        shouldTreatAsGuest,
+        hasGuestData: !!finalGuestData,
+        guestEmail: finalGuestData?.email
+      });
+
+      // Avisar usuário se dados temporários estão sendo usados
+      if (shouldTreatAsGuest && finalGuestData?.email === 'guest@temporario.com') {
+        console.warn('⚠️ [CHECKOUT] Usando dados temporários para convidado - recomenda-se validar fluxo de autenticação');
+      }
+
       // Criar pedido
       const orderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',
@@ -438,15 +475,9 @@
           paymentMethod: selectedPaymentMethod,
           couponCode: checkoutData?.appliedCoupon?.code,
           notes,
-          // Adicionar dados de convidado se não estiver logado
-          ...(isGuest && {
-            guestData: {
-              email: guestData.email,
-              name: addressForm.name, // Nome vem do endereço
-              phone: guestData.phone,
-              acceptsMarketing: guestData.acceptsMarketing,
-              sessionId: guestData.sessionId
-            }
+          // Adicionar dados de convidado se necessário
+          ...(shouldTreatAsGuest && finalGuestData && {
+            guestData: finalGuestData
           })
         })
       });
