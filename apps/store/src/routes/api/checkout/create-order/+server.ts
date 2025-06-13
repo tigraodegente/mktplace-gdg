@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { requireAuth } from '$lib/utils/auth';
+import { optionalAuth } from '$lib/utils/auth';
 import ShippingIntegration from '$lib/services/shipping';
 import { AppmaxService } from '$lib/services/integrations/appmax/service';
 import { logger } from '$lib/utils/logger';
@@ -106,18 +106,8 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
     const orderData: CreateOrderRequest = await request.json();
     
-    // Verificar autenticação (obrigatória por enquanto)
-    const authResult = await requireAuth(cookies, platform);
-    
-    if (!authResult.success) {
-      return json({ 
-        success: false, 
-        error: { 
-          message: 'Login obrigatório para finalizar compra', 
-          code: 'LOGIN_REQUIRED' 
-        } 
-      }, { status: 401 });
-    }
+    // Verificar autenticação (opcional - permite checkout como convidado)
+    const authResult = await optionalAuth(cookies, platform);
 
 
     // Validar dados obrigatórios
@@ -241,7 +231,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               coupon_code, 
               notes
             ) VALUES (
-              ${authResult.user!.id}, 
+              ${authResult.user?.id || null}, 
               ${orderNumber}, 
               'pending', 
               'pending', 
@@ -331,7 +321,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                       'Venda',
                       ${order.id},
                       ${`Pedido ${order.order_number}`},
-                      ${authResult.user!.id}
+                      ${authResult.user?.id || null}
                     )
                   `;
                   console.log(`[CREATE-ORDER] Movimento de estoque registrado para produto ${item.productId}`);
@@ -369,7 +359,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           try {
             await sql`
               INSERT INTO order_status_history (order_id, new_status, created_by, created_by_type, notes)
-              VALUES (${order.id}, 'pending', ${authResult.user!.id}, 'user', 'Pedido criado')
+              VALUES (${order.id}, 'pending', ${authResult.user?.id || null}, ${authResult.user ? 'user' : 'guest'}, 'Pedido criado')
             `;
           } catch (historyError) {
             // Não crítico
@@ -386,7 +376,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               paymentMethod: orderData.paymentMethod,
               createdAt: order.created_at,
               // Dados para integração
-              user_id: authResult.user!.id,
+              user_id: authResult.user?.id || null,
               shipping_cost: shippingCost,
               payment_status: 'pending'
             },
@@ -450,23 +440,25 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               try {
                 const appmaxService = new AppmaxService(appmaxConfig);
                 
-                // 1. Sincronizar cliente
-                const appmaxCustomer = await appmaxService.syncCustomer(
-                  platform,
-                  authResult.user!.id
-                );
-                
-                if (appmaxCustomer?.id) {
-                  // 2. Criar pedido na AppMax
-                  await appmaxService.createOrder(
+                // 1. Sincronizar cliente (apenas para usuários logados)
+                if (authResult.user?.id) {
+                  const appmaxCustomer = await appmaxService.syncCustomer(
                     platform,
-                    result.order.id.toString(),
-                    appmaxCustomer.id
+                    authResult.user.id
                   );
-                  
-                  logger.info('Order synced with AppMax', {
-                    orderId: result.order.id
-                  });
+                
+                  if (appmaxCustomer?.id) {
+                    // 2. Criar pedido na AppMax
+                    await appmaxService.createOrder(
+                      platform,
+                      result.order.id.toString(),
+                      appmaxCustomer.id
+                    );
+                    
+                    logger.info('Order synced with AppMax', {
+                      orderId: result.order.id
+                    });
+                  }
                 }
               } catch (error) {
                 logger.error('Failed to sync with AppMax', {
