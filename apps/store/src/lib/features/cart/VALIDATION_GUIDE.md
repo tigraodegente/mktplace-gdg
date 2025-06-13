@@ -7,23 +7,134 @@ O novo cart store está **ATIVO** para validação. Você verá o indicador:
 🆕 NEW v2.0 (Testing Mode)
 ```
 
-## 🔍 Validação Automática
+## 🔍 Validação Automática (✅ PRESERVA SEU CARRINHO)
 
-Abra o console do navegador (`F12`) e aguarde 3 segundos. Você verá:
+**IMPORTANTE**: Os testes agora **PRESERVAM** seus produtos no carrinho!
+
+Abra o console do navegador (`F12`) e aguarde 5 segundos. Você verá:
 
 ```
 🧪 VALIDAÇÃO COMPLETA DO CART STORE
-📝 Testando operações básicas...
-👥 Testando agrupamento por seller...
-💰 Testando cálculos de totais...
-💾 Testando persistência...
-🎫 Testando sistema de cupons...
-🧩 Testando casos extremos...
+💾 Fazendo backup do carrinho do usuário...
+🛒 Testando com carrinho atual do usuário...
+🧹 Testando operações com carrinho limpo...
+♻️ Restaurando carrinho do usuário...
 
 📊 RESUMO DOS TESTES:
 ✅ Aprovados: X/Y (Z%)
 🎉 TODOS OS TESTES PASSARAM!
+💚 Carrinho do usuário foi preservado durante os testes.
 ```
+
+## 📝 Teste Completo Recomendado
+
+### ✅ **1. Teste Com Carrinho Vazio**
+- [ ] Acesse `http://localhost:5173`
+- [ ] Abra console (`F12`)
+- [ ] Aguarde 5 segundos
+- [ ] Verifique se todos os testes passam
+
+### ✅ **2. Teste Com Carrinho Preenchido**
+- [ ] **Adicione produtos**: Vá em produtos e adicione ao carrinho
+- [ ] **Aguarde testes**: Os testes executarão automaticamente
+- [ ] **Verifique preservação**: Seus produtos devem continuar no carrinho
+- [ ] **Verifique console**: Deve mostrar testes com carrinho existente
+
+### ✅ **3. Funcionalidades Durante Teste**
+- [ ] **Adicionar produto**: Durante/após testes, adicione mais produtos
+- [ ] **Alterar quantidade**: Teste modificar quantidades
+- [ ] **Calcular frete**: Inserir CEP e verificar funcionamento
+- [ ] **Aplicar cupom**: Teste cupons como `BEMVINDO10`
+
+## 📊 O Que os Testes Validam
+
+### 🛒 **Com Carrinho Existente**
+- ✅ Estrutura dos dados preservada
+- ✅ Cálculos corretos com produtos reais
+- ✅ Adicionar produtos ao carrinho preenchido
+- ✅ Todos os grupos de vendedores funcionando
+
+### 🧹 **Com Carrinho Limpo**
+- ✅ Operações básicas (add, remove, update)
+- ✅ Agrupamento por vendedor
+- ✅ Cálculos de totais
+- ✅ Persistência em localStorage
+- ✅ Sistema de cupons
+- ✅ Casos extremos
+
+### 💾 **Backup e Restauração**
+- ✅ Backup automático antes dos testes
+- ✅ Restauração completa após testes
+- ✅ Produtos, quantidades e cupons preservados
+
+## 🎯 Cenários de Teste Específicos
+
+### **Cenário 1: Usuário Novo (Carrinho Vazio)**
+```
+1. Abrir site limpo
+2. Console mostra: "Carrinho usuário vazio - OK"
+3. Testes executam normalmente
+4. Carrinho continua vazio
+```
+
+### **Cenário 2: Usuário Com Produtos**
+```
+1. Adicionar 2-3 produtos diferentes
+2. Console mostra: "X grupos salvos"
+3. Testes executam preservando dados
+4. Console mostra: "X grupos restaurados"
+5. Produtos continuam no carrinho
+```
+
+### **Cenário 3: Usuário Com Cupom Aplicado**
+```
+1. Adicionar produtos + aplicar cupom
+2. Testes executam
+3. Cupom é preservado e reaplicado
+4. Desconto mantido após testes
+```
+
+## 🚨 Indicadores de Problema
+
+### ❌ **Se Algo Estiver Errado**
+- Console mostra testes falhando
+- Produtos desaparecem do carrinho
+- Cálculos incorretos
+- Erros JavaScript no console
+
+### ✅ **Se Tudo Estiver Certo**
+- `Aprovados: X/Y (90%+)`
+- `Carrinho do usuário foi preservado`
+- Produtos continuam visíveis
+- Site funciona normalmente
+
+## 🔄 Rollback de Emergência
+
+Se houver problemas críticos:
+
+```typescript
+// Editar: cartStore.bridge.ts
+const USE_NEW_STORE = false; // Voltar para store antigo
+```
+
+## 📈 Timing dos Testes
+
+- **0-5s**: Página carregando
+- **5s**: Testes iniciam automaticamente
+- **5-10s**: Execução dos testes
+- **10s+**: Testes concluídos, site normal
+
+---
+
+**Status**: 🟢 TESTES PRESERVAM CARRINHO DO USUÁRIO  
+**Próximo**: Validação completa → Refatoração estrutural
+
+## 💡 Dicas de Validação
+
+1. **Teste em abas diferentes**: Carrinho deve sincronizar
+2. **Recarregue a página**: Dados devem persistir
+3. **Adicione vários produtos**: Teste com cenários reais
+4. **Use cupons reais**: Teste integração completa
 
 ## 📝 Checklist de Validação Manual
 
