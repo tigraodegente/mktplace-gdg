@@ -4,6 +4,9 @@ import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
 import { optionalAuth } from '$lib/utils/auth';
 import ShippingIntegration from '$lib/services/shipping';
+
+// UUID fixo para pedidos de convidados (padrão da indústria)
+const GUEST_USER_ID = '00000000-0000-0000-0000-000000000000';
 import { AppmaxService } from '$lib/services/integrations/appmax/service';
 import { logger } from '$lib/utils/logger';
 
@@ -231,7 +234,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               coupon_code, 
               notes
             ) VALUES (
-              ${authResult.user?.id || null}, 
+              ${authResult.user?.id || GUEST_USER_ID}, 
               ${orderNumber}, 
               'pending', 
               'pending', 
@@ -321,7 +324,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
                       'Venda',
                       ${order.id},
                       ${`Pedido ${order.order_number}`},
-                      ${authResult.user?.id || null}
+                      ${authResult.user?.id || GUEST_USER_ID}
                     )
                   `;
                   console.log(`[CREATE-ORDER] Movimento de estoque registrado para produto ${item.productId}`);
@@ -359,7 +362,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           try {
             await sql`
               INSERT INTO order_status_history (order_id, new_status, created_by, created_by_type, notes)
-              VALUES (${order.id}, 'pending', ${authResult.user?.id || null}, ${authResult.user ? 'user' : 'guest'}, 'Pedido criado')
+              VALUES (${order.id}, 'pending', ${authResult.user?.id || GUEST_USER_ID}, ${authResult.user ? 'user' : 'guest'}, 'Pedido criado')
             `;
           } catch (historyError) {
             // Não crítico
@@ -376,7 +379,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               paymentMethod: orderData.paymentMethod,
               createdAt: order.created_at,
               // Dados para integração
-              user_id: authResult.user?.id || null,
+              user_id: authResult.user?.id || GUEST_USER_ID,
               shipping_cost: shippingCost,
               payment_status: 'pending'
             },
