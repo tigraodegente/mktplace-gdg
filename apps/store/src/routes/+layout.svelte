@@ -22,6 +22,7 @@
 	import ChatWidget from '$lib/components/chat/ChatWidget.svelte';
 	import { toastStore } from '$lib/stores/toastStore';
 	import { unreadCount } from '$lib/stores/notificationStore';
+	import CartVersionIndicator from '$lib/features/cart/components/CartVersionIndicator.svelte';
 
 
 
@@ -118,6 +119,9 @@
 {#if shouldShowWidget}
 	<ChatWidget />
 {/if}
+
+<!-- Cart Version Indicator (apenas em desenvolvimento) -->
+<CartVersionIndicator />
 
 <style>
 	/* Garantir fundo branco global */
