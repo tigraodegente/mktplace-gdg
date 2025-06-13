@@ -23,6 +23,13 @@
 	import { toastStore } from '$lib/stores/toastStore';
 	import { unreadCount } from '$lib/stores/notificationStore';
 	// import CartVersionIndicator from '$lib/features/cart/components/CartVersionIndicator.svelte';
+	
+	// Teste de compatibilidade (apenas em desenvolvimento)
+	if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+		import('$lib/features/cart/stores/test-compatibility').catch(() => {
+			console.log('🧪 Teste de compatibilidade não disponível');
+		});
+	}
 
 	// Types
 	interface Product {
@@ -122,8 +129,8 @@
 
 <!-- Indicador temporário de versão do cart -->
 {#if typeof window !== 'undefined' && window.location.hostname === 'localhost'}
-  <div class="fixed bottom-4 right-4 z-50 bg-gray-800 text-white px-3 py-2 rounded-lg text-xs font-mono">
-    Cart Store: 📝 LEGACY v1.0 (Bridge Ready)
+  <div class="fixed bottom-4 right-4 z-50 bg-green-800 text-white px-3 py-2 rounded-lg text-xs font-mono animate-pulse">
+    Cart Store: 🆕 NEW v2.0 (Testing Mode)
   </div>
 {/if}
 

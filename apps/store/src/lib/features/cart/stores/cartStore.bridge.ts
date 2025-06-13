@@ -9,7 +9,7 @@ import { cartStore as oldCartStore } from '../../../stores/cartStore';
 import { newCartStore } from './cartStore.new';
 
 // Configuração de teste
-const USE_NEW_STORE = false; // Alternar para true quando quiser testar
+const USE_NEW_STORE = true; // ✅ ATIVADO - Usando nova implementação
 
 // Bridge simples - usando implementação escolhida
 export const cartStoreBridge = USE_NEW_STORE ? newCartStore : oldCartStore;
