@@ -598,51 +598,9 @@ RETORNE APENAS JSON:
 	}
 }
 
-// 📦 7. ENRIQUECIMENTO DE ESTOQUE
-async function enrichInventory(currentData: any, openai: OpenAI): Promise<Suggestion[]> {
-	try {
-		const prompt = `Você é um especialista em gestão de estoque. Analise APENAS os dados de estoque deste produto:
-
-PRODUTO: ${currentData.name}
-ESTOQUE ATUAL: ${currentData.quantity || 'Não informado'}
-ALERTA BAIXO: ${currentData.low_stock_alert || 'Não informado'}
-
-INSTRUÇÕES:
-1. Sugira quantidade inicial de estoque baseada no tipo de produto
-2. Sugira nível de alerta de estoque baixo
-3. Baseie-se no tipo e demanda esperada do produto
-
-RETORNE APENAS JSON:
-{
-  "suggestions": [
-    {
-      "field": "quantity",
-      "label": "Quantidade em Estoque",
-      "currentValue": "${currentData.quantity || ''}",
-      "suggestedValue": "50",
-      "confidence": 70,
-      "reasoning": "Quantidade inicial adequada para o tipo de produto",
-      "source": "ai",
-      "category": "inventory"
-    }
-  ]
-}`;
-
-		const response = await openai.chat.completions.create({
-			model: 'gpt-4-1106-preview',
-			max_tokens: 1000,
-			temperature: 0.7,
-			messages: [{ role: 'user', content: prompt }]
-		});
-
-		const result = parseAIResponse(response.choices[0].message.content);
-		console.log(`📦 Estoque: ${result.length} sugestões`);
-		return result;
-	} catch (error) {
-		console.error('❌ Erro no estoque:', error);
-		return [];
-	}
-}
+// 📦 7. ENRIQUECIMENTO DE ESTOQUE - REMOVIDO
+// Campos de estoque (quantity, low_stock_alert) são operacionais e não devem ter IA
+// Apenas stock_location mantém IA para sugerir localização no galpão
 
 // 🖼️ 8. MÍDIA NÃO UTILIZA IA - REMOVIDA INTENCIONALMENTE
 
@@ -923,7 +881,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			enrichAttributes(currentData, openai),
 			enrichDimensionsAndAdvanced(currentData, openai),
 			enrichPricing(currentData, openai),
-			enrichInventory(currentData, openai)
+			suggestProductVariations(currentData, openai),
+			suggestVariationsFromSimilarProducts(currentData, null)
+			// enrichInventory removido - campos de estoque não devem ter IA
 		]);
 		
 		// Combinar todas as sugestões
@@ -936,7 +896,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			pricing: suggestions.filter((s: Suggestion) => s.category === 'pricing').length,
 			attributes: suggestions.filter((s: Suggestion) => s.category === 'attributes').length,
 			shipping: suggestions.filter((s: Suggestion) => s.category === 'shipping').length,
-			inventory: suggestions.filter((s: Suggestion) => s.category === 'inventory').length
+			variants: suggestions.filter((s: Suggestion) => s.category === 'variants').length,
+			inventory: suggestions.filter((s: Suggestion) => s.category === 'inventory').length,
+			advanced: suggestions.filter((s: Suggestion) => s.category === 'advanced').length
 		});
 		
 		return json({
@@ -1167,30 +1129,8 @@ async function generateAISuggestions(data: any) {
 		category: 'attributes'
 	});
 	
-	// 5. SUGESTÕES DE ESTOQUE (inventory)
-	if (!data.quantity || data.quantity === 0) {
-		suggestions.push({
-			field: 'quantity',
-			label: 'Quantidade em Estoque',
-			currentValue: data.quantity || 0,
-			suggestedValue: 50,
-			confidence: 60,
-			reasoning: 'Quantidade inicial recomendada para novos produtos',
-			category: 'inventory'
-		});
-	}
-	
-	if (!data.low_stock_alert) {
-		suggestions.push({
-			field: 'low_stock_alert',
-			label: 'Alerta de Estoque Baixo',
-			currentValue: data.low_stock_alert || 0,
-			suggestedValue: 5,
-			confidence: 80,
-			reasoning: 'Alerta quando o estoque atingir 5 unidades para evitar falta de produto',
-			category: 'inventory'
-		});
-	}
+	// 5. SUGESTÕES DE ESTOQUE (inventory) - REMOVIDO: quantity e low_stock_alert não devem ter IA
+	// Campos de estoque são operacionais e devem ser definidos pelo lojista
 	
 	// 6. SUGESTÕES DE FRETE (shipping)
 	if (!data.weight || data.weight === 0) {

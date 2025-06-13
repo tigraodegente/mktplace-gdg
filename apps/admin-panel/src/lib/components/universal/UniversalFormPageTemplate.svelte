@@ -180,8 +180,8 @@
 		validationErrors = { ...validationErrors };
 	}
 	
-	// Função para iniciar análise IA (igual à main)
-	async function startAIAnalysis() {
+	// Função para iniciar análise IA (com modal bonito)
+	function startAIAnalysis() {
 		if (!config.aiEnabled) return;
 		
 		if (!formData.name || formData.name.trim() === '') {
@@ -189,16 +189,8 @@
 			return;
 		}
 		
-		analyzingWithAI = true;
-		try {
-			// Chamar o aiReviewActions diretamente (sem modal de loading)
-			await aiReviewActions.startReview(formData);
-		} catch (error) {
-			console.error('❌ Erro na análise IA:', error);
-			toast.error('Erro ao analisar produto com IA');
-		} finally {
-			analyzingWithAI = false;
-		}
+		// Abrir o modal bonito com progresso
+		showAIModal = true;
 	}
 	
 	function openHistory() {
@@ -479,7 +471,14 @@
 	/>
 {/if}
 
-<!-- Modal de IA não usado - sistema direto via aiReviewActions -->
+{#if showAIModal}
+	<UniversalAIModal
+		isOpen={showAIModal}
+		entityName={formData.name || entityDisplayName}
+		{formData}
+		onClose={() => showAIModal = false}
+	/>
+{/if}
 
 <style>
 	.tab-content {

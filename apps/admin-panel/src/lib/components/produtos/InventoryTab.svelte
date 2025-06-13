@@ -14,6 +14,11 @@
 	let isAIReviewMode = $state(false);
 	let aiSuggestions = $state<any[]>([]);
 
+	// Estados de loading para IA
+	let aiLoading = $state<Record<string, boolean>>({
+		stock_location: false
+	});
+
 	// Subscrever ao modo IA
 	aiReviewMode.subscribe(mode => {
 		isAIReviewMode = mode;
@@ -64,6 +69,44 @@
 
 	let volumetricWeight = $derived(calculateVolumetricWeight());
 	let stockStatus = $derived(getStockStatus(formData.quantity || 0, formData.minimum_stock || 5));
+
+	// Função de enriquecimento com IA
+	async function enrichField(field: string) {
+		if (!(field in aiLoading)) return;
+		aiLoading[field] = true;
+		
+		try {
+			const response = await fetch('/api/ai/enrich', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					field,
+					currentData: formData,
+					category: formData.category_name
+				})
+			});
+			
+			if (!response.ok) throw new Error('Erro na resposta da API');
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				switch (field) {
+					case 'stock_location':
+						formData.stock_location = result.data || '';
+						toast.success('Localização sugerida com IA!');
+						break;
+				}
+			} else {
+				toast.error('Erro ao enriquecer com IA');
+			}
+		} catch (error) {
+			console.error('Erro:', error);
+			toast.error('Erro ao conectar com o serviço de IA');
+		} finally {
+			aiLoading[field] = false;
+		}
+	}
 </script>
 
 <div class="space-y-6">
@@ -290,6 +333,42 @@
 					</div>
 				</div>
 			{/if}
+		</div>
+
+		<!-- LOCALIZAÇÃO DO ESTOQUE -->
+		<div class="bg-white border border-gray-200 rounded-lg p-6">
+			<h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+				📍 Localização do Estoque
+			</h4>
+
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					Localização/Galpão
+				</label>
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={formData.stock_location}
+						class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="Ex: Galpão A - Setor 3 - Prateleira 15"
+					/>
+					<button
+						type="button"
+						onclick={() => enrichField('stock_location')}
+						disabled={aiLoading.stock_location || !formData.name}
+						class="px-4 py-3 bg-[#00BFB3] hover:bg-[#00A89D] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						title="Sugerir localização com IA"
+					>
+						{#if aiLoading.stock_location}
+							<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+						{:else}
+							<ModernIcon name="robot" size="xs" />
+						{/if}
+						IA
+					</button>
+				</div>
+				<p class="text-xs text-gray-500 mt-1">Onde o produto está armazenado fisicamente</p>
+			</div>
 		</div>
 
 		<!-- HISTÓRICO E MOVIMENTAÇÕES -->

@@ -374,20 +374,48 @@
 				</label>
 			</div>
 			
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-2">
-					Prazo de Entrega Adicional (dias)
-				</label>
-				<input
-					type="number"
-					bind:value={formData.delivery_days}
-					min="0"
-					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
-					placeholder="3"
-				/>
-				<p class="text-xs text-gray-500 mt-2">
-					Dias adicionais ao prazo dos Correios/Transportadora
-				</p>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">
+						Prazo Mínimo (dias)
+					</label>
+					<input
+						type="number"
+						bind:value={formData.delivery_days_min}
+						min="0"
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="1"
+					/>
+					<p class="text-xs text-gray-500 mt-1">Prazo mínimo de entrega</p>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">
+						Prazo Máximo (dias)
+					</label>
+					<input
+						type="number"
+						bind:value={formData.delivery_days_max}
+						min="0"
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="7"
+					/>
+					<p class="text-xs text-gray-500 mt-1">Prazo máximo de entrega</p>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">
+						Prazo Adicional (dias)
+					</label>
+					<input
+						type="number"
+						bind:value={formData.delivery_days}
+						min="0"
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+						placeholder="3"
+					/>
+					<p class="text-xs text-gray-500 mt-1">Dias extras aos Correios</p>
+				</div>
 			</div>
 			
 			<div>

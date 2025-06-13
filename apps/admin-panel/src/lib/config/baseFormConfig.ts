@@ -218,6 +218,13 @@ export function createProductFormConfig(options: Omit<BaseFormOptions, 'customTa
         icon: 'Settings',
         component: 'AdvancedTab',
         description: 'Configurações extras'
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: 'BarChart3',
+        component: 'AnalyticsTab',
+        description: 'Métricas e performance'
       }
     ]
   });

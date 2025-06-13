@@ -14,6 +14,7 @@
 		'ShippingTab': () => import('$lib/components/produtos/ShippingTab.svelte'),
 		'SeoTab': () => import('$lib/components/produtos/SeoTab.svelte'),
 		'AdvancedTab': () => import('$lib/components/produtos/AdvancedTab.svelte'),
+		'AnalyticsTab': () => import('$lib/components/produtos/AnalyticsTab.svelte'),
 		
 		// Variações
 		'VariationBasicTab': () => import('$lib/components/form-tabs/VariationBasicTab.svelte'),

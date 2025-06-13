@@ -97,7 +97,27 @@
 			Preços de Venda
 		</h4>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+			<!-- Moeda -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-2">
+					<span class="flex items-center gap-1">
+						<ModernIcon name="Globe" size="sm" />
+						Moeda
+					</span>
+				</label>
+				<select
+					bind:value={formData.currency}
+					class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00BFB3] focus:border-[#00BFB3] transition-colors"
+				>
+					<option value="BRL">🇧🇷 Real (R$)</option>
+					<option value="USD">🇺🇸 Dólar ($)</option>
+					<option value="EUR">🇪🇺 Euro (€)</option>
+					<option value="GBP">🇬🇧 Libra (£)</option>
+				</select>
+				<p class="text-xs text-gray-500 mt-1">Moeda do produto</p>
+			</div>
+
 			<!-- Preço de Custo -->
 			<div>
 				<label class="block text-sm font-medium text-gray-700 mb-2">
@@ -107,7 +127,9 @@
 					</span>
 				</label>
 				<div class="relative">
-					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
+					<span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+						{formData.currency === 'USD' ? '$' : formData.currency === 'EUR' ? '€' : formData.currency === 'GBP' ? '£' : 'R$'}
+					</span>
 					<input
 						type="number"
 						step="0.01"
