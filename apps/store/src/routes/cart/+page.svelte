@@ -49,6 +49,7 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { toastStore } from '$lib/stores/toastStore';
+  import { usePricing } from '$lib/stores/pricingStore';
   
   // Componentes do Checkout Wizard
   import CheckoutAuth from '$lib/components/checkout/CheckoutAuth.svelte';
@@ -66,6 +67,21 @@
     removeCoupon,
     clearCart
   } = cartStore;
+  
+  // Sistema de pricing dinâmico
+  const pricing = usePricing();
+  let defaultInstallments = $state(12);
+  
+  // Atualizar configurações de pricing
+  $effect(() => {
+    pricing.getConfig().then(config => {
+      if (config) {
+        defaultInstallments = config.installments_default;
+      }
+    }).catch(() => {
+      // Manter valor padrão
+    });
+  });
   
   // Estado local para CEP
   const zipCode = writable<string>('');
@@ -246,7 +262,7 @@
       couponDiscount,
       freeShippingSavings,
       cartTotal,
-      installmentValue: cartTotal / 12,
+      		installmentValue: cartTotal / defaultInstallments,
       maxDeliveryDays: shippingCalculation.maxDeliveryDays,
       hasExpressOptions: false, // Não usado atualmente
       hasGroupedOptions: false  // Não usado atualmente
@@ -517,32 +533,43 @@
         const errorText = await createOrderResponse.text();
         console.log('❌ Erro HTTP:', errorText);
         
-        // Se for erro 401, problema de autenticação
+        // Se for erro 401, verificar contexto antes de assumir "sessão expirou"
         if (createOrderResponse.status === 401) {
-          console.log('🔒 Erro 401 - Sessão expirou durante o processamento');
+          console.log('🔒 Erro 401 - Verificando contexto de autenticação');
           
-          // Salvar contexto para recuperação
-          try {
-            sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
-              checkoutData,
-              selectedShippingOptions,
-              appliedCoupon: $appliedCoupon,
-              zipCode: $zipCode,
-              currentStep,
-              timestamp: Date.now()
-            }));
-          } catch (storageError) {
-            console.log('❌ Erro ao salvar dados de recuperação:', storageError);
+          // CORREÇÃO: Só tratar como "sessão expirou" se o usuário estava logado
+          const isLoggedUser = checkoutData.user && !checkoutData.isGuest;
+          
+          if (isLoggedUser) {
+            console.log('🔒 Usuário logado - Sessão expirou durante o processamento');
+            
+            // Salvar contexto para recuperação
+            try {
+              sessionStorage.setItem('checkout_recovery_data', JSON.stringify({
+                checkoutData,
+                selectedShippingOptions,
+                appliedCoupon: $appliedCoupon,
+                zipCode: $zipCode,
+                currentStep,
+                timestamp: Date.now()
+              }));
+            } catch (storageError) {
+              console.log('❌ Erro ao salvar dados de recuperação:', storageError);
+            }
+            
+            toastStore.add({
+              type: 'info',
+              title: 'Sessão Expirada',
+              message: 'Sua sessão expirou. Redirecionando para login...',
+              duration: 3000
+            });
+            window.location.href = '/login?redirect=/cart&recovery=true';
+            return;
+          } else {
+            console.log('👤 Usuário convidado - Erro 401 tratado como erro de checkout');
+            // Para convidados, tratar erro 401 como erro normal de checkout
+            throw new Error(`Erro de autorização: Verifique os dados do pagamento e tente novamente.`);
           }
-          
-          toastStore.add({
-            type: 'info',
-            title: 'Sessão Expirada',
-            message: 'Sua sessão expirou. Redirecionando para login...',
-            duration: 3000
-          });
-          window.location.href = '/login?redirect=/cart&recovery=true';
-          return;
         }
         
         throw new Error(`HTTP ${createOrderResponse.status}: ${errorText}`);

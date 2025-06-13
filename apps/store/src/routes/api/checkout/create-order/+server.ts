@@ -104,14 +104,21 @@ async function selectPaymentGateway(
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
-    // Verificar autenticação
+    const orderData: CreateOrderRequest = await request.json();
+    
+    // Verificar autenticação (obrigatória por enquanto)
     const authResult = await requireAuth(cookies, platform);
     
     if (!authResult.success) {
-      return json({ success: false, error: authResult.error }, { status: 401 });
+      return json({ 
+        success: false, 
+        error: { 
+          message: 'Login obrigatório para finalizar compra', 
+          code: 'LOGIN_REQUIRED' 
+        } 
+      }, { status: 401 });
     }
 
-    const orderData: CreateOrderRequest = await request.json();
 
     // Validar dados obrigatórios
     if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
@@ -218,6 +225,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           const orderNumber = `MP${Date.now()}${Math.random().toString(36).substr(2, 3).toUpperCase()}`;
 
           // STEP 5: Criar pedido
+          
           const orders = await sql`
             INSERT INTO orders (
               user_id, 

@@ -5,6 +5,7 @@
 	import { fade, scale, fly, slide } from 'svelte/transition';
 	import { cubicOut, elasticOut, backOut } from 'svelte/easing';
 	import { goto } from '$app/navigation';
+	import { usePricing } from '$lib/stores/pricingStore';
 	
 	const dispatch = createEventDispatcher<{
 		close: void;
@@ -33,6 +34,21 @@
 	}: MiniCartProps = $props();
 	
 	const { sellerGroups, cartTotals } = cartStore;
+	
+	// Sistema de pricing dinâmico
+	const pricing = usePricing();
+	let pricingConfig = $state<any>(null);
+	
+	// Carregar configurações de pricing
+	$effect(() => {
+		pricing.getConfig().then(config => {
+			if (config) {
+				pricingConfig = config;
+			}
+		}).catch(() => {
+			// Usar valores padrão em caso de erro
+		});
+	});
 	
 	// Estados locais
 	let isHovered = false;
@@ -427,7 +443,7 @@
 					</div>
 					
 					<p class="text-xs text-gray-500 text-center" style="font-family: 'Lato', sans-serif;">
-						ou até 12x de {formatCurrency($cartTotals.cartTotal / 12)}
+						ou até {pricingConfig?.installments_default || 12}x de {formatCurrency($cartTotals.cartTotal / (pricingConfig?.installments_default || 12))}
 					</p>
 				</div>
 				

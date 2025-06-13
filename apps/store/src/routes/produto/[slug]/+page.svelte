@@ -7,6 +7,7 @@
   import { fade, fly } from 'svelte/transition';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
+  import { usePricing } from '$lib/stores/pricingStore';
   
   // Definição local do tipo Product
   interface Product {
@@ -66,6 +67,10 @@
   }
   
   const { addItem } = cartStore;
+  
+  // Sistema de pricing dinâmico
+  const pricing = usePricing();
+  let pricingConfig = $state<any>(null);
   
   // Usar Product com tipo estendido
   let product = $state<Product | null>(data.product);
@@ -377,6 +382,15 @@
     loadVariationsFromURL();
     checkFavorite();
     
+    // Carregar configurações de pricing
+    pricing.getConfig().then(config => {
+      if (config) {
+        pricingConfig = config;
+      }
+    }).catch(() => {
+      console.warn('Falha ao carregar configurações de pricing, usando valores padrão');
+    });
+    
     // Prefetch de produtos relacionados
     if (product) {
       fetchRelatedProducts(product);
@@ -514,8 +528,8 @@
   }
   
   function calculateInstallment(price: number) {
-    const installmentPrice = price / 12;
-    return `12x de ${formatCurrency(installmentPrice)} sem juros`;
+    const installmentPrice = price / (pricingConfig?.installments_default || 12);
+    return `${pricingConfig?.installments_default || 12}x de ${formatCurrency(installmentPrice)} sem juros`;
   }
   
   function getDiscountPercentage(price: number, originalPrice?: number) {
@@ -617,7 +631,7 @@
 <svelte:head>
   {#if product}
     <title>{product.name} - {product.category_name || 'Produtos'} | Marketplace GDG</title>
-    <meta name="description" content={product.description || `Compre ${product.name} por apenas ${formatCurrency(getCurrentPrice())}. ${product.brand ? `Marca: ${product.brand}.` : ''} Entrega rápida e segura. Parcelamento em até 12x sem juros.`} />
+    <meta name="description" content={product.description || `Compre ${product.name} por apenas ${formatCurrency(getCurrentPrice())}. ${product.brand ? `Marca: ${product.brand}.` : ''} Entrega rápida e segura. Parcelamento em até ${pricingConfig?.installments_default || 12}x sem juros.`} />
     
     <!-- Canonical URL -->
     <link rel="canonical" href={`https://marketplace-gdg.com/produto/${product.slug}`} />

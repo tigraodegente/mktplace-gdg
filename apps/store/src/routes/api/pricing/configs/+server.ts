@@ -45,58 +45,19 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		const sellerId = url.searchParams.get('seller_id');
 		const userSegment = url.searchParams.get('user_segment');
 
-		// Query com priorização (específico > geral)
-		const query = `
-			WITH config_priority AS (
-				SELECT 
-					config_key,
-					config_value,
-					priority,
-					CASE 
-						WHEN category_id = $1 AND seller_id = $2 AND user_segment = $3 THEN 4
-						WHEN category_id = $1 AND seller_id = $2 THEN 3
-						WHEN category_id = $1 OR seller_id = $2 OR user_segment = $3 THEN 2
-						WHEN category_id IS NULL AND seller_id IS NULL AND user_segment IS NULL THEN 1
-						ELSE 0
-					END as scope_priority,
-					ROW_NUMBER() OVER (
-						PARTITION BY config_key 
-						ORDER BY 
-							CASE 
-								WHEN category_id = $1 AND seller_id = $2 AND user_segment = $3 THEN 4
-								WHEN category_id = $1 AND seller_id = $2 THEN 3
-								WHEN category_id = $1 OR seller_id = $2 OR user_segment = $3 THEN 2
-								WHEN category_id IS NULL AND seller_id IS NULL AND user_segment IS NULL THEN 1
-								ELSE 0
-							END DESC,
-							priority DESC,
-							created_at DESC
-					) as rn
-				FROM pricing_configs
-				WHERE 
-					is_active = true
-					AND (valid_from IS NULL OR valid_from <= NOW())
-					AND (valid_until IS NULL OR valid_until > NOW())
-					AND (
-						-- Configuração global
-						(category_id IS NULL AND seller_id IS NULL AND user_segment IS NULL)
-						-- Ou específica para os parâmetros
-						OR category_id = $1
-						OR seller_id = $2  
-						OR user_segment = $3
-					)
-			)
+		// Query simplificada para pegar apenas configurações globais por enquanto
+		const results = await db.query(`
 			SELECT config_key, config_value
-			FROM config_priority
-			WHERE rn = 1
+			FROM pricing_configs
+			WHERE 
+				is_active = true
+				AND (valid_from IS NULL OR valid_from <= NOW())
+				AND (valid_until IS NULL OR valid_until > NOW())
+				AND category_id IS NULL 
+				AND seller_id IS NULL 
+				AND user_segment IS NULL
 			ORDER BY config_key;
-		`;
-
-		const results = await db.query(query, [
-			categoryId ? parseInt(categoryId) : null,
-			sellerId,
-			userSegment
-		]);
+		`);
 		
 		// Processar resultados em objeto
 		const configs = { ...DEFAULT_CONFIGS };

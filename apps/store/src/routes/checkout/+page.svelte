@@ -10,9 +10,14 @@
   import { isAuthenticated, user } from '$lib/stores/authStore';
   import type { CartItem, Address } from '$lib/types/checkout';
   import { toastStore } from '$lib/stores/toastStore';
+  import { usePricing } from '$lib/stores/pricingStore';
 
   // Desestruturar o advancedCartStore
   const { sellerGroups, cartTotals, clearCart } = advancedCartStore;
+  
+  // Sistema de pricing dinâmico
+  const pricing = usePricing();
+  let pricingConfig = $state<any>(null);
 
   // Estado do checkout
   let loading = false;
@@ -77,14 +82,23 @@
     { value: 'TO', label: 'Tocantins' }
   ];
   
-  const paymentMethods = [
+  const paymentMethods = $derived([
     { id: 'pix', name: 'PIX', description: 'Pagamento instantâneo com 5% de desconto', icon: '💲', discount: 5 },
-    { id: 'credit_card', name: 'Cartão de Crédito', description: 'Até 12x sem juros', icon: '💳', discount: 0 },
+    { id: 'credit_card', name: 'Cartão de Crédito', description: `Até ${pricingConfig?.installments_default || 12}x sem juros`, icon: '💳', discount: 0 },
     { id: 'debit_card', name: 'Cartão de Débito', description: 'Débito à vista', icon: '💳', discount: 0 },
     { id: 'boleto', name: 'Boleto Bancário', description: 'Vence em 3 dias úteis', icon: '🏦', discount: 0 }
-  ];
+  ]);
 
   onMount(async () => {
+    // Carregar configurações de pricing
+    pricing.getConfig().then(config => {
+      if (config) {
+        pricingConfig = config;
+      }
+    }).catch(() => {
+      console.warn('Falha ao carregar configurações de pricing, usando valores padrão');
+    });
+    
     // RECUPERAÇÃO: Verificar se há dados salvos de sessão expirada
     await recoverCheckoutData();
     
@@ -341,10 +355,12 @@
   function getInstallmentOptions() {
     const total = calculateTotal();
     const options = [];
+    const maxInstallments = pricingConfig?.installments_max || 12;
+    const minValue = pricingConfig?.installments_min_value || 10;
     
-    for (let i = 1; i <= 12; i++) {
+    for (let i = 1; i <= maxInstallments; i++) {
       const value = total / i;
-      if (value >= 10) {
+      if (value >= minValue) {
         options.push({
           number: i,
           value,

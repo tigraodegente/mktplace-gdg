@@ -128,7 +128,10 @@ class PricingService {
    */
   async getConfigs(context?: PricingContext): Promise<PricingConfig> {
     if (!this.isInitialized) {
-      console.warn('⚠️ PricingService não inicializado, usando fallback');
+      // Só mostrar warning se não estiver em processo de inicialização
+      if (typeof window === 'undefined' || !(window as any).__pricingStoreInitialized) {
+        console.warn('⚠️ PricingService não inicializado, usando fallback');
+      }
       return this.fallbackConfig;
     }
 

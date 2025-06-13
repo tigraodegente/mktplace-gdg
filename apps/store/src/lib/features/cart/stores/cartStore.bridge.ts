@@ -5,7 +5,7 @@
  * sem quebrar funcionalidades existentes
  */
 
-import { cartStore as oldCartStore } from '$lib/stores/cartStore';
+import { cartStore as oldCartStore } from '../../../stores/cartStore';
 import { newCartStore } from './cartStore.new';
 
 // Configuração de teste

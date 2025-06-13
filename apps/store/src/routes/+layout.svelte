@@ -22,9 +22,7 @@
 	import ChatWidget from '$lib/components/chat/ChatWidget.svelte';
 	import { toastStore } from '$lib/stores/toastStore';
 	import { unreadCount } from '$lib/stores/notificationStore';
-	import CartVersionIndicator from '$lib/features/cart/components/CartVersionIndicator.svelte';
-
-
+	// import CartVersionIndicator from '$lib/features/cart/components/CartVersionIndicator.svelte';
 
 	// Types
 	interface Product {
@@ -77,7 +75,6 @@
 		goto('/cart');
 	}
 
-
 </script>
 
 <!-- TopBar Promocional -->
@@ -121,7 +118,14 @@
 {/if}
 
 <!-- Cart Version Indicator (apenas em desenvolvimento) -->
-<CartVersionIndicator />
+<!-- <CartVersionIndicator /> -->
+
+<!-- Indicador temporário de versão do cart -->
+{#if typeof window !== 'undefined' && window.location.hostname === 'localhost'}
+  <div class="fixed bottom-4 right-4 z-50 bg-gray-800 text-white px-3 py-2 rounded-lg text-xs font-mono">
+    Cart Store: 📝 LEGACY v1.0 (Bridge Ready)
+  </div>
+{/if}
 
 <style>
 	/* Garantir fundo branco global */

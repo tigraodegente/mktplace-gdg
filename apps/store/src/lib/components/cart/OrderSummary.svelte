@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { usePricing } from '$lib/stores/pricingStore';
+  
   interface CartItem {
     productId: string;
     productName: string;
@@ -51,6 +53,39 @@
     checkoutButtonText = "Finalizar Compra",
     checkoutButtonDisabled = false
   }: Props = $props();
+  
+  // Sistema de pricing dinâmico
+  const pricing = usePricing();
+  
+  // Estados reativos para pricing dinâmico
+  let installmentNumber = $state(12);
+  let pixPrice = $state(0);
+  
+  // Valores calculados
+  const showPixPrice = $derived(pixPrice > 0 && pixPrice < totals.cartTotal);
+  
+  // Atualizar valores dinâmicos
+  async function updatePricingValues() {
+    if (totals.cartTotal <= 0) return;
+    
+    try {
+      // Calcular parcelamento para o total
+      const installment = await pricing.calculateDefaultInstallment(totals.cartTotal);
+      installmentNumber = installment.number;
+      
+      // Calcular preço PIX
+      const calculatedPixPrice = await pricing.calculatePixPrice(totals.cartTotal);
+      pixPrice = calculatedPixPrice;
+    } catch (error) {
+      console.warn('Erro ao atualizar pricing no OrderSummary:', error);
+      // Manter valores padrão
+    }
+  }
+  
+  // Executar quando total mudar
+  $effect(() => {
+    updatePricingValues();
+  });
   
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {
@@ -167,8 +202,13 @@
         <span class="text-[#00BFB3]">{formatCurrency(totals.cartTotal)}</span>
       </div>
       <p class="text-xs text-gray-500 mt-1">
-        ou até 12x de {formatCurrency(totals.installmentValue)}
+        ou até {installmentNumber}x de {formatCurrency(totals.installmentValue)}
       </p>
+      {#if showPixPrice}
+        <p class="text-xs text-[#00BFB3] font-medium mt-1">
+          {formatCurrency(pixPrice)} no PIX
+        </p>
+      {/if}
       
       <!-- Economia Total (igual ao carrinho) -->
       {#if totals.totalDiscount > 0}

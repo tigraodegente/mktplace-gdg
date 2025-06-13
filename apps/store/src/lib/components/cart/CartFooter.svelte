@@ -2,6 +2,7 @@
 	import { formatCurrency } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import StaticMoney from './StaticMoney.svelte';
+	import { usePricing } from '$lib/stores/pricingStore';
 	
 	interface CartFooterProps {
 		subtotal: number;
@@ -25,12 +26,51 @@
 		checkoutDisabledReason = ''
 	}: CartFooterProps = $props();
 	
+	// Sistema de pricing dinâmico
+	const pricing = usePricing();
+	
+	// Estados derivados
 	const hasDiscount = $derived(discount > 0);
 	const hasShipping = $derived(shipping > 0);
-	const freeShippingThreshold = 199;
+	
+	// Estados reativos para pricing dinâmico
+	let freeShippingThreshold = $state(199);
+	let installmentNumber = $state(12);
+	let pixPrice = $state(0);
+	
+	// Valores calculados
 	const remainingForFreeShipping = $derived(Math.max(0, freeShippingThreshold - subtotal));
 	const hasFreeShipping = $derived(subtotal >= freeShippingThreshold);
 	const showInstallment = $derived(installmentValue && installmentValue > 0);
+	const showPixPrice = $derived(pixPrice > 0 && pixPrice < total);
+	
+	// Atualizar valores dinâmicos
+	async function updatePricingValues() {
+		try {
+			const config = await pricing.getConfig();
+			if (config) {
+				freeShippingThreshold = config.free_shipping_threshold;
+			}
+			
+			// Calcular parcelamento para o total
+			const installment = await pricing.calculateDefaultInstallment(total);
+			installmentNumber = installment.number;
+			
+			// Calcular preço PIX
+			const calculatedPixPrice = await pricing.calculatePixPrice(total);
+			pixPrice = calculatedPixPrice;
+		} catch (error) {
+			console.warn('Erro ao atualizar pricing:', error);
+			// Manter valores padrão
+		}
+	}
+	
+	// Executar quando total mudar
+	$effect(() => {
+		if (total > 0) {
+			updatePricingValues();
+		}
+	});
 </script>
 
 <div class="bg-white border-t border-gray-200 p-4 sm:p-6 space-y-3 sm:space-y-4 no-animations">
@@ -67,9 +107,14 @@
 				<div class="text-right no-animations">
 					<p class="text-xl sm:text-2xl font-bold text-[#00BFB3] no-animations"><StaticMoney value={total} /></p>
 					{#if showInstallment}
-						<p class="text-xs sm:text-sm text-gray-700 mt-0.5 sm:mt-1 font-medium no-animations">
-							ou <span class="text-[#00BFB3]">12x</span> de <span class="text-[#00BFB3] font-bold no-animations"><StaticMoney value={installmentValue || 0} /></span>
+											<p class="text-xs sm:text-sm text-gray-700 mt-0.5 sm:mt-1 font-medium no-animations">
+						ou <span class="text-[#00BFB3]">{installmentNumber}x</span> de <span class="text-[#00BFB3] font-bold no-animations"><StaticMoney value={installmentValue || 0} /></span>
+					</p>
+					{#if showPixPrice}
+						<p class="text-xs sm:text-sm text-[#00BFB3] font-medium no-animations">
+							<StaticMoney value={pixPrice} /> no PIX
 						</p>
+					{/if}
 						<p class="text-[10px] sm:text-xs text-gray-500">sem juros</p>
 					{/if}
 				</div>

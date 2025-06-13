@@ -13,9 +13,19 @@ import type {
   CartTotals,
   Product,
   Result 
-} from '$lib/features/shared/types/commerce';
-import { user } from '$lib/stores/authStore';
+} from '../../shared/types/commerce';
+import { user } from '../../../stores/authStore';
 import { nanoid } from 'nanoid';
+
+// Tipo local para AuthUser
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'customer' | 'admin' | 'vendor';
+  avatar?: string;
+  permissions?: string[];
+}
 
 // =============================================================================
 // CONSTANTES
@@ -94,7 +104,7 @@ async function validateCoupon(code: string, items: CartItem[]): Promise<Coupon |
       price: item.product.price
     }));
 
-    const currentUser = get(user);
+    const currentUser = get(user) as AuthUser | null;
     const sessionId = getOrCreateSessionId();
 
     const response = await fetch('/api/coupons/validate', {
