@@ -61,7 +61,7 @@ class UniversalApiService {
   // Duplicar entidade
   async duplicateEntity(config: FormConfig, entityId: string, customData?: any): Promise<ApiResponse> {
     try {
-      // Tentar endpoint específico de duplicação primeiro
+      // Tentar endpoint específico de duplicação primeiro (sem /api extra)
       const duplicateEndpoint = `/${config.entityName}s/${entityId}/duplicate`;
       
       try {
@@ -70,7 +70,7 @@ class UniversalApiService {
           successMessage: `${config.entityName} duplicado com sucesso!`
         });
       } catch {
-        // Fallback: usar endpoint universal
+        // Fallback: usar endpoint universal (sem /api extra)
         return await api.post(`/universal/${config.entityName}/duplicate/${entityId}`, customData || {}, {
           showSuccess: true,
           successMessage: `${config.entityName} duplicado com sucesso!`
@@ -88,14 +88,14 @@ class UniversalApiService {
   // Obter histórico da entidade
   async getEntityHistory(config: FormConfig, entityId: string, page = 1, limit = 10): Promise<ApiResponse> {
     try {
-      // Tentar endpoint específico primeiro (sem duplicar /api)
-      const historyEndpoint = `${config.entityName}s/${entityId}/history`;
+      // Tentar endpoint específico primeiro (sem /api extra)
+      const historyEndpoint = `/${config.entityName}s/${entityId}/history`;
       
       try {
         return await api.get(`${historyEndpoint}?page=${page}&limit=${limit}`);
       } catch {
-        // Fallback: usar endpoint universal (sem duplicar /api)
-        return await api.get(`universal/${config.entityName}s/history?entity_id=${entityId}&page=${page}&limit=${limit}`);
+        // Fallback: usar endpoint universal (sem /api extra)
+        return await api.get(`/universal/${config.entityName}s/history?entity_id=${entityId}&page=${page}&limit=${limit}`);
       }
     } catch (error) {
       console.error(`Erro ao carregar histórico:`, error);
@@ -154,7 +154,7 @@ class UniversalApiService {
         });
       }
       
-      const endpoint = config.createEndpoint.replace(/\/[^/]*$/, ''); // Remove o último segmento para obter o endpoint de listagem
+      const endpoint = config.createEndpoint; // Usar endpoint sem modificação
       return await api.get(`${endpoint}?${searchParams.toString()}`);
     } catch (error) {
       console.error(`Erro ao listar ${config.entityName}s:`, error);
@@ -168,7 +168,7 @@ class UniversalApiService {
   // Validar dados da entidade
   async validateEntity(config: FormConfig, data: any): Promise<ApiResponse> {
     try {
-      const endpoint = config.createEndpoint.replace(/\/[^/]*$/, '/validate');
+      const endpoint = `${config.createEndpoint}/validate`;
       return await api.post(endpoint, data);
     } catch (error) {
       console.error(`Erro ao validar ${config.entityName}:`, error);
@@ -208,7 +208,7 @@ class UniversalApiService {
   // Obter estatísticas da entidade
   async getEntityStats(config: FormConfig): Promise<ApiResponse> {
     try {
-      const statsEndpoint = config.createEndpoint.replace(/\/[^/]*$/, '/stats');
+      const statsEndpoint = `${config.createEndpoint}/stats`;
       return await api.get(statsEndpoint);
     } catch (error) {
       console.error(`Erro ao carregar estatísticas:`, error);
@@ -248,7 +248,7 @@ class UniversalApiService {
   // Exportar dados
   async exportEntity(config: FormConfig, format: 'csv' | 'xlsx' | 'json' = 'csv', filters?: any): Promise<ApiResponse> {
     try {
-      const exportEndpoint = `/api${config.createEndpoint.replace(/\/[^/]*$/, '/export')}`;
+      const exportEndpoint = `${config.createEndpoint}/export`;
       const params = new URLSearchParams({ format });
       
       if (filters) {
@@ -257,7 +257,7 @@ class UniversalApiService {
         });
       }
       
-      const response = await fetch(`${exportEndpoint}?${params.toString()}`, {
+      const response = await fetch(`/api${exportEndpoint}?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`

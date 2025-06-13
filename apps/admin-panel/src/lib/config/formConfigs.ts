@@ -1,3 +1,5 @@
+import { createFormConfig, createProductFormConfig } from './baseFormConfig';
+
 export interface FormField {
   name: string;
   label: string;
@@ -78,89 +80,11 @@ export interface FormConfig {
 }
 
 export const FormConfigs: Record<string, FormConfig> = {
-  // ============ PRODUTOS ============
-  produtos: {
-    title: 'Produto',
+  // ============ PRODUTOS (mantido sistema existente) ============
+  produtos: createProductFormConfig({
     entityName: 'products',
-    
-    // API endpoints
-    createEndpoint: '/products',
-    updateEndpoint: (id: string) => `/products/${id}`,
-    loadEndpoint: (id: string) => `/products/${id}`,
-    
-    // Configurações de abas
-    tabs: [
-      {
-        id: 'basic',
-        label: 'Básico',
-        icon: 'Package',
-        component: 'BasicTab',
-        description: 'Informações fundamentais'
-      },
-      {
-        id: 'pricing',
-        label: 'Preços',
-        icon: 'DollarSign',
-        component: 'PricingTab',
-        description: 'Valores e margens'
-      },
-      {
-        id: 'attributes',
-        label: 'Atributos',
-        icon: 'Settings',
-        component: 'AttributesSection',
-        description: 'Características do produto'
-      },
-      {
-        id: 'variants',
-        label: 'Variações',
-        icon: 'Layers',
-        component: 'VariantsTab',
-        description: 'Cores, tamanhos, etc'
-      },
-      {
-        id: 'inventory',
-        label: 'Estoque',
-        icon: 'Package',
-        component: 'InventoryTab',
-        description: 'Inventário e dimensões'
-      },
-      {
-        id: 'media',
-        label: 'Mídia',
-        icon: 'Image',
-        component: 'MediaTab',
-        description: 'Imagens e vídeos'
-      },
-      {
-        id: 'shipping',
-        label: 'Frete',
-        icon: 'Truck',
-        component: 'ShippingTab',
-        description: 'Configurações de envio'
-      },
-      {
-        id: 'seo',
-        label: 'SEO',
-        icon: 'Search',
-        component: 'SeoTab',
-        description: 'Otimização para buscadores'
-      },
-      {
-        id: 'advanced',
-        label: 'Avançado',
-        icon: 'Settings',
-        component: 'AdvancedTab',
-        description: 'Configurações extras'
-      }
-    ],
-    
-    defaultTab: 'basic',
-    
-    // Validação
+    title: 'Produto',
     requiredFields: ['name', 'sku'],
-    
-    // Dados padrão
     defaultFormData: {
       name: '',
       sku: '',
@@ -179,133 +103,97 @@ export const FormConfigs: Record<string, FormConfig> = {
       specifications: {},
       tags_input: '',
       meta_keywords_input: '',
-      published_at: '', // Data vazia por padrão
-      status: 'draft' // Status padrão
+      published_at: '',
+      status: 'draft'
     },
-    
-    // IA habilitada
-    aiEnabled: true,
-    aiEndpoint: '/ai/enrich',
-    
-    // Interface
-    showHistory: true,
-    showDuplicate: true,
-    showPreview: false,
-    
-    // Navegação
-    listRoute: '/produtos',
-    createRoute: '/produtos/novo',
-    
-    // Breadcrumbs
-    breadcrumbs: [
-      { label: 'Produtos', href: '/produtos' },
-      { label: 'Editar' }
-    ],
-    
-    // Callbacks customizados
-    onBeforeSave: (data: any) => {
-      // Converter strings para arrays
-      if (data.tags_input) {
-        data.tags = data.tags_input.split(',').map((t: string) => t.trim()).filter(Boolean);
+    specificCallbacks: {
+      onBeforeSave: (data: any) => {
+        // Converter strings para arrays
+        if (data.tags_input) {
+          data.tags = data.tags_input.split(',').map((t: string) => t.trim()).filter(Boolean);
+        }
+        if (data.meta_keywords_input) {
+          data.meta_keywords = data.meta_keywords_input.split(',').map((k: string) => k.trim()).filter(Boolean);
+        }
+        
+        // Mapear preços do PricingTab para o banco
+        data.price = parseFloat(data.sale_price || data.price) || 0;
+        data.original_price = data.regular_price ? parseFloat(data.regular_price) : null;
+        data.cost = parseFloat(data.cost_price || data.cost) || 0;
+        data.quantity = parseInt(data.quantity) || 0;
+        data.weight = data.weight ? parseFloat(data.weight) : null;
+        
+        // Remover campos temporários
+        delete data.tags_input;
+        delete data.meta_keywords_input;
+        delete data.category_name;
+        delete data.brand_name;
+        delete data.vendor_name;
+        delete data.cost_price;
+        delete data.sale_price;
+        delete data.regular_price;
+        delete data.categories;
+        delete data.category_ids;
+        
+        return data;
+      },
+      
+      onAfterLoad: (data: any) => {
+        // Mapear campos de preço para o PricingTab
+        data.cost_price = data.cost || 0;
+        data.sale_price = data.price || 0;
+        data.regular_price = data.original_price || 0;
+        
+        // Preparar campos especiais
+        if (data.tags && Array.isArray(data.tags)) {
+          data.tags_input = data.tags.join(', ');
+        } else {
+          data.tags = [];
+          data.tags_input = '';
+        }
+        
+        if (data.meta_keywords && Array.isArray(data.meta_keywords)) {
+          data.meta_keywords_input = data.meta_keywords.join(', ');
+        } else {
+          data.meta_keywords = [];
+          data.meta_keywords_input = '';
+        }
+        
+        // Preparar imagens
+        if (data.images && Array.isArray(data.images)) {
+          data.images = data.images.map((img: any) => 
+            typeof img === 'string' ? img : img.url
+          );
+        } else {
+          data.images = [];
+        }
+        
+        // Inicializar campos booleanos
+        data.is_active = data.is_active ?? true;
+        data.featured = data.featured ?? false;
+        data.has_free_shipping = data.has_free_shipping ?? false;
+        data.track_inventory = data.track_inventory ?? true;
+        data.allow_backorder = data.allow_backorder ?? false;
+        
+        return data;
       }
-      if (data.meta_keywords_input) {
-        data.meta_keywords = data.meta_keywords_input.split(',').map((k: string) => k.trim()).filter(Boolean);
-      }
-      
-      // Mapear preços do PricingTab para o banco
-      data.price = parseFloat(data.sale_price || data.price) || 0;
-      data.original_price = data.regular_price ? parseFloat(data.regular_price) : null;
-      data.cost = parseFloat(data.cost_price || data.cost) || 0;
-      data.quantity = parseInt(data.quantity) || 0;
-      data.weight = data.weight ? parseFloat(data.weight) : null;
-      
-      // Remover campos temporários
-      delete data.tags_input;
-      delete data.meta_keywords_input;
-      delete data.category_name;
-      delete data.brand_name;
-      delete data.vendor_name;
-      delete data.cost_price;
-      delete data.sale_price;
-      delete data.regular_price;
-      delete data.categories;
-      delete data.category_ids;
-      
-      return data;
-    },
-    
-    onAfterLoad: (data: any) => {
-      // Mapear campos de preço para o PricingTab
-      data.cost_price = data.cost || 0;
-      data.sale_price = data.price || 0;
-      data.regular_price = data.original_price || 0;
-      
-      // Preparar campos especiais
-      if (data.tags && Array.isArray(data.tags)) {
-        data.tags_input = data.tags.join(', ');
-      } else {
-        data.tags = [];
-        data.tags_input = '';
-      }
-      
-      if (data.meta_keywords && Array.isArray(data.meta_keywords)) {
-        data.meta_keywords_input = data.meta_keywords.join(', ');
-      } else {
-        data.meta_keywords = [];
-        data.meta_keywords_input = '';
-      }
-      
-      // Preparar imagens
-      if (data.images && Array.isArray(data.images)) {
-        data.images = data.images.map((img: any) => 
-          typeof img === 'string' ? img : img.url
-        );
-      } else {
-        data.images = [];
-      }
-      
-      // Inicializar campos booleanos
-      data.is_active = data.is_active ?? true;
-      data.featured = data.featured ?? false;
-      data.has_free_shipping = data.has_free_shipping ?? false;
-      data.track_inventory = data.track_inventory ?? true;
-      data.allow_backorder = data.allow_backorder ?? false;
-      
-      return data;
     }
-  },
+  }),
 
-  // ============ BANNERS ============
-  banners: {
-    entityName: 'banner',
+  // ============ BANNERS (sistema dinâmico) ============
+  banners: createFormConfig({
+    entityName: 'banners',
     title: 'Banner',
     subtitle: 'Gerencie banners promocionais da loja',
-    
-    listRoute: '/banners',
-    createEndpoint: '/banners',
-    updateEndpoint: (id: string) => `/banners/${id}`,
-    loadEndpoint: (id: string) => `/banners/${id}`,
-    
-    defaultTab: 'basic',
+    showPreview: true,
+    previewUrl: (id: string) => `/preview/banner/${id}`,
     requiredFields: ['title', 'image'],
-    
-    defaultFormData: {
-      title: '',
-      subtitle: '',
-      image: '',
-      link: '',
-      order: 0,
-      is_active: true,
-      start_date: '',
-      end_date: '',
-      target: '_self'
-    },
-    
-    tabs: [
+    customTabs: [
       {
         id: 'basic',
         label: 'Informações Básicas',
         icon: 'Image',
+        description: 'Dados principais do banner',
         fields: [
           {
             name: 'title',
@@ -325,7 +213,8 @@ export const FormConfigs: Record<string, FormConfig> = {
             label: 'Imagem',
             type: 'image',
             required: true,
-            help: 'Tamanho recomendado: 1920x600px'
+            help: 'Tamanho recomendado: 1920x600px',
+            fullWidth: true
           },
           {
             name: 'link',
@@ -353,6 +242,7 @@ export const FormConfigs: Record<string, FormConfig> = {
         id: 'scheduling',
         label: 'Agendamento',
         icon: 'Calendar',
+        description: 'Controle de datas e ordem',
         fields: [
           {
             name: 'start_date',
@@ -375,69 +265,172 @@ export const FormConfigs: Record<string, FormConfig> = {
           }
         ]
       }
-    ],
-    
-    showHistory: true,
-    showDuplicate: true,
-    showPreview: true,
-    previewUrl: (id: string) => `/preview/banner/${id}`
-  },
+    ]
+  }),
 
-  // ============ VENDEDORES ============
-  vendedores: {
-    entityName: 'vendedor',
+  // ============ VARIAÇÕES (sistema dinâmico) ============
+  variacoes: createFormConfig({
+    entityName: 'variations',
+    title: 'Variação',
+    subtitle: 'Gerencie variações de produtos',
+    requiredFields: ['name', 'product_id'],
+    customTabs: [
+      {
+        id: 'basic',
+        label: 'Básico',
+        icon: 'Package',
+        description: 'Informações básicas da variação',
+        fields: [
+          {
+            name: 'name',
+            label: 'Nome da Variação',
+            type: 'text',
+            required: true,
+            placeholder: 'Ex: Camiseta Azul P'
+          },
+          {
+            name: 'product_id',
+            label: 'Produto',
+            type: 'select',
+            required: true,
+            options: [], // Será preenchido dinamicamente
+            help: 'Produto ao qual esta variação pertence'
+          },
+          {
+            name: 'sku',
+            label: 'SKU',
+            type: 'text',
+            placeholder: 'Código único da variação'
+          },
+          {
+            name: 'description',
+            label: 'Descrição',
+            type: 'textarea',
+            fullWidth: true,
+            placeholder: 'Detalhes específicos desta variação'
+          },
+          {
+            name: 'is_active',
+            label: 'Ativa',
+            type: 'boolean'
+          }
+        ]
+      },
+      {
+        id: 'pricing',
+        label: 'Preços',
+        icon: 'DollarSign',
+        description: 'Valores específicos da variação',
+        fields: [
+          {
+            name: 'price',
+            label: 'Preço de Venda',
+            type: 'number',
+            required: true,
+            validation: { min: 0 },
+            help: 'Preço final ao consumidor'
+          },
+          {
+            name: 'original_price',
+            label: 'Preço Original',
+            type: 'number',
+            validation: { min: 0 },
+            help: 'Preço antes do desconto (opcional)'
+          },
+          {
+            name: 'cost',
+            label: 'Custo',
+            type: 'number',
+            validation: { min: 0 },
+            help: 'Custo de aquisição/produção'
+          }
+        ]
+      },
+      {
+        id: 'inventory',
+        label: 'Estoque',
+        icon: 'Package',
+        description: 'Controle de inventário',
+        fields: [
+          {
+            name: 'quantity',
+            label: 'Quantidade',
+            type: 'number',
+            validation: { min: 0 },
+            help: 'Quantidade disponível em estoque'
+          },
+          {
+            name: 'min_quantity',
+            label: 'Estoque Mínimo',
+            type: 'number',
+            validation: { min: 0 },
+            help: 'Alerta quando atingir este valor'
+          },
+          {
+            name: 'track_inventory',
+            label: 'Controlar Estoque',
+            type: 'boolean',
+            help: 'Rastrear movimentações de estoque'
+          },
+          {
+            name: 'allow_backorder',
+            label: 'Permitir Pré-venda',
+            type: 'boolean',
+            help: 'Aceitar pedidos mesmo sem estoque'
+          }
+        ]
+      },
+      {
+        id: 'attributes',
+        label: 'Atributos',
+        icon: 'Settings',
+        description: 'Características específicas',
+        fields: [
+          {
+            name: 'color',
+            label: 'Cor',
+            type: 'text',
+            placeholder: 'Ex: Azul Marinho'
+          },
+          {
+            name: 'size',
+            label: 'Tamanho',
+            type: 'select',
+            options: [
+              { value: 'PP', label: 'PP' },
+              { value: 'P', label: 'P' },
+              { value: 'M', label: 'M' },
+              { value: 'G', label: 'G' },
+              { value: 'GG', label: 'GG' },
+              { value: 'XG', label: 'XG' }
+            ]
+          },
+          {
+            name: 'material',
+            label: 'Material',
+            type: 'text',
+            placeholder: 'Ex: 100% Algodão'
+          },
+          {
+            name: 'weight',
+            label: 'Peso (kg)',
+            type: 'number',
+            validation: { min: 0 },
+            help: 'Peso para cálculo de frete'
+          }
+        ]
+      }
+    ]
+  }),
+
+  // ============ VENDEDORES (sistema dinâmico com IA) ============
+  vendedores: createFormConfig({
+    entityName: 'sellers',
     title: 'Vendedor',
     subtitle: 'Gerencie informações dos vendedores parceiros',
-    
-    // 🤖 HABILITAR IA PARA VENDEDORES
     aiEnabled: true,
-    
-    listRoute: '/vendedores',
-    createEndpoint: '/sellers',
-    updateEndpoint: (id: string) => `/sellers/${id}`,
-    loadEndpoint: (id: string) => `/sellers/${id}`,
-    
-    defaultTab: 'basic',
     requiredFields: ['company_name', 'email'],
-    
-    defaultFormData: {
-      company_name: '',
-      trading_name: '',
-      cnpj: '',
-      email: '',
-      phone: '',
-      description: '',
-      category: '',
-      website: '',
-      social_media: {
-        instagram: '',
-        facebook: '',
-        whatsapp: ''
-      },
-      address: {
-        street: '',
-        number: '',
-        complement: '',
-        neighborhood: '',
-        city: '',
-        state: '',
-        zip_code: ''
-      },
-      bank_info: {
-        bank: '',
-        agency: '',
-        account: '',
-        account_type: ''
-      },
-      documents: {
-        rg: '',
-        cpf_responsible: '',
-        birth_date: ''
-      },
-      is_active: true
-    },
-    
-    tabs: [
+    customTabs: [
       {
         id: 'basic',
         label: 'Informações Básicas',
@@ -459,11 +452,7 @@ export const FormConfigs: Record<string, FormConfig> = {
             label: 'CNPJ',
             type: 'text',
             validation: {
-              pattern: '\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}',
-              custom: (value: string) => {
-                // Aqui poderia chamar validationService.validateCNPJ(value)
-                return null;
-              }
+              pattern: '\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}'
             }
           },
           {
@@ -492,7 +481,7 @@ export const FormConfigs: Record<string, FormConfig> = {
           {
             name: 'description',
             label: 'Descrição da Empresa',
-            type: 'rich-text',
+            type: 'textarea',
             fullWidth: true,
             help: 'Descreva os produtos e serviços oferecidos'
           },
@@ -514,11 +503,60 @@ export const FormConfigs: Record<string, FormConfig> = {
           }
         ]
       }
-    ],
-    
-    showHistory: true,
-    showDuplicate: false
-  }
+    ]
+  }),
+
+  // ============ CATEGORIAS (exemplo de nova entidade simples) ============
+  categorias: createFormConfig({
+    entityName: 'categories',
+    title: 'Categoria',
+    subtitle: 'Gerencie categorias de produtos',
+    requiredFields: ['name'],
+    fields: [
+      {
+        name: 'name',
+        label: 'Nome',
+        type: 'text',
+        required: true,
+        placeholder: 'Nome da categoria'
+      },
+      {
+        name: 'description',
+        label: 'Descrição',
+        type: 'textarea',
+        fullWidth: true,
+        placeholder: 'Descrição da categoria'
+      },
+      {
+        name: 'image',
+        label: 'Imagem',
+        type: 'image',
+        help: 'Imagem representativa da categoria'
+      },
+      {
+        name: 'parent_id',
+        label: 'Categoria Pai',
+        type: 'select',
+        options: [
+          { value: '', label: 'Categoria principal' },
+          { value: '1', label: 'Eletrônicos' },
+          { value: '2', label: 'Moda' }
+        ],
+        help: 'Deixe vazio para categoria principal'
+      },
+      {
+        name: 'is_active',
+        label: 'Ativa',
+        type: 'boolean'
+      },
+      {
+        name: 'order',
+        label: 'Ordem',
+        type: 'number',
+        validation: { min: 0 }
+      }
+    ]
+  })
 };
 
 /**

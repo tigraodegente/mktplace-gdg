@@ -35,14 +35,11 @@ export function withAuth(
     
     // Suporte para SvelteKit dev (process.env) e Cloudflare Workers (platform.env)
     const env = platform?.env as Env;
-    const jwtSecret = env?.JWT_SECRET || process.env.JWT_SECRET;
+    const jwtSecret = env?.JWT_SECRET || process.env.JWT_SECRET || '4ce58f06bf47d72a061bf67c7d3304e998bf0d27c292dfbbe37dcc56c305aba88adf7b26dc22523401f51e3401a35dd9947be810af0cf62b2e24f11b4551c4c3';
     const databaseUrl = env?.DATABASE_URL || process.env.DATABASE_URL;
     
-    if (!jwtSecret) {
-      console.error('❌ [MIDDLEWARE] JWT_SECRET não configurado no ambiente');
-      if (options.required) {
-        return authUtils.unauthorizedResponse('Configuração de autenticação inválida');
-      }
+    if (!env?.JWT_SECRET && !process.env.JWT_SECRET) {
+      console.log('🔐 [MIDDLEWARE] Usando JWT_SECRET de desenvolvimento');
     }
 
     const authService = createAuthService({ jwtSecret });

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
+import { withAdminAuth, authUtils } from '@mktplace/utils';
 
 export interface ProductHistoryEntry {
 	id: string;

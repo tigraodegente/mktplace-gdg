@@ -91,7 +91,7 @@ export const UniversalPageConfigs: Record<string, UniversalPageConfig> = {
     
     // API endpoints
     apiEndpoint: '/api/products',
-    deleteEndpoint: '/products', // Will use universal delete
+    deleteEndpoint: '/api/products', // Will use universal delete
     statsEndpoint: '/api/products/stats',
     categoriesEndpoint: '/api/categories',
     brandsEndpoint: '/api/brands',
@@ -132,13 +132,13 @@ export const UniversalPageConfigs: Record<string, UniversalPageConfig> = {
         sortable: true,
         width: '250px',
         render: (value: string, row: any) => {
-          const imageUrl = row.images?.[0] || row.image || `/universal/placeholder/80/80?text=${encodeURIComponent(row.name)}`;
+          const imageUrl = row.images?.[0] || row.image || `/api/placeholder/80/80?text=${encodeURIComponent(row.name)}`;
           return `
             <div class="flex items-center space-x-3">
               <img src="${imageUrl}" 
                 alt="${row.name}" 
                 class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
-                onerror="this.src='/universal/placeholder/80/80?text=${encodeURIComponent(row.name)}'"
+                onerror="this.src='/api/placeholder/80/80?text=${encodeURIComponent(row.name)}'"
               />
               <div class="min-w-0 flex-1">
                 <div class="font-medium text-gray-900 text-sm lg:text-base truncate">${row.name}</div>
@@ -279,7 +279,7 @@ export const UniversalPageConfigs: Record<string, UniversalPageConfig> = {
     editItemRoute: (id: string) => `/banners/${id}`,
     
     apiEndpoint: '/api/banners',
-    deleteEndpoint: '/banners', // Universal delete
+    deleteEndpoint: '/api/banners', // Universal delete
     statsEndpoint: '/api/banners/stats',
     
     universalActions: {
@@ -300,13 +300,13 @@ export const UniversalPageConfigs: Record<string, UniversalPageConfig> = {
         label: 'Banner',
         sortable: true,
         render: (value: string, row: any) => {
-          const imageUrl = row.image_url || '/universal/placeholder/200/100?text=Banner';
+          const imageUrl = row.image_url || '/api/placeholder/200/100?text=Banner';
           return `
             <div class="flex items-center space-x-3">
               <img src="${imageUrl}" 
                 alt="${row.title}" 
                 class="w-16 h-8 lg:w-20 lg:h-10 rounded object-cover flex-shrink-0 shadow-sm"
-                onerror="this.src='/universal/placeholder/200/100?text=Banner'"
+                onerror="this.src='/api/placeholder/200/100?text=Banner'"
               />
               <div class="min-w-0 flex-1">
                 <div class="font-medium text-gray-900 text-sm lg:text-base truncate">${row.title}</div>

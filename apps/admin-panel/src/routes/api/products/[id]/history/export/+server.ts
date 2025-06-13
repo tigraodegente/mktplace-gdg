@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
+import { withAdminAuth, authUtils } from '@mktplace/utils';
 
 // GET - Exportar histórico em CSV
 export const GET: RequestHandler = withAdminAuth(async ({ params, url, data, platform }: any) => {

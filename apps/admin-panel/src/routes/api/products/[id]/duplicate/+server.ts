@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
+import { withAdminAuth, authUtils } from '@mktplace/utils';
 
 // POST - Duplicar produto
 export const POST: RequestHandler = withAdminAuth(async ({ params, request, data, platform }: any) => {

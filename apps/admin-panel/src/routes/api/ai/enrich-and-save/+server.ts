@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import OpenAI from 'openai';
 import { OPENAI_API_KEY } from '$env/static/private';
 import { getDatabase } from '$lib/db';
-import { withAdminAuth, authUtils } from '@mktplace/utils/auth/middleware';
+import { withAdminAuth, authUtils } from '@mktplace/utils';
 
 // Inicializar OpenAI
 const openai = new OpenAI({

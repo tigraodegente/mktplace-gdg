@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createAuthService, UserRole } from '@mktplace/utils/auth/auth-service';
+import { createAuthService, UserRole } from '@mktplace/utils';
 import postgres from 'postgres';
 
 // Tipos para login
