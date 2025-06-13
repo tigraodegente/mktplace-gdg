@@ -322,7 +322,7 @@
 		{#if activeCategory === 'ver-todas'}
 			<!-- Mega Menu para Ver Todas - Mostra todas as categorias principais -->
 			<div
-				class="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-200 z-50 max-h-[70vh] md:max-h-[80vh] lg:max-h-none overflow-y-auto"
+				class="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-200 z-50 max-h-[70vh] md:max-h-[75vh] lg:max-h-[80vh] xl:max-h-[85vh] overflow-y-auto"
 				onmouseenter={() => clearTimeout(hoverTimeout)}
 				onmouseleave={handleMouseLeave}
 				transition:fade={{ duration: 200 }}
@@ -333,7 +333,7 @@
 			>
 				<!-- Indicador de scroll no topo -->
 				<div
-					class="sm:hidden sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
+					class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
 				>
 					<span class="text-xs text-gray-500 flex items-center justify-center gap-2">
 						<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,7 +344,7 @@
 								d="M19 14l-7 7m0 0l-7-7m7 7V3"
 							/>
 						</svg>
-						Role para ver categorias e produtos
+						Role para ver mais conteúdo
 					</span>
 				</div>
 
@@ -532,7 +532,7 @@
 			{@const activecat = findCategoryById(activeCategory)}
 			{#if activecat && activecat.children && activecat.children.length > 0}
 				<div
-					class="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-200 z-50 max-h-[60vh] md:max-h-[70vh] lg:max-h-none overflow-y-auto"
+					class="absolute left-0 right-0 top-full bg-white shadow-lg border-t border-gray-200 z-50 max-h-[60vh] md:max-h-[70vh] lg:max-h-[75vh] xl:max-h-[80vh] overflow-y-auto"
 					onmouseenter={() => clearTimeout(hoverTimeout)}
 					onmouseleave={handleMouseLeave}
 					transition:fade={{ duration: 200 }}
@@ -543,7 +543,7 @@
 				>
 					<!-- Indicador de scroll no topo -->
 					<div
-						class="md:hidden sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
+						class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2 text-center"
 					>
 						<span class="text-xs text-gray-500 flex items-center justify-center gap-2">
 							<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -554,7 +554,7 @@
 									d="M19 14l-7 7m0 0l-7-7m7 7V3"
 								/>
 							</svg>
-							Role para ver mais opções
+							Role para ver mais conteúdo
 						</span>
 					</div>
 
