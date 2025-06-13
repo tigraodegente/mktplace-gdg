@@ -4,6 +4,7 @@
 	import SearchBox from '../search/SearchBox.svelte';
 	import DesktopCategoryMenu from '../navigation/DesktopCategoryMenu.svelte';
 	import MiniCart from '../cart/MiniCart.svelte';
+	import { getCartStoreInfo } from '$lib/features/cart';
 	
 	interface HeaderProps {
 		totalItems: number;
@@ -51,6 +52,12 @@
 		goto('/cart');
 	}
 	
+	// Log do store ativo (para debugging da migração)
+	$effect(() => {
+		const storeInfo = getCartStoreInfo();
+		console.log(`🎯 Header usando cart store: ${storeInfo.type} v${storeInfo.version}`);
+	});
+
 	// Fechar menu ao clicar fora
 	$effect(() => {
 		if (!userMenuOpen && !miniCartVisible) return;

@@ -11,13 +11,11 @@
   
   // EXECUTAR IMEDIATAMENTE NO CONTEXTO DO MÓDULO
   if (typeof window !== 'undefined') {
-    console.log('🛡️🛡️🛡️ PROTEÇÕES ULTRA-IMEDIATAS ATIVADAS! 🛡️🛡️🛡️');
     
     // INTERCEPTAR ALERTS ANTES DE TUDO
     const originalAlert = window.alert;
     window.alert = function(message) {
       if (message && (message.toLowerCase().includes('sessão') || message.toLowerCase().includes('login') || message.toLowerCase().includes('expirou'))) {
-        console.log('🛡️ Alert BLOQUEADO ULTRA-IMEDIATO!', message);
         return;
       }
       return originalAlert.call(window, message);
@@ -98,9 +96,21 @@
   let checkoutData = $state<{
     user?: any;
     isGuest?: boolean;
+    guestData?: { name: string; email: string; phone: string; acceptsMarketing: boolean };
     addressData?: any;
     paymentData?: any;
+    sessionId?: string;
   }>({});
+  
+  // Gerar sessionId único
+  function generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+  
+  // Garantir que sempre temos um sessionId
+  if (!checkoutData.sessionId) {
+    checkoutData.sessionId = generateSessionId();
+  }
   
   // Referência para a área do wizard (corrigido para Svelte 5)
   let wizardArea = $state<HTMLElement>();
@@ -119,7 +129,6 @@
   $effect(() => {
     if (browser) {
       (window as any).__checkoutInProgress = checkoutInProgress;
-      console.log('🔄 Checkout in progress:', checkoutInProgress);
     }
   });
   
@@ -227,7 +236,7 @@
   
   // Calcular totais reais baseados no sistema novo (VERSÃO UNIFICADA)
   const realCartTotals = $derived(() => {
-    const cartSubtotal = $cartTotals.cartSubtotal;
+    const cartSubtotal = ($cartTotals as any).cartSubtotal || ($cartTotals as any).cart_subtotal || 0;
     
     // Calcular frete total baseado nas opções selecionadas
     const shippingCalculation = calculateCartShippingTotal(
@@ -242,15 +251,16 @@
     if ($appliedCoupon && $appliedCoupon.type === 'free_shipping') {
       freeShippingSavings = totalShipping; // Economia real = frete que seria cobrado
       totalShipping = 0; // Zerar frete real quando há cupom de frete grátis
-      console.log(`🎫 CUPOM FRETE GRÁTIS - Economia real: R$ ${freeShippingSavings.toFixed(2)}`);
     }
     
     // Somar todos os descontos (produtos + cupom normal + frete grátis)
-    const productDiscounts = $cartTotals.totalDiscount - $cartTotals.couponDiscount; // Descontos de produtos apenas
-    const couponDiscount = $appliedCoupon && $appliedCoupon.type !== 'free_shipping' 
-      ? $cartTotals.couponDiscount 
+    const originalTotalDiscount = ($cartTotals as any).totalDiscount || ($cartTotals as any).total_discount || 0;
+    const couponDiscount = ($cartTotals as any).couponDiscount || 0;
+    const productDiscounts = originalTotalDiscount - couponDiscount; // Descontos de produtos apenas
+    const finalCouponDiscount = $appliedCoupon && $appliedCoupon.type !== 'free_shipping' 
+      ? couponDiscount 
       : 0;
-    const totalDiscount = productDiscounts + couponDiscount + freeShippingSavings;
+    const totalDiscount = productDiscounts + finalCouponDiscount + freeShippingSavings;
     
     const cartTotal = cartSubtotal - productDiscounts - couponDiscount + totalShipping;
     
@@ -262,7 +272,7 @@
       couponDiscount,
       freeShippingSavings,
       cartTotal,
-      		installmentValue: cartTotal / defaultInstallments,
+      installmentValue: cartTotal > 0 && defaultInstallments > 0 ? cartTotal / defaultInstallments : 0,
       maxDeliveryDays: shippingCalculation.maxDeliveryDays,
       hasExpressOptions: false, // Não usado atualmente
       hasGroupedOptions: false  // Não usado atualmente
@@ -409,7 +419,6 @@
         selectedShippingOptions
       ).totalShipping;
       
-      console.log(`🔄 RECÁLCULO AUTO - Novo frete: R$ ${shippingCost.toFixed(2)}, Cupom: ${$appliedCoupon.code}`);
     }
   });
 
@@ -420,12 +429,10 @@
   // Funções do Checkout Wizard
   function startCheckout() {
     if ($sellerGroups.length === 0) {
-      console.log('❌ Carrinho vazio');
       return;
     }
     
     if (!$zipCode) {
-      console.log('❌ CEP não informado');
       toastStore.add({
         type: 'warning',
         title: 'CEP Obrigatório',
@@ -441,7 +448,6 @@
     );
     
     if (missingShipping) {
-      console.log('❌ Opções de frete não selecionadas');
       toastStore.add({
         type: 'warning',
         title: 'Frete Obrigatório',
@@ -453,18 +459,15 @@
     
     // MARCAR QUE O CHECKOUT ESTÁ EM PROGRESSO
     checkoutInProgress = true;
-    console.log('🛒 Checkout iniciado - verificações de sessão desabilitadas');
     
     // Verificar se já está autenticado
     if ($isAuthenticated) {
-      console.log('✅ Usuário autenticado, indo direto para endereços');
       checkoutData.user = $user;
       checkoutData.isGuest = false;
       currentStep = 'address';
       // Scroll imediato e focado para endereços
       scrollToStep('address', 50);
     } else {
-      console.log('🔐 Iniciando autenticação');
       currentStep = 'auth';
       // Scroll rápido para auth quando inicia checkout
       scrollToStep('auth', 50);
@@ -474,6 +477,21 @@
   function handleAuthNext(event: CustomEvent) {
     checkoutData.user = event.detail.user;
     checkoutData.isGuest = event.detail.isGuest || false;
+    
+    // 🔧 CAPTURAR DADOS DE CONVIDADO SE FORNECIDOS (usar snapshot para preservar estado)
+    if (event.detail.guestData) {
+      checkoutData.guestData = {
+        ...$state.snapshot(event.detail.guestData),
+        sessionId: checkoutData.sessionId
+      };
+      
+      // 🔧 SALVAR NO SESSION STORAGE PARA PÁGINA DE SUCESSO
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('guest-checkout-data', JSON.stringify(checkoutData.guestData));
+      }
+      
+    }
+    
     currentStep = 'address';
     
     // Scroll otimizado para formulário de endereço
@@ -505,43 +523,53 @@
     
     try {
       // REMOVER VERIFICAÇÕES EXCESSIVAS - Confiar apenas na resposta do backend
-      console.log('🔍 Processando pedido com verificações desabilitadas...');
       
       // Criar o pedido diretamente (o backend verificará a sessão)
       const cartItems = $sellerGroups.flatMap(group => group.items);
+      
+      // 🔍 DEBUG: Verificar dados antes de enviar
+      const requestPayload = {
+        items: cartItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity
+        })),
+        shippingAddress: checkoutData.addressData,
+        paymentMethod: checkoutData.paymentData.method,
+        couponCode: $appliedCoupon?.code,
+        notes: checkoutData.paymentData.notes || '',
+        // 🔧 ADICIONAR DADOS DE CONVIDADO SE DISPONÍVEIS (COM SESSION ID DENTRO)
+        ...(checkoutData.isGuest && checkoutData.guestData ? {
+          guestData: {
+            name: checkoutData.guestData.name,
+            email: checkoutData.guestData.email,
+            phone: checkoutData.guestData.phone,
+            acceptsMarketing: checkoutData.guestData.acceptsMarketing,
+            sessionId: checkoutData.sessionId // 🔧 SESSION ID DENTRO DO GUEST DATA
+          }
+        } : {})
+      };
+      
+      
       const createOrderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include', // Essencial para cookies de sessão
-        body: JSON.stringify({
-          items: cartItems.map(item => ({
-            productId: item.product.id,
-            quantity: item.quantity
-          })),
-          shippingAddress: checkoutData.addressData,
-          paymentMethod: checkoutData.paymentData.method,
-          couponCode: $appliedCoupon?.code,
-          notes: checkoutData.paymentData.notes || ''
-        })
+        body: JSON.stringify(requestPayload)
       });
 
-      console.log('📊 Resposta da API:', createOrderResponse.status, createOrderResponse.statusText);
 
       if (!createOrderResponse.ok) {
         const errorText = await createOrderResponse.text();
-        console.log('❌ Erro HTTP:', errorText);
         
         // Se for erro 401, verificar contexto antes de assumir "sessão expirou"
         if (createOrderResponse.status === 401) {
-          console.log('🔒 Erro 401 - Verificando contexto de autenticação');
           
           // CORREÇÃO: Só tratar como "sessão expirou" se o usuário estava logado
           const isLoggedUser = checkoutData.user && !checkoutData.isGuest;
           
           if (isLoggedUser) {
-            console.log('🔒 Usuário logado - Sessão expirou durante o processamento');
             
             // Salvar contexto para recuperação
             try {
@@ -554,7 +582,6 @@
                 timestamp: Date.now()
               }));
             } catch (storageError) {
-              console.log('❌ Erro ao salvar dados de recuperação:', storageError);
             }
             
             toastStore.add({
@@ -566,7 +593,6 @@
             window.location.href = '/login?redirect=/cart&recovery=true';
             return;
           } else {
-            console.log('👤 Usuário convidado - Erro 401 tratado como erro de checkout');
             // Para convidados, tratar erro 401 como erro normal de checkout
             throw new Error(`Erro de autorização: Verifique os dados do pagamento e tente novamente.`);
           }
@@ -576,13 +602,11 @@
       }
 
       const orderResult = await createOrderResponse.json();
-      console.log('📦 Resultado do pedido:', orderResult);
       
       if (!orderResult.success) {
         throw new Error(orderResult.error?.message || 'Erro ao criar pedido');
       }
 
-      console.log('✅ Pedido criado com sucesso:', orderResult.data.order.orderNumber);
 
       // 4. Limpar carrinho e redirecionar
       clearCart();
@@ -659,7 +683,6 @@
   // PROTEÇÕES ATIVADAS IMEDIATAMENTE
   // ====================================
   if (browser) {
-    console.log('🛡️🛡️🛡️ ATIVANDO PROTEÇÕES DO CARRINHO IMEDIATAMENTE! 🛡️🛡️🛡️');
     
     // INTERCEPTAR ALERTS IMEDIATAMENTE
     const originalAlert = window.alert;
@@ -668,7 +691,6 @@
       
       // Bloquear QUALQUER alert sobre sessão
       if (message && (message.toLowerCase().includes('sessão') || message.toLowerCase().includes('login'))) {
-        console.log('🛡️ Alert BLOQUEADO!');
         return;
       }
       
@@ -695,7 +717,6 @@
     
     // Marcar globalmente que proteções estão ativas
     (window as any).__cartProtectionsActive = true;
-    console.log('✅ PROTEÇÕES BÁSICAS ATIVADAS!');
   }
 </script>
 
