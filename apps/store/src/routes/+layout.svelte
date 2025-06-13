@@ -24,10 +24,10 @@
 	import { unreadCount } from '$lib/stores/notificationStore';
 	// import CartVersionIndicator from '$lib/features/cart/components/CartVersionIndicator.svelte';
 	
-	// Teste de compatibilidade (apenas em desenvolvimento)
+	// Suite de validação completa (apenas em desenvolvimento)
 	if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-		import('$lib/features/cart/stores/test-compatibility').catch(() => {
-			console.log('🧪 Teste de compatibilidade não disponível');
+		import('$lib/features/cart/stores/validation-suite').catch(() => {
+			console.log('🧪 Suite de validação não disponível');
 		});
 	}
 
