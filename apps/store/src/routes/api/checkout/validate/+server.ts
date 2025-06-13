@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { TIMEOUT_CONFIG, withTimeout } from '$lib/config/timeouts';
 import type { RequestHandler } from './$types';
 import { getDatabase } from '$lib/db';
-import { requireAuth } from '$lib/utils/auth';
+import { optionalAuth } from '$lib/utils/auth';
 
 interface CartItem {
   productId: string;
@@ -34,11 +34,12 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
     console.log('✅ Checkout Validate - Estratégia híbrida iniciada');
     
-    // Verificar autenticação
-    const authResult = await requireAuth(cookies, platform);
-    if (!authResult.success) {
-      return json({ success: false, error: authResult.error }, { status: 401 });
-    }
+    // Verificar autenticação (opcional - permite checkout de convidado)
+    const authResult = await optionalAuth(cookies, platform);
+    console.log('🔍 [VALIDATE] Estado de autenticação:', {
+      hasUser: !!authResult.user,
+      userId: authResult.user?.id || 'N/A'
+    });
 
     const { items, zipCode, couponCode } = await request.json();
 

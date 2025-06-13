@@ -140,12 +140,15 @@
     // Definir step inicial baseado na autenticação
     // Verificação robusta: validar se usuário realmente tem dados válidos
     if ($isAuthenticated && $user?.id) {
-      console.log('✅ Usuário autenticado com dados válidos, indo para endereços');
+      console.log('✅ [CHECKOUT] Usuário autenticado com dados válidos, indo para endereços');
       currentStep = 'address';
       await loadUserAddresses();
-      addressMode = userAddresses.length > 0 ? 'select' : 'new';
+      // Só definir addressMode após carregar endereços (pode falhar e voltar para auth)
+      if (currentStep === 'address') {
+        addressMode = userAddresses.length > 0 ? 'select' : 'new';
+      }
     } else {
-      console.log('🔐 Estado de autenticação inválido ou usuário não autenticado, mostrando opções');
+      console.log('🔐 [CHECKOUT] Estado de autenticação inválido ou usuário não autenticado, mostrando opções');
       isGuest = false; // Reset guest state
       currentStep = 'auth';
     }
@@ -227,21 +230,35 @@
   
   // Função para carregar endereços do usuário
   async function loadUserAddresses() {
-    if (!$isAuthenticated) return;
+    // Proteção dupla: verificar autenticação E usuário válido
+    if (!$isAuthenticated || !$user?.id) {
+      console.log('🔍 [CHECKOUT] Não carregando endereços - usuário não autenticado');
+      userAddresses = [];
+      return;
+    }
     
     loadingAddresses = true;
     try {
+      console.log('🏠 [CHECKOUT] Carregando endereços do usuário...');
       const response = await fetch('/api/addresses');
       const data = await response.json();
       
       if (data.success) {
         userAddresses = data.data || [];
+        console.log(`✅ [CHECKOUT] ${userAddresses.length} endereços carregados`);
       } else {
-        console.error('Erro ao carregar endereços:', data.error);
+        console.warn('⚠️ [CHECKOUT] Erro ao carregar endereços (tratado como lista vazia):', data.error);
         userAddresses = [];
+        
+        // Se erro de autenticação, tratar como convidado
+        if (data.error?.code === 'NO_SESSION' || data.error?.code === 'INVALID_SESSION') {
+          console.log('🔄 [CHECKOUT] Sessão inválida detectada - tratando como convidado');
+          isGuest = true;
+          currentStep = 'auth';
+        }
       }
     } catch (error) {
-      console.error('Erro ao carregar endereços:', error);
+      console.warn('⚠️ [CHECKOUT] Erro de rede ao carregar endereços (tratado como lista vazia):', error);
       userAddresses = [];
     } finally {
       loadingAddresses = false;
@@ -619,7 +636,7 @@
   function selectSavedAddress() {
     // Verificar se há endereços carregados
     if (userAddresses.length === 0) {
-      // Recarregar endereços se necessário
+      // Recarregar endereços se necessário (com proteção de autenticação)
       loadUserAddresses().then(() => {
         if (userAddresses.length > 0) {
           addressMode = 'select';
@@ -636,7 +653,10 @@
   }
 
   async function saveCurrentAddress() {
-    if (!$isAuthenticated || !$user?.id) return;
+    if (!$isAuthenticated || !$user?.id) {
+      console.log('🔍 [CHECKOUT] Não salvando endereço - usuário não autenticado');
+      return;
+    }
     
     try {
       const response = await fetch('/api/addresses', {
