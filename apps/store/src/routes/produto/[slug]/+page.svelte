@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { formatCurrency } from '$lib/utils';
-  import { cartStore } from '$lib/stores/cartStore';
+  import { cartStore } from '$lib/features/cart';
   import { goto } from '$app/navigation';
   import { fade, fly } from 'svelte/transition';
   import { browser } from '$app/environment';

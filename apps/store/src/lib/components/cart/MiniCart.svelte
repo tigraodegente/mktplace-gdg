@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { formatCurrency } from '$lib/utils';
-	import { cartStore } from '$lib/stores/cartStore';
+	import { cartStore } from '$lib/features/cart';
 	import { fade, scale, fly, slide } from 'svelte/transition';
 	import { cubicOut, elasticOut, backOut } from 'svelte/easing';
 	import { goto } from '$app/navigation';

@@ -29,7 +29,7 @@
 </script>
 
 <script lang="ts">
-  import { cartStore } from '$lib/stores/cartStore';
+  import { cartStore } from '$lib/features/cart';
   import { isAuthenticated, user } from '$lib/stores/authStore';
   import { AuthService } from '$lib/services/auth.service';
   import CartItem from '$lib/components/cart/CartItem.svelte';

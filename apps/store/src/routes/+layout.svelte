@@ -8,7 +8,7 @@
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import SearchBox from '$lib/components/search/SearchBox.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
-	import { cartStore } from '$lib/stores/cartStore';
+	import { cartStore } from '$lib/features/cart';
 	import { wishlistCount } from '$lib/stores/wishlistStore';
 	import { notificationStore } from '$lib/stores/notificationStore';
 	import Header from '$lib/components/layout/Header.svelte';

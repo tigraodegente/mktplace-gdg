@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatCurrency } from '$lib/utils';
-	import { cartStore } from '$lib/stores/cartStore';
+	import { cartStore } from '$lib/features/cart';
 	import { wishlistStore } from '$lib/stores/wishlistStore';
 	import { toastStore } from '$lib/stores/toastStore';
 	import { usePricing } from '$lib/stores/pricingStore';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { advancedCartStore } from '$lib/stores/cartStore';
+	import { advancedCartStore } from '$lib/features/cart';
 	
 	interface CartHeaderProps {
 		itemCount: number;

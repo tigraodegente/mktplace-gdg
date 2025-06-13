@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { wishlistStore, isWishlistEmpty } from '$lib/stores/wishlistStore';
 	import ProductCard from '$lib/components/product/ProductCard.svelte';
-	import { advancedCartStore } from '$lib/stores/cartStore';
+	import { advancedCartStore } from '$lib/features/cart';
 	import { toastStore } from '$lib/stores/toastStore';
 	import { goto } from '$app/navigation';
 	
@@ -12,14 +12,20 @@
 	function addAllToCart() {
 		const itemCount = $wishlistStore.length;
 		
-		$wishlistStore.forEach(item => {
-			advancedCartStore.addItem(
-				item,
-				item.seller_id || 'seller-1',
-				item.seller_name || 'Loja Exemplo',
-				1
-			);
-		});
+			$wishlistStore.forEach(item => {
+		// Converter WishlistItem para Product compatível
+		const productData = {
+			...item,
+			seller_id: item.seller_id || 'seller-1' // Garantir que seller_id existe
+		};
+		
+		advancedCartStore.addItem(
+			productData,
+			item.seller_id || 'seller-1',
+			item.seller_name || 'Loja Exemplo',
+			1
+		);
+	});
 		
 		toastStore.success(`${itemCount} ${itemCount === 1 ? 'produto adicionado' : 'produtos adicionados'} ao carrinho!`);
 	}

@@ -6,7 +6,7 @@
   import OrderSummary from '$lib/components/cart/OrderSummary.svelte';
   import CheckoutAuth from '$lib/components/checkout/CheckoutAuth.svelte';
   import CheckoutAddress from '$lib/components/checkout/CheckoutAddress.svelte';
-  import { advancedCartStore } from '$lib/stores/cartStore';
+  import { advancedCartStore } from '$lib/features/cart';
   import { isAuthenticated, user } from '$lib/stores/authStore';
   import type { CartItem, Address } from '$lib/types/checkout';
   import { toastStore } from '$lib/stores/toastStore';

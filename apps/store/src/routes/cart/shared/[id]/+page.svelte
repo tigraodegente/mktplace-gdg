@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { advancedCartStore } from '$lib/stores/cartStore';
+	import { advancedCartStore } from '$lib/features/cart';
 	import { decompressCartData } from '$lib/services/cartLinkService';
 	import { scale, fade } from 'svelte/transition';
 	import { elasticOut } from 'svelte/easing';

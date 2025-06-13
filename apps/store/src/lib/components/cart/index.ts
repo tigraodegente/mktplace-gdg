@@ -33,8 +33,8 @@ export type {
   UnifiedShippingOption 
 } from '$lib/services/unifiedShippingService';
 
-// Store - atualizado para o novo nome
-export { cartStore, advancedCartStore } from '$lib/stores/cartStore';
+// Store - usando nova implementação via features
+export { cartStore, advancedCartStore } from '$lib/features/cart';
 
 // Tipos básicos
 export type {
