@@ -179,7 +179,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           let discount = 0;
           if (orderData.couponCode) {
                     const coupons = await sql`
-          SELECT id, code, type, value, min_order_amount, max_uses, used_count, is_active
+          SELECT id, code, type, value, min_order_amount, max_uses, current_uses, is_active
           FROM coupons 
           WHERE code = ${orderData.couponCode} AND is_active = true
         `;
@@ -189,7 +189,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
               throw new Error('Cupom inválido ou expirado');
             }
 
-            if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
+            if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
               throw new Error('Cupom esgotado');
             }
 
@@ -350,7 +350,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           if (orderData.couponCode) {
             await sql`
               UPDATE coupons 
-              SET used_count = used_count + 1
+              SET current_uses = current_uses + 1
               WHERE code = ${orderData.couponCode}
             `;
           }
